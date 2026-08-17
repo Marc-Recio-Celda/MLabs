@@ -1,4 +1,4 @@
-# MLabs workspace — DEFAULT-DENY (ADR-0 · NEXUS:M-109).
+# MLabs workspace — DEFAULT-DENY (AX-1 · NEXUS:M-109).
 # Nothing at this root is tracked unless a `!` line below names it.
 # A new file or folder is PRIVATE until this file says otherwise — the safe failure.
 # Every child folder (the instance, each project) is its OWN repository and is
@@ -9,7 +9,8 @@
 !/.gitignore
 !/README.md
 !/AGENTS.md
-!/DECISIONS.md
+!/PHILOSOPHY.md
+!/AXIOMS.md
 !/roles
 !/roles/**
 
