@@ -93,3 +93,4 @@ Stage 1 — skeleton: philosophy, axioms, orchestration, first role. **Pre-relea
 so there is nothing to pin** — the first tagged release, with a license, is stage 2's exit
 condition. Until then this repo is a working draft and instances reference it by path, at their
 own risk, knowingly.
+ 
