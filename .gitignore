@@ -1,0 +1,16 @@
+# MLabs workspace — DEFAULT-DENY (ADR-0 · NEXUS:M-109).
+# Nothing at this root is tracked unless a `!` line below names it.
+# A new file or folder is PRIVATE until this file says otherwise — the safe failure.
+# Every child folder (the instance, each project) is its OWN repository and is
+# never tracked here. Do not add exceptions for directories that hold private work.
+/*
+
+# ── the structural allowlist — the public repo is exactly this ──
+!/.gitignore
+!/README.md
+!/AGENTS.md
+!/DECISIONS.md
+!/roles
+!/roles/**
+
+# Stage 2+ adds, one line per piece, when the piece exists: skills/, templates/, tools/.
