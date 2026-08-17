@@ -6,8 +6,7 @@
 
 > The company's long-term health. A **subagent** with fresh context, never the conversation
 > itself: it fires when a task closes, reads what the task touched **from disk, never the
-> transcript**, and returns either findings or the list of what it checked — plus, at most, one
-> idea it is free to lose.
+> transcript**, and returns either findings or the list of what it checked.
 
 ## Why it exists
 
@@ -108,39 +107,33 @@ Test both against the ledger's real format before trusting them (AX-7): the foun
 first tally grepped a 2-line window, met the ledger's blank-line convention, and returned **0**
 for an entry holding two findings — miscounting toward retirement.
 
-## One idea, and it is free to lose it
+## It has no idea slot, and that is the design
 
-**This role absorbs R&D.** The two were designed as separate hires and merged before either
-was tested twice, for a reason that measures: they fire at the same moment, over the same
-artefacts, and neither needs context the other does not already have. Two subagents reading
-identical material is duplicated cost against PH-6, and the isolation criterion is unmet —
-**split only what can genuinely be isolated.**
+**R&D was merged in here and then taken out again**, before either had run — and the reason is
+worth keeping, because it is the sharpest thing this role knows about itself:
 
-So after the findings, and only if there is one, it may add:
+> **You do not pay for findings and also invite invention.** A role rewarded for what it catches,
+> given a reserved slot for ideas, will fill that slot every firing — and then start framing
+> ideas as findings, because that is what the tally counts. The corruption is not a risk of the
+> merge; it is the merge's incentive, working as designed.
 
-```
-Idea — <one line>
-  Why it might matter: <one or two lines>
-```
+The failure needed no reserved slot to arrive: **the slot itself was the reward.** So there is
+none. This role's job is keeping its feet on the ground — checking what was decided against what
+may never be violated — and nothing about that improves by adding a creative brief.
 
-**At most one, and it is ephemeral.** If the operator does not pick it up, it is lost with the
-conversation and is never re-proposed. That is deliberate: an idea that has to be argued twice
-was not good enough the first time, and a role that accumulates unaccepted proposals becomes a
-second backlog nobody agreed to.
+It is not gagged. If something occurs to it, one plain sentence outside the report is fine, with
+no heading and no format, and it is never counted, never expected and never re-raised. The
+difference between that and a slot is the whole point: **a sentence is something you may say; a
+slot is something you must fill.**
 
-⚠️ **The merge is a deliberate exception to AX-13** — *verification never shares a role with
-generation* — and it is bounded by an output contract rather than by trust. AX-13's real failure
-is a role that verifies **its own** output; this role verifies the operator's work and proposes
-about the same work, so that failure does not apply. The one that could: **a role rewarded for
-findings, permitted to invent, will start dressing ideas as findings to raise its own tally.**
-The guard is mechanical — **only findings are counted**, the idea sits below the verdict line
-and outside it, and if a tally ever counts an idea as a finding **the merge has failed and the
-roles split again.** That is the merge's own dismissal criterion.
+R&D stays written and deactivated in `roles/rnd.md`, waiting for a form that costs nothing when
+it is not wanted.
 
-## What else it does not do
+## What it does not do
 
 It does not reject — only the operator acts on vetoes. It does not read the transcript. It does
-not edit files, and it does not commit.
+not edit files, and it does not commit. **It does not propose**: a suggestion is not a finding,
+and if a tally ever counts one as the other, this role has stopped being what it is for.
 
 ## Dismissal
 

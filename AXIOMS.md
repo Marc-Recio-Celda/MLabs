@@ -24,7 +24,7 @@
 > > body of knowledge, different projects, a different toolchain?**
 >
 > The founding sweep put 109 private decisions through it. **65 survived; they collapsed to 26
-> axioms**, because several were one rule seen from a different angle. That ratio is the point:
+> axioms, since raised to 28**, because several were one rule seen from a different angle. That ratio is the point:
 > a log where everything is a rule has no hierarchy, and a system that cannot tell its
 > load-bearing rules from its housekeeping will protect the wrong ones. **What did not survive
 > is not lost — it stayed private, which is where it was always true.** Each axiom points at its
@@ -66,6 +66,10 @@
 
 ## Coverage — which clause each axiom serves
 
+> **Regenerated from the Serves column, never hand-maintained** (AX-7). The first version was
+> typed from the intent rather than read from the rows and undercounted one clause by one — the
+> exact failure AX-7 names: a tally nobody tested, in the table a finding rested on.
+
 Counted, not assumed (`PHILOSOPHY.md` § *How the levels are used*). A clause with few axioms is
 not automatically wrong — but it is the place to look first, because **a priority nothing
 implements is how a system ends up protecting what is merely salient.**
@@ -75,7 +79,7 @@ implements is how a system ends up protecting what is merely salient.**
 | **PH-1** | The long horizon | **2** | AX-26 · AX-27 |
 | **PH-2** | Learning over productivity ⏳ | **3** | AX-13 · AX-18 · AX-28 |
 | **PH-3** | Nothing is lost | **8** | AX-1 · AX-2 · AX-9 · AX-15 · AX-19 · AX-20 · AX-23 · AX-24 |
-| **PH-4** | Zero black boxes | **8** | AX-3 · AX-6 · AX-7 · AX-12 · AX-13 · AX-14 · AX-18 · AX-22 |
+| **PH-4** | Zero black boxes | **9** | AX-2 · AX-3 · AX-6 · AX-7 · AX-12 · AX-13 · AX-14 · AX-18 · AX-22 |
 | **PH-5** | Modular work | **4** | AX-1 · AX-10 · AX-19 · AX-20 |
 | **PH-6** | Attention is scarce | **9** | AX-4 · AX-5 · AX-8 · AX-11 · AX-16 · AX-17 · AX-21 · AX-25 · AX-26 |
 

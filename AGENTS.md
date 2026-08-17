@@ -25,9 +25,11 @@ one you will use every day** → the role file for whatever you are about to act
 again; `METHOD.md` is the shape of a working day; NEXUS is entered for almost everything.
 
 ⚠️ **Read what the work needs, not all of it** (AX-21, applied to this file). Designing or
-auditing loads all three levels. **Executing a defined task loads NEXUS's binding and the role
-file only** — the axioms are what the close is checked against, not what the work is done
-through, and the four documents together are a real load that displaces the work itself.
+auditing loads all three levels. **Executing a defined task loads NEXUS's binding, the role file,
+and `METHOD.md` §2 and §7** — the loop and the routing table, because the close is not optional
+and its destination vocabulary lives there. The axioms are what the close is *checked against*,
+not what the work is done through; loading all five documents for a defined task displaces the
+work itself.
 
 **Three levels, and nothing is allowed to blur them.** *Philosophy* — six clauses, changed
 almost never, only by the operator. *Axioms* — the rules that implement them, never violated,
@@ -103,12 +105,14 @@ still will.
 
 | Role | What it is | Fires | Defined in |
 |---|---|---|---|
-| **Superauditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip — **and carries the R&D clause**, one ephemeral idea per firing | **a task closes**, or every five closed items inside a long one | `roles/superauditor.md` |
+| **Superauditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip. **Checks decisions; does not propose** | **a task closes**, or every five closed items inside a long one | `roles/superauditor.md` |
 
-**Merged rather than hired: R&D.** It was designed as a separate role and folded into the
-superauditor before either existed — same firing moment, same artefacts, no context of its own
-(`roles/superauditor.md` § *One idea*). The merge is a bounded exception to AX-13 and carries
-its own reversal condition.
+**Written and deactivated: R&D** (`roles/rnd.md`). Briefly merged into the superauditor and
+reversed before either ran: **you do not pay a role for findings and also invite it to invent** —
+the reserved slot *is* the reward, and the tally is what gets corrupted. Not hired standalone
+either, because it would fire on rounds with nothing to reconsider and spend context the work
+needs. Its likely form is an **invoked skill**: zero cost when not called, full context when it
+is. A trigger it does not control makes a role; an invitation makes a skill (AX-4).
 
 **Not yet hired — each enters only by the rule in §6, and not before:**
 
@@ -133,6 +137,8 @@ is lost* — a rule at round close, not an agent, because its context is the who
 | **`git clean` is never run at this root.** The untracked here is everything the operator owns | none — prevention only. Deletion has no cleanup pass, which is exactly why this is a rule and not a tool (AX-5) |
 | **The axioms are append-only.** Entries are never rewritten; later entries supersede | `git diff <last-tag>..HEAD -- AXIOMS.md \| grep -c '^-[^-]'` returns **0** — nothing removed, nothing altered, only appended |
 | **Every structural change carries an axiom or a logged decision.** A change to the hierarchy, the roles or these invariants with nothing behind it is reverted | `git diff <last-tag>..HEAD --stat` against the same range's `AXIOMS.md` additions, on release cut |
+| **Every queue and park entry carries `project:`** — a name or `cross`. The field the filter depends on is the field nothing else can infer | `grep -c '^- ' <file>` against `grep -c 'project:' <file>` on each central queue: the two must match, and a mismatch names the unrouted entries |
+| **Every axiom sits in exactly one tier** (company · instance · project) | at each cut, a company axiom that names a toolchain, a project or a person belongs one tier down; an instance rule copied into more than one project file is a duplicate with no winner (AX-20) |
 | **Every axiom names the clause it serves, and every clause has at least one axiom** | the coverage table at the foot of `AXIOMS.md`, regenerated at each cut; a clause at zero is a stated priority nothing implements |
 | **Every role file states its dismissal criterion** | grep for `## Dismissal` in `roles/*.md` — the *pattern and tally contract*; the operator's chosen thresholds live in the instance's hiring record, out of the role's own sight |
 
@@ -161,8 +167,8 @@ instance's ledger, and both live in the instance's hiring record, out of the rol
 
 ## 7. Gates
 
-- **A proposal closes** → the superauditor fires, once, over everything the round touched.
-- **A round closes** → every open thread is enumerated with its destination, and *written* is
+- **A task closes** → the superauditor fires, once, over everything the task touched — after the destinations are read back and **before** the live plan is emptied (`METHOD.md` §2).
+- **Every close** → every open thread is enumerated with its destination, and *written* is
   claimed only after reading the file back from disk. A thread with no destination is a failure
   of the close, not an omission.
 - **A release is cut** → all §5 checks run, the cold-start test runs, the version is tagged.
