@@ -1,6 +1,6 @@
 # AXIOMS — the rules that may never be violated
 
-> **Version:** unreleased · pre-release working draft. No tag exists yet, so nothing pins this;
+> **Version:** 1.0.0
 > the first tagged release is stage 2's exit condition (AX-20).
 
 > **Level 2 of three.** Above this file, `PHILOSOPHY.md` says what the company optimises for and
@@ -33,7 +33,7 @@
 > lost — it stays private, which is where it was always true. Each axiom points at its origin as
 > `NEXUS:M-nn`; those pointers resolve only for the operator, and the originals never move.
 >
-> **The set is kept honest in both directions by the promotion review** (`roles/superauditor.md`),
+> **The set is kept honest in both directions by the promotion review** (`skills/superauditor/`),
 > which every twenty decisions asks what is missing, what is contradicted, and — the direction
 > that stops inflation — **what is dead**: an axiom whose violation nobody would notice.
 >
@@ -108,5 +108,5 @@ implements is how a system ends up protecting what is merely salient.**
 item for the promotion review's *upward* direction. An unbalanced set that says so is honest; one
 that hides it protects what is merely salient.
 
-_Opened 2026-08-17. Twenty-nine axioms. **Next ID: AX-32.** From the
+_Opened 2026-08-17. **28 in force**, 3 retired, 31 identifiers issued. **Next ID: AX-32.** From the
 first commit onward this file is append-only._

@@ -1,6 +1,6 @@
 # PHILOSOPHY — what this company optimises for
 
-> **Version:** unreleased · pre-release working draft (AX-20).
+> **Version:** 1.0.0
 
 > **Level 1 of three.** *Philosophy* (this file) says what the company is for and what it
 > refuses. *Axioms* (`AXIOMS.md`) are the rules that follow and may never be violated.

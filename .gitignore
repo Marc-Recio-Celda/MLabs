@@ -12,9 +12,9 @@
 !/PHILOSOPHY.md
 !/AXIOMS.md
 !/METHOD.md
-!/roles
-!/roles/**
 !/skills
 !/skills/**
+!/tools
+!/tools/**
 
 # Stage 2+ adds, one line per piece, when the piece exists: templates/, tools/.

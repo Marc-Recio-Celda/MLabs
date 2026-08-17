@@ -1,6 +1,6 @@
 # MLabs
 
-> **Version:** unreleased · pre-release working draft (AX-20).
+> **Version:** 1.0.0
 
 **A working methodology for building knowledge systems with AI agents — packaged as a company.**
 
@@ -69,8 +69,10 @@ log and its own dedicated auditor. That is what makes the shape reproducible rat
 bespoke: adopting this is not copying one company's rules, it is instantiating a pattern.
 
 Also here: `AGENTS.md` — who does what and when, the invariants and their checks, and the stage
-map — and `roles/superauditor.md`, the first and only hired role, whose job is that level 2 is
-never quietly violated and never drifts from level 1.
+map — and `skills/`, where every employee lives. **A skill whose description names an event is a
+role**; one that names a request is a capability. The first and only hired role is
+`skills/superauditor/`, whose job is that level 2 is never quietly violated and never drifts
+from level 1.
 
 Skills and templates arrive in later stages, one at a time, each accepted by a **cold-start
 test**: an agent — or a stranger — given only this repo must reach productive. If a stage fails
@@ -89,7 +91,10 @@ which rules turned out to be theatre, and what breaks first.
 
 ## Status
 
-Stage 1 — skeleton: philosophy, axioms, orchestration, first role. **Pre-release: no tag exists yet,
-so there is nothing to pin** — the first tagged release, with a license, is stage 2's exit
-condition. Until then this repo is a working draft and instances reference it by path, at their
-own risk, knowingly.
+**1.0.0** — the first tagged release. Philosophy, axioms, method, orchestration and twelve
+skills. An instance pins this tag; upgrading is a deliberate act.
+
+**What it does not yet have**, declared rather than discovered: none of the invariant checks
+runs without a human — the release gate is a documented procedure, not a hook — and the
+event-triggered skills fire when a model notices the event rather than because something
+called them. Both are named in `AGENTS.md` §5 and are the next release's work.

@@ -3,6 +3,8 @@ name: structure-project
 description: Creates a project's cartridge under the method — definition, project-scoped axioms, decision log, state, sequenced plan, agent contract and compass row — when a new project starts or when work already underway is brought under the method for the first time.
 ---
 
+> **Version:** MLabs 1.0.0
+
 # structure-project
 
 **Firing event** (`MLabs:AX-8`): a new project starts, **or** a body of work already underway is
@@ -23,7 +25,6 @@ and no others:
 | `definition.md` | Standing | what this project is, and explicitly what it is not |
 | `architecture.md` | Standing | this project's own axioms |
 | `state.md` | Standing | the present |
-| `workflow.md` | Standing | the future, sequenced |
 | `Decision_Log.md` | Record | `Dn`, with what was discarded |
 | `LOG_AGENTS.md` | Record | what each agent did in this project |
 
@@ -43,12 +44,10 @@ file's own header (`MLabs:AX-2`); every entry carries author, date, reasoning an
 discarded** (`MLabs:AX-24`). The first entry is the one that created the project: why it exists,
 and what shape was rejected for it.
 
-**5. Write `state.md` in the present, `workflow.md` in the future.** The registers split by tense
 (`MLabs:AX-17`) and neither carries a changelog (`MLabs:AX-29`).
 
 - `state.md` — the test is *would this still be true if work stopped today?* Current position,
   what it waits on, the active risks with the fallback agreed for each.
-- `workflow.md` — blocks, dependencies, a verifiable deliverable per block, and a fallback. This
   is the third drawer; an unordered list of pending items is not one.
 
 **6. Place the agent contract — only in a repository the operator owns.** It is generated from the
@@ -117,7 +116,6 @@ An unrunnable check is reported as unrun, never as passed (`MLabs:AX-22`).
 
 ## What it does not do
 
-- **Execute.** No block of `workflow.md` is run here; structuring ends at the compass row.
 - **Create anything central.** It writes into the existing central set; it never creates a second one.
 - **Hire the project's auditor** — its own act, under `MLabs:AX-11`, with the dismissal criterion
   fixed before the first firing.
