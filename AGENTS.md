@@ -107,12 +107,10 @@ still will.
 |---|---|---|---|
 | **Superauditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip. **Checks decisions; does not propose** | **a task closes**, or every five closed items inside a long one | `roles/superauditor.md` |
 
-**Written and deactivated: R&D** (`roles/rnd.md`). Briefly merged into the superauditor and
-reversed before either ran: **you do not pay a role for findings and also invite it to invent** —
-the reserved slot *is* the reward, and the tally is what gets corrupted. Not hired standalone
-either, because it would fire on rounds with nothing to reconsider and spend context the work
-needs. Its likely form is an **invoked skill**: zero cost when not called, full context when it
-is. A trigger it does not control makes a role; an invitation makes a skill (AX-4).
+**Written, not hired: R&D** (`roles/rnd.md`) — lateral work on the axioms, kept separate from
+the audit because a role paid for findings must not be invited to invent, and kept out of the
+org chart because its right form is an **invoked skill**: zero cost when not called, full
+context when it is.
 
 **Not yet hired — each enters only by the rule in §6, and not before:**
 
@@ -132,7 +130,7 @@ is lost* — a rule at round close, not an agent, because its context is the who
 
 | Invariant | The check |
 |---|---|
-| **No personal information in what git tracks.** No person's name, no employer, no project name, no path inside NEXUS. Naming NEXUS itself is vocabulary (§2), not a leak | the release gate greps the instance's denylist over `git ls-files` output — what is *tracked*, since the working tree legitimately holds the private children — and it returns nothing. ⚠️ Test the grep against a planted leak before trusting it — the founding round shipped a broken one that could never match |
+| **No personal information in what git tracks.** No person's name, no employer, no project name, no path inside NEXUS. Naming NEXUS itself is vocabulary (§2), not a leak | the release gate greps the instance's denylist over `git ls-files` output — what is *tracked*, since the working tree legitimately holds the private children — and it returns nothing. ⚠️ Test the grep against a planted leak before trusting it: a pattern that cannot match returns clean on a leak |
 | **The tracked set is exactly the allowlist** — nothing more, and nothing named that does not exist | `git ls-files` compared against `.gitignore`'s `!` lines at every release cut. A **surplus** file is a leak, investigated before anything else happens; a `!` line with **no tracked file behind it** is empty scaffolding, and the line goes |
 | **`git clean` is never run at this root.** The untracked here is everything the operator owns | none — prevention only. Deletion has no cleanup pass, which is exactly why this is a rule and not a tool (AX-5) |
 | **The axioms are append-only.** Entries are never rewritten; later entries supersede | `git diff <last-tag>..HEAD -- AXIOMS.md \| grep -c '^-[^-]'` returns **0** — nothing removed, nothing altered, only appended |
@@ -178,7 +176,7 @@ instance's ledger, and both live in the instance's hiring record, out of the rol
 
 | Stage | Content | Gate |
 |---|---|---|
-| **1 — now** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md` opened with the founding sweep, this file, `METHOD.md`, the superauditor | cold start: an agent with only this repo explains the company and **can operate its rules** — including the tally. First run **failed** on exactly that and the contract was fixed; the pass that counts is recorded in the instance's ledger |
+| **1 — now** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md`, this file, `METHOD.md`, the superauditor | cold start: an agent given only this repo explains the company and **can operate its rules**, tally included. The passing run is recorded in the instance's ledger |
 | 2 | the split executes: generic halves of the founding instance's method layer move in; §5's checks get wired to run without a human; first tagged release + license | cold start repeats; the instance still runs; the checks run themselves |
 | 3+ | skills, one per stage, each implementing a piece of `METHOD.md`: create-notes · structure-a-project · correct-exercises · learn · code-cleanup · collaborative-repo | each skill's own verification, stated as a prediction before it runs |
 | last | **`nexus-builder`** — the skill that creates a new NEXUS from nothing and walks its owner into working in it. **Deliberately last**: it encodes the shape of an instance, so building it before the shape stops moving means building it twice | a stranger, given only this repo and the skill, ends with a working NEXUS and a first task in flight |

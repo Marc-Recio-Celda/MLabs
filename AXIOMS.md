@@ -23,13 +23,15 @@
 > > **Would this still bind an instance that is not this one — a different person, a different
 > > body of knowledge, different projects, a different toolchain?**
 >
-> The founding sweep put 109 private decisions through it. **65 survived; they collapsed to 26
-> axioms, since raised to 28**, because several were one rule seen from a different angle. That ratio is the point:
-> a log where everything is a rule has no hierarchy, and a system that cannot tell its
-> load-bearing rules from its housekeeping will protect the wrong ones. **What did not survive
-> is not lost — it stayed private, which is where it was always true.** Each axiom points at its
-> origin as `NEXUS:M-nn`; those pointers resolve only for the operator, and the originals never
-> move.
+> **Twenty-nine axioms, distilled from 109 private decisions by that test.** The ratio is the
+> point: a log where everything is a rule has no hierarchy, and a system that cannot tell its
+> load-bearing rules from its housekeeping protects the wrong ones. What the test rejects is not
+> lost — it stays private, which is where it was always true. Each axiom points at its origin as
+> `NEXUS:M-nn`; those pointers resolve only for the operator, and the originals never move.
+>
+> **The set is kept honest in both directions by the promotion review** (`roles/superauditor.md`),
+> which every twenty decisions asks what is missing, what is contradicted, and — the direction
+> that stops inflation — **what is dead**: an axiom whose violation nobody would notice.
 
 | ID | Status | Axiom | Serves | Origin |
 |---|---|---|---|---|
@@ -61,14 +63,14 @@
 | **AX-26** | 🟢 | **A standard ships as a copyable template, and every line of an instruction file earns its place twice.** A standard that ships as a document to be read is met by intention; one that ships as a template with the files already written is met by default, and divergence becomes deliberate rather than accidental. **The two tests for any line in an agent instruction file:** *if the agent ignored this, would the output be wrong?* **and** *could it have worked this out by reading the repository?* Only yes-to-the-first, no-to-the-second stays. Everything else is methodology for the operator and belongs in the instance — an instruction file that bloats degrades weaker models, and the cost is paid on every turn (AX-4). | PH-1 · PH-6 | inherited — `NEXUS:M-22` · `M-44` · `M-25` |
 | **AX-27** | 🟢 | **What is built once must be findable, and what will grow must name where it breaks.** Two halves of the same clause. **(a)** No artefact is reachable only through the conversation that produced it: anything worth keeping lands in a repository at a literal path, in the act that produces it — a result that exists only in a transcript was not built, it was mentioned. **(b)** Any artefact expected to grow **names the volume it was designed for and the first step that becomes manual beyond it.** A design that has not named its breaking point was not designed for scale; it was designed for today, and the difference only becomes visible when it is expensive. | PH-1 | superauditor round 3 — the clause the company calls its premise had no axiom implementing it |
 | **AX-28** | 🟢 | **Automation is permitted for transcription and forbidden for judgement.** Copying, moving, formatting, generating a view: automate without asking. A choice between options, an acceptance of a trade, a decision about what matters: never. **Removing a decision from the operator requires a logged waiver naming what is given up** — and the waiver is what makes it reversible when the trade's review date arrives. **A change the operator cannot restate unaided does not ship**: a system its owner can no longer explain has already stopped being theirs, whatever the tests say. | PH-2 | superauditor round 3 — the clause marked ⏳ had nothing to revise |
+| **AX-29** | 🟢 | **A document states its present. Its past belongs to the log, and both are written in the same act.** A live artefact — a rule, a prompt, a docstring, a comment, a definition — says what is true **now**. What it used to be, what was tried instead, why it is no longer done the old way: that is a decision's reasoning, and AX-24 already gives it a home. **The two halves are written together**, because a later pass can strip archaeology but cannot tell whether it was ever logged, and deleting unlogged history is the loss PH-3 forbids. Past tense survives in a live document in exactly one case: **naming a trap a reader can still fall into.** *"This used to be X"* is not that; *"do not do Y, it silently returns zero"* is. The cost of getting this wrong compounds — a document carrying its own changelog becomes unreadable at precisely the length where it matters most, and the reader who pays is the one who arrives latest and knows least. | PH-1 · PH-6 | operator — a recurring defect, measured across the founding rounds |
 
 ---
 
 ## Coverage — which clause each axiom serves
 
-> **Regenerated from the Serves column, never hand-maintained** (AX-7). The first version was
-> typed from the intent rather than read from the rows and undercounted one clause by one — the
-> exact failure AX-7 names: a tally nobody tested, in the table a finding rested on.
+> **Regenerated from the Serves column, never hand-maintained** (AX-7). A coverage table typed
+> from intent rather than read from the rows is a tally nobody tested.
 
 Counted, not assumed (`PHILOSOPHY.md` § *How the levels are used*). A clause with few axioms is
 not automatically wrong — but it is the place to look first, because **a priority nothing
@@ -76,28 +78,17 @@ implements is how a system ends up protecting what is merely salient.**
 
 | Clause | | Axioms | Which |
 |---|---|---|---|
-| **PH-1** | The long horizon | **2** | AX-26 · AX-27 |
+| **PH-1** | The long horizon | **3** | AX-26 · AX-27 · AX-29 |
 | **PH-2** | Learning over productivity ⏳ | **3** | AX-13 · AX-18 · AX-28 |
 | **PH-3** | Nothing is lost | **8** | AX-1 · AX-2 · AX-9 · AX-15 · AX-19 · AX-20 · AX-23 · AX-24 |
 | **PH-4** | Zero black boxes | **9** | AX-2 · AX-3 · AX-6 · AX-7 · AX-12 · AX-13 · AX-14 · AX-18 · AX-22 |
 | **PH-5** | Modular work | **4** | AX-1 · AX-10 · AX-19 · AX-20 |
-| **PH-6** | Attention is scarce | **9** | AX-4 · AX-5 · AX-8 · AX-11 · AX-16 · AX-17 · AX-21 · AX-25 · AX-26 |
+| **PH-6** | Attention is scarce | **10** | AX-4 · AX-5 · AX-8 · AX-11 · AX-16 · AX-17 · AX-21 · AX-25 · AX-26 · AX-29 |
 
-⚠️ **The first count was wrong in both directions, and the correction is worth recording.**
-The founding sweep self-reported the long horizon and the learning trade at three axioms
-between them. An audit against this table found **half of that gap was a tagging artefact**:
-ownership-as-boundary and the version stamp are modularity rules that had been filed under
-*nothing is lost*, the default bucket; the dismissal criterion is an attention rule, not a
-horizon one; and the gate and the generation/verification split genuinely serve the learning
-trade as well as traceability, because **review is where the operator learns** and a gate owned
-by the party producing the work teaches nothing. The other half was real, and two axioms were
-written to close it — **AX-27** for scale and **AX-28** for judgement, the only two entries here
-that did not come from the sweep.
+⚠️ **The long horizon is the thinnest clause, and that is a finding, not an accident of
+tagging.** Two axioms carry the premise the company names first. It is the standing first item
+for the promotion review's *upward* direction. An unbalanced set that says so is honest; one
+that hides it protects what is merely salient.
 
-**What remains true after the correction:** the long horizon is still the thinnest clause at
-two. That is now a finding rather than an artefact, and it is **R&D's first item**. An
-unbalanced set that says so is honest; one that hides it repeats the original failure.
-
-_Opened 2026-08-17: AX-1, the founding sweep's twenty-five, and two written against the coverage
-audit — 109 private decisions tested, 65 survivors, 28 axioms. **Next ID: AX-29.** From the
+_Opened 2026-08-17. Twenty-nine axioms. **Next ID: AX-30.** From the
 first commit onward this file is append-only._

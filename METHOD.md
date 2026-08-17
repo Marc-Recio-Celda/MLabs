@@ -176,7 +176,7 @@ running at a deliberate, temporary loss.
 and cannot be filtered — it is invisible in exactly the tool built to make everything visible.
 Its value is a project name or **`cross`**, which is what gives cross-project work a home rather
 than a gap: a `cross` item routes, filters and sequences like any other, including into a
-sequenced plan (AX-17's third drawer, which cross-project work previously had no access to).
+sequenced plan, AX-17's third drawer.
 `AGENTS.md` §5 carries the check; a queue entry without the field is a defect, not a style
 lapse.
 
@@ -190,8 +190,8 @@ lapse.
 | `TASKS.md` | Queue | operator → agent, every project |
 | `IDEAS.md` | Park | undecided, every project |
 
-Named literally because AX-21 requires it and AX-27(a) repeats it: *"the central file for that
-kind"* is not a path, and an agent that has to guess has already failed the cold start.
+Named literally because AX-21 requires it: *"the central file for that kind"* is not a path, and
+an agent that has to guess has already failed the cold start.
 
 ### What this was designed for, and where it breaks first
 
@@ -199,9 +199,9 @@ Required by AX-27(b), and answered rather than deferred. **Designed for ~10 proj
 open items across all queues.** The first thing to become manual is **triage**, and it breaks
 earlier than the rest: at roughly **25–30 open entries** a single triage stops fitting behind
 one active front, and the five-item audit cap turns it into six firings inside one front that
-never closes. **The mitigation is structural and is already stated above — triage is scoped by
-filter, never taken whole** — which is what keeps the breaking point a property of the
-*unfiltered* pile rather than of the design. The second to go is reading: one file per kind is
+never closes. **The mitigation is structural and stated above — triage is scoped by
+filter, never taken whole** — which keeps the breaking point a property of the *unfiltered*
+pile rather than of the design. The second to go is reading: one file per kind is
 harder to scan than eleven short ones until something filters it, which is why the interface's
 first view is the live task list and not a nice-to-have.
 
@@ -252,16 +252,16 @@ repository can walk *up* the chain to the rules and *across* to the work, and ne
 | **Project** | the project's `architecture.md` | it binds this project only |
 
 **The tiers are exhaustive by construction: the middle one is defined by breadth of *this*
-operator's work, not by whether a stranger would agree.** That distinction matters, because the
-most common real rule sits exactly there — *"every repository runs its formatter before commit"*
-binds all eleven of your repos and would not survive the company test (it assumes a toolchain).
-Under the earlier wording it fitted nowhere and got copied into eleven project files: a
-duplicate with no declared winner, forbidden by AX-20. It is an **instance** axiom.
+operator's work, not by whether a stranger would agree.** The most common real rule sits exactly
+there: *"every repository runs its formatter before commit"* binds every one of your repos and
+fails the company test, since it assumes a toolchain. It is an **instance** axiom, and a tier
+test that forces it downward would copy it into every project file — a duplicate with no
+declared winner (AX-20).
 
 An axiom in the wrong tier is the dilution failure returning by the back door: a project rule in
-the company file makes that file unusable by anyone else. **When in doubt it goes down, not
-up** — promoting later is cheap and costs one restatement; demoting later means a public file
-was wrong for as long as nobody noticed.
+the company file makes that file unusable by anyone else. **When in doubt it goes down, not up** —
+promoting later costs one restatement; demoting later means a public file is wrong for however
+long nobody notices.
 
 **Every `AGENTS.md` in the chain is generated, never hand-written** (AX-21): the method half
 comes from MLabs, the local half lives beside its own repository, and a script concatenates them
