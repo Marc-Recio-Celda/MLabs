@@ -73,6 +73,12 @@ moment PH-3 is broken. Writing it down is not the same as doing it: it takes its
 list and gets a destination like everything else. Most will be ⚫ or → park, and that is a
 successful outcome, not a wasted line.
 
+**Two review surfaces, two scopes.** The **diff** is the gate for one change: applied, left
+uncommitted, read by the operator. The **branch** is the gate for a session, which is what makes
+undoing ten files touched in one pass cheap. A bulk mechanical change starts from a clean tree
+and lands as its own commit, or the diff cannot separate the agent's side effects from the
+operator's edits.
+
 **Close the task, in this order — the order is the point.**
 
 1. Every line struck, every residue routed to a destination.
@@ -83,7 +89,15 @@ successful outcome, not a wasted line.
    and emptying it first would leave the auditor reading a blank file while believing it had
    read the reasoning. **The audit precedes the erasure, always.**
 4. **Then the plan is emptied** — and only then.
-5. Then the compass moves.
+5. **Print what was touched** — one line per file, no pasted diffs. The table is not the review;
+   it is the index that says where to look, and it is what makes an unasked-for change visible
+   at a glance.
+6. Then the compass moves.
+
+**Within a round the order is fixed: integrate, write the decision down, *then* dispatch the
+next task.** A decision left unwritten comes back as an open debate, and the state record carries
+a freshness marker naming how far integration has reached — version history says when a file
+changed, never how far the inbox was drained.
 
 ⚠️ **The same applies to a mid-task firing** (the five-item cap): the plan is rewritten
 continuously, so a firing at item five must see items one to five. **Strike lines through;
@@ -243,22 +257,25 @@ MLabs/                      the constitution — public, released, no state
 NEXUS. NEXUS names MLabs, once, in its binding. MLabs names nothing. An agent dropped into any
 repository can walk *up* the chain to the rules and *across* to the work, and never has to guess.
 
-**Three tiers of axioms, and the test that keeps them apart:**
+**Three departments of axioms — different scope, identical force.** None outranks another; each
+binds absolutely inside its own jurisdiction, and an agent working here loads every department
+that covers it. **They are reviewed together** whenever any of them changes, because a rule can
+only contradict a rule it shares a reader with.
 
-| Tier | Lives in | Passes if |
+| Department | Lives in | Passes if |
 |---|---|---|
 | **Company** | MLabs `AXIOMS.md` | it would bind an instance that is not this one |
 | **Instance** | NEXUS `AXIOMS.md` | it binds **everything this operator does**, across every project — whether or not a stranger would also adopt it |
 | **Project** | the project's `architecture.md` | it binds this project only |
 
-**The tiers are exhaustive by construction: the middle one is defined by breadth of *this*
+**The departments are exhaustive by construction: the middle one is defined by breadth of *this*
 operator's work, not by whether a stranger would agree.** The most common real rule sits exactly
 there: *"every repository runs its formatter before commit"* binds every one of your repos and
-fails the company test, since it assumes a toolchain. It is an **instance** axiom, and a tier
-test that forces it downward would copy it into every project file — a duplicate with no
+fails the company test, since it assumes a toolchain. It is an **instance** axiom, and a test
+that forces it downward would copy it into every project file — a duplicate with no
 declared winner (AX-20).
 
-An axiom in the wrong tier is the dilution failure returning by the back door: a project rule in
+An axiom in the wrong department is the dilution failure returning by the back door: a project rule in
 the company file makes that file unusable by anyone else. **When in doubt it goes down, not up** —
 promoting later costs one restatement; demoting later means a public file is wrong for however
 long nobody notices.

@@ -64,6 +64,32 @@ checked, and *"I checked everything"* is not falsifiable.
 > given only the repository must reach productive. A question yields an opinion; a cold start
 > yields an answer.
 
+## The saturation review — fires whenever an axiom set changes
+
+**Any addition, edit or retirement in any axiom department fires this immediately**, and it
+reads **every axiom in every department together** — company, instance, project — not the entry
+that changed.
+
+The reason is arithmetic: a set saturates one entry at a time, and no single addition ever looks
+like the one that broke it. **The only moment the interaction is visible is the moment something
+changes**, so that is when it is looked at.
+
+Of every axiom, including the ones untouched, it asks three questions:
+
+| | |
+|---|---|
+| **Load-bearing?** | If this were deleted, what would go wrong that nothing else catches? *"It is true"* is not an answer — most true things are not axioms |
+| **Distinct?** | Which other axiom is nearest, and is the gap between them worth the reader's attention? Two axioms one reader cannot tell apart are one axiom and a tax |
+| **In force?** | Does it bind, or does it advise? An axiom that can be politely ignored is a decision wearing the wrong hat |
+
+**Demotion is the expected outcome, not a failure.** An axiom that turns out narrower, softer or
+already-implied **becomes a decision** and moves to the log. The set is meant to shrink under
+this review as often as it grows.
+
+Because departments differ in scope and not in force, **a contradiction across departments is a
+finding of the same severity as one inside a single file** — and it is the only kind this review
+can see, since it is the only reading that holds all of them at once.
+
 ## The promotion review — a second firing, on a different clock
 
 Fires **every twenty new decisions in the log, or whenever the operator calls it.** Not per
