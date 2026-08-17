@@ -58,7 +58,7 @@ the vocabulary is closed:
 | Destination | Means |
 |---|---|
 | ✅ resolved here | done in this task; the trace goes to a Record |
-| → task list | needs execution; becomes a task with its why (AX-16) |
+| → task list | needs execution; becomes a task with its why (AX-14) |
 | → integrated | landed in code or in a document; the diff is the evidence |
 | → park | worth keeping, not now; goes to an ideas register |
 | → mailbox | belongs to someone else's inbox, or is a passive finding you must not fix here (AX-25) |
@@ -169,10 +169,10 @@ choose work one project at a time.** Deciding what comes next means looking at e
 once and filtering; reading what happened means opening one project and following it down. Put
 each artefact where its actual use is.
 
-**This does not violate modularity — it is what AX-10 asks for.** Owner first, rate of change
-second. The owner of every planning artefact is the same person; five mailboxes with one owner
-was a split **by topic**, which AX-10 forbids in as many words. The `project:` field is the
-rate-of-change slicing *inside* the file, which is where AX-10 puts it.
+**This does not violate modularity — it is what PH-5 asks for.** Owner first, rate of change
+second. The owner of every planning artefact is the same person; a queue per project is a split
+**by topic**, which PH-5 rules out in as many words. The `project:` field is the rate-of-change
+slicing *inside* the file, which is where PH-5 puts it.
 
 **What it buys, and the cost it pays.** One schema per kind instead of one per kind per project:
 the generated database (AX-2) gets one table for tasks, not eleven, and the interface **filters**
@@ -280,7 +280,7 @@ the company file makes that file unusable by anyone else. **When in doubt it goe
 promoting later costs one restatement; demoting later means a public file is wrong for however
 long nobody notices.
 
-**Every `AGENTS.md` in the chain is generated, never hand-written** (AX-21): the method half
+**Every `AGENTS.md` in the chain is generated, never hand-written** (AX-30): the method half
 comes from MLabs, the local half lives beside its own repository, and a script concatenates them
 into a file nobody edits, with a check that fails on drift.
 

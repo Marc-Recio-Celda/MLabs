@@ -85,7 +85,7 @@ order of authority. Both lists sit *below* `PHILOSOPHY.md`, which decides when t
 | **3** | **Operator load** | The manual step it adds — is it a *decision* or *transcription*? Transcription is always debt; review is not |
 | **3** | **Portability** | Given only the artefacts, does a new agent, tool, model, machine — or the operator in six months — reach productive? |
 | **4** | **Migration cost** | How many existing artefacts must be touched, and who consumes the new thing? |
-| **5** | **Coupling** | If this changes, what else must be opened? Split by owner first, rate of change second (AX-10) |
+| **5** | **Coupling** | If this changes, what else must be opened? Split by owner first, rate of change second (PH-5) |
 
 **At close — the vetoes.** Mechanical, cheap, verifiable after the fact, and they reject:
 
@@ -132,7 +132,7 @@ is lost* — a rule at round close, not an agent, because its context is the who
 |---|---|
 | **No personal information in what git tracks.** No person's name, no employer, no project name, no path inside NEXUS. Naming NEXUS itself is vocabulary (§2), not a leak | the release gate greps the instance's denylist over `git ls-files` output — what is *tracked*, since the working tree legitimately holds the private children — and it returns nothing. ⚠️ Test the grep against a planted leak before trusting it: a pattern that cannot match returns clean on a leak |
 | **The tracked set is exactly the allowlist** — nothing more, and nothing named that does not exist | `git ls-files` compared against `.gitignore`'s `!` lines at every release cut. A **surplus** file is a leak, investigated before anything else happens; a `!` line with **no tracked file behind it** is empty scaffolding, and the line goes |
-| **`git clean` is never run at this root.** The untracked here is everything the operator owns | none — prevention only. Deletion has no cleanup pass, which is exactly why this is a rule and not a tool (AX-5) |
+| **`git clean` is never run at this root.** The untracked here is everything the operator owns | none — prevention only. Deletion has no cleanup pass, which is exactly why this is a rule and not a tool (AX-4) |
 | **The axioms are append-only.** Entries are never rewritten; later entries supersede | `git diff <last-tag>..HEAD -- AXIOMS.md \| grep -c '^-[^-]'` returns **0** — nothing removed, nothing altered, only appended |
 | **Every structural change carries an axiom or a logged decision.** A change to the hierarchy, the roles or these invariants with nothing behind it is reverted | `git diff <last-tag>..HEAD --stat` against the same range's `AXIOMS.md` additions, on release cut |
 | **Every queue and park entry carries `project:`** — a name or `cross`. The field the filter depends on is the field nothing else can infer | `grep -c '^- ' <file>` against `grep -c 'project:' <file>` on each central queue: the two must match, and a mismatch names the unrouted entries |
@@ -145,7 +145,7 @@ root legitimately holds the instance and every project, which are none of this r
 A check that walks the tree (`find`, a bare `grep -r`) is wrong by construction here, and the
 founding round shipped one before catching it.
 
-⚠️ **This file violates AX-21 today and the debt is declared rather than hidden.** AX-21 says an
+⚠️ **This file violates AX-30 today and the debt is declared rather than hidden.** AX-30 says an
 agent contract is generated from a method half and a repository half, with a check that fails on
 drift, and that no repository is exempt — including this one. This file is hand-written; the
 generator is stage 2's work. Recorded here because an axiom broken silently by its own repo is

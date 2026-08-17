@@ -54,7 +54,7 @@ checked, and *"I checked everything"* is not falsifiable.
 |---|---|
 | A1 | **Scale at 10×** — not *does it survive*, but **which step breaks first, and at what multiple**. Ten times is deliberately beyond anything planned: a design that only answers for the next doubling is answering about today. Name the first thing that becomes manual, and the volume at which it does |
 | A2 | **Context cost** — what does this cost to load, and what does it displace? A rule is paid every turn; a skill is paid once |
-| A3 | **Rule-vs-tool** (AX-4/AX-5) — must this fire while the work happens, or could a pass fix the artefact afterwards? |
+| A3 | **Rule-vs-tool** (AX-4) — must this fire while the work happens, or could a pass fix the artefact afterwards? |
 | A4 | **Alignment** — which philosophy clause does this serve, and does the axiom it leans on still implement that clause? Report drift **in both directions**: a clause with no axiom behind it, and an axiom serving no clause |
 
 > **Portability is not on this list.** It is **derived**, not independent: where origins are
