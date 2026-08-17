@@ -14,5 +14,7 @@
 !/METHOD.md
 !/roles
 !/roles/**
+!/skills
+!/skills/**
 
-# Stage 2+ adds, one line per piece, when the piece exists: skills/, templates/, tools/.
+# Stage 2+ adds, one line per piece, when the piece exists: templates/, tools/.

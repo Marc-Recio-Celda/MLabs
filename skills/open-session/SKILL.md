@@ -1,0 +1,86 @@
+---
+name: open-session
+description: Opens a working session over an MLabs instance and runs the loop from compass to close. Use at the start of any session on the knowledge base, a project, or the method itself — whether the operator names what they want to do or opens with nothing. Also use to close a task correctly, which is the half most sessions get wrong.
+---
+
+# open-session
+
+**Routing and sequence only.** Every rule lives in a file this skill points at. If this skill and
+those files disagree, **the files win** — a skill is a view over its sources (`AX-20`).
+
+## 1. Locate the instance
+
+The operations centre is a private sibling of this repository. Read its `AGENTS.md` first: it is
+**the binding** — which release it pins, where its ledger lives, where its denylist lives, and
+what colour governs each file.
+
+If no operations centre is attached, you are editing methodology and nothing else is in scope.
+Say so and stop.
+
+## 2. Open
+
+Two ways in, and both end at the compass.
+
+**The operator states an intent.** Read the compass anyway. If what they asked for is not the
+`▶` row, **say so before working** — not to refuse, but because one of the two is out of date
+and this is the cheapest moment it will ever be to discover that. They override freely; what is
+not allowed is proceeding in silence.
+
+**The operator opens with nothing.** Then report: here is the active front, here is what it
+waits on, here is what is queued behind it — *shall we?* An opening with no intent is not an
+absence of instruction; it is an instruction to orient.
+
+Then read the live plan, which says what is in flight and why in that order.
+
+## 3. Load only what the task needs
+
+Read the routing index's row for this task and nothing else. **Anything you open beyond that row
+is declared and logged as a defect in the index** — never as licence to read less (`AX-21`).
+
+| Doing what | Load |
+|---|---|
+| Executing a defined task | the binding · the role or skill file · `METHOD.md` §2 and §7 |
+| Designing, auditing, or changing a rule | all three governance levels, both axiom departments |
+| Anything in a project | that project's cartridge and its own axiom department too |
+
+## 4. Work the loop
+
+Rewrite the live plan to hold **this task and nothing else**: the items, in the order they will
+be done, and the reason for that order — written *while* deciding, not summarised after.
+
+Then work the list, **striking lines through and never deleting them**. Every item leaves with a
+destination from the closed vocabulary (`METHOD.md` §2): resolved · task list · integrated ·
+mailbox · park · discarded with its reason. **A struck line with no destination is a failed
+close**, not an omission (`AX-9`).
+
+**When an item spawns others, write them down immediately, right after the current one** — even,
+and especially, when they are unrelated. It does not interrupt: the new line takes its place and
+gets a destination like everything else. Most will be parked or discarded, and that is a
+successful outcome.
+
+**When the operator says anything that is not part of this task, capture it in the same turn.**
+One line, in the park, with its `project:`. Not at the close — a conversation ends and takes its
+contents with it.
+
+## 5. Close, in this order
+
+The order is the point, and getting it wrong silently disables the company's own detection.
+
+1. Every line struck, every residue routed.
+2. **Read each destination back from disk.** *Written* is verified, never remembered (`AX-9`).
+3. **Fire the superauditor** — over the artefacts **and the live plan, which is still full.**
+4. **Only now empty the plan.**
+5. Print what was touched: one line per file, no pasted diffs.
+6. Move the compass.
+
+⚠️ **Step 3 before step 4, always.** The live plan is the only record of how the task thought;
+emptying it first leaves the audit reading a blank file while believing it read the reasoning.
+
+⚠️ **In a long task the audit also fires every five closed items.** Strike lines through, do not
+delete them, or the mid-task firing sees nothing.
+
+## What this skill does not do
+
+It does not decide what to work on — the compass does. It does not hold rules; it points at
+them. It does not commit on the operator's behalf, and it never empties a queue it filled
+(`AX-15`).

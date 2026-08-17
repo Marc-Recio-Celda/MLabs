@@ -178,6 +178,7 @@ instance's ledger, and both live in the instance's hiring record, out of the rol
 |---|---|---|
 | **1 — now** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md`, this file, `METHOD.md`, the superauditor | cold start: an agent given only this repo explains the company and **can operate its rules**, tally included. The passing run is recorded in the instance's ledger |
 | 2 | the split executes: generic halves of the founding instance's method layer move in; §5's checks get wired to run without a human; first tagged release + license | cold start repeats; the instance still runs; the checks run themselves |
-| 3+ | skills, one per stage, each implementing a piece of `METHOD.md`: create-notes · structure-a-project · correct-exercises · learn · code-cleanup · collaborative-repo | each skill's own verification, stated as a prediction before it runs |
+| **3 — now** | the operating skills: `open-session` · `triage` · `audit` · `rnd` · `learn` · `correct-exercise` · `structure-project`, plus `create-note` in the instance, which is the one door to its knowledge base | each carries its verification as a prediction; the loop runs end to end without the operator narrating it |
+| 4 | `code-cleanup` and `collaborative-repo` — the two cleanup skills, and the templates the standards ship as | each skill's own prediction |
 | last | **`nexus-builder`** — the skill that creates a new NEXUS from nothing and walks its owner into working in it. **Deliberately last**: it encodes the shape of an instance, so building it before the shape stops moving means building it twice | a stranger, given only this repo and the skill, ends with a working NEXUS and a first task in flight |
 | later | roles beyond the superauditor, strictly by §6 | each role's own criterion |

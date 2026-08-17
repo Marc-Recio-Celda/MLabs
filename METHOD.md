@@ -79,6 +79,13 @@ undoing ten files touched in one pass cheap. A bulk mechanical change starts fro
 and lands as its own commit, or the diff cannot separate the agent's side effects from the
 operator's edits.
 
+**An idea the operator voices in passing is written down in the same turn.** Not at the close,
+not when the task ends: **in the turn it is said.** It goes to the park with its `project:`, one
+line, and the work continues — nobody stops to evaluate it. This is the one capture rule whose
+firing event is *someone spoke*, and it has to fire live because a conversation ends and takes
+its contents with it. An idea that has to be remembered has already been lost, and *"I'll add it
+at the close"* is the same failure with a delay.
+
 **Close the task, in this order — the order is the point.**
 
 1. Every line struck, every residue routed to a destination.
@@ -230,7 +237,31 @@ first view is the live task list and not a nice-to-have.
 | `Decision_Log.md` | Record | `Dn` with author, date, reasoning, and what was discarded |
 | `LOG_AGENTS.md` | Record | what each agent did **in this project** |
 
-No mailbox, no task list, no ideas file: those are central now. **The three levels still repeat**
+No mailbox, no task list, no ideas file: those are central now.
+
+### And a project may have skills of its own — it usually should
+
+A skill is hosted at **the level of the least general thing it names**, applied one floor down. A
+procedure that only makes sense inside one project — its ingestion, its release ritual, its
+evaluation harness — lives in that project's `nexus/skills/<name>/SKILL.md` and loads only when
+working there.
+
+**This is the drain that keeps a project's axiom department small.** Most of what looks like a
+project rule is really a project *procedure*: something written once and followed, rather than
+held in mind on every turn — which is `AX-4`'s test, and it resolves toward *tool*. With nowhere
+to put those, they pile up as axioms nobody can hold, and the department inflates until it stops
+being read.
+
+| Where a project's know-how goes | Passes if |
+|---|---|
+| `architecture.md` — a project **axiom** | it must fire *while* the work happens, and no later pass could apply it |
+| `nexus/skills/` — a project **skill** | it is a procedure someone follows, invoked when that work comes up |
+| `Decision_Log.md` — a **decision** | it is a choice already made that binds nothing going forward |
+
+**Three short skills beat one long axiom department**, and the reason is load: a skill is paid
+once, when invoked; an axiom is paid on every turn of every task in that project.
+
+**The three levels still repeat**
 — the company's philosophy inherited unchanged, the project's axioms its own, its decisions its
 own — and **each project gets its own dedicated auditor**, hired under the same rule with its own
 dismissal criterion. That repetition is the claim to reproducibility: adopting this is not

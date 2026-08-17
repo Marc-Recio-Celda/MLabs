@@ -76,6 +76,17 @@ Skills and templates arrive in later stages, one at a time, each accepted by a *
 test**: an agent — or a stranger — given only this repo must reach productive. If a stage fails
 that test, the stage is not done.
 
+## Talk to me
+
+The methodology is here in full; **the instance that proves it is not, and never will be** — it
+holds a decade of someone's working knowledge and every project they are paid to do. If you want
+to know how an operations centre is actually laid out, what the loop feels like in a real week,
+or how any of this survived contact with a deadline, **ask**. Open an issue, or reach the
+operator through the profile that owns this repository.
+
+The parts worth asking about are the ones a public repo cannot show you: what got cut and why,
+which rules turned out to be theatre, and what breaks first.
+
 ## Status
 
 Stage 1 — skeleton: philosophy, axioms, orchestration, first role. **Pre-release: no tag exists yet,
