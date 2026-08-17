@@ -11,8 +11,11 @@
 > **This file breaks ties.** When two axioms both apply and disagree, it decides. When a
 > proposal satisfies every axiom and still feels wrong, this is where the objection lives.
 >
-> **It changes almost never, and only by the operator, explicitly.** One clause is a trade
-> rather than a law and carries a review date; it is marked ⏳.
+> **It changes rarely, only by the operator, and explicitly — but it is not frozen.** Working on
+> the system is exactly what reveals that a clause has stopped being true, so a clause protected
+> from ever being questioned is dogma, not philosophy. The bar is height, not impossibility: a
+> change here needs a case, not a vote. One clause is a trade rather than a law and carries a
+> review date; it is marked ⏳.
 
 ---
 
@@ -72,11 +75,12 @@ must be held in mind to do the next thing.
 
 ## How the levels are used
 
-**R&D proposes improvements to the axioms, never to this file.** The superauditor checks the
-axioms are not violated **and reports when a clause here has drifted from the axioms that serve
-it** — in either direction: a clause with no axiom behind it is a value with no teeth, and an
-axiom serving no clause is a rule with no mandate. Both roles answer to this file and neither
-may amend it.
+**The superauditor** checks the axioms are not violated **and reports when a clause here has
+drifted from the axioms that serve it** — in either direction: a clause with no axiom behind it
+is a value with no teeth, and an axiom serving no clause is a rule with no mandate. It also
+carries the R&D clause, so it may propose an improvement to an axiom, or flag that a clause
+*here* has stopped being true. **It may never amend this file** — the flag goes to the operator
+and nowhere else, and dies there if the operator does not take it up.
 
 **The coverage is counted, not assumed.** A stated priority that no rule implements is exactly
 how a system ends up protecting the wrong things — and it is measurable, so it is measured. See

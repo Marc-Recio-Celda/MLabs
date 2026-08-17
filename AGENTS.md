@@ -19,9 +19,10 @@ may enter what git tracks (§5).
 
 **Start here, in this order.** `PHILOSOPHY.md` — what this company optimises for, and what
 breaks every tie → `AXIOMS.md` — the rules that follow, already settled and not re-litigated →
-this file, for who does what and when → the role file for whatever you are about to act as or
-invoke → **and then NEXUS, which is where the work is** (§2). Those first four are read once
-and rarely again; NEXUS is entered for almost everything.
+this file, for who does what and when → **`METHOD.md` — how work actually flows, which is the
+one you will use every day** → the role file for whatever you are about to act as or invoke →
+**and then NEXUS, which is where the work is** (§2). The first three are read once and rarely
+again; `METHOD.md` is the shape of a working day; NEXUS is entered for almost everything.
 
 ⚠️ **Read what the work needs, not all of it** (AX-21, applied to this file). Designing or
 auditing loads all three levels. **Executing a defined task loads NEXUS's binding and the role
@@ -102,14 +103,18 @@ still will.
 
 | Role | What it is | Fires | Defined in |
 |---|---|---|---|
-| **Superauditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip | a proposal closes (one firing per round, however many files the round touched) | `roles/superauditor.md` |
+| **Superauditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip — **and carries the R&D clause**, one ephemeral idea per firing | **a task closes**, or every five closed items inside a long one | `roles/superauditor.md` |
+
+**Merged rather than hired: R&D.** It was designed as a separate role and folded into the
+superauditor before either existed — same firing moment, same artefacts, no context of its own
+(`roles/superauditor.md` § *One idea*). The merge is a bounded exception to AX-13 and carries
+its own reversal condition.
 
 **Not yet hired — each enters only by the rule in §6, and not before:**
 
 | Role | Would be | Fires |
 |---|---|---|
 | Auditor | the superauditor's shape, scoped to one project | a proposal closes inside a project |
-| R&D | lateral thinking, uncomfortable truths, never annoyed at being ignored | at round close, over the round and its artefacts — never the transcript |
 | Messenger | gathers raw information, returns a cited report | on demand |
 | Dispatcher | hands each concrete task to a specialist executor | a task exists |
 | Bookkeeper | logs, decisions, staleness detection | after execution |
@@ -167,7 +172,8 @@ instance's ledger, and both live in the instance's hiring record, out of the rol
 
 | Stage | Content | Gate |
 |---|---|---|
-| **1 — now** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md` opened with the founding sweep, this file, the superauditor | cold start: an agent with only this repo explains the company and **can operate its rules** — including the tally. First run **failed** on exactly that and the contract was fixed; the pass that counts is recorded in the instance's ledger |
+| **1 — now** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md` opened with the founding sweep, this file, `METHOD.md`, the superauditor | cold start: an agent with only this repo explains the company and **can operate its rules** — including the tally. First run **failed** on exactly that and the contract was fixed; the pass that counts is recorded in the instance's ledger |
 | 2 | the split executes: generic halves of the founding instance's method layer move in; §5's checks get wired to run without a human; first tagged release + license | cold start repeats; the instance still runs; the checks run themselves |
-| 3+ | skills, one per stage: create-notes · structure-a-project · correct-exercises · learn · code-cleanup · collaborative-repo · **instantiate** (create your own instance) | each skill's own verification, stated as a prediction before it runs |
+| 3+ | skills, one per stage, each implementing a piece of `METHOD.md`: create-notes · structure-a-project · correct-exercises · learn · code-cleanup · collaborative-repo | each skill's own verification, stated as a prediction before it runs |
+| last | **`nexus-builder`** — the skill that creates a new NEXUS from nothing and walks its owner into working in it. **Deliberately last**: it encodes the shape of an instance, so building it before the shape stops moving means building it twice | a stranger, given only this repo and the skill, ends with a working NEXUS and a first task in flight |
 | later | roles beyond the superauditor, strictly by §6 | each role's own criterion |

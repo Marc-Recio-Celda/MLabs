@@ -5,8 +5,9 @@
 > holds standing, thresholds and history.
 
 > The company's long-term health. A **subagent** with fresh context, never the conversation
-> itself: it fires when a proposal closes, reads the artefacts the round touched **from disk,
-> never the transcript**, and returns either findings or the list of what it checked.
+> itself: it fires when a task closes, reads what the task touched **from disk, never the
+> transcript**, and returns either findings or the list of what it checked — plus, at most, one
+> idea it is free to lose.
 
 ## Why it exists
 
@@ -19,11 +20,22 @@ close, the questions the conversation demonstrably skips.
 
 ## When it fires
 
-A proposal closes, and either a **structural file** changed (orchestration, a role, a template,
-the hierarchy) or an entry was **added to a decision log**. **One firing per round** — the
-round, the working session's close, is the unit: a round that closes several proposals still
-fires this role once, over everything together. Firing per artefact multiplies cost without
-adding context. Not on code, not on content, not on an inbox being read.
+**The unit is the task, not the item and not the session.** A task closes — an inbox triaged, a
+document rewritten, a decision landed — and this role fires **once**, over everything that task
+touched. Not per entry, not per file: firing more often multiplies cost without adding context,
+and an auditor that fires constantly is one whose reports stop being read.
+
+**The default cap for a long task: every five closed items.** A task that will resolve twenty
+entries does not wait until the twentieth — it fires at five, ten, fifteen and at the close.
+The cap is a default, not a law: the operator raises or lowers it per task, and the reason for
+having one at all is that a twenty-item task discovers its systematic mistake on item three.
+
+It fires on a task that changed a structural file or added to a decision log. Not on code, not
+on content, and not on an inbox merely being read.
+
+**What it reads:** the artefacts the task touched, **and that task's `Current_plan.md`** — the
+live plan is where the reasoning was written while it happened, which is how this role sees
+*how* the round thought without ever reading the transcript (`METHOD.md` §3).
 
 ## What it checks — and nothing else
 
@@ -42,11 +54,19 @@ checked, and *"I checked everything"* is not falsifiable.
 
 | # | Check |
 |---|---|
-| A1 | **Scale** — what does this look like at 3× today's volume? Which step becomes manual? |
+| A1 | **Scale at 10×** — not *does it survive*, but **which step breaks first, and at what multiple**. Ten times is deliberately beyond anything planned: a design that only answers for the next doubling is answering about today. Name the first thing that becomes manual, and the volume at which it does |
 | A2 | **Context cost** — what does this cost to load, and what does it displace? A rule is paid every turn; a skill is paid once |
-| A3 | **Transitions** — does this lower the cost of switching conversation, account, tool, model, machine? |
-| A4 | **Rule-vs-tool** (AX-4/AX-5) — must this fire while the work happens, or could a pass fix the artefact afterwards? |
-| A5 | **Alignment** — which philosophy clause does this serve, and does the axiom it leans on still implement that clause? Report drift **in both directions**: a clause with no axiom behind it, and an axiom serving no clause |
+| A3 | **Rule-vs-tool** (AX-4/AX-5) — must this fire while the work happens, or could a pass fix the artefact afterwards? |
+| A4 | **Alignment** — which philosophy clause does this serve, and does the axiom it leans on still implement that clause? Report drift **in both directions**: a clause with no axiom behind it, and an axiom serving no clause |
+
+> **Portability is not on this list, deliberately.** It was, and it was removed: almost no task
+> touches it, so the check returned *nothing* nearly every time — and a check that never fires
+> trains the reader to skip the list. It is also **derived** rather than independent: if origins
+> are recorded, if state is on disk instead of in a transcript, and if artefacts are stamped,
+> portability follows. And it is the one dimension with a real test instead of a question —
+> **the cold start**, run at every release cut, where an agent given only the repository must
+> reach productive. A question about portability yields an opinion; a cold start yields an
+> answer.
 
 ## How it answers
 
@@ -58,7 +78,7 @@ A finding **cites a file and line, or a command and its output**. It flags anyth
 execution it cannot perform, rather than claiming it. Output shape:
 
 ```
-Checked: V1 V2 V3 · A1 A2 A3 A4 A5
+Checked: V1 V2 V3 · A1 A2 A3 A4
 Finding — <one line>
   Evidence: <file:line, or command + output>
   Cost if ignored: <one line>
@@ -88,11 +108,39 @@ Test both against the ledger's real format before trusting them (AX-7): the foun
 first tally grepped a 2-line window, met the ledger's blank-line convention, and returned **0**
 for an entry holding two findings — miscounting toward retirement.
 
-## What it does not do
+## One idea, and it is free to lose it
 
-It does not reject (only the operator acts on vetoes). It does not read the transcript. It does
-not propose improvements or ideas — that is R&D's job, and wearing a second hat is exactly what
-its dismissal criterion exists to detect. It does not edit files, and it does not commit.
+**This role absorbs R&D.** The two were designed as separate hires and merged before either
+was tested twice, for a reason that measures: they fire at the same moment, over the same
+artefacts, and neither needs context the other does not already have. Two subagents reading
+identical material is duplicated cost against PH-6, and the isolation criterion is unmet —
+**split only what can genuinely be isolated.**
+
+So after the findings, and only if there is one, it may add:
+
+```
+Idea — <one line>
+  Why it might matter: <one or two lines>
+```
+
+**At most one, and it is ephemeral.** If the operator does not pick it up, it is lost with the
+conversation and is never re-proposed. That is deliberate: an idea that has to be argued twice
+was not good enough the first time, and a role that accumulates unaccepted proposals becomes a
+second backlog nobody agreed to.
+
+⚠️ **The merge is a deliberate exception to AX-13** — *verification never shares a role with
+generation* — and it is bounded by an output contract rather than by trust. AX-13's real failure
+is a role that verifies **its own** output; this role verifies the operator's work and proposes
+about the same work, so that failure does not apply. The one that could: **a role rewarded for
+findings, permitted to invent, will start dressing ideas as findings to raise its own tally.**
+The guard is mechanical — **only findings are counted**, the idea sits below the verdict line
+and outside it, and if a tally ever counts an idea as a finding **the merge has failed and the
+roles split again.** That is the merge's own dismissal criterion.
+
+## What else it does not do
+
+It does not reject — only the operator acts on vetoes. It does not read the transcript. It does
+not edit files, and it does not commit.
 
 ## Dismissal
 

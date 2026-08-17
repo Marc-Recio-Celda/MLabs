@@ -60,6 +60,10 @@ salient rather than what matters most.
 | **2 · Axioms** | `AXIOMS.md` | 28 rules that implement the clauses and may never be violated. Each names the clause it serves, and the coverage is counted rather than assumed | Rarely. R&D proposes, the operator decides |
 | **3 · Decisions** | *in NEXUS* | Concrete choices with their author, date, reasoning and what was discarded — the record, which is never held here | Constantly |
 
+Alongside them, **`METHOD.md` — how work actually flows**: the five kinds of document and the
+lifecycle each one owes, the loop from compass to live plan to routed close, and the project
+cartridge. The three levels say what is true; `METHOD.md` says what you do on Monday morning.
+
 **The same three levels repeat one floor down inside a project**, with its own axioms, its own
 log and its own dedicated auditor. That is what makes the shape reproducible rather than
 bespoke: adopting this is not copying one company's rules, it is instantiating a pattern.
