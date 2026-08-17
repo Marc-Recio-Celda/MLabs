@@ -12,37 +12,61 @@
 ## 1. What this repo is to an agent
 
 MLabs is the **structure**, and it is the workspace root: this repo tracks only the structural
-allowlist in `.gitignore`, while every child folder — the operator's private **instance**, each
-project — is **its own repository, untracked here, forever**. Rules travel with this repo;
-state never does. If no instance folder is present, you are editing methodology — nothing
-personal is in scope, and nothing personal may enter what git tracks (§4).
+allowlist in `.gitignore`, while every child folder — **NEXUS** and each project — is **its own
+repository, untracked here, forever**. Rules travel with this repo; state never does. If NEXUS
+is not present, you are editing methodology and nothing else is in scope — and nothing personal
+may enter what git tracks (§5).
 
 **Start here, in this order.** `PHILOSOPHY.md` — what this company optimises for, and what
 breaks every tie → `AXIOMS.md` — the rules that follow, already settled and not re-litigated →
 this file, for who does what and when → the role file for whatever you are about to act as or
-invoke. If an instance folder is present *and the work touches it*, read its `AGENTS.md` for
-the binding and stop there: its contents are state, loaded on demand, never by default.
+invoke → **and then NEXUS, which is where the work is** (§2). Those first four are read once
+and rarely again; NEXUS is entered for almost everything.
 
 ⚠️ **Read what the work needs, not all of it** (AX-21, applied to this file). Designing or
-auditing loads all three levels. **Executing a defined task loads the binding and the role file
-only** — the axioms are what the close is checked against, not what the work is done through,
-and the four documents together are a real load that displaces the work itself.
+auditing loads all three levels. **Executing a defined task loads NEXUS's binding and the role
+file only** — the axioms are what the close is checked against, not what the work is done
+through, and the four documents together are a real load that displaces the work itself.
 
 **Three levels, and nothing is allowed to blur them.** *Philosophy* — six clauses, changed
 almost never, only by the operator. *Axioms* — the rules that implement them, never violated,
-each naming the clause it serves. *Decisions* — instance-level, with author, date and
-reasoning, living in the instance's log and never here. **The same three levels repeat one
-floor down inside a project**, with its own auditor, its own axioms and its own log: that is
-what makes the shape reproducible rather than bespoke.
+each naming the clause it serves. *Decisions* — concrete, with author, date and reasoning,
+living in NEXUS and never here. **The same three levels repeat one floor down inside a
+project**, with its own auditor, its own axioms and its own log: that is what makes the shape
+reproducible rather than bespoke.
 
-**The binding, declared instance-side.** The instance's own `AGENTS.md` declares four things:
-its own folder name inside this workspace · **the MLabs release it pins** · **where its ledger
-lives** (the append-only log the superauditor writes to, and the dismissal tally greps) · and
-**where its denylist lives** for §4's depersonalisation check. The denylist is a list of names
-and project words — personal data by definition — so it lives in the instance, never in what
-this repo tracks.
+## 2. NEXUS — the operations centre
 
-## 2. The hierarchy — two lists, not one
+**Every MLabs instance has exactly one, and it is where the company actually lives.** The
+knowledge, the projects, the decisions with their authors and dates, the work in flight, the
+ledger, the task list, the inbox, the plan — all of it is in NEXUS. It is **private**, it is a
+sibling folder in this workspace, and it is **never tracked here**.
+
+> **MLabs is the constitution. NEXUS is the country.**
+
+The practical consequence, which this file understated until it was corrected: **almost nothing
+real happens without entering NEXUS.** This repo tells you *how* to work; NEXUS is *where* the
+work and its entire record are. An agent that has read only MLabs knows every rule and nothing
+that has ever happened — it cannot say what is being built, what was decided last week, what is
+blocked, or what it is supposed to do next. It knows the law of a country it has not visited.
+
+So the reading order below is not "MLabs, then optionally NEXUS". It is: **learn the rules once,
+then go where the work is.** What stays true is only *how much* of NEXUS gets loaded — its
+binding always, its contents by the routing index and never wholesale (AX-21).
+
+**NEXUS is company vocabulary, not a private name.** MLabs names the role and its conventional
+root, and names nothing inside it: no project, no person, no path below the root. That is the
+invariant the depersonalisation check enforces, and naming the operations centre does not
+weaken it — a stranger instantiating their own company creates their own NEXUS, the same way
+they create their own `main` branch.
+
+**The binding, declared NEXUS-side.** NEXUS's own `AGENTS.md` declares: **the MLabs release it
+pins** · **where its ledger lives** (the append-only log the superauditor writes to and the
+dismissal tally greps) · and **where its denylist lives** for §5's depersonalisation check. The
+denylist is a list of names and project words — personal data by definition — so it lives in
+NEXUS, never here.
+
+## 3. The hierarchy — two lists, not one
 
 Authority and attention run in opposite directions, on purpose: **vetoes are verifiable at the
 end, design pressures cannot be retrofitted** — so the order of attention is the inverse of the
@@ -72,7 +96,7 @@ Ties among vetoes are broken by purpose. The conversation attends to the first l
 designing; the superauditor re-runs both at close, because at close it is the only one that
 still will.
 
-## 3. Roles
+## 4. Roles
 
 **Hired — active:**
 
@@ -80,7 +104,7 @@ still will.
 |---|---|---|---|
 | **Superauditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip | a proposal closes (one firing per round, however many files the round touched) | `roles/superauditor.md` |
 
-**Not yet hired — each enters only by the rule in §5, and not before:**
+**Not yet hired — each enters only by the rule in §6, and not before:**
 
 | Role | Would be | Fires |
 |---|---|---|
@@ -95,11 +119,11 @@ Two things in the org chart are deliberately **not** roles: the **reasoner** (op
 assistant — the conversation itself, which cannot be isolated) and the **distributor** (*nothing
 is lost* — a rule at round close, not an agent, because its context is the whole conversation).
 
-## 4. Invariants — each carries its check
+## 5. Invariants — each carries its check
 
 | Invariant | The check |
 |---|---|
-| **No personal information in what git tracks.** No names, no employer, no project names from any instance | the release gate greps the instance's denylist over `git ls-files` output — what is *tracked*, since the working tree legitimately holds the private children — and it returns nothing. ⚠️ Test the grep against a planted leak before trusting it — the founding round shipped a broken one that could never match |
+| **No personal information in what git tracks.** No person's name, no employer, no project name, no path inside NEXUS. Naming NEXUS itself is vocabulary (§2), not a leak | the release gate greps the instance's denylist over `git ls-files` output — what is *tracked*, since the working tree legitimately holds the private children — and it returns nothing. ⚠️ Test the grep against a planted leak before trusting it — the founding round shipped a broken one that could never match |
 | **The tracked set is exactly the allowlist** — nothing more, and nothing named that does not exist | `git ls-files` compared against `.gitignore`'s `!` lines at every release cut. A **surplus** file is a leak, investigated before anything else happens; a `!` line with **no tracked file behind it** is empty scaffolding, and the line goes |
 | **`git clean` is never run at this root.** The untracked here is everything the operator owns | none — prevention only. Deletion has no cleanup pass, which is exactly why this is a rule and not a tool (AX-5) |
 | **The axioms are append-only.** Entries are never rewritten; later entries supersede | `git diff <last-tag>..HEAD -- AXIOMS.md \| grep -c '^-[^-]'` returns **0** — nothing removed, nothing altered, only appended |
@@ -122,7 +146,7 @@ the precedent every later exemption will cite.
 (AX-7). Wiring them into something that runs without a human — CI, a release script, a hook —
 is part of stage 2's gate, not an option.
 
-## 5. Hiring and firing
+## 6. Hiring and firing
 
 **The rule is AX-11; it is not restated here.** What this file adds is the shape the numbers
 take: each role sets its own **N** — consecutive firings adding nothing, after which it is
@@ -130,20 +154,20 @@ retired — and **K** — genuine findings, after which the *next* role may be h
 several. Both are fixed before the role's first firing, both are countable by a command over the
 instance's ledger, and both live in the instance's hiring record, out of the role's own sight.
 
-## 6. Gates
+## 7. Gates
 
 - **A proposal closes** → the superauditor fires, once, over everything the round touched.
 - **A round closes** → every open thread is enumerated with its destination, and *written* is
   claimed only after reading the file back from disk. A thread with no destination is a failure
   of the close, not an omission.
-- **A release is cut** → all §4 checks run, the cold-start test runs, the version is tagged.
+- **A release is cut** → all §5 checks run, the cold-start test runs, the version is tagged.
   Instances upgrade by choice, never by drift.
 
-## 7. Stage map
+## 8. Stage map
 
 | Stage | Content | Gate |
 |---|---|---|
 | **1 — now** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md` opened with the founding sweep, this file, the superauditor | cold start: an agent with only this repo explains the company and **can operate its rules** — including the tally. First run **failed** on exactly that and the contract was fixed; the pass that counts is recorded in the instance's ledger |
-| 2 | the split executes: generic halves of the founding instance's method layer move in; §4's checks get wired to run without a human; first tagged release + license | cold start repeats; the instance still runs; the checks run themselves |
+| 2 | the split executes: generic halves of the founding instance's method layer move in; §5's checks get wired to run without a human; first tagged release + license | cold start repeats; the instance still runs; the checks run themselves |
 | 3+ | skills, one per stage: create-notes · structure-a-project · correct-exercises · learn · code-cleanup · collaborative-repo · **instantiate** (create your own instance) | each skill's own verification, stated as a prediction before it runs |
-| later | roles beyond the superauditor, strictly by §5 | each role's own criterion |
+| later | roles beyond the superauditor, strictly by §6 | each role's own criterion |

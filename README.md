@@ -21,7 +21,7 @@ here**. Modular work: one clone gives you the whole frame; each piece versions i
 | In the workspace                                    | What it is                                                                | Tracked by MLabs?      |
 | --------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------- |
 | The structural files (see `.gitignore`'s allowlist) | The company: hierarchy, roles, skills, templates                          | ✅ public, by release   |
-| **The instance**                                    | Everything personal: knowledge, projects, logs, decisions, work in flight | ❌ its own private repo |
+| **NEXUS** — the operations centre                   | Where the company lives: knowledge, projects, logs, decisions, work in flight | ❌ its own private repo |
 | Project folders                                     | Each venture's code and data                                              | ❌ each its own repo    |
 
 Two mechanics make the containment safe, and they are rules, not hopes:
@@ -37,7 +37,15 @@ Two mechanics make the containment safe, and they are rules, not hopes:
 MLabs contains **no personal information in what it tracks, by construction** — the invariant
 is a command over `git ls-files`, not a promise (see `AGENTS.md` §Invariants).
 
-An instance **pins the MLabs release it runs**, the way code pins a dependency. Upgrading is a
+**NEXUS is the operations centre, and it is not optional.** Every instance of this methodology
+has exactly one: a private sibling repository holding the knowledge, the projects, the decision
+log, the work in flight and the whole record. **MLabs is the constitution; NEXUS is the
+country.** Practically nothing real is done without entering it — this repo says *how* to work,
+NEXUS is *where* the work and its history are, and an agent that has read only MLabs knows every
+rule and nothing that has ever happened. Adopting this methodology means creating your own
+NEXUS, the way you create your own `main` branch.
+
+NEXUS **pins the MLabs release it runs**, the way code pins a dependency. Upgrading is a
 deliberate act, so a released structure never shifts under a running instance.
 
 ## Three levels, and what is in each today
@@ -50,7 +58,7 @@ salient rather than what matters most.
 |---|---|---|---|
 | **1 · Philosophy** | `PHILOSOPHY.md` | Six clauses: what this company optimises for, and what it refuses. **Breaks every tie.** | Almost never, and only by the operator |
 | **2 · Axioms** | `AXIOMS.md` | 28 rules that implement the clauses and may never be violated. Each names the clause it serves, and the coverage is counted rather than assumed | Rarely. R&D proposes, the operator decides |
-| **3 · Decisions** | *in the instance* | Concrete choices with their author, date, reasoning and what was discarded — the record, which is never held here | Constantly |
+| **3 · Decisions** | *in NEXUS* | Concrete choices with their author, date, reasoning and what was discarded — the record, which is never held here | Constantly |
 
 **The same three levels repeat one floor down inside a project**, with its own axioms, its own
 log and its own dedicated auditor. That is what makes the shape reproducible rather than

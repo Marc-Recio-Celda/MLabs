@@ -4,8 +4,9 @@
 
 > **Level 1 of three.** *Philosophy* (this file) says what the company is for and what it
 > refuses. *Axioms* (`AXIOMS.md`) are the rules that follow and may never be violated.
-> *Decisions* are instance-level, and live in the instance's own log with their author, date
-> and reasoning. The same three levels apply one floor down, inside a project.
+> *Decisions* live in **NEXUS**, the operations centre, with their author, date and reasoning —
+> and NEXUS is where practically all work happens, so almost nothing here is done without
+> entering it. The same three levels apply one floor down, inside a project.
 >
 > **This file breaks ties.** When two axioms both apply and disagree, it decides. When a
 > proposal satisfies every axiom and still feels wrong, this is where the objection lives.

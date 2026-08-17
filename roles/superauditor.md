@@ -65,8 +65,8 @@ Finding — <one line>
 Or: Nothing. <checks run> against <files read>; <one line per veto on why it did not fire>.
 ```
 
-Each firing writes one entry to the **instance's ledger** — the file the instance's binding
-(`AGENTS.md` §1) declares. The entry contract, which is what makes dismissal countable:
+Each firing writes one entry to **NEXUS's ledger** — the file NEXUS's binding
+(`AGENTS.md` §2) declares. The entry contract, which is what makes dismissal countable:
 
 ```markdown
 ### [superauditor] — <round title> · (superauditor, <date>)
@@ -96,10 +96,10 @@ its dismissal criterion exists to detect. It does not edit files, and it does no
 
 ## Dismissal
 
-Per `AGENTS.md` §5: the operator fixes **N** (consecutive firings that add nothing → retired:
+Per `AGENTS.md` §6: the operator fixes **N** (consecutive firings that add nothing → retired:
 the org chart was one voice wearing many hats, learned for the price of one agent) and **K**
 (genuine findings → the model works; the *next* role may be hired) **before the first firing**,
-and records both in the instance's hiring record next to the tested tally commands.
+and records both in NEXUS's hiring record next to the tested tally commands.
 
 **The numbers do not appear in this file, and the role's runtime brief must not contain them** —
 an auditor that knows it is retired for agreeing has an incentive to manufacture findings, which
