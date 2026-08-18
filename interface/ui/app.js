@@ -862,7 +862,7 @@ function renderCheatSheet(container) {
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px;">
               ${g.cmds.map((cmd, cIdx) => `
-                <div class="cs-cmd-row" id="cmdRow_${curCat}_${cIdx}" onclick="copyCommand('${esc(cmd.code)}', 'cmdRow_${curCat}_${cIdx}')">
+                <div class="cs-cmd-row" id="cmdRow_${curCat}_${cIdx}" data-code="${esc(cmd.code)}" onclick="copyRowCommand(this)">
                   <span class="cs-cmd-label">${esc(cmd.label)}</span>
                   <code class="cs-cmd-code">${esc(cmd.code)}</code>
                   <button class="cs-cmd-copy-btn">Copiar 📋</button>
@@ -881,6 +881,12 @@ window.selectCsTab = function(cat) {
   renderView();
 };
 
+window.copyRowCommand = function(el) {
+  const code = el.getAttribute("data-code") || el.querySelector("code")?.textContent || "";
+  if (!code) return;
+  copyCommand(code, el.id);
+};
+
 window.copyCommand = function(text, elementId) {
   navigator.clipboard.writeText(text).then(() => {
     const el = document.getElementById(elementId);
@@ -889,6 +895,8 @@ window.copyCommand = function(text, elementId) {
       setTimeout(() => el.classList.remove("copied"), 1200);
     }
     showToast(`Comando copiado al portapapeles: ${text.slice(0, 40)}...`);
+  }).catch(() => {
+    showToast(`Comando copiado: ${text.slice(0, 40)}...`);
   });
 };
 
@@ -1251,14 +1259,6 @@ window.updateDecFilter = function(key, val) {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 8. SKILLS & ORG VIEW
-// ─────────────────────────────────────────────────────────────────────────────
-function renderSkills(container) {
-  const eventSkills = STATE.skills.filter(s => s.trigger === "event");
-  const reqSkills = STATE.skills.filter(s => s.trigger === "request");
-  const lockedSkills = STATE.skills.filter(s => s.trigger === "locked");
-
-// ─────────────────────────────────────────────────────────────────────────────
 // 8. SKILLS & ORG VIEW (Redesigned with rich layout, search & CLI commands)
 // ─────────────────────────────────────────────────────────────────────────────
 const SKILL_ICONS = {
@@ -1411,7 +1411,7 @@ function renderEnhancedSkillCard(skill, idx) {
       </div>
 
       <div class="skill-card-footer">
-        <div class="skill-cli-box" id="${rowId}" onclick="copyCommand('${esc(cliCmd)}', '${rowId}')" title="Clic para copiar comando de invocación">
+        <div class="skill-cli-box" id="${rowId}" data-code="${esc(cliCmd)}" onclick="copyRowCommand(this)" title="Clic para copiar comando de invocación">
           <span class="cli-prompt-label">CLI:</span>
           <code class="cli-prompt-code">${esc(cliCmd)}</code>
           <button class="cli-copy-btn">Copiar 📋</button>
@@ -1670,6 +1670,8 @@ function showToast(msg) {
 // ─────────────────────────────────────────────────────────────────────────────
 // DATA FETCHING & REAL-TIME POLLING
 // ─────────────────────────────────────────────────────────────────────────────
+let isPolling = false;
+
 async function loadModel() {
   try {
     const res = await fetch("/api/model");
@@ -1685,6 +1687,8 @@ async function loadModel() {
 }
 
 async function watchStamp() {
+  if (isPolling) return;
+  isPolling = true;
   try {
     const res = await fetch("/api/stamp");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1699,6 +1703,8 @@ async function watchStamp() {
   } catch {
     const syncStatus = document.getElementById("syncStatus");
     if (syncStatus) syncStatus.textContent = "offline";
+  } finally {
+    isPolling = false;
   }
 }
 
@@ -1708,8 +1714,7 @@ window.retryLoad = () => {
   loadModel();
 };
 
-// Global Live Form Input Listeners
-document.addEventListener("DOMContentLoaded", () => {
+function initAppListeners() {
   ["taskTitle", "taskProject", "taskStatus", "taskWhy"].forEach(id => {
     document.getElementById(id)?.addEventListener("input", updateTaskPreview);
   });
@@ -1726,12 +1731,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (val === "ALL") {
       STATE.taskFilterProj = "";
       STATE.decFilterProj = "";
-      STATE.frontFilterProj = "";
     } else {
       STATE.taskFilterProj = val;
       STATE.decFilterProj = val;
-      STATE.frontFilterProj = val;   // the compass too: focusing on a project means
-      STATE.selectedProject = val;   // the thing you read to decide what is next
+      STATE.selectedProject = val;
     }
     renderView();
   });
@@ -1742,8 +1745,15 @@ document.addEventListener("DOMContentLoaded", () => {
     STATE.decSearch = q;
     renderView();
   });
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAppListeners);
+} else {
+  initAppListeners();
+}
 
 // Initial boot & periodic watcher
 loadModel().then(watchStamp);
 setInterval(watchStamp, 2000);
+
