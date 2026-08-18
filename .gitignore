@@ -19,10 +19,20 @@
 !/tools/**
 !/interface
 !/interface/**
-!/interface_prototype
-!/interface_prototype/**
 interface/**/__pycache__/
 *.pyc
+
+# The interface engine (T64). Public and generic by construction: it knows the six
+# document kinds and no instance, and reaches one only through the adapter it is
+# handed at startup. The adapter itself is NOT here — it lives instance-side, which
+# is what keeps this directory cedible (`interface:AX-1`).
+!/interface
+!/interface/**
+# ...but never the interpreter's residue: `!/interface/**` is a wide gate, and it
+# swallowed __pycache__ twice — the second time one directory deeper than the
+# first rule reached, and it got staged. Match it at any depth.
+/interface/**/__pycache__/
+/interface/**/*.pyc
 
 # The tools' view of the skills: RELATIVE symlinks, committed so a fresh clone has
 # working skills with nothing to run first. Only the link — everything else the tools
@@ -35,4 +45,4 @@ interface/**/__pycache__/
 /.agents/*
 !/.agents/skills
 
-# Stage 2+ adds, one line per piece, when the piece exists: templates/, tools/.
+# Stage 2+ adds, one line per piece, when the piece exists: templates/.

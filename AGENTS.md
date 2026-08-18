@@ -64,7 +64,7 @@ weaken it — a stranger instantiating their own company creates their own NEXUS
 they create their own `main` branch.
 
 **The binding, declared NEXUS-side.** NEXUS's own `AGENTS.md` declares: **the MLabs release it
-pins** · **where its ledger lives** (the append-only log the superauditor writes to and the
+pins** · **where its ledger lives** (the append-only log the company auditor writes to and the
 dismissal tally greps) · and **where its denylist lives** for §5's depersonalisation check. The
 denylist is a list of names and project words — personal data by definition — so it lives in
 NEXUS, never here.
@@ -96,7 +96,7 @@ order of authority. Both lists sit *below* `PHILOSOPHY.md`, which decides when t
 | **3** | **Real return** | What concrete work does this unblock, and for whom? |
 
 Ties among vetoes are broken by purpose. The conversation attends to the first list while
-designing; the superauditor re-runs both at close, because at close it is the only one that
+designing; the company auditor re-runs both at close, because at close it is the only one that
 still will.
 
 ## 4. Roles
@@ -105,7 +105,7 @@ still will.
 
 | Role | What it is | Fires | Defined in |
 |---|---|---|---|
-| **Superauditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip. **Checks decisions; does not propose** | **one event** — a close that changed a structural file. See `skills/superauditor/`, the single source | `skills/superauditor/` |
+| **Company auditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip. **Checks decisions; does not propose** | **one event** — a close that changed a structural file. See `skills/company-auditor/`, the single source | `skills/company-auditor/` |
 
 **Every employee is a skill file. What makes one a *role* is the shape of its description.**
 
@@ -133,7 +133,7 @@ against §6 when the operator turns it on for real work.
 
 | Role | Status | What it is |
 |---|---|---|
-| **Auditor** | ✅ written · `skills/auditor/` | the superauditor's shape scoped to one project. **Hired per project**, each with its own criterion |
+| **Auditor** | ✅ written · `skills/project-auditor/` | the company auditor's shape scoped to one project. **Hired per project**, each with its own criterion |
 | **Gatherer** | ✅ written · `skills/gather/` | collects and cites; **its value is burning someone else's context** |
 | **Dispatcher** | ✅ written · `skills/dispatch/` | hands work to the executor entitled to claim the answer |
 | Bookkeeper | ⏸ not written | logs, decisions, staleness. ⚠️ **Probably not a role**: staleness is decidable by comparison, which makes it a script (AX-13). What is left is writing entries, which every skill already does at its own close |
@@ -182,7 +182,7 @@ instance's ledger, and both live in the instance's hiring record, out of the rol
 
 ## 7. Gates
 
-- **A task closes** → **only if a structural file changed**, the superauditor fires, once, over everything the task touched — after the destinations are read back and **before** the live plan is emptied (`METHOD.md` §2). **A close that touched only the live set, the logs, notes, code or content does not fire it.** The two lists — structural, and expressly not structural — are stated in full in `skills/superauditor/`, which is the single source; this line is the gate, not the definition. The operator invokes it by name whenever they judge it worth the round.
+- **A task closes** → **only if a structural file changed**, the company auditor is invoked, once, over everything the task touched — after the destinations are read back and **before** the live plan is emptied (`METHOD.md` §2). **A close that touched only the live set, the logs, notes, code or content does not fire it.** The two lists — structural, and expressly not structural — are stated in full in `skills/company-auditor/`, which is the single source; this line is the gate, not the definition. The operator invokes it by name whenever they judge it worth the round.
 - **Every close** → every open thread is enumerated with its destination, and *written* is
   claimed only after reading the file back from disk. A thread with no destination is a failure
   of the close, not an omission.
@@ -193,9 +193,9 @@ instance's ledger, and both live in the instance's hiring record, out of the rol
 
 | Stage | Content | Gate |
 |---|---|---|
-| **1 — now** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md`, this file, `METHOD.md`, the superauditor | cold start: an agent given only this repo explains the company and **can operate its rules**, tally included. The passing run is recorded in the instance's ledger |
+| **1 — now** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md`, this file, `METHOD.md`, the company auditor | cold start: an agent given only this repo explains the company and **can operate its rules**, tally included. The passing run is recorded in the instance's ledger |
 | 2 | the split executes: generic halves of the founding instance's method layer move in; §5's checks get wired to run without a human; first tagged release + license | cold start repeats; the instance still runs; the checks run themselves |
 | **3 — now** | the operating skills: `open-session` · `triage` · `audit` · `rnd` · `learn` · `correct-exercise` · `structure-project`, plus `create-note` in the instance, which is the one door to its knowledge base | each carries its verification as a prediction; the loop runs end to end without the operator narrating it |
 | 4 | `code-cleanup` and `collaborative-repo` — the two cleanup skills, and the templates the standards ship as | each skill's own prediction |
 | last | **`nexus-builder`** — the skill that creates a new NEXUS from nothing and walks its owner into working in it. **Deliberately last**: it encodes the shape of an instance, so building it before the shape stops moving means building it twice | a stranger, given only this repo and the skill, ends with a working NEXUS and a first task in flight |
-| later | roles beyond the superauditor, strictly by §6 | each role's own criterion |
+| later | roles beyond the company auditor, strictly by §6 | each role's own criterion |

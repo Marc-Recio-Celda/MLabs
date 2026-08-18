@@ -60,7 +60,7 @@ those, because the decision to close them was made when the task was written.
 ## 6. Close
 
 Per `open-session` §5: read every destination back from disk, then empty the plan. **A triage
-alone does not fire the superauditor** — draining a queue changes no structural file, and the
+alone does not fire the company auditor** — draining a queue changes no structural file, and the
 audit fires on those and nothing else. If the triage routed something *into* an axiom department
 or a skill, it does.
 

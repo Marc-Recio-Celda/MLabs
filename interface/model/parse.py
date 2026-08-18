@@ -24,7 +24,7 @@ import re
 import sys
 from pathlib import Path
 
-KINDS = ("compass", "plan", "queue", "park", "record", "standing", "skills")
+KINDS = ("compass", "plan", "queue", "park", "record", "standing", "skills", "records")
 
 
 class Problem(dict):
@@ -91,6 +91,16 @@ def assign_ids(entities):
     seen = {}
     for e in entities:
         k = e["kind"]
+        # A record from the store already carries its identity — that is what the
+        # conversion bought. Slugging over it would replace a real `D3` with a made-up
+        # name and break every reference that points at it.
+        if e.get("_record_id"):
+            base = slug(k, e.get("project"), e["_record_id"])
+            n = seen.get(base, 0) + 1
+            seen[base] = n
+            e["id"] = e["_record_id"] if n == 1 else f'{e["_record_id"]}-{n}'
+            e["uid"] = base if n == 1 else f"{base}-{n}"
+            continue
         if k == "task":
             base = slug(k, e.get("id_raw") or e.get("title"))
         elif k == "project-state":
@@ -147,10 +157,23 @@ def parse_queue(path, text):
             why = re.search(r"\*\*Why\*\*\s*\*?\(?(?P<author>[^,)]+),\s*"
                             r"(?P<date>\d{4}-\d{2}-\d{2})\)?", "\n".join(lines[i:i + 12]))
             f["id_raw"] = f.pop("id", None)
+            # The why is the whole point of a task — an executor that does not know the
+            # purpose cannot test the premise, and testing it is its job. It was matched
+            # for author and date and then discarded until 2026-08-18.
+            body, k = [], i + 1
+            while k < len(lines) and not lines[k].startswith("### "):
+                body.append(lines[k]); k += 1
+            blob = "\n".join(body)
+            # Both shapes exist in the same file — `**Why.**` and `**Why** *(who, date)*.`
+            # Converging them is P1's job; reading both is this parser's, because a field
+            # that only parses in one of two live formats reports two thirds as missing.
+            wm = re.search(r"\*\*Why[.:]?\*\*\s*(?:\*\([^)]*\)\*)?[.:]?\s*(.+?)"
+                           r"(?=\n\*\*[A-Z]|\n---|\Z)", blob, re.S)
             ents.append({"kind": "task", "line": i + 1,
                          "project": clean(fields.get("project", "")),
                          "author": clean(why.group("author")) if why else None,
-                         "date": why.group("date") if why else None, **f})
+                         "date": why.group("date") if why else None,
+                         "why": clean(wm.group(1))[:600] if wm else None, **f})
             continue
 
         probs.append(Problem(path, i + 1, "a `###` entry matching neither the mailbox "
@@ -359,7 +382,25 @@ def parse_skills(path, text):
              "when": " ".join(when[1:]).strip() or None, "description": desc}], []
 
 
-PARSERS = {"skills": parse_skills, "queue": parse_queue, "park": parse_park, "compass": parse_compass,
+def parse_records(path, text):
+    """A record from the JSON store. No grammar, because there is nothing to guess.
+
+    This is what the conversion bought: the shapes below still parse prose, with all
+    the ambiguity that implies, while a record either has a field or does not. When
+    every collection has moved, most of this file goes.
+    """
+    try:
+        r = json.loads(text)
+    except json.JSONDecodeError as e:
+        return [], [Problem(path, 1, f"a record that is not valid JSON: {e}")]
+    if not isinstance(r, dict) or "id" not in r:
+        return [], [Problem(path, 1, "a record with no id")]
+    r.setdefault("project", None)
+    r["_record_id"] = r["id"]     # so assign_ids keeps it instead of slugging over it
+    return [r], []
+
+
+PARSERS = {"records": parse_records, "skills": parse_skills, "queue": parse_queue, "park": parse_park, "compass": parse_compass,
            "plan": parse_plan, "standing": parse_standing, "record": lambda p, t: ([], [])}
 
 
@@ -399,6 +440,8 @@ def parse_adapter(adapter_path):
             else:
                 ents, probs = PARSERS[kind](f, body)
             for e in ents:
+                if kind == "records":
+                    e["kind"] = src.get("entity") or "record"
                 e["source"] = src["label"]
                 try:
                     e["file"] = str(f.relative_to(sroot))

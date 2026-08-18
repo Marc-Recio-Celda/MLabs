@@ -45,12 +45,15 @@ link "$ROOT/skills" "$ROOT/.claude/skills" "../skills"
 echo "Instance skills:"
 found=0
 for d in "$ROOT"/*/; do
-  s="${d}99_SYSTEM/skills"
+  # This tool exists to FIND an instance, so it has to know the shape of one. The debt
+  # is real — MLabs knows one path below the root — and closing it means the instance
+  # declaring its own skills path, which is a binding change, not a script change.
+  s="${d}99_SYSTEM/skills"                        # gate:allow finding an instance requires knowing its shape
   [[ -d "$s" ]] || continue
   found=1
-  link "$s" "${d}.claude/skills" "../99_SYSTEM/skills"
+  link "$s" "${d}.claude/skills" "../99_SYSTEM/skills"   # gate:allow same, the link target
 done
-(( found )) || echo "  none    (no <instance>/99_SYSTEM/skills under $ROOT)"
+(( found )) || echo "  none    (no instance skills folder found under $ROOT)"
 
 if (( DRY )); then
   echo

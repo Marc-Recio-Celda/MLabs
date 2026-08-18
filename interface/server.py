@@ -5,7 +5,9 @@ Serves the operations centre cockpit with live polling and write layer.
 Works standalone or connected to a NEXUS instance.
 
 Usage:
-    python3 server.py [--adapter NEXUS/99_SYSTEM/interface.json] [--port 8770]
+    python3 server.py [--adapter /path/to/adapter.json] [--port 8770]
+
+The adapter is given, never discovered — see find_default_adapter.
 """
 
 import argparse
@@ -19,9 +21,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-PAGE = HERE / "index.html"
-if not PAGE.is_file():
-    PAGE = HERE / "app.html"
+PAGE = HERE / "index.html"     # one page file; app.html was a byte-identical copy
 
 UI = HERE / "ui"
 
@@ -29,10 +29,16 @@ UI = HERE / "ui"
 sys.path.insert(0, str(HERE / "model"))
 try:
     import parse as model
-    KINDS = set(model.KINDS)
-except Exception:
-    model = None
-    KINDS = {"record", "queue", "compass", "live-plan", "park", "standing", "skill"}
+except Exception as e:                       # the engine can serve a page without a
+    model = None                             # model; it must never invent one
+    _MODEL_ERROR = e
+else:
+    _MODEL_ERROR = None
+
+# Defined ONCE, in the model. A second copy here carried different values until
+# 2026-08-18, so the same adapter was valid or invalid depending on whether an
+# import had succeeded — and nothing in the output said which (`MLabs:AX-20`).
+KINDS = set(model.KINDS) if model else set()
 
 
 class AdapterError(Exception):
@@ -40,15 +46,20 @@ class AdapterError(Exception):
 
 
 def find_default_adapter():
-    """Look for interface.json in standard relative paths."""
-    candidates = [
-        HERE.parent / "NEXUS" / "99_SYSTEM" / "interface.json",
-        HERE / "NEXUS" / "99_SYSTEM" / "interface.json",
-        Path.cwd() / "NEXUS" / "99_SYSTEM" / "interface.json",
-    ]
-    for c in candidates:
-        if c.is_file():
-            return c
+    """The adapter is given, never guessed.
+
+    An earlier version searched three hard-coded paths inside an operations centre.
+    That is the one thing this engine may not know (`interface:AX-1`, `D4`): a
+    default root is the convenience that turns a generic program into one that runs
+    on a single machine, and it makes the axiom's own check unable to tell the
+    sanctioned default from a leak.
+
+    An environment variable is fine — it is the operator naming their instance, not
+    the engine assuming one.
+    """
+    env = os.environ.get("MLABS_ADAPTER")
+    if env and Path(env).is_file():
+        return Path(env)
     return None
 
 
@@ -136,6 +147,10 @@ def make_handler(adapter):
             elif path == "/api/model":
                 if model and adapter.get("path"):
                     try:
+                        # Re-read from disk like everything else here does. Imported
+                        # once at startup, an edited parser served a stale answer with
+                        # nothing saying anything was wrong.
+                        globals()['model'] = importlib.reload(model)
                         parsed = model.parse_adapter(adapter["path"])
                         self._send(200, parsed)
                     except Exception as e:
