@@ -6,7 +6,7 @@ export const esc = s => String(s ?? "").replace(/[&<>"]/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 // Inline markdown only: these are one-line fields, never documents. A wall of
-// rendered markdown is the shape this interface exists to replace (D7).
+// rendered markdown is the shape this interface exists to replace.
 export function inline(s) {
   let t = esc(s);
   t = t.replace(/`([^`]+)`/g, (_, a) => `<code>${a}</code>`);
@@ -167,9 +167,10 @@ export const VIEWS = {
              + "if one needs calling, something upstream did not fire.",
         request: "You call these by name, when you want what they do.",
         locked: "Only callable by name, and invisible to the model otherwise.",
-        unclear: "Its description does not say what fires it, so nothing here guessed. "
-               + "These are the descriptions to reword — the guide is generated from them, "
-               + "so a description that cannot be read is a row that cannot be right.",
+        unclear: "Nothing here guessed. Each row below says what its description does "
+               + "and does not settle — usually it names a condition without saying who "
+               + "acts on it. The guide is generated from these descriptions, so a "
+               + "description that cannot be read is a row that cannot be right.",
       };
       const head = { event: "Fires by itself", locked: "Locked",
                      request: "You invoke it", unclear: "Cannot be told from its description" };

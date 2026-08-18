@@ -11,8 +11,8 @@
 ## Two rules that are not negotiable
 
 **Fields are read by name, never by position.** A positional reader returns the wrong field the
-moment a column is added, and returns it *silently*. That cost five findings in one day
-(`NEXUS:CA-044` and its chain) and it is why every table here is keyed by its header row.
+moment a column is added, and returns it *silently*. That cost five findings in one day, in one
+instance, and it is why every table here is keyed by its header row.
 
 **Nothing is skipped.** An entry that cannot be placed is reported with its file and line. A parser
 that drops what it does not understand turns a lossless record into a lossy one without saying so —
@@ -61,7 +61,8 @@ Board tables: `| Front | Waits on | Note |`, under a `### \`project\`` heading.
 <n>. text                          — pending
 <n>. ~~text~~ <destination>        — struck, and a destination is REQUIRED
 ```
-A struck item with no destination is reported as **a failed close**, which is what `AX-9` calls it.
+A struck item with no destination is reported as **a failed close**, which is what the method's
+close rule calls it.
 
 ### `standing` — project state
 A blockquote of `**Field:** value` after the title. **Required: `Last updated`, `Next action`.**

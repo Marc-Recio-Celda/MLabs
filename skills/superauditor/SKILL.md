@@ -1,15 +1,19 @@
 ---
 name: superauditor
-description: Audits a closed task at company or instance level against the company's axioms and reports findings with evidence, or an account of what it checked and found nothing. Fires when a task closes and a structural file changed or a decision was logged, every five closed items inside a long task, whenever any axiom department changes, and every twenty logged decisions. Does NOT fire on a task closing inside a single project — that is the project's own auditor. Runs with fresh context and reads only from disk.
+description: Audits a closed task at company or instance level against the company's axioms and reports findings with evidence, or an account of what it checked and found nothing. Fires on ONE event: a task closes having changed a structural file — philosophy, an axiom department, the method, a binding, a skill, the allowlist, the denylist, the router, or a project's architecture. It does NOT fire on a task that only touched the live set, the logs, notes, code or content, and it does NOT fire on a task closing inside a single project, which belongs to the project's own auditor. Every other reading it can do — a mid-task check, the promotion review — happens only when the operator asks for it by name. Runs with fresh context and reads only from disk.
 ---
 
-> **Version:** MLabs 1.1.0
+> **Version:** MLabs 1.0.0
 
 # superauditor
 
 > **An event-triggered skill.** What separates it from a capability is not what it does but
 > **who decides when** — its description names an event, not a request. It must never be
 > convenient to skip, which is why it fires on the close rather than on being asked.
+>
+> ⚠️ **But an event that is always true is not an event.** The trigger below is deliberately
+> narrow: a role that fires on every close is a role whose reports stop being read, and the
+> cost lands on the only person who can act on them.
 >
 > **Dispatch it with fresh context, every time.** It has not seen the conversation and must not:
 > it reads from disk, and the live plan is how it sees the round's *reasoning* without reading a
@@ -22,6 +26,16 @@ description: Audits a closed task at company or instance level against the compa
 >
 > ⚠️ **Fire before the live plan is emptied**, not after — the most common way to get the close
 > wrong, and it fails silently: the audit reads a blank file and reports nothing.
+>
+> ⚠️ **The fresh context above is currently a discipline, not a mechanism.** The tool can enforce
+> it — `context: fork` in this frontmatter runs the role as an isolated subagent, which is
+> exactly what *reads only from disk, never the transcript* means — and it would also stop the
+> audit's reading from displacing the working conversation's. It is **not set**, for one reason:
+> a forked skill defaults to running in the background, and this role must finish **before** the
+> plan is emptied. Setting `context: fork` therefore requires `background: false` alongside it,
+> and that pair has a minimum tool version. **Verify the version, then set both or neither** —
+> setting only the first inverts the close order silently, which is the failure this file warns
+> about two paragraphs up.
 
 > Role v1.0 · MLabs pre-release. **This file defines the role; the instance holds its hiring
 > record** — thresholds, standing, history. On structure, this file wins.
@@ -41,24 +55,47 @@ close, the questions the conversation demonstrably skips.
 
 ## When it fires
 
-**The unit is the task, not the item and not the session.** A task closes — an inbox triaged, a
-document rewritten, a decision landed — and this role fires **once**, over everything that task
-touched. Not per entry, not per file: firing more often multiplies cost without adding context,
-and an auditor that fires constantly is one whose reports stop being read.
+**One event, and it is the only one: a task closes having changed a structural file.** Then this
+role fires **once**, over everything that task touched. Not per entry, not per file.
 
-**The default cap for a long task: every five closed items.** A task that will resolve twenty
-entries does not wait until the twentieth — it fires at five, ten, fifteen and at the close.
-The cap is a default, not a law: the operator raises or lowers it per task, and the reason for
-having one at all is that a twenty-item task discovers its systematic mistake on item three.
+**Everything else it can do is invoked by name.** That is not a demotion of the role — it is the
+repair of a condition that could never be false.
 
-It fires on a task that changed a structural file or added to a decision log. Not on code, not
-on content, and not on an inbox merely being read. **And not on a task whose whole scope is one
-project** — that belongs to `skills/auditor/`, which loads that project's own department. Two
-auditors on the same close is the expensive one doing work it was not hired for.
+**Structural — these fire it:**
+
+| | |
+|---|---|
+| The three levels | `PHILOSOPHY.md` · any `AXIOMS.md`, in any department · any project's `architecture.md` |
+| The method and the bindings | `METHOD.md` · any `AGENTS.md` and its `CLAUDE.md` pointer · `PURPOSE.md` |
+| What executes | any `skills/*/SKILL.md` · anything under `tools/` |
+| What guards the boundary | the allowlist (`.gitignore`) · the denylist · the router |
+
+**Not structural — and this half is the whole point:** the live set (`Schedule` ·
+`Current_plan` · `MAILBOX` · `TASKS` · `IDEAS`) · the three logs · notes in the knowledge
+domains · code, data and content.
+
+⚠️ **Why that second list has to exist.** *The close writes the live set and the logs by
+definition* — it strikes the plan, routes residue, moves the compass, writes the ledger entry.
+If those counted as structural the condition would be true at **every** close, and a condition
+that is always true is a firing wearing a trigger's clothes. The first version of this role read
+*"a structural file changed **or a decision was logged**"*, which is that mistake twice: the
+decision log is written by the same close.
+
+**And not on a task whose whole scope is one project** — that belongs to `skills/auditor/`,
+which loads that project's own department. Two auditors on one close is the expensive one doing
+work it was not hired for.
 
 **What it reads:** the artefacts the task touched, **and that task's `Current_plan.md`** — the
 live plan is where the reasoning was written while it happened, which is how this role sees
 *how* the round thought without ever reading the transcript (`METHOD.md` §3).
+
+## What the operator invokes, and this role never starts on its own
+
+| Reading | When |
+|---|---|
+| **A mid-task check** | A long task discovers its systematic mistake around item three, not at item twenty. **No automatic cap** — the operator names one when a task is worth it (*"audit every five"*), and the default is none |
+| **The promotion review** | Below. Suggested cadence: around every twenty logged decisions — **a suggestion the operator acts on, not a clock this role watches** |
+| **A full pass, for any reason** | The operator's judgement is a sufficient trigger and needs no justification to this role |
 
 ## What it checks — and nothing else
 
@@ -91,9 +128,10 @@ checked, and *"I checked everything"* is not falsifiable.
 
 ## The saturation review — fires whenever an axiom set changes
 
-**Any addition, edit or retirement in any axiom department fires this immediately**, and it
-reads **every axiom in every department together** — company, instance, project — not the entry
-that changed.
+**Any addition, edit or retirement in any axiom department fires this immediately** — not as a
+second trigger, but because an axiom department *is* a structural file, so the single condition
+above already caught it. It reads **every axiom in every department together** — company,
+instance, project — not the entry that changed.
 
 The reason is arithmetic: a set saturates one entry at a time, and no single addition ever looks
 like the one that broke it. **The only moment the interaction is visible is the moment something
@@ -117,9 +155,11 @@ can see, since it is the only reading that holds all of them at once.
 
 ## The promotion review — a second firing, on a different clock
 
-Fires **every twenty new decisions in the log, or whenever the operator calls it.** Not per
-task: the question is not whether a round complied, but **whether the axiom set still matches
-the work being done.** It reads the decisions logged since the previous review, and looks in
+**Runs only when the operator calls it.** Not per task and not on a clock: the question is not
+whether a round complied, but **whether the axiom set still matches the work being done**, and
+that question does not get a better answer for being asked on schedule. Around twenty new
+decisions is the cadence worth aiming at — **as something the operator decides, not something
+this role counts toward.** It reads the decisions logged since the previous review, and looks in
 three directions.
 
 **Upward — what is missing.** A pattern in three or more decisions, none of which cite an axiom,

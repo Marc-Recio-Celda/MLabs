@@ -82,12 +82,23 @@ def load_adapter(path):
             "sources": sources, "path": str(p)}
 
 
+def source_root(root, spec):
+    """A source may declare its own root; the model honours it and so must this.
+
+    It did not until 2026-08-18, so the skills source — the only one with its own
+    root, and the whole reason the field exists — reported zero files here and never
+    entered the change stamp. Editing a skill changed nothing on the page.
+    """
+    return (root / spec["root"]).resolve() if spec.get("root") else root
+
+
 def resolve(root, spec):
     """Files for one source, confined to the adapter's root.
 
     A source is one path or a glob — the glob is what lets a view be assembled
     across notes rather than named file by file.
     """
+    root = source_root(root, spec)
     if spec.get("path"):
         candidates = [root / spec["path"]]
     else:
@@ -103,34 +114,6 @@ def resolve(root, spec):
             continue
         out.append(r)
     return out
-
-
-def read_sources(adapter):
-    root = adapter["root"]
-    view = []
-    for spec in adapter["sources"]:
-        files = resolve(root, spec)
-        parts = []
-        for f in files:
-            try:
-                parts.append({
-                    "name": f.name,
-                    "rel": str(f.relative_to(root)),
-                    "mtime": f.stat().st_mtime,
-                    "text": f.read_text(encoding="utf-8", errors="replace"),
-                })
-            except OSError as e:
-                parts.append({"name": f.name, "rel": str(f), "mtime": 0,
-                              "text": f"*(unreadable: {e})*"})
-        view.append({
-            "label": spec["label"],
-            "kind": spec["kind"],
-            "open": bool(spec.get("open", False)),
-            "missing": not parts,
-            "wanted": spec.get("path") or spec.get("glob"),
-            "files": parts,
-        })
-    return view
 
 
 def stamp(adapter):
@@ -164,8 +147,9 @@ def make_handler(adapter):
                     return
                 self._send(200, PAGE.read_text(encoding="utf-8"), "text/html; charset=utf-8")
             elif path == "/api/model":
-                # The typed model, which is what every view renders. /api/view below
-                # stays for the raw text a detail pane shows on demand.
+                # The typed model, which is what every view renders. A second endpoint
+                # served raw file text until 2026-08-18; nothing ever fetched it, so it
+                # went — no named consumer, no entry.
                 try:
                     # Re-read the model from disk like everything else here does. It
                     # was imported once at startup until 2026-08-18, so editing the
@@ -186,9 +170,6 @@ def make_handler(adapter):
                     return
                 ctype = mimetypes.guess_type(f.name)[0] or "text/plain"
                 self._send(200, f.read_text(encoding="utf-8"), f"{ctype}; charset=utf-8")
-            elif path == "/api/view":
-                body = json.dumps({"title": adapter["title"], "sources": read_sources(adapter)})
-                self._send(200, body, "application/json")
             elif path == "/api/stamp":
                 self._send(200, json.dumps({"stamp": stamp(adapter)}), "application/json")
             else:

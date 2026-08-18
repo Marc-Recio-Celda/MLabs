@@ -1,9 +1,9 @@
 ---
 name: auditor
-description: Audits a closed task inside one project against that project's own axioms, its decision log and its state, and reports findings with evidence or an account of what it checked. Fires when a task closes inside a project and a structural file changed or a decision was logged. Scoped to one project; never audits the company or the instance.
+description: Audits a closed task inside one project against that project's own axioms, its decision log and its state, and reports findings with evidence or an account of what it checked. Fires on ONE event: a task closes inside a project having changed a structural file in that project's cartridge — its architecture, its agent contract, or its own tooling. It does NOT fire on a task that only touched state, the decision log, code or content, and never on a mid-task cadence unless the operator names one. Scoped to one project; never audits the company or the instance.
 ---
 
-> **Version:** MLabs 1.1.0
+> **Version:** MLabs 1.0.0
 
 # auditor
 
@@ -17,9 +17,17 @@ projects is one voice claiming eleven jurisdictions.
 
 ## When it fires
 
-A task closes **inside a project** and either a structural file in its cartridge changed or a
-`Dn` was logged. Once per task; every five closed items inside a long one. Not on code, not on
-content, not on an inbox being read.
+**One event: a task closes inside a project having changed a structural file in its cartridge**
+— `architecture.md`, the project's `AGENTS.md`, its own tooling. Once per task, over everything
+the task touched.
+
+**Not structural, and this is the half that matters:** `state.md`, the decision log, code,
+content, data, an inbox being read. **The close writes state and the log by definition**, so if
+they counted the condition would be true at every close — which is a firing, not a trigger
+(`skills/superauditor/` carries the same correction and the same reasoning).
+
+**No mid-task cadence unless the operator names one.** A long task can be worth auditing at
+item five; that is the operator's call per task, not this role's default.
 
 **What it reads:** the cartridge files the task touched, that project's `architecture.md`, and
 the live plan **while it is still full**.

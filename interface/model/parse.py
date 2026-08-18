@@ -49,7 +49,8 @@ def kv_block(lines, start):
 def table_rows(lines, start):
     """Rows of the first markdown table at or after `start`, keyed by header name.
 
-    Keyed, not indexed: this is the lesson `metrics.py` paid five findings for.
+    Keyed, not indexed: a positional reader returns the wrong field the moment a
+    column is added, and returns it without complaining.
     """
     i, header = start, None
     rows = []
@@ -102,6 +103,18 @@ def assign_ids(entities):
         seen[base] = n
         e["id"] = base if n == 1 else f"{base}-{n}"
     return entities
+
+
+def header_of(lines, i):
+    """The header row of the table containing line `i`, or None."""
+    j = i
+    while j >= 0 and lines[j].strip().startswith("|"):
+        j -= 1
+    j += 1
+    if j >= i:
+        return None
+    head = [c.strip() for c in lines[j].strip().strip("|").split("|")]
+    return head if head and not re.fullmatch(r"[\s:|-]+", lines[j].strip()) else None
 
 
 def clean(s):
@@ -162,11 +175,23 @@ def parse_park(path, text):
                        "project": (re.search(r"project:\s*`?([\w-]+)`?", head) or [None, section["project"]])[1],
                        "scope": (re.search(r"scope:\s*`?([\w-]+)`?", head) or [None, section["scope"]])[1]}
             continue
-        m = re.match(r"^-\s+\*\*(?P<title>.+?)\*\*\s*(?P<sep>—|·|\.)?\s*(?P<body>.*)$", line)
+        if not line.startswith("- "):
+            continue
+        # The title may wrap. Join forward until the closing ** is in view, then match.
+        # Until 2026-08-18 this required both markers on one line and SKIPPED the rest
+        # in silence — one live entry was being dropped from the model while the file
+        # printed "Nothing unplaceable".
+        joined, k = line, i
+        while "**" in joined and joined.count("**") < 2 and k + 1 < len(lines):
+            k += 1
+            joined += " " + lines[k].strip()
+        m = re.match(r"^-\s+\*\*(?P<title>.+?)\*\*\s*(?P<sep>—|·|\.)?\s*(?P<body>.*)$", joined)
         if not m:
+            probs.append(Problem(path, i + 1,
+                                 "a park bullet whose title could not be read", line))
             continue
         body = m.group("body")
-        j = i + 1
+        j = k + 1
         while j < len(lines) and lines[j].startswith("  ") and lines[j].strip():
             body += " " + lines[j].strip()
             j += 1
@@ -197,16 +222,31 @@ def parse_compass(path, text):
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if not cells or len(cells) < 3:
             continue
+        # Read by header name, not by index. This block was positional until
+        # 2026-08-18 — in the one file whose grammar states, twice, that positional
+        # reading is what five earlier findings were spent on. One inserted column
+        # shifted every field and reported nothing.
+        row = header_of(lines, i)
         if cells[0] in ("▶", "⏸", "?") or re.fullmatch(r"\d+", cells[0]):
+            g = dict(zip(row, cells)) if row and len(row) == len(cells) else {}
             ents.append({"kind": "front", "line": i + 1, "marker": cells[0],
-                         "active": cells[0] == "▶", "name": clean(cells[1]),
-                         "described_in": clean(cells[2]),
-                         "moves_when": clean(cells[3]) if len(cells) > 3 else None,
+                         "active": cells[0] == "▶",
+                         "name": clean(g.get("Front", cells[1] if len(cells) > 1 else "")),
+                         "described_in": clean(g.get("Where it is described",
+                                                     cells[2] if len(cells) > 2 else "")),
+                         "moves_when": clean(g.get("Moves when",
+                                                   cells[3] if len(cells) > 3 else None)),
                          "project": project})
+            if row and len(row) != len(cells):
+                probs.append(Problem(path, i + 1,
+                                     f"a compass row with {len(cells)} cells against a "
+                                     f"{len(row)}-column header", line))
         elif project and cells[0] not in ("Front", "") and not cells[0].startswith("---"):
+            g = dict(zip(row, cells)) if row and len(row) == len(cells) else {}
             ents.append({"kind": "front", "line": i + 1, "marker": None, "active": False,
-                         "name": clean(cells[0]), "waits_on": clean(cells[1]),
-                         "note": clean(cells[2]) if len(cells) > 2 else None,
+                         "name": clean(g.get("Front", cells[0])),
+                         "waits_on": clean(g.get("Waits on", cells[1] if len(cells) > 1 else "")),
+                         "note": clean(g.get("Note", cells[2] if len(cells) > 2 else None)),
                          "project": project})
     active = [e for e in ents if e.get("active")]
     if len(active) != 1:
@@ -300,8 +340,16 @@ def parse_skills(path, text):
         trigger, evidence = "request", "it says so explicitly"
     elif (m := re.search(r"\bfires (?:when|on|once)\b[^.]*", d)):
         trigger, evidence = "event", m.group(0).strip()
+    elif (m := re.search(r"\buse (?:at the close|whenever an?\b[^.]*changes)\b[^.]*", d)):
+        # A description naming a moment rather than a wish is an event, however it is
+        # phrased. `audit` read as a request until 2026-08-18 on "use at the close",
+        # which filed the audit door under things you call when you feel like it.
+        trigger, evidence = "event", m.group(0).strip()
     elif (m := re.search(r"\b(?:use|invoke) (?:when|it when|at|before|whenever|after|to)\b[^.]*", d)):
         trigger, evidence = "request", m.group(0).strip()
+    elif (m := re.search(r"\bwhen (?:a|an|the) \w+[^.]*", d)):
+        # It does state a condition; what it does not state is who acts on it.
+        trigger, evidence = "unclear", f"states a condition but not who acts: \u201c{m.group(0).strip()[:70]}\u201d"
     else:
         trigger, evidence = "unclear", None
     when = re.split(r"(?<=[.])\s+", desc)
@@ -332,6 +380,15 @@ def parse_adapter(adapter_path):
         if not paths:
             problems.append(Problem(src.get("path") or src.get("glob"), 0,
                                     f"source {src['label']!r} resolved to no file"))
+        # A glob reports nothing when ONE of its containers is empty — so the source
+        # may declare what it expects to find one of. Without this the Projects tab
+        # was a list of projects that have a state file, presented as the list of
+        # projects: two were missing and nothing said so.
+        for container in sorted(sroot.glob(src["expect"])) if src.get("expect") else []:
+            if container.is_dir() and not any(str(f).startswith(str(container)) for f in paths):
+                problems.append(Problem(container, 0,
+                                        f"{container.name} matches {src['expect']!r} but has no "
+                                        f"file for {src['label']!r}"))
         for f in paths:
             if not f.is_file():
                 problems.append(Problem(f, 0, f"source {src['label']!r} names a missing file"))
