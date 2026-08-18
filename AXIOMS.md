@@ -8,7 +8,7 @@
 > log, in a parseable format carrying author, date, reasoning and what was discarded. This file
 > holds neither purpose nor record: **only the rules, and each one names the clause it serves.**
 >
-> **Who touches this file.** The superauditor checks these are not violated and never edits
+> **Who touches this file.** The auditors check these are not violated and never edit
 > them. R&D proposes changes to them — this is the layer R&D works on when the work is improving
 > the company. The operator decides. Nothing here may amend `PHILOSOPHY.md`.
 >
@@ -33,7 +33,7 @@
 > lost — it stays private, which is where it was always true. Each axiom points at its origin as
 > `NEXUS:M-nn`; those pointers resolve only for the operator, and the originals never move.
 >
-> **The set is kept honest in both directions by the promotion review** (`skills/superauditor/`),
+> **The set is kept honest in both directions by the promotion review** (`skills/company-auditor/`),
 > which every twenty decisions asks what is missing, what is contradicted, and — the direction
 > that stops inflation — **what is dead**: an axiom whose violation nobody would notice.
 >

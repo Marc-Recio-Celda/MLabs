@@ -59,7 +59,7 @@ those, because the decision to close them was made when the task was written.
 
 ## 6. Close
 
-Per `open-session` §5: read every destination back from disk, fire the superauditor over the
+Per `open-session` §5: read every destination back from disk, fire the company auditor over the
 still-full plan, then empty it.
 
 **The mailbox ends empty, or with what is unresolved named explicitly.** A mailbox that goes in

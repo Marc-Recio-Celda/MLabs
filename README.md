@@ -71,7 +71,7 @@ bespoke: adopting this is not copying one company's rules, it is instantiating a
 Also here: `AGENTS.md` — who does what and when, the invariants and their checks, and the stage
 map — and `skills/`, where every employee lives. **A skill whose description names an event is a
 role**; one that names a request is a capability. The first and only hired role is
-`skills/superauditor/`, whose job is that level 2 is never quietly violated and never drifts
+`skills/company-auditor/`, whose job is that level 2 is never quietly violated and never drifts
 from level 1.
 
 Skills and templates arrive in later stages, one at a time, each accepted by a **cold-start

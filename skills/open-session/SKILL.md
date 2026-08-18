@@ -70,7 +70,7 @@ The order is the point, and getting it wrong silently disables the company's own
 
 1. Every line struck, every residue routed.
 2. **Read each destination back from disk.** *Written* is verified, never remembered (`AX-9`).
-3. **Fire the superauditor** — over the artefacts **and the live plan, which is still full.**
+3. **Fire the company auditor** — over the artefacts **and the live plan, which is still full.**
 4. **Only now empty the plan.**
 5. Print what was touched: one line per file, no pasted diffs.
 6. Move the compass.

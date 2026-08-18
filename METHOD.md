@@ -91,7 +91,7 @@ at the close"* is the same failure with a delay.
 1. Every line struck, every residue routed to a destination.
 2. **Read each destination back from disk.** *Written* is verified, never remembered (AX-9);
    the interval between "I wrote that" and "that is on disk" is where work is lost.
-3. **Then the superauditor fires** — over the artefacts *and over the live plan, which is still
+3. **Then the company auditor is invoked** — over the artefacts *and over the live plan, which is still
    full.* This is why the order matters: the plan is the only record of how the task thought,
    and emptying it first would leave the auditor reading a blank file while believing it had
    read the reasoning. **The audit precedes the erasure, always.**

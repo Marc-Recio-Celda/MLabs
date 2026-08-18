@@ -1,11 +1,11 @@
 ---
-name: superauditor
-description: Audits a closed task at company or instance level against the company's axioms and reports findings with evidence, or an account of what it checked and found nothing. Fires on ONE event: a task closes having changed a structural file — philosophy, an axiom department, the method, a binding, a skill, the allowlist, the denylist, the router, or a project's architecture. It does NOT fire on a task that only touched the live set, the logs, notes, code or content, and it does NOT fire on a task closing inside a single project, which belongs to the project's own auditor. Every other reading it can do — a mid-task check, the promotion review — happens only when the operator asks for it by name. Runs with fresh context and reads only from disk.
+name: company-auditor
+description: Audits a closed task against the company's axioms — the public structure that binds any instance and reports findings with evidence, or an account of what it checked and found nothing. **Invoked by the operator, never on its own** — the natural moment is when an active front closes, not when a task does. Runs with fresh context and reads only from disk.
 ---
 
 > **Version:** MLabs 1.0.0
 
-# superauditor
+# company-auditor
 
 > **An event-triggered skill.** What separates it from a capability is not what it does but
 > **who decides when** — its description names an event, not a request. It must never be
@@ -53,6 +53,21 @@ the pressures that cannot be retrofitted — scalability, context cost, the purp
 unchecked for exactly as long as nothing hurts. This role is the counterweight: it re-asks, at
 close, the questions the conversation demonstrably skips.
 
+## ⚠️ It no longer fires on its own — 2026-08-18
+
+**The operator turned the automatic trigger off, and the reason is measured, not felt.** Five
+firings in one session cost more context than the work they audited. A role whose own contract says
+*an auditor that fires constantly is one whose reports stop being read* had become that.
+
+**Invoke it when an active front closes**, or whenever you want it. Everything below describes what
+it does and how it reads — none of it fires by itself any more.
+
+**The cost, named because it is real:** this role existed as an event precisely so it would *never
+be convenient to skip*, and it is now convenient to skip. The compensation the operator chose is an
+interface that makes the state visible enough that skipping is a decision rather than a drift. If
+findings start arriving only from the operator noticing things, that trade failed and this line is
+the evidence to reopen it.
+
 ## When it fires
 
 **One event, and it is the only one: a task closes having changed a structural file.** Then this
@@ -81,7 +96,7 @@ that is always true is a firing wearing a trigger's clothes. The first version o
 *"a structural file changed **or a decision was logged**"*, which is that mistake twice: the
 decision log is written by the same close.
 
-**And not on a task whose whole scope is one project** — that belongs to `skills/auditor/`,
+**And not on a task whose whole scope is one project** — that belongs to `skills/project-auditor/`,
 which loads that project's own department. Two auditors on one close is the expensive one doing
 work it was not hired for.
 
@@ -209,6 +224,12 @@ Each firing writes one entry to **NEXUS's ledger** — the file NEXUS's binding
 <the report>
 ```
 
+⚠️ **The entry prefix stays `[superauditor]` and is not renamed with the role.** Six rounds of
+history already carry it and the tally greps it; renaming would make every past firing
+invisible to the command that counts them, which is the one thing the ledger exists to
+prevent. The same holds for the `Origin` column in the axiom departments — those are
+append-only records of who found what, not labels to keep current.
+
 `<N>` is the count **the operator accepts** after reading the report — the operator adjudicates
 what is genuine; the role only reports. The tally:
 
@@ -243,8 +264,8 @@ and if a tally ever counts one as the other, this role has stopped being what it
 
 **Every employee-skill keeps a log.** **This file is where the row contract
 is defined; every other auditor cites it rather than restating it** (`MLabs:AX-20` — a declared
-winner, not three copies). This role's log lives instance-side, at the path the binding declares —
-`99_SYSTEM/logs/` in the founding instance; the ledger keeps the narrative, the log keeps the
+winner, not three copies). This role's log lives instance-side, at the path the binding
+declares for employee logs; the ledger keeps the narrative, the log keeps the
 data. **State is the instance's; this file only says the log exists and what a row carries.**
 
 | Field | Contract |
