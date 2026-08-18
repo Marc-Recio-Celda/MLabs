@@ -406,6 +406,36 @@ window.navigateTo = function(viewName) {
   renderView();
 };
 
+
+// A row shows a short line and opens for the rest. Long text read in full is text
+// read once and then skipped — and the live plan is the file that most needs reading.
+function summarise(text, max = 110) {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  if (t.length <= max) return { head: t, rest: null };
+  // cut at a sentence end if one is near, else at a word
+  const dot = t.slice(0, max + 40).search(/[.;:]\s/);
+  const cut = dot > 40 ? dot + 1 : t.lastIndexOf(" ", max);
+  return { head: t.slice(0, cut > 40 ? cut : max).trim(), rest: t.slice(cut > 40 ? cut : max).trim() };
+}
+
+function expandable(text, cls = "") {
+  const { head, rest } = summarise(text);
+  if (!rest) return `<span class="${cls}">${inline(head)}</span>`;
+  return `<span class="${cls}">${inline(head)}` +
+    `<button class="more-toggle" onclick="this.parentElement.classList.toggle('open')">…</button>` +
+    `<span class="more-body">${inline(rest)}</span></span>`;
+}
+
+
+// The compass honours the project filter too. Focusing on one project means the file
+// you read to decide what is next, not only the queues.
+// A front with no project is cross-project by design and always shows: hiding it would
+// hide exactly the dependencies that belong to no single project.
+function visibleFronts() {
+  const p = STATE.frontFilterProj;
+  return !p ? STATE.fronts : STATE.fronts.filter(f => !f.project || f.project === p);
+}
+
 function renderView() {
   const main = document.getElementById("mainContent");
   if (!main) return;
@@ -751,7 +781,7 @@ function renderCockpit(container) {
               ${STATE.livePlan.map(item => `
                 <div class="plan-item-row ${item.struck ? 'completed' : ''}">
                   <span class="plan-idx">${item.index}</span>
-                  <span class="plan-text">${inline(item.text)}</span>
+                  ${expandable(item.text, "plan-text")}
                   ${item.destination ? `
                     <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'tag-discarded' : 'dest-resolved'}">
                       ${esc(item.destination)}
@@ -775,21 +805,21 @@ function renderCockpit(container) {
         <div class="cockpit-panel">
           <div class="panel-header">
             <h2><span>🧭</span> Frentes en Cola (Schedule Compass)</h2>
-            <span class="tag-pill">${STATE.fronts.length} frentes</span>
+            <span class="tag-pill">${visibleFronts().length} frentes${STATE.frontFilterProj ? ` · ${esc(STATE.frontFilterProj)}` : ""}</span>
           </div>
           <div style="display: flex; flex-direction: column; gap: 8px;">
-            ${STATE.fronts.map(f => `
+            ${visibleFronts().length ? visibleFronts().map(f => `
               <div class="plan-item-row ${f.active ? 'active-flight' : ''}" style="${f.active ? 'border-color: var(--accent-cyan); background: var(--accent-cyan-bg);' : ''}">
                 <span class="plan-idx" style="${f.active ? 'color: var(--accent-cyan); font-weight: 700;' : ''}">
                   ${f.active ? '▶' : esc(f.marker || '#')}
                 </span>
                 <div style="flex: 1;">
                   <strong style="color: var(--text-primary); font-size: 13.5px;">${inline(f.name)}</strong>
-                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${inline(f.moves_when || '')}</p>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${expandable(f.moves_when || '')}</p>
                 </div>
                 ${f.project ? `<span class="tag-pill tag-project">${esc(f.project)}</span>` : ''}
               </div>
-            `).join("")}
+            `).join("") : `<div class="empty-state">Ningún frente en ${esc(STATE.frontFilterProj)}.</div>`}
           </div>
         </div>
       </div>
@@ -1571,10 +1601,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (val === "ALL") {
       STATE.taskFilterProj = "";
       STATE.decFilterProj = "";
+      STATE.frontFilterProj = "";
     } else {
       STATE.taskFilterProj = val;
       STATE.decFilterProj = val;
-      STATE.selectedProject = val;
+      STATE.frontFilterProj = val;   // the compass too: focusing on a project means
+      STATE.selectedProject = val;   // the thing you read to decide what is next
     }
     renderView();
   });

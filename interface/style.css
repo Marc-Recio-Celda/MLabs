@@ -1955,3 +1955,13 @@ input[type="text"]:focus, textarea:focus {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* Short line first, the rest on demand. Retention is the point: text read in full is
+   text read once and then skipped, and the live plan is what most needs reading. */
+.more-toggle{background:none;border:1px solid var(--border,rgba(255,255,255,.14));color:inherit;
+  opacity:.6;border-radius:10px;font:inherit;font-size:11px;line-height:1;padding:1px 6px;
+  margin-left:6px;cursor:pointer;vertical-align:baseline}
+.more-toggle:hover{opacity:1}
+.more-body{display:none}
+.open .more-body{display:inline}
+.open .more-toggle{opacity:.35}
