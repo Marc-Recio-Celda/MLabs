@@ -3,7 +3,7 @@ name: rnd
 description: Lateral thinking against the company's own design, invoked on demand. Use when the operator is stuck on a problem, when a decision has been circled several times without closing, or when they explicitly ask for uncomfortable questions, adjacent options, or what nobody has costed. Never fires on its own.
 ---
 
-> **Version:** MLabs 1.0.0
+> **Version:** MLabs 1.1.0
 
 # rnd
 

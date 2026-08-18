@@ -1,6 +1,6 @@
 # AGENTS.md — how this company runs
 
-> **Version:** 1.0.0
+> **Version:** 1.1.0
 
 > The orchestration file: which roles exist, what each does, when each fires, and the rule that
 > governs hiring and firing. Every line here must pass two tests: *if an agent ignored it, would

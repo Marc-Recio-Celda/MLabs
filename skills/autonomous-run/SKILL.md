@@ -3,7 +3,7 @@ name: autonomous-run
 description: Executes a defined objective end to end without stopping to ask, under standing approval, and returns a full report of everything done and every choice made. Use when the operator hands over a task and says to run it to completion — building a feature, a migration, a sweep across many files, anything where stopping at every fork would cost more than it protects.
 ---
 
-> **Version:** MLabs 1.0.0
+> **Version:** MLabs 1.1.0
 
 # autonomous-run
 

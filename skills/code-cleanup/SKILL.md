@@ -3,7 +3,7 @@ name: code-cleanup
 description: Strips archaeology and private vocabulary from code before it is shared or released — comments written as changelogs, identifiers that only resolve inside the operator's knowledge base, wikilinks that resolve nowhere, and non-English text. Use before opening a pull request, before publishing a repository, after copying a module between repositories, or whenever a diff is about to be read by someone who has never seen the knowledge base.
 ---
 
-> **Version:** MLabs 1.0.0
+> **Version:** MLabs 1.1.0
 
 # code-cleanup
 

@@ -1,6 +1,6 @@
 # AXIOMS — the rules that may never be violated
 
-> **Version:** 1.0.0
+> **Version:** 1.1.0
 > the first tagged release is stage 2's exit condition (AX-20).
 
 > **Level 2 of three.** Above this file, `PHILOSOPHY.md` says what the company optimises for and

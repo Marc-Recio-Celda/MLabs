@@ -3,7 +3,7 @@ name: triage
 description: Empties the mailbox by routing every entry to a destination the operator confirms. Use when the inbox has accumulated entries, when the compass names a triage, or when an agent's findings need integrating. Also use to triage a single project's entries by filter rather than taking the whole pile.
 ---
 
-> **Version:** MLabs 1.0.0
+> **Version:** MLabs 1.1.0
 
 # triage
 

@@ -3,7 +3,7 @@ name: open-session
 description: Opens a working session over an MLabs instance and runs the loop from compass to close. Use at the start of any session on the knowledge base, a project, or the method itself — whether the operator names what they want to do or opens with nothing. Also use to close a task correctly, which is the half most sessions get wrong.
 ---
 
-> **Version:** MLabs 1.0.0
+> **Version:** MLabs 1.1.0
 
 # open-session
 

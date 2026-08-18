@@ -3,7 +3,7 @@ name: correct-exercise
 description: Reviews work the operator has already written — invoke when a finished exercise, a submitted solution, or existing code arrives to be corrected, improved, or put through a levelled code analysis; if the work does not exist yet and only a problem statement does, invoke learn instead.
 ---
 
-> **Version:** MLabs 1.0.0
+> **Version:** MLabs 1.1.0
 
 # correct-exercise
 

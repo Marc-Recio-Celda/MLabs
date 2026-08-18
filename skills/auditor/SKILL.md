@@ -3,7 +3,7 @@ name: auditor
 description: Audits a closed task inside one project against that project's own axioms, its decision log and its state, and reports findings with evidence or an account of what it checked. Fires when a task closes inside a project and a structural file changed or a decision was logged. Scoped to one project; never audits the company or the instance.
 ---
 
-> **Version:** MLabs 1.0.0
+> **Version:** MLabs 1.1.0
 
 # auditor
 

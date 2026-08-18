@@ -3,7 +3,7 @@ name: structure-project
 description: Creates a project's cartridge under the method — definition, project-scoped axioms, decision log, state, sequenced plan, agent contract and compass row — when a new project starts or when work already underway is brought under the method for the first time.
 ---
 
-> **Version:** MLabs 1.0.0
+> **Version:** MLabs 1.1.0
 
 # structure-project
 

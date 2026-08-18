@@ -1,6 +1,6 @@
 # METHOD — how work actually flows
 
-> **Version:** 1.0.0
+> **Version:** 1.1.0
 
 > **The fourth document, and the only one you use every day.** `PHILOSOPHY.md` says what this
 > company optimises for; `AXIOMS.md` what may never be violated; **this file says how work

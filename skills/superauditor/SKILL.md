@@ -3,7 +3,7 @@ name: superauditor
 description: Audits a closed task at company or instance level against the company's axioms and reports findings with evidence, or an account of what it checked and found nothing. Fires when a task closes and a structural file changed or a decision was logged, every five closed items inside a long task, whenever any axiom department changes, and every twenty logged decisions. Does NOT fire on a task closing inside a single project — that is the project's own auditor. Runs with fresh context and reads only from disk.
 ---
 
-> **Version:** MLabs 1.0.0
+> **Version:** MLabs 1.1.0
 
 # superauditor
 

@@ -3,7 +3,7 @@ name: gather
 description: Collects raw information the operator does not have and returns a cited report — reading a codebase, surveying prior art, comparing options against real sources, or answering a factual question that needs digging. Use when the next decision is blocked on facts nobody has looked up yet, and the gathering would otherwise consume the working conversation's context.
 ---
 
-> **Version:** MLabs 1.0.0
+> **Version:** MLabs 1.1.0
 
 # gather
 

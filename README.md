@@ -1,6 +1,6 @@
 # MLabs
 
-> **Version:** 1.0.0
+> **Version:** 1.1.0
 
 **A working methodology for building knowledge systems with AI agents — packaged as a company.**
 
@@ -91,7 +91,7 @@ which rules turned out to be theatre, and what breaks first.
 
 ## Status
 
-**1.0.0** — the first tagged release. Philosophy, axioms, method, orchestration and twelve
+**1.1.0** — tagged release. Philosophy, axioms, method, orchestration and fourteen
 skills. An instance pins this tag; upgrading is a deliberate act.
 
 **What it does not yet have**, declared rather than discovered: none of the invariant checks
