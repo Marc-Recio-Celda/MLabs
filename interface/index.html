@@ -106,13 +106,7 @@
           <label for="projectFilter">Filtrar por proyecto</label>
           <select id="projectFilter" class="custom-select">
             <option value="ALL">Todos los proyectos</option>
-            <option value="TFM-Autocatalogue">TFM-Autocatalogue</option>
-            <option value="autocatalogue">autocatalogue (Core)</option>
-            <option value="plantaeviz2">plantaeviz2 (Visualizer)</option>
-            <option value="SMDrop">SMDrop</option>
-            <option value="aynimd">aynimd</option>
-            <option value="Portfolio">Portfolio</option>
-            <option value="interface">interface</option>
+            <!-- the rest is filled from the model; a typed list is how this page came to offer projects that do not exist -->
           </select>
         </div>
         <div class="version-tag">
@@ -168,14 +162,7 @@
           <div class="form-group">
             <label>Proyecto asignado</label>
             <select id="taskProject" required class="custom-select">
-              <option value="TFM-Autocatalogue">TFM-Autocatalogue</option>
-              <option value="autocatalogue">autocatalogue</option>
-              <option value="plantaeviz2">plantaeviz2</option>
-              <option value="SMDrop">SMDrop</option>
-              <option value="aynimd">aynimd</option>
-              <option value="Portfolio">Portfolio</option>
-              <option value="interface">interface</option>
-              <option value="cross">cross (General / MLabs)</option>
+              <!-- filled from the model -->
             </select>
           </div>
           <div class="form-group">
@@ -195,10 +182,8 @@
         </div>
 
         <div class="form-preview-box">
-          <div class="preview-label">PREVIEW MARKDOWN GENERADO (NEXUS/99_SYSTEM/TASKS.md):</div>
-          <pre id="taskMarkdownPreview">### T62 · ... ⬜
-**project:** `TFM-Autocatalogue`
-**Why** *(Marc, 2026-08-18)*. ...</pre>
+          <div class="preview-label">PREVIEW DE LA ENTRADA</div>
+          <pre id="taskMarkdownPreview"></pre>
         </div>
 
         <div class="modal-footer">
@@ -226,14 +211,7 @@
           <div class="form-group">
             <label>Proyecto / Dominio</label>
             <select id="ideaProject" required class="custom-select">
-              <option value="TFM-Autocatalogue">TFM-Autocatalogue</option>
-              <option value="autocatalogue">autocatalogue</option>
-              <option value="plantaeviz2">plantaeviz2</option>
-              <option value="SMDrop">SMDrop</option>
-              <option value="aynimd">aynimd</option>
-              <option value="Portfolio">Portfolio</option>
-              <option value="interface">interface</option>
-              <option value="MLabs">MLabs (Metodología)</option>
+              <!-- filled from the model -->
             </select>
           </div>
           <div class="form-group">

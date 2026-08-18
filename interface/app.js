@@ -1,5 +1,5 @@
 // MLabs & NEXUS Operations Cockpit Prototype v3.0
-// Features: Overview & Infographic, Complete 7-Project Topology (including autocatalogue & plantaeviz2),
+// Views render entirely from /api/model; this file names no instance.,
 // Task Lifecycle, CheatSheet, Modals, Scratchpad.
 
 const STORAGE_KEYS = {
@@ -9,296 +9,22 @@ const STORAGE_KEYS = {
 };
 
 // Initial Core Data
-const DATA = {
-  activeFront: {
-    title: "The interface — the live set becomes somewhere a human works, not a pile they read",
-    project: "interface",
-    movesWhen: "v1 renders the live set read-only from one command; v2 opens when write boundary is built",
-    describedIn: "98_PROJECTS/interface/nexus/"
-  },
-  
-  projects: [
-    {
-      id: "TFM-Autocatalogue",
-      name: "TFM-Autocatalogue",
-      tagline: "Extracción y clasificación automatizada de evidencia funcional para genes de Vitis vinifera",
-      phase: "Phase 4 — Execution",
-      status: "ACTIVE",
-      progressPct: 88,
-      lastUpdated: "2026-07-30",
-      integratedThrough: "D92 · 2026-07-30",
-      repo: "git@github.com:Marc-Recio-Celda/autocatalogue.git",
-      nextAction: "Finalizar B8.6 (entrega uniforme e integridad de paquetes en csv_results/) y preparar defensa.",
-      stats: { decisions: 92, blocksTotal: 10, blocksDone: 8, papers: "12 gold" },
-      blocks: [
-        { id: "B0", name: "Setup inicial & Gate 4", status: "completed", date: "2026-04-23", note: "verify_b0.py 5/5 green" },
-        { id: "B1", name: "Corpus & Reading Framework", status: "completed", date: "2026-04-30", note: "12 papers gold calibrados" },
-        { id: "B2", name: "Benchmark & Pinning", status: "completed", date: "2026-05-15", note: "Pinning de gpt-oss:120b" },
-        { id: "B3", name: "Pipeline Extractor Texto", status: "completed", date: "2026-06-02", note: "PDF a Markdown con tablas" },
-        { id: "B4", name: "Recall Gen + ID", status: "completed", date: "2026-06-20", note: "Candidate JSON con Gate 1" },
-        { id: "B5", name: "Clasificación Booleana", status: "completed", date: "2026-07-10", note: "10 flags -> Escala Navarro-Payá" },
-        { id: "B6", name: "Extracción Funcional", status: "completed", date: "2026-07-22", note: "Extractor local en GPU" },
-        { id: "B7", name: "Equivalencias T2T", status: "completed", date: "2026-07-28", note: "Resolución symbol <-> accession" },
-        { id: "B8", name: "Curation UI & API", status: "active", date: "2026-07-30", note: "B8.6 en curso hoy." },
-        { id: "B9", name: "Memoria TFM & Entrega", status: "pending", date: "2026-09", note: "Redacción final y defensa" }
-      ],
-      activeBlockDetails: {
-        blockId: "B8",
-        subtasks: [
-          { name: "B8.1: API local en FastAPI", status: "done", ref: "D87" },
-          { name: "B8.2 - B8.5: Flujo completo Curation Web", status: "done", ref: "D92" },
-          { name: "B8.6: Entrega uniforme e integridad de paquetes", status: "inflight", ref: "D93" }
-        ]
-      }
-    },
-    {
-      id: "autocatalogue",
-      name: "autocatalogue (Core)",
-      tagline: "Motor NLP y CLI modular de extracción de entidades genómicas y validación funcional",
-      phase: "Phase 4 — Core NLP",
-      status: "ACTIVE",
-      progressPct: 90,
-      lastUpdated: "2026-08-01",
-      integratedThrough: "D48 · 2026-08-01",
-      repo: "git@github.com:Marc-Recio-Celda/autocatalogue.git",
-      nextAction: "Merge de esquemas unificados hacia plantaeviz2 y estandarización de payloads CSV.",
-      stats: { decisions: 48, blocksTotal: 6, blocksDone: 5, papers: "12 gold" },
-      blocks: [
-        { id: "B1", name: "Parser PDF & Tablas", status: "completed", date: "2026-05-01", note: "Extracción estructurada" },
-        { id: "B2", name: "Named Entity Recognition", status: "completed", date: "2026-05-20", note: "Detección de símbolos y mutantes" },
-        { id: "B3", name: "Taxonomy & Normalization", status: "completed", date: "2026-06-15", note: "Mapeo a ontologías NCBI" },
-        { id: "B4", name: "Clasificación Semántica", status: "completed", date: "2026-07-05", note: "Evaluación booleana de evidencia" },
-        { id: "B5", name: "CLI & Exportador CSV/JSON", status: "completed", date: "2026-07-25", note: "Outputs reproducibles con checksums" },
-        { id: "B6", name: "Integración plantaeviz2", status: "active", date: "2026-08-18", note: "Preparando contrato de datos para visualización" }
-      ],
-      activeBlockDetails: {
-        blockId: "B6",
-        subtasks: [
-          { name: "B6.1: Validación de esquemas JSON compartidos", status: "inflight", ref: "D49" },
-          { name: "B6.2: Adaptador para grafos de coexpresión", status: "pending", ref: "D50" }
-        ]
-      }
-    },
-    {
-      id: "plantaeviz2",
-      name: "plantaeviz2 (Visualizer)",
-      tagline: "Visualizador interactivo de transcriptómica vegetal, redes génicas y coexpresión en Vitis vinifera",
-      phase: "Phase 3 — Interactive Network",
-      status: "ACTIVE",
-      progressPct: 70,
-      lastUpdated: "2026-08-15",
-      integratedThrough: "D24 · 2026-08-15",
-      repo: "git@github.com:Marc-Recio-Celda/plantaeviz2.git",
-      nextAction: "Frente #2 de Schedule.md: Merge autocatalogue -> plantaeviz2 cuando respondan TA-2 y M1.5.",
-      stats: { decisions: 24, blocksTotal: 7, blocksDone: 5, papers: "—" },
-      blocks: [
-        { id: "B0", name: "Arquitectura Visual", status: "completed", date: "2026-03-10", note: "Lienzo WebGL para grafos moleculares" },
-        { id: "B1", name: "Carga de Matrices de Expresión", status: "completed", date: "2026-04-12", note: "Soporte para datasets RNA-Seq" },
-        { id: "B2", name: "Layout Fuerza-Dirigida", status: "completed", date: "2026-05-18", note: "Agrupamiento de clusters funcionales" },
-        { id: "B3", name: "Filtros por Órgano/Estrés", status: "completed", date: "2026-06-22", note: "Cálculo de coeficientes Pearson" },
-        { id: "B4", name: "Capa de Evidencia Funcional", status: "completed", date: "2026-07-20", note: "Tooltip enriquecido con papers" },
-        { id: "B5", name: "Conexión API autocatalogue", status: "active", date: "2026-08-18", note: "En espera de validación de gates" },
-        { id: "B6", name: "Exportación Vectorial & SVG", status: "pending", date: "2026-09-05", note: "Descargas en alta resolución" }
-      ],
-      activeBlockDetails: {
-        blockId: "B5",
-        subtasks: [
-          { name: "B5.1: Ingesta de resultados curados en tiempo real", status: "inflight", ref: "D25" },
-          { name: "B5.2: Filtro por escala de confianza Navarro-Payá", status: "pending", ref: "D26" }
-        ]
-      }
-    },
-    {
-      id: "SMDrop",
-      name: "SMDrop",
-      tagline: "Sistema inteligente de optimización de riego agrícola basado en Reinforcement Learning e IoT",
-      phase: "Phase 5 — v1 Closed / v2 Planning",
-      status: "PAUSED",
-      progressPct: 75,
-      lastUpdated: "2026-07-26",
-      integratedThrough: "D32 · 2026-07-26",
-      repo: "git@github.com:Marc-Recio-Celda/SMDrop.git",
-      nextAction: "Comenzar v2 — Piloto de campo y calibración de actuadores en zona real (B7).",
-      stats: { decisions: 32, blocksTotal: 8, blocksDone: 6, papers: "2 patentes" },
-      blocks: [
-        { id: "B0", name: "Setup Inicial IoT", status: "completed", date: "2026-02-28", note: "Arquitectura base" },
-        { id: "B1", name: "Ingesta Meteorológica", status: "completed", date: "2026-03-15", note: "Simulador Penman-Monteith" },
-        { id: "B2", name: "Motor RL & Logging", status: "completed", date: "2026-04-05", note: "Capa agronómica segura" },
-        { id: "B3", name: "Dashboards & InfluxDB", status: "completed", date: "2026-05-10", note: "Telemetría en vivo" },
-        { id: "B4", name: "Pipeline Decisión", status: "completed", date: "2026-06-01", note: "Orquestador de riego" },
-        { id: "B5", name: "Validación Agronómica", status: "completed", date: "2026-07-15", note: "Test históricos" },
-        { id: "B6", name: "Cierre v1 & Docs", status: "completed", date: "2026-07-26", note: "v1 congelada" },
-        { id: "B7", name: "Piloto en Campo", status: "pending", date: "2026-10", note: "Despliegue hardware" }
-      ],
-      activeBlockDetails: {
-        blockId: "B7",
-        subtasks: [
-          { name: "B7.1: Parcela piloto LoRa", status: "pending", ref: "D33" }
-        ]
-      }
-    },
-    {
-      id: "aynimd",
-      name: "aynimd",
-      tagline: "Motor tipográfico y conversor de PDFs científicos a Markdown enriquecido con OCR de fórmulas",
-      phase: "Phase 4 — Final Sweep",
-      status: "ACTIVE",
-      progressPct: 92,
-      lastUpdated: "2026-08-04",
-      integratedThrough: "D34 · 2026-08-04",
-      repo: "git@github.com:Marc-Recio-Celda/aynimd.git",
-      nextAction: "Revisión del barrido final: 189 fórmulas emitidas vs 193 retenidas en 20 documentos.",
-      stats: { decisions: 34, blocksTotal: 5, blocksDone: 4, papers: "20 docs test" },
-      blocks: [
-        { id: "B0", name: "Arquitectura Conversor", status: "completed", date: "2026-06-10", note: "AST de bloques" },
-        { id: "B1", name: "Parser LaTeX / Pix2Tex", status: "completed", date: "2026-06-28", note: "Extracción fórmulas" },
-        { id: "B2", name: "Layout & CSS", status: "completed", date: "2026-07-18", note: "Temas adaptativos" },
-        { id: "B3", name: "Retención Fórmulas", status: "active", date: "2026-08-04", note: "Barrido 816 págs" },
-        { id: "B4", name: "Release v1.0.0 & CLI", status: "pending", date: "2026-08-25", note: "PyPI release" }
-      ],
-      activeBlockDetails: {
-        blockId: "B3",
-        subtasks: [
-          { name: "B3.2: Ajuste pix2tex", status: "inflight", ref: "D34" }
-        ]
-      }
-    },
-    {
-      id: "Portfolio",
-      name: "Portfolio",
-      tagline: "Vitrinas públicas interactivas y documentación de proyectos para Marc Recio Celda",
-      phase: "Phase 4 — Execution",
-      status: "ACTIVE",
-      progressPct: 60,
-      lastUpdated: "2026-08-04",
-      integratedThrough: "D11 · 2026-08-04",
-      repo: "git@github.com:Marc-Recio-Celda/Portfolio.git",
-      nextAction: "Finalizar cambio de nombre de rama a master en GitHub y revisión de textos en inglés (B5).",
-      stats: { decisions: 11, blocksTotal: 6, blocksDone: 3, papers: "—" },
-      blocks: [
-        { id: "B1", name: "Arquitectura Estática", status: "completed", date: "2026-07-01", note: "HTML/CSS responsive" },
-        { id: "B2", name: "Casos de Estudio TFM/SMDrop", status: "completed", date: "2026-07-20", note: "Chuletas interactivas" },
-        { id: "B3", name: "Sistema Multi-idioma", status: "completed", date: "2026-07-30", note: "Traducciones es/en" },
-        { id: "B4", name: "Lighthouse 100/100", status: "completed", date: "2026-08-02", note: "Performance top" },
-        { id: "B5", name: "Revisión Copy Inglés", status: "active", date: "2026-08-04", note: "En revisión" },
-        { id: "B6", name: "Deploy Dominio Final", status: "pending", date: "2026-08-30", note: "Publicación CDN" }
-      ],
-      activeBlockDetails: {
-        blockId: "B5",
-        subtasks: [
-          { name: "B5.1: Proofreading secciones", status: "inflight", ref: "D10" }
-        ]
-      }
-    },
-    {
-      id: "interface",
-      name: "Operations Dashboard",
-      tagline: "Interfaz visual para navegar el centro de operaciones (NEXUS) en tiempo real con cero fatiga mental",
-      phase: "Phase 2 — UI/UX Redesign",
-      status: "ACTIVE",
-      progressPct: 50,
-      lastUpdated: "2026-08-18",
-      integratedThrough: "D5 · 2026-08-18",
-      repo: "git@github.com:Marc-Recio-Celda/MLabs.git",
-      nextAction: "Alinear prototipo interactivo con el parser de Claude Code y preparar v2 con filtros avanzados.",
-      stats: { decisions: 5, blocksTotal: 4, blocksDone: 2, papers: "—" },
-      blocks: [
-        { id: "B1", name: "Servidor & Parser v1", status: "completed", date: "2026-08-18", note: "Python stdlib sin build" },
-        { id: "B2", name: "Vistas Base & Polling", status: "completed", date: "2026-08-18", note: "Live sync cada 2s" },
-        { id: "B3", name: "Rediseño UI Cockpit", status: "active", date: "2026-08-18", note: "Steppers, Overview y CheatSheet" },
-        { id: "B4", name: "Límite de Escritura v2", status: "pending", date: "2026-09", note: "API de mutaciones" }
-      ],
-      activeBlockDetails: {
-        blockId: "B3",
-        subtasks: [
-          { name: "B3.1: Prototipo visual completo", status: "done", ref: "D4" },
-          { name: "B3.2: Portada MLabs y ciclo de tareas", status: "done", ref: "D5" }
-        ]
-      }
-    }
-  ],
+// ─────────────────────────────────────────────────────────────────────────────
+// The model, from the server. Everything below renders from this.
+//
+// This was a 377-line hand-written literal until 2026-08-18 — which is why the page
+// showed 6 skills against 14 on disk, omitted two projects that exist, and offered a
+// tab reading "Decisiones (92)" over a list of 2. A view that types its own data is
+// a screenshot of a moment that has already passed.
+//
+// Shape is unchanged on purpose: the renderers below are Gemini's and are kept whole.
+// This only fills them from /api/model instead of from memory.
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // Tasks List with Lifecycle Support
-  tasks: [
-    { 
-      id: "T61", 
-      project: "TFM-Autocatalogue", 
-      title: "Implementar comprobación de hashes en descarga de paquetes", 
-      status: "🔨", 
-      why: "Garantizar la integridad de los artefactos generados en csv_results/.", 
-      author: "Marc", 
-      date: "2026-08-18",
-      comments: [
-        { author: "Marc", date: "2026-08-18", text: "Comprobado SHA256 en salida de zip, falta conectar la verificación en el frontend de curación." }
-      ]
-    },
-    { 
-      id: "T60", 
-      project: "interface", 
-      title: "Diseñar prototipo visual con steppers de bloques y CheatSheet", 
-      status: "✅", 
-      why: "Facilitar el seguimiento del estado de la empresa sin fatiga mental.", 
-      author: "Marc", 
-      date: "2026-08-18",
-      comments: [
-        { author: "Antigravity", date: "2026-08-18", text: "Prototipo interactivo verificado con éxito en el navegador con live preview." }
-      ]
-    },
-    { 
-      id: "T59", 
-      project: "Portfolio", 
-      title: "Completar revisión de textos técnicos en inglés", 
-      status: "⬜", 
-      why: "Garantizar calidad profesional para presentación pública.", 
-      author: "Marc", 
-      date: "2026-08-16",
-      comments: []
-    }
-  ],
-
-  // Live Plan items
-  livePlan: [
-    { index: 1, text: "Diseñar prototipo visual interactivo con Stepper de bloques y CheatSheet", struck: true, dest: "✅ resolved here" },
-    { index: 2, text: "Integrar capa de escritura interactiva (Añadir Tareas, Ideas y Apuntes rápidos)", struck: true, dest: "✅ resolved here" },
-    { index: 3, text: "Añadir ciclo de vida de tareas: comentar, completar y descartar con registro PH-3", struck: true, dest: "✅ resolved here" },
-    { index: 4, text: "Crear portada visual con infografía y arquitectura de MLabs", struck: true, dest: "✅ resolved here" },
-    { index: 5, text: "Pushear la web como parte de MLabs (actualizar .gitignore)", struck: false, dest: "in flight" }
-  ],
-
-  // Mailbox items
-  mailbox: [
-    { id: "M-109", state: "open", dest: "MLabs:AX-1", project: "TFM-Autocatalogue", title: "Validar separación de esquemas en evidencia T2T", author: "superauditor", date: "2026-08-18" },
-    { id: "M-108", state: "open", dest: "NEXUS:Schedule", project: "Portfolio", title: "Confirmar orden de subida de releases públicas", author: "operator", date: "2026-08-17" },
-    { id: "M-105", state: "resolved", dest: "D92", project: "TFM-Autocatalogue", title: "Cierre de B8.2-B8.5 validado en navegador", author: "agent", date: "2026-07-30" }
-  ],
-
-  // Ideas Park
-  ideas: [
-    { title: "Visualizador interactivo de grafos genómicos en navegador", project: "TFM-Autocatalogue", scope: "frontend", body: "Permitir hacer zoom en las conexiones de evidencia funcional entre accesiones Vitis vinifera." },
-    { title: "Generador automático de resúmenes ejecutivos para inversores", project: "SMDrop", scope: "ai", body: "Crear PDF descargable con métricas de ahorro de agua por hectárea." },
-    { title: "Conversor de fórmulas a MathML con fallback SVG", project: "aynimd", scope: "engine", body: "Mayor fidelidad de renderizado cuando KaTeX o MathJax no estén disponibles offline." },
-    { title: "Mini-servidor embebido en binario único con WebAssembly", project: "interface", scope: "architecture", body: "Cero dependencias de Python para visualización en clientes ultraligeros." }
-  ],
-
-  // Decisions sample
-  decisions: [
-    { id: "D92", project: "TFM-Autocatalogue", title: "Flujo Curation Web completo operativo en navegador", why: "Permite al investigador revisar y confirmar candidatos antes de generar el paquete final de evidencias.", author: "Marc", date: "2026-07-30", discarded: "Dejar la curación solo por línea de comandos CLI (demasiada fricción)." },
-    { id: "D87", project: "TFM-Autocatalogue", title: "API local con FastAPI integrada en paquete principal", why: "Unifica entrypoints y evita duplicación de lógica entre CLI y web.", author: "Marc", date: "2026-07-28", discarded: "Crear un microservicio separado fuera del repo." },
-    { id: "D32", project: "SMDrop", title: "Cierre formal de versión v1 de motor de riego", why: "Permite congelar la base de simulación antes de iniciar el piloto de hardware en campo.", author: "Marc", date: "2026-07-26", discarded: "Seguir iterando algoritmos sin datos reales de finca." },
-    { id: "D5", project: "interface", title: "Integración de CheatSheet y ciclo de vida de tareas", why: "Permite al operador añadir tareas, comentarlas, completarlas o descartarlas con justificación según PH-3.", author: "Marc + Antigravity", date: "2026-08-18", discarded: "Mantener la interfaz estrictamente de solo lectura sin soporte para notas rápidas." }
-  ],
-
-  // Skills
-  skills: [
-    { name: "superauditor", type: "event", summary: "Audita tareas cerradas a nivel de empresa/instancia contra los axiomas.", trigger: "Fires on close with structural change or every 5 closed items." },
-    { name: "auditor", type: "event", summary: "Audita tareas cerradas dentro del cartridge de un proyecto específico.", trigger: "Fires on close inside a single project." },
-    { name: "open-session", type: "request", summary: "Abre y orienta la sesión de trabajo desde la brújula al cierre.", trigger: "You invoke it at the start of a session." },
-    { name: "triage", type: "request", summary: "Vacía el buzón (Mailbox) enrutando cada entrada a su destino.", trigger: "You invoke it when mailbox accumulates entries." },
-    { name: "rnd", type: "request", summary: "Pensamiento lateral y preguntas incómodas contra el diseño.", trigger: "You invoke it on demand (Never fires on its own)." },
-    { name: "release-cut", type: "locked", summary: "Corta una release pública oficial, corre checks de despersonalización y taggea.", trigger: "Locked (disable-model-invocation: true)." }
-  ],
-
-  // CheatSheet Database
+let DATA = {
+  activeFront: null, projects: [], tasks: [], livePlan: [],
+  mailbox: [], ideas: [], decisions: [], skills: [],
+  problems: [], loaded: false,
   cheatsheet: [
     {
       category: "session",
@@ -323,37 +49,12 @@ const DATA = {
         }
       ]
     },
-    {
-      category: "nexus",
-      catLabel: "NEXUS",
-      groups: [
-        {
-          title: "Operations Centre Navigation",
-          desc: "Central logs and registers.",
-          cmds: [
-            { label: "View active front", code: "grep -n '| ▶ |' NEXUS/99_SYSTEM/Schedule.md", hint: "Shell" },
-            { label: "View pending mailbox", code: "grep -n '### \\[open\\]' NEXUS/99_SYSTEM/MAILBOX.md", hint: "Shell" },
-            { label: "View unplaced tasks", code: "grep -n '### T' NEXUS/99_SYSTEM/TASKS.md | grep -v 'project:'", hint: "Shell" }
-          ]
-        }
-      ]
-    },
-    {
-      category: "autocatalogue",
-      catLabel: "autocatalogue & plantaeviz2",
-      groups: [
-        {
-          title: "TFM Pipeline Execution",
-          desc: "Run paper extraction, recall, and evidence classification.",
-          cmds: [
-            { label: "Launch Curation Web UI", code: "uvicorn src.autocatalogue.api.main:app --reload --port 8000", hint: "Shell" },
-            { label: "Launch plantaeviz2 server", code: "python3 -m http.server 8080 --directory plantaeviz2/", hint: "Shell" },
-            { label: "Run single paper CLI", code: "autocatalogue-paper --pdf data/papers/test.pdf --output csv_results/", hint: "Shell" },
-            { label: "Run gold benchmark eval", code: "python3 scripts/eval/score_gold.py --gold gold.json --pred csv_results/", hint: "Shell" }
-          ]
-        }
-      ]
-    },
+    // A category of commands naming an instance's own files lived here and was
+    // removed 2026-08-18. They are instance content; M-113 routes each home to the
+    // note that owns it and has the interface collect the view.
+    // A project-specific category lived here and was removed 2026-08-18: instance
+    // content inside the public engine. M-113 routes each block home to the note that
+    // owns it, and the interface collects the view — it does not carry a copy.
     {
       category: "git",
       catLabel: "Git & Worktrees",
@@ -364,7 +65,7 @@ const DATA = {
           cmds: [
             { label: "List active worktrees", code: "git worktree list", hint: "Shell" },
             { label: "Prune stale worktrees", code: "git worktree prune", hint: "Shell" },
-            { label: "Safe subrepo status", code: "for d in NEXUS SMDrop Portfolio aynimd; do echo \"=== $d ===\"; (cd $d && git status -s); done", hint: "Shell" }
+            // a subrepo-status command was here and hard-coded the repo list
           ]
         }
       ]
@@ -387,9 +88,97 @@ const DATA = {
   ]
 };
 
+const byKind = (m, k) => (m.entities || []).filter(e => e.kind === k);
+
+function buildDATA(model) {
+  const front = byKind(model, "front").find(e => e.active) || null;
+  const states = byKind(model, "project-state");
+  const fronts = byKind(model, "front");
+
+  // A project is its state file plus whatever fronts name it. Fields the file does
+  // not carry are left null and rendered as unknown — never invented, because a
+  // progress bar with no source behind it is the drift this rewrite removes.
+  const projects = states.map(st => {
+    const mine = fronts.filter(f => f.project === st.project);
+    return {
+      id: st.project, name: st.project, tagline: st.current_phase || null,
+      phase: st.current_phase || null, status: st.released ? "released" : null,
+      progressPct: null,
+      lastUpdated: st.last_updated || null,
+      integratedThrough: st.integrated_through || null,
+      nextAction: st.next_action || null,
+      repo: null, com: null,
+      stats: { decisions: null, blocksTotal: null, blocksDone: null },
+      blocks: [],
+      fronts: mine.map(f => ({ name: f.name, waitsOn: f.waits_on || f.moves_when, active: !!f.active })),
+      raw: st,
+    };
+  });
+
+  return {
+    ...DATA,
+    loaded: true,
+    problems: model.problems || [],
+    activeFront: front && { title: front.name, movesWhen: front.moves_when, project: front.project },
+    // The queued fronts were two literal cards. They are the compass's own rows now,
+    // so a front that moves on disk moves here.
+    queuedFronts: fronts.filter(f => f.marker && !f.active)
+                        .map(f => ({ marker: f.marker, name: f.name,
+                                     project: f.project, movesWhen: f.moves_when })),
+    projects,
+    tasks: byKind(model, "task").map(e => ({
+      id: e.id_raw || e.id, project: e.project, title: e.title, status: e.status || "⬜",
+      why: e.why || null, author: e.author || null, date: e.date || null,
+      comments: e.comments || [], text: e.title,
+    })),
+    livePlan: byKind(model, "plan-item").map(e => ({
+      index: e.index, text: e.text, struck: e.struck, dest: e.destination || null,
+    })),
+    mailbox: byKind(model, "mailbox-entry").map(e => ({
+      id: e.id, state: e.state, dest: e.destination, project: e.project,
+      title: e.title, author: e.author, date: e.date,
+    })),
+    ideas: byKind(model, "idea").map(e => ({
+      title: e.title, project: e.project, scope: e.scope || null, body: e.body || "",
+    })),
+    // Decisions are not in the model yet — they are 172 entries across five formats,
+    // and converting them is P1. An empty list is the truthful answer today; four
+    // typed-in examples were not.
+    decisions: byKind(model, "decision").map(e => ({
+      id: e.id_raw || e.id, project: e.project, title: e.title,
+      why: e.why, author: e.author, date: e.date, discarded: e.discarded,
+    })),
+    skills: byKind(model, "skill").map(e => ({
+      name: e.title, type: e.trigger, summary: e.summary,
+      trigger: e.when || e.evidence || null,
+    })),
+  };
+}
+
+let __stamp = null;
+
+async function loadModel() {
+  const r = await fetch("/api/model");
+  const model = await r.json();
+  DATA = buildDATA(model);
+  if (!selectedProjectId) selectedProjectId = DATA.projects[0]?.id || null;
+  updateBadges();   // also fills the project selects from the data
+  renderView();     // repaint whatever is open, now with real numbers
+}
+
+// Polling, not a socket: every push mechanism needs a build step, and the axiom
+// forbidding one outranks the nicer mechanism.
+async function watchModel() {
+  try {
+    const s = (await (await fetch("/api/stamp")).json()).stamp;
+    if (__stamp !== null && s !== __stamp) await loadModel();
+    __stamp = s;
+  } catch (e) { /* the server stopped; the page keeps what it has */ }
+}
+
 // Global State
 let currentView = "overview";
-let selectedProjectId = "TFM-Autocatalogue";
+let selectedProjectId = null;   // set from the model on first load
 let selectedProjectTab = "roadmap";
 let activeFilter = "ALL";
 let selectedCsCat = "session";
@@ -414,6 +203,9 @@ function loadPersistedData() {
   }
 }
 
+// ⚠️ Writing to disk is P3 and its boundary is already enumerated in interface:AX-3.
+// Until it lands these keep the change on screen only — and say so — rather than
+// looking like they saved something.
 function persistTasks() {
   try {
     localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(DATA.tasks));
@@ -432,8 +224,18 @@ function navigateTo(viewName) {
 
 // App Initialization
 function initApp() {
-  loadPersistedData();
+  // No loadPersistedData(): localStorage held tasks and ideas because nothing else
+  // did. The server does now, and a browser keeping its own copy would be a second
+  // source that silently disagrees with the files. The scratchpad stays local — it
+  // is a notepad, not a record.
   updateBadges();
+  loadModel().catch(e => {
+    const main = document.querySelector("#viewContainer") || document.body;
+    main.insertAdjacentHTML("afterbegin",
+      `<div class="problems" style="margin:20px">Could not reach the model: ${e}.` +
+      ` The server may not be running, or it was started without an adapter.</div>`);
+  });
+  setInterval(watchModel, 2000);
 
   $$(".nav-item").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -481,6 +283,31 @@ function updateBadges() {
   if ($("#badgeIdeas")) $("#badgeIdeas").textContent = DATA.ideas.length;
   if ($("#badgeDecisions")) $("#badgeDecisions").textContent = DATA.decisions.length;
   if ($("#badgeSkills")) $("#badgeSkills").textContent = DATA.skills.length;
+  fillProjectSelects();
+}
+
+// The project lists come from the data, never from the markup. Typing them is how the
+// page ended up offering two projects with no cartridge while omitting two that exist.
+function fillProjectSelects() {
+  // The project lists come from the data, never from the markup. Typing them is how
+  // this page ended up offering two projects with no cartridge while omitting two
+  // that exist on disk.
+  const names = [...new Set(DATA.projects.map(p => p.id).filter(Boolean))].sort();
+  const opts = (keep, extra) =>
+    names.map(n => `<option${n === keep ? " selected" : ""}>${n}</option>`).join("") + (extra || "");
+
+  const filter = $("#projectFilter");
+  if (filter) {
+    const keep = filter.value;
+    filter.innerHTML = `<option value="ALL">Todos los proyectos</option>` + opts(keep);
+  }
+  for (const id of ["#taskProject", "#ideaProject"]) {
+    const sel = $(id);
+    if (!sel) continue;
+    const keep = sel.value;
+    sel.innerHTML = opts(keep,
+      `<option value="cross"${keep === "cross" ? " selected" : ""}>cross (general)</option>`);
+  }
 }
 
 function showToast(msg) {
@@ -512,7 +339,7 @@ function completeTask(taskId) {
   const today = new Date().toISOString().split("T")[0];
   if (!task.comments) task.comments = [];
   task.comments.push({
-    author: "Marc",
+    author: DATA.operator || "operator",
     date: today,
     text: "✅ Tarea completada y validada en sesión."
   });
@@ -546,7 +373,7 @@ function handleSaveComment(e) {
   if (!task.comments) task.comments = [];
   const today = new Date().toISOString().split("T")[0];
   task.comments.push({
-    author: "Marc",
+    author: DATA.operator || "operator",
     date: today,
     text
   });
@@ -583,7 +410,7 @@ function handleSaveDiscard(e) {
   const today = new Date().toISOString().split("T")[0];
   if (!task.comments) task.comments = [];
   task.comments.push({
-    author: "Marc",
+    author: DATA.operator || "operator",
     date: today,
     text: `⚫ Descartada (PH-3). Motivo: ${reason}`
   });
@@ -598,7 +425,7 @@ function handleSaveDiscard(e) {
 // --------------------------------------------------------------------------
 // MODALS: ADD TASK & ADD IDEA
 // --------------------------------------------------------------------------
-function openTaskModal(prefillTitle = "", prefillProject = "TFM-Autocatalogue") {
+function openTaskModal(prefillTitle = "", prefillProject = null) {
   const modal = $("#taskModal");
   if (!modal) return;
   if (prefillTitle) $("#taskTitle").value = prefillTitle;
@@ -614,13 +441,13 @@ function closeTaskModal() {
 
 function updateTaskPreview() {
   const title = $("#taskTitle")?.value || "<título de la tarea>";
-  const proj = $("#taskProject")?.value || "TFM-Autocatalogue";
+  const proj = $("#taskProject")?.value || DATA.projects[0]?.id || "cross";
   const status = $("#taskStatus")?.value || "⬜";
   const why = $("#taskWhy")?.value || "<razón técnica>";
   const today = new Date().toISOString().split("T")[0];
   const nextId = "T" + (DATA.tasks.length + 60);
 
-  const preview = `### ${nextId} · ${title} ${status}\n**project:** \`${proj}\`\n**Why** *(Marc, ${today})*. ${why}`;
+  const preview = `### ${nextId} · ${title} ${status}\n**project:** \`${proj}\`\n**Why** *(${DATA.operator || "operator"}, ${today})*. ${why}`;
   if ($("#taskMarkdownPreview")) $("#taskMarkdownPreview").textContent = preview;
 }
 
@@ -639,7 +466,7 @@ function handleCreateTask(e) {
     title,
     status,
     why,
-    author: "Marc",
+    author: DATA.operator || "operator",
     date: today,
     comments: []
   };
@@ -891,9 +718,9 @@ function renderOverview() {
           Donde vive el trabajo real: registro inmutable de decisiones con autor, fecha, justificación y alternativas descartadas.
         </div>
         <div class="tier-rules-list">
-          <div class="tier-rule-item"><span>📁</span> <strong>NEXUS/:</strong> Operaciones centrales</div>
-          <div class="tier-rule-item"><span>📦</span> <strong>98_PROJECTS/:</strong> Cartridges de proyectos</div>
-          <div class="tier-rule-item"><span>📬</span> <strong>99_SYSTEM/:</strong> Brújula, buzón y tareas</div>
+          <div class="tier-rule-item"><span>📁</span> <strong>Centro de operaciones:</strong> el estado privado de la instancia</div>
+          <div class="tier-rule-item"><span>📦</span> <strong>Cartuchos de proyecto:</strong> definición, axiomas, decisiones y estado de cada uno</div>
+          <div class="tier-rule-item"><span>📬</span> <strong>Sistema:</strong> brújula, plan vivo, buzón, tareas e ideas</div>
         </div>
       </div>
     </div>
@@ -1139,7 +966,7 @@ function renderProjectSubtabContent(proj) {
         <h3><span>🏛️</span> Configuración del Cartridge</h3>
         <div class="kv-list">
           <div class="kv-row"><span class="kv-key">Repositorio Git</span><span class="kv-val">${proj.repo}</span></div>
-          <div class="kv-row"><span class="kv-key">Cartridge Path</span><span class="kv-val">NEXUS/98_PROJECTS/${proj.id}/nexus/</span></div>
+          ${proj.raw?.file ? `<div class="kv-row"><span class="kv-key">Cartridge</span><span class="kv-val">${proj.raw.file}</span></div>` : ""}
           <div class="kv-row"><span class="kv-key">Standing State</span><span class="kv-val">state.md</span></div>
           <div class="kv-row"><span class="kv-key">Log de Decisiones</span><span class="kv-val">Decision_Log.md</span></div>
         </div>
@@ -1245,20 +1072,15 @@ function renderCockpit() {
 
           <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-top: 8px;">FRENTES EN COLA</div>
           <div class="tickets-list">
+            ${(DATA.queuedFronts || []).map(f => `
             <div class="ticket-card" style="padding: 12px;">
               <div class="ticket-top">
-                <span class="tag-pill">2</span>
-                <span style="font-weight: 600; color: #fff;">Merge autocatalogue -> plantaeviz2</span>
-                <span class="tag-pill tag-project">autocatalogue</span>
+                <span class="tag-pill">${f.marker || ""}</span>
+                <span style="font-weight: 600;">${f.name}</span>
+                ${f.project ? `<span class="tag-pill tag-project">${f.project}</span>` : ""}
               </div>
-            </div>
-            <div class="ticket-card" style="padding: 12px;">
-              <div class="ticket-top">
-                <span class="tag-pill">3</span>
-                <span style="font-weight: 600; color: #fff;">Portfolio: NEXUS 3.0 + TFM 1.0.0</span>
-                <span class="tag-pill tag-project">Portfolio</span>
-              </div>
-            </div>
+              ${f.movesWhen ? `<div class="ticket-meta">${f.movesWhen}</div>` : ""}
+            </div>`).join("") || `<div class="empty">Sin frentes en cola.</div>`}
           </div>
         </div>
       </div>

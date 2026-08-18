@@ -21,9 +21,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-PAGE = HERE / "index.html"
-if not PAGE.is_file():
-    PAGE = HERE / "app.html"
+PAGE = HERE / "index.html"     # one page file; app.html was a byte-identical copy
 
 UI = HERE / "ui"
 
@@ -149,6 +147,10 @@ def make_handler(adapter):
             elif path == "/api/model":
                 if model and adapter.get("path"):
                     try:
+                        # Re-read from disk like everything else here does. Imported
+                        # once at startup, an edited parser served a stale answer with
+                        # nothing saying anything was wrong.
+                        globals()['model'] = importlib.reload(model)
                         parsed = model.parse_adapter(adapter["path"])
                         self._send(200, parsed)
                     except Exception as e:
