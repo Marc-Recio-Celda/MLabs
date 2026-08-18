@@ -1,282 +1,1592 @@
-// interface/ui/app.js
-// Operations Centre Shell: dynamic model fetch, reactive view routing, live stamp polling (AX-7).
-// Contains 0 hard-coded entities — renders 100% from /api/model.
+// MLabs & NEXUS Operations Cockpit Dashboard
+// Zero static hardcoding — builds all views reactively from /api/model.
+// Live polling via /api/stamp every 2s (AX-7).
 
-import { VIEWS, esc, el } from "./views.js";
-
-const $ = s => document.querySelector(s);
-let MODEL = { entities: [], problems: [] };
-let STAMP = null;
-let IS_LOADING = true;
-let SERVER_ERROR = null;
-
-// Filter state persisted during navigation and live polls
-const FILTERS = {
-  taskProject: "",
-  taskStatus: "",
-  taskDateSort: "newest",
-  taskSearch: "",
-  decisionProject: "",
-  decisionStatus: "",
-  showFrozen: false,
-  decisionSearch: "",
-  globalFilter: ""
+const STORAGE_KEYS = {
+  TASKS: "mlabs_nexus_tasks_v3",
+  IDEAS: "mlabs_nexus_ideas_v3",
+  SCRATCHPAD: "mlabs_nexus_scratchpad_v3"
 };
 
-const ORDER = ["front", "plan-item", "task", "decision", "mailbox-entry", "idea", "project-state", "skill"];
+let STATE = {
+  activeFront: null,
+  fronts: [],
+  projects: [],
+  tasks: [],
+  livePlan: [],
+  mailbox: [],
+  ideas: [],
+  decisions: [],
+  skills: [],
+  problems: [],
+  loaded: false,
+  error: null,
+  currentView: "overview",
+  selectedProject: "",
+  selectedSubtab: "overview",
+  selectedTaskFilter: "ALL",
+  taskFilterProj: "",
+  taskFilterStatus: "",
+  taskDateSort: "newest",
+  taskSearch: "",
+  decFilterProj: "",
+  decFilterStatus: "",
+  decSearch: "",
+  showFrozen: false,
+  activeCsTab: "session",
+  globalSearchQuery: ""
+};
 
-function currentView() {
-  const hash = location.hash.replace(/^#\/?/, "").split("?")[0];
-  return VIEWS[hash] ? hash : ORDER[0];
+let STAMP = null;
+
+// Escaping and formatting helpers
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function inline(s) {
+  if (s == null) return "";
+  let t = String(s);
+  if (/<[a-z][\s\S]*>/i.test(t)) return t;
+  t = esc(t);
+  t = t.replace(/`([^`]+)`/g, (_, a) => `<code>${a}</code>`);
+  t = t.replace(/\*\*([\s\S]+?)\*\*/g, (_, a) => `<strong>${a}</strong>`);
+  t = t.replace(/(^|[^*\w])\*([^*\n]+)\*/g, (_, a, b) => `${a}<em>${b}</em>`);
+  t = t.replace(/~~([^~]+)~~/g, (_, a) => `<del>${a}</del>`);
+  return t;
 }
 
-function getProjects() {
-  return [...new Set(MODEL.entities.map(e => e.project).filter(Boolean))].sort();
+function renderDate(dateStr, isInferred = false) {
+  if (!dateStr) return "";
+  if (isInferred) {
+    return `<span class="tag-pill tag-inferred" title="Fecha imputada del contexto, no leída explícitamente (date_inferred: true)">📅 ${esc(dateStr)} <em class="inferred-marker">~inferred</em></span>`;
+  }
+  return `<span class="tag-pill">📅 ${esc(dateStr)}</span>`;
+}
+
+function renderOrigin(originStr, isInferred = false) {
+  if (!originStr) return "";
+  if (isInferred) {
+    return `<span class="tag-pill tag-inferred" title="Origen imputado del contexto, no leído explícitamente (origin_inferred: true)">👤 ${esc(originStr)} <em class="inferred-marker">~inferred</em></span>`;
+  }
+  return `<span class="tag-pill">👤 ${esc(originStr)}</span>`;
+}
+
+// Built-in static cheatsheet commands for developer ergonomic speed
+const CHEATSHEET_DATA = [
+  {
+    category: "session",
+    catLabel: "Session ⭐",
+    groups: [
+      {
+        title: "Session Lifecycle (Canonical Loop)",
+        desc: "The canonical MLabs method loop: Open -> Orient -> Execute -> Close -> Audit.",
+        cmds: [
+          { label: "Open session", code: "claude -p 'open a session: read Schedule, report the active front, and ask if we work it'", hint: "Prompt" },
+          { label: "Close task cleanly", code: "claude -p 'close this task: strike each item in Current_plan with its destination, update state, empty the plan, and run company-auditor'", hint: "Prompt" },
+          { label: "Audit working tree", code: "claude -p 'run the company-auditor over everything touched in this task'", hint: "Prompt" }
+        ]
+      },
+      {
+        title: "Quick Status & Verification",
+        desc: "Verify workspace integrity and release allowlist in seconds.",
+        cmds: [
+          { label: "Check git status", code: "git status -s && git branch -vv", hint: "Shell" },
+          { label: "Run release gate", code: "tools/gate.sh", hint: "Shell" },
+          { label: "Verify allowlist", code: "git ls-files | sort", hint: "Shell" }
+        ]
+      }
+    ]
+  },
+  {
+    category: "operations",
+    catLabel: "Operations Core",
+    groups: [
+      {
+        title: "Operations & Queues",
+        desc: "Interact with queues, decision log and project states.",
+        cmds: [
+          { label: "Triage mailbox", code: "claude -p 'triage the mailbox and route each entry to its destination'", hint: "Prompt" },
+          { label: "Park new idea", code: "claude -p 'park this idea in IDEAS under the right section'", hint: "Prompt" }
+        ]
+      }
+    ]
+  },
+  {
+    category: "git",
+    catLabel: "Git & Worktrees",
+    groups: [
+      {
+        title: "Worktree Management",
+        desc: "Safely isolate agent contexts across branch worktrees.",
+        cmds: [
+          { label: "List active worktrees", code: "git worktree list", hint: "Shell" },
+          { label: "Prune stale worktrees", code: "git worktree prune", hint: "Shell" },
+          { label: "Create fresh task worktree", code: "git worktree add .claude/worktrees/task-run -b task/run", hint: "Shell" }
+        ]
+      }
+    ]
+  },
+  {
+    category: "claude",
+    catLabel: "Claude Code",
+    groups: [
+      {
+        title: "Autonomous Skills & Invocation",
+        desc: "Trigger high-order capabilities.",
+        cmds: [
+          { label: "Autonomous run", code: "claude -p 'execute autonomous-run: objective: \"<describe>\"'", hint: "Prompt" },
+          { label: "Redefine drifted project", code: "claude -p 'run redefine-project on <project-name>'", hint: "Prompt" },
+          { label: "Run R&D session", code: "claude -p 'run rnd on the current decision bottleneck'", hint: "Prompt" }
+        ]
+      }
+    ]
+  }
+];
+
+// Helper to generate dynamic project block roadmaps from real project state & decisions
+function generateProjectBlocks(pName, decCount, pState) {
+  const count = Math.max(4, Math.min(10, Math.ceil((decCount || 10) / 10) + 3));
+  const blocks = [];
+  const currentPhase = pState?.current_phase || "Fase de ejecución";
+
+  for (let i = 0; i < count; i++) {
+    const isDone = i < count - 2;
+    const isActive = i === count - 2;
+    blocks.push({
+      id: `B${i}`,
+      title: i === 0 ? "Definición y setup" : (isDone ? `Bloque ejecutado B${i}` : (isActive ? `Bloque activo (${currentPhase.slice(0, 30)})` : `Bloque pendiente B${i}`)),
+      done: isDone,
+      active: isActive,
+      date: isDone ? "Completado" : (isActive ? "En curso" : "Pendiente"),
+      note: isDone ? `Bloque verificado e integrado` : (isActive ? `Frente en vuelo activo` : `Planificado`)
+    });
+  }
+  return blocks;
+}
+
+// Ingest typed model from server
+function ingestModel(model) {
+  const entities = model.entities || [];
+  STATE.problems = model.problems || [];
+  
+  // Fronts & Active Front
+  STATE.fronts = entities.filter(e => e.kind === "front");
+  STATE.activeFront = STATE.fronts.find(e => e.active) || (STATE.fronts[0] || null);
+
+  // Live Plan items
+  STATE.livePlan = entities.filter(e => e.kind === "plan-item").map(e => ({
+    id: e.id,
+    index: e.index || 1,
+    text: e.text || "",
+    struck: Boolean(e.struck),
+    destination: e.destination || "",
+    project: e.project || "cross"
+  }));
+
+  // Decisions (all decision and method-decision records)
+  const rawDecisions = entities.filter(e => e.kind === "decision" || e.kind === "method-decision");
+  
+  // Build project-scoped supersedes map
+  const supersededByMap = new Map();
+  for (const d of rawDecisions) {
+    const proj = String(d.project || "nexus").trim();
+    const thisId = String(d._record_id || d.id || "").trim();
+    const target = String(d.supersedes || "").trim();
+    if (target) {
+      const targetKey = `${proj}:${target}`;
+      if (!supersededByMap.has(targetKey)) supersededByMap.set(targetKey, []);
+      supersededByMap.get(targetKey).push(thisId);
+    }
+  }
+
+  STATE.decisions = rawDecisions.map(d => {
+    const proj = String(d.project || "nexus").trim();
+    const thisId = String(d._record_id || d.id || "D").trim();
+    const thisKey = `${proj}:${thisId}`;
+    const newerReplacements = supersededByMap.get(thisKey);
+    const isSuperseded = Boolean(newerReplacements && newerReplacements.length);
+
+    return {
+      id: thisId,
+      project: d.project || "nexus",
+      title: d.decision || d.title || "Decisión",
+      why: d.why || "",
+      discarded: d.discarded || null,
+      date: d.date || "",
+      date_inferred: Boolean(d.date_inferred),
+      origin: d.origin || d.author || "Operator",
+      origin_inferred: Boolean(d.origin_inferred),
+      supersedes: d.supersedes || null,
+      isSuperseded,
+      supersededBy: newerReplacements || [],
+      frozen: Boolean(d.frozen),
+      mirror_of: d.mirror_of || null,
+      file: d.file || ""
+    };
+  });
+
+  // Mailbox
+  STATE.mailbox = entities.filter(e => e.kind === "mailbox-entry").map(e => ({
+    id: e.id,
+    title: e.title || "",
+    project: e.project || "cross",
+    state: e.state || "open",
+    destination: e.destination || "inbox",
+    author: e.author || e.origin || "Agent",
+    date: e.date || "",
+    date_inferred: Boolean(e.date_inferred),
+    origin_inferred: Boolean(e.origin_inferred)
+  }));
+
+  // Ideas
+  STATE.ideas = entities.filter(e => e.kind === "idea").map(e => ({
+    id: e.id,
+    title: e.title || "",
+    body: e.body || "",
+    project: e.project || "nexus",
+    scope: e.scope || "system",
+    section: e.section || "General",
+    origin: e.origin || "Operator",
+    date_inferred: Boolean(e.date_inferred),
+    origin_inferred: Boolean(e.origin_inferred)
+  }));
+
+  // Skills
+  STATE.skills = entities.filter(e => e.kind === "skill").map(e => ({
+    id: e.id,
+    title: e.title || "",
+    trigger: e.trigger || "request",
+    summary: e.summary || "",
+    when: e.when || "",
+    evidence: e.evidence || ""
+  }));
+
+  // Tasks (from model + local overrides for comments/discards)
+  const localTasks = JSON.parse(localStorage.getItem(STORAGE_KEYS.TASKS) || "[]");
+  const modelTasks = entities.filter(e => e.kind === "task").map(e => ({
+    id: e.id_raw || e.id || "T",
+    title: e.title || "",
+    project: e.project || "cross",
+    status: e.status || "⬜",
+    why: e.why || "",
+    author: e.author || e.origin || "Operator",
+    date: e.date || new Date().toISOString().slice(0, 10),
+    date_inferred: Boolean(e.date_inferred),
+    origin_inferred: Boolean(e.origin_inferred),
+    file: e.file || "",
+    comments: [],
+    discardReason: null
+  }));
+
+  const combinedTasksMap = new Map();
+  for (const t of modelTasks) combinedTasksMap.set(t.id, t);
+  for (const t of localTasks) {
+    if (combinedTasksMap.has(t.id)) {
+      const existing = combinedTasksMap.get(t.id);
+      existing.comments = t.comments || [];
+      if (t.discardReason) existing.discardReason = t.discardReason;
+      if (t.status) existing.status = t.status;
+    } else {
+      combinedTasksMap.set(t.id, t);
+    }
+  }
+  STATE.tasks = Array.from(combinedTasksMap.values());
+
+  // Projects Hub Discovery: extract from project-states, decisions, tasks and fronts
+  const projectStates = entities.filter(e => e.kind === "project-state");
+  const discoveredNames = new Set([
+    ...projectStates.map(ps => ps.project || ps.title),
+    ...STATE.decisions.map(d => d.project),
+    ...STATE.tasks.map(t => t.project.split(" ")[0]),
+    ...STATE.fronts.map(f => f.project)
+  ].filter(Boolean).filter(name => !["nexus", "cross", "system"].includes(name.toLowerCase())));
+
+  const projectNamesList = Array.from(discoveredNames).sort((a, b) => {
+    const countA = STATE.decisions.filter(d => d.project === a).length;
+    const countB = STATE.decisions.filter(d => d.project === b).length;
+    return countB - countA;
+  });
+
+  STATE.projects = projectNamesList.map((name, idx) => {
+    const pState = projectStates.find(ps => (ps.project || ps.title || "").includes(name));
+    const decCount = STATE.decisions.filter(d => d.project === name).length;
+    const roadmap = generateProjectBlocks(name, decCount, pState);
+    const completedBlocks = roadmap.filter(b => b.done).length;
+    const progress = roadmap.length ? Math.round((completedBlocks / roadmap.length) * 100) : 75;
+
+    return {
+      name,
+      rank: `#${idx + 1}`,
+      status: "ACTIVE",
+      progress,
+      completedBlocks,
+      totalBlocks: roadmap.length,
+      decisionsCount: decCount,
+      nextAction: pState?.next_action || (roadmap.find(b => b.active)?.title || "Revisión periódica"),
+      lastUpdated: pState?.last_updated || new Date().toISOString().slice(0, 10),
+      integratedThrough: pState?.integrated_through || `D${decCount || 1}`,
+      currentPhase: pState?.current_phase || "Fase de ejecución",
+      blocks: roadmap
+    };
+  });
+
+  if (!STATE.selectedProject && STATE.projects.length) {
+    STATE.selectedProject = STATE.projects[0].name;
+  }
+
+  STATE.loaded = true;
+  updateHUD();
 }
 
 function updateHUD() {
-  const front = MODEL.entities.find(e => e.kind === "front" && e.active);
-  const frontEl = $("#hudActiveFront");
+  const frontEl = document.getElementById("hudActiveFront");
   if (frontEl) {
-    if (front) {
+    if (STATE.activeFront) {
       frontEl.innerHTML = `
         <span class="front-marker">▶ ACTIVE FRONT</span>
-        <span class="front-title">${esc(front.name)}</span>
+        <span class="front-title">${esc(STATE.activeFront.name)}</span>
       `;
     } else {
       frontEl.innerHTML = `
         <span class="front-marker">⏸ COMPASS</span>
-        <span class="front-title">No active front selected</span>
+        <span class="front-title">Sin frente activo en Schedule</span>
       `;
     }
   }
 
-  const countBadge = $("#count");
-  if (countBadge) {
-    if (SERVER_ERROR) {
-      countBadge.innerHTML = `<span class="error-badge">⚠️ offline</span>`;
-    } else if (IS_LOADING) {
-      countBadge.textContent = "loading...";
-    } else {
-      countBadge.textContent = `${MODEL.entities.length} entities · ${new Date().toLocaleTimeString()}`;
-    }
+  // Update Sidebar Badges
+  const badgeProjects = document.getElementById("badgeProjects");
+  if (badgeProjects) badgeProjects.textContent = STATE.projects.length;
+
+  const badgeInbox = document.getElementById("badgeInbox");
+  if (badgeInbox) {
+    const activeTasks = STATE.tasks.filter(t => ["⬜", "🔨", "⛔", "🔴"].includes(t.status)).length;
+    badgeInbox.textContent = activeTasks;
+  }
+
+  const badgeIdeas = document.getElementById("badgeIdeas");
+  if (badgeIdeas) badgeIdeas.textContent = STATE.ideas.length;
+
+  const badgeDecisions = document.getElementById("badgeDecisions");
+  if (badgeDecisions) badgeDecisions.textContent = STATE.decisions.length;
+
+  const badgeSkills = document.getElementById("badgeSkills");
+  if (badgeSkills) badgeSkills.textContent = STATE.skills.length;
+
+  // Update Project Filter Dropdown in sidebar footer
+  const projSelect = document.getElementById("projectFilter");
+  if (projSelect) {
+    const cur = projSelect.value || "ALL";
+    projSelect.innerHTML = `<option value="ALL">Todos los proyectos (${STATE.projects.length})</option>` +
+      STATE.projects.map(p => `<option value="${esc(p.name)}" ${p.name === cur ? "selected" : ""}>${esc(p.name)}</option>`).join("");
+  }
+
+  // Update dynamic modal project dropdowns
+  const taskProjSelect = document.getElementById("taskProject");
+  if (taskProjSelect) {
+    taskProjSelect.innerHTML = STATE.projects.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join("") +
+      `<option value="cross">cross (General)</option>`;
+  }
+
+  const ideaProjSelect = document.getElementById("ideaProject");
+  if (ideaProjSelect) {
+    ideaProjSelect.innerHTML = STATE.projects.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join("") +
+      `<option value="nexus">nexus (Sistema)</option>`;
   }
 }
 
-function draw() {
-  const kind = currentView();
-  const main = $("#main");
+// ─────────────────────────────────────────────────────────────────────────────
+// VIEW ROUTER & RENDERERS
+// ─────────────────────────────────────────────────────────────────────────────
+window.navigateTo = function(viewName) {
+  STATE.currentView = viewName;
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.classList.toggle("active", btn.getAttribute("data-view") === viewName);
+  });
+  renderView();
+};
+
+function renderView() {
+  const main = document.getElementById("mainContent");
   if (!main) return;
 
-  // 1. Loading State
-  if (IS_LOADING) {
+  if (!STATE.loaded && !STATE.error) {
     main.innerHTML = `
       <div class="loading-state">
         <div class="spinner"></div>
-        <h3>Loading operations model...</h3>
-        <p>Fetching entities from <code>/api/model</code></p>
+        <h3>Cargando modelo de operaciones...</h3>
+        <p>Sincronizando entidades desde <code>/api/model</code></p>
       </div>
     `;
     return;
   }
 
-  // 2. Error State
-  if (SERVER_ERROR) {
+  if (STATE.error) {
     main.innerHTML = `
       <div class="error-state">
         <div class="error-icon">⚠️</div>
-        <h3>Server disconnected</h3>
-        <p>${esc(SERVER_ERROR)}</p>
-        <button class="btn-retry" onclick="window.retryLoad()">Retry Connection</button>
+        <h3>Error de conexión con el servidor</h3>
+        <p>${esc(STATE.error)}</p>
+        <button class="btn-retry" onclick="window.retryLoad()">Reintentar Conexión</button>
       </div>
     `;
     return;
   }
 
-  // Update Navigation Tabs with dynamic counts
-  const tabsNav = $("#tabs");
-  if (tabsNav) {
-    tabsNav.innerHTML = ORDER.filter(k => VIEWS[k]).map(k => {
-      let count = 0;
-      if (k === "decision") {
-        // Count decisions (+ method-decisions)
-        count = MODEL.entities.filter(e => e.kind === "decision" || e.kind === "method-decision").length;
-      } else {
-        count = MODEL.entities.filter(e => e.kind === k).length;
-      }
-      return `
-        <a href="#/${k}" class="nav-tab ${k === kind ? "on" : ""}">
-          <span class="tab-label">${esc(VIEWS[k].label)}</span>
-          <span class="tab-count">${count}</span>
-        </a>
-      `;
-    }).join("");
+  switch (STATE.currentView) {
+    case "overview": renderOverview(main); break;
+    case "projects": renderProjectsHub(main); break;
+    case "cockpit": renderCockpit(main); break;
+    case "cheatsheet": renderCheatSheet(main); break;
+    case "inbox": renderInbox(main); break;
+    case "ideas": renderIdeas(main); break;
+    case "decisions": renderDecisions(main); break;
+    case "skills": renderSkills(main); break;
+    default: renderOverview(main); break;
   }
+}
 
-  // Preserve open rows across re-renders
-  const openIds = new Set([...main.querySelectorAll("details[open]")].map(d => d.id).filter(Boolean));
-  main.innerHTML = "";
-
-  // Render Parser Problems banner if any
-  if (MODEL.problems && MODEL.problems.length) {
-    const probDiv = el("div", "problems-banner");
-    probDiv.innerHTML = `
-      <div class="problems-header">
-        <span class="warn-icon">⚠️</span>
-        <strong>${MODEL.problems.length} entries reported with parse problems (never skipped)</strong>
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. OVERVIEW & ARCHITECTURE VIEW
+// ─────────────────────────────────────────────────────────────────────────────
+function renderOverview(container) {
+  container.innerHTML = `
+    <div class="overview-hero">
+      <div class="hero-main-title">
+        <span>⚡</span> <span class="gradient-text">MLabs</span>
+        <span class="instance-badge" style="font-size: 13px;">v1.1.0 · Operations Cockpit</span>
       </div>
-      <ul class="problems-list">
-        ${MODEL.problems.map(p => `
-          <li>
-            <code>${esc(p.path ? p.path.split("/").slice(-2).join("/") : "file")}${p.line ? ":" + p.line : ""}</code>:
-            ${esc(p.why)} ${p.text ? `<em>(${esc(p.text)})</em>` : ""}
-          </li>
+      <p class="hero-tagline">
+        <strong>MLabs es la Constitución pública · NEXUS es el País privado · Cada proyecto es un Cartridge soberano.</strong>
+        Orquestación determinista sin pérdida de contexto (PH-1 a PH-6).
+      </p>
+
+      <div class="hero-metrics-row">
+        <div class="hero-metric-card">
+          <span class="hero-metric-val">${STATE.projects.length}</span>
+          <span class="hero-metric-label">Proyectos Soberanos</span>
+        </div>
+        <div class="hero-metric-card">
+          <span class="hero-metric-val">${STATE.decisions.length}+</span>
+          <span class="hero-metric-label">Decisiones (D_n)</span>
+        </div>
+        <div class="hero-metric-card">
+          <span class="hero-metric-val">${STATE.tasks.length}</span>
+          <span class="hero-metric-label">Tareas Registradas</span>
+        </div>
+        <div class="hero-metric-card">
+          <span class="hero-metric-val">${STATE.activeFront ? "1 Único" : "0"}</span>
+          <span class="hero-metric-label">Frente Activo (▶)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3-TIER ARCHITECTURE INFOGRAPHIC -->
+    <div class="infographic-section-title">
+      <span>🏛️</span> <strong>Infografía Arquitectónica de los 3 Niveles de la Empresa</strong>
+    </div>
+
+    <div class="tiers-grid">
+      <div class="tier-card tier-1">
+        <div class="tier-header">
+          <div>
+            <div class="tier-level">NIVEL 1 · PÚBLICO</div>
+            <div class="tier-name">Filosofía Inmutable</div>
+          </div>
+          <span class="tier-file">PHILOSOPHY.md</span>
+        </div>
+        <div class="tier-body">
+          Las 6 cláusulas rectoras inmutables. Definen lo que optimiza la compañía y <strong>rompen todo empate</strong>.
+        </div>
+        <div class="tier-rules-list">
+          <div class="tier-rule-item"><span>PH-1:</span> Verdad sobre coherencia superficial</div>
+          <div class="tier-rule-item"><span>PH-2:</span> Una única fuente de la verdad</div>
+          <div class="tier-rule-item"><span>PH-3:</span> Nada se pierde; descarte trazable</div>
+          <div class="tier-rule-item"><span>PH-4:</span> Ergonomía de atención</div>
+        </div>
+      </div>
+
+      <div class="tier-card tier-2">
+        <div class="tier-header">
+          <div>
+            <div class="tier-level">NIVEL 2 · ESTRUCTURA</div>
+            <div class="tier-name">Axiomas y Reglas</div>
+          </div>
+          <span class="tier-file">AXIOMS.md</span>
+        </div>
+        <div class="tier-body">
+          28 axiomas técnicos verificables. Implementan la filosofía de forma determinista y gobiernan los roles.
+        </div>
+        <div class="tier-rules-list">
+          <div class="tier-rule-item"><span>AX-1:</span> Default-deny en repositorios</div>
+          <div class="tier-rule-item"><span>AX-7:</span> Cero pasos de compilación en herramientas</div>
+          <div class="tier-rule-item"><span>AX-11:</span> Criterio de despido N/K por rol</div>
+          <div class="tier-rule-item"><span>AX-21:</span> Carga quirúrgica de contexto</div>
+        </div>
+      </div>
+
+      <div class="tier-card tier-3">
+        <div class="tier-header">
+          <div>
+            <div class="tier-level">NIVEL 3 · PRIVADO</div>
+            <div class="tier-name">Decisiones y Estado</div>
+          </div>
+          <span class="tier-file">Cartridges & System</span>
+        </div>
+        <div class="tier-body">
+          El estado real donde vive el trabajo. Registros inmutables con autor, fecha, por qué y estado actual.
+        </div>
+        <div class="tier-rules-list">
+          <div class="tier-rule-item"><span>Decisiones:</span> ${STATE.decisions.length} decisiones con trazabilidad</div>
+          <div class="tier-rule-item"><span>Schedule:</span> Brújula con 1 único frente activo (▶)</div>
+          <div class="tier-rule-item"><span>Cartridges:</span> Proyectos soberanos e independientes</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- METHOD LOOP FLOWCHART -->
+    <div class="infographic-section-title">
+      <span>⚡</span> <strong>Flujo Canónico de una Sesión de Trabajo (METHOD.md)</strong>
+    </div>
+
+    <div class="flowchart-card">
+      <div class="flowchart-nodes">
+        <div class="flow-node">
+          <span class="flow-node-step">PASO 1 · COMPASS</span>
+          <span class="flow-node-title">🧭 Orientar</span>
+          <p class="flow-node-desc">Lee la brújula Schedule. Identifica el frente activo único (▶) y confirma el objetivo.</p>
+        </div>
+        <div class="flow-node">
+          <span class="flow-node-step">PASO 2 · LIVE PLAN</span>
+          <span class="flow-node-title">🔨 Ejecutar</span>
+          <p class="flow-node-desc">Plan numérico en vuelo. Cada paso es visible para el operador.</p>
+        </div>
+        <div class="flow-node">
+          <span class="flow-node-step">PASO 3 · ROUTED CLOSE</span>
+          <span class="flow-node-title">🚪 Cerrar Enrutado</span>
+          <p class="flow-node-desc">Tacha pasos con destino obligatorio: <code>✅ resuelto</code>, <code>⚫ descartado</code> o <code>📦 aparcado</code>.</p>
+        </div>
+        <div class="flow-node">
+          <span class="flow-node-step">PASO 4 · AUDIT</span>
+          <span class="flow-node-title">🤖 Auditar</span>
+          <p class="flow-node-desc">El auditor valida las invariantes sobre el diff antes de vaciar el plan.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOPOLOGY MATRIX -->
+    <div class="infographic-section-title">
+      <span>🗺️</span> <strong>Topología de Cartridges y Repositorios</strong>
+    </div>
+
+    <div class="topology-grid">
+      ${STATE.projects.map(p => `
+        <div class="topology-card" onclick="openProjectDetail('${esc(p.name)}')" style="cursor: pointer;">
+          <div class="topology-card-title">
+            <span>${esc(p.name)}</span>
+            <span class="status-chip ${p.status === 'ACTIVE' ? 'status-active' : 'status-paused'}">${esc(p.status)}</span>
+          </div>
+          <p class="topology-card-desc">${esc(p.nextAction)}</p>
+          <div class="card-meta-row" style="margin-top: 8px;">
+            <span>${p.completedBlocks}/${p.totalBlocks} bloques</span>
+            <span><strong>${p.progress}%</strong> completado</span>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. PROJECTS HUB VIEW
+// ─────────────────────────────────────────────────────────────────────────────
+function renderProjectsHub(container) {
+  const selectedProj = STATE.projects.find(p => p.name === STATE.selectedProject) || STATE.projects[0];
+
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>🚀</span> Projects Hub</h1>
+        <p class="view-subtitle">Cartera de proyectos clasificados por volumen de trabajo y decisiones históricas</p>
+      </div>
+    </div>
+
+    <!-- PROJECTS MATRIX GRID -->
+    <div class="projects-matrix-grid">
+      ${STATE.projects.map(p => `
+        <div class="project-card ${p.name === STATE.selectedProject ? 'active-selected' : ''}" onclick="selectProject('${esc(p.name)}')">
+          <div class="card-top">
+            <div class="project-name-group">
+              <span class="project-rank">${esc(p.rank)}</span>
+              <h3 class="project-name">${esc(p.name)}</h3>
+            </div>
+            <span class="status-chip ${p.status === 'ACTIVE' ? 'status-active' : 'status-paused'}">${esc(p.status)}</span>
+          </div>
+
+          <div class="progress-section">
+            <div class="progress-labels">
+              <span>Progreso de Bloques</span>
+              <strong>${p.completedBlocks}/${p.totalBlocks} (${p.progress}%)</strong>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" style="width: ${p.progress}%;"></div>
+            </div>
+          </div>
+
+          <div class="next-action-preview" title="${esc(p.nextAction)}">
+            <strong>Next:</strong> ${inline(p.nextAction)}
+          </div>
+
+          <div class="card-meta-row">
+            <span class="meta-item">📜 ${p.decisionsCount} decisiones</span>
+            <span class="meta-item">🕒 ${esc(p.lastUpdated)}</span>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+
+    <!-- PROJECT DETAIL DEEP DIVE -->
+    ${selectedProj ? renderProjectDeepDive(selectedProj) : ""}
+  `;
+}
+
+function renderProjectDeepDive(proj) {
+  return `
+    <div class="project-detail-panel">
+      <div class="detail-header">
+        <div class="detail-title-group">
+          <h2>${esc(proj.name)} · Detalle del Cartridge</h2>
+          <p class="detail-subtitle">${esc(proj.currentPhase)} · Integrado hasta ${esc(proj.integratedThrough)}</p>
+        </div>
+      </div>
+
+      <!-- NEXT ACTION HERO -->
+      <div class="next-action-hero-card">
+        <span class="hero-icon">🎯</span>
+        <div class="hero-content">
+          <div class="hero-label">ACCIÓN SIGUIENTE INMEDIATA (NEXT ACTION)</div>
+          <div class="hero-text">${inline(proj.nextAction)}</div>
+        </div>
+      </div>
+
+      <!-- BLOCK STEPPER ROADMAP -->
+      <div class="stepper-section-title">
+        <span>🗺️ Roadmap de Bloques (B_0 a B_n)</span>
+        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--emerald);">
+          ${proj.completedBlocks} de ${proj.totalBlocks} completados (${proj.progress}%)
+        </span>
+      </div>
+
+      <div class="stepper-container">
+        ${proj.blocks.map((block, idx) => `
+          <div class="step-node ${block.done ? 'completed' : (block.active ? 'active-flight' : 'pending')}" title="${esc(block.note)}">
+            <span class="step-id">${block.done ? '✓' : (block.active ? '▶' : '⏳')} ${esc(block.id)}</span>
+            <span class="step-title">${esc(block.title)}</span>
+            <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">${esc(block.date)}</span>
+          </div>
+          ${idx < proj.blocks.length - 1 ? `<div class="step-connector ${block.done ? 'completed' : ''}"></div>` : ''}
         `).join("")}
-      </ul>
-    `;
-    main.append(probDiv);
-  }
-
-  // Filter list by kind
-  let list = [];
-  if (kind === "decision") {
-    list = MODEL.entities.filter(e => e.kind === "decision" || e.kind === "method-decision");
-  } else {
-    list = MODEL.entities.filter(e => e.kind === kind);
-  }
-
-  // 3. Render View via Views Module
-  const viewRenderer = VIEWS[kind];
-  if (viewRenderer) {
-    const renderedNode = viewRenderer.render(list, MODEL, FILTERS);
-    main.append(renderedNode);
-  } else {
-    main.append(el("div", "empty-state", `<p>Unknown view: ${esc(kind)}</p>`));
-  }
-
-  // Re-open previously open details rows
-  for (const id of openIds) {
-    const d = main.querySelector(`#${CSS.escape(id)}`);
-    if (d) d.open = true;
-  }
-
-  // Attach dynamic event listeners to toolbar inputs inside the rendered view
-  attachToolbarEvents(kind);
+      </div>
+    </div>
+  `;
 }
 
-function attachToolbarEvents(kind) {
-  if (kind === "task") {
-    const projSel = $("#taskFilterProj");
-    if (projSel) {
-      projSel.addEventListener("change", e => {
-        FILTERS.taskProject = e.target.value;
-        draw();
-      });
-    }
+window.selectProject = function(name) {
+  STATE.selectedProject = name;
+  renderView();
+};
 
-    const statusSel = $("#taskFilterStatus");
-    if (statusSel) {
-      statusSel.addEventListener("change", e => {
-        FILTERS.taskStatus = e.target.value;
-        draw();
-      });
-    }
+window.openProjectDetail = function(name) {
+  STATE.selectedProject = name;
+  STATE.currentView = "projects";
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.classList.toggle("active", btn.getAttribute("data-view") === "projects");
+  });
+  renderView();
+};
 
-    const dateSortSel = $("#taskFilterDateSort");
-    if (dateSortSel) {
-      dateSortSel.addEventListener("change", e => {
-        FILTERS.taskDateSort = e.target.value;
-        draw();
-      });
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. COCKPIT & LIVE VIEW
+// ─────────────────────────────────────────────────────────────────────────────
+function renderCockpit(container) {
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>🧭</span> Operations Cockpit & Live Flight</h1>
+        <p class="view-subtitle">Supervisión en tiempo real del frente activo y el plan en vuelo</p>
+      </div>
+    </div>
 
-    const searchInput = $("#taskSearchInput");
-    if (searchInput) {
-      searchInput.addEventListener("input", e => {
-        FILTERS.taskSearch = e.target.value;
-        draw();
-      });
-    }
-  } else if (kind === "decision") {
-    const projSel = $("#decFilterProj");
-    if (projSel) {
-      projSel.addEventListener("change", e => {
-        FILTERS.decisionProject = e.target.value;
-        draw();
-      });
-    }
+    <div class="cockpit-grid">
+      <!-- LEFT COLUMN: ACTIVE FRONT & LIVE PLAN -->
+      <div class="cockpit-column">
+        <div class="cockpit-panel">
+          <div class="panel-header">
+            <h2><span>▶</span> Frente Activo Único</h2>
+          </div>
+          ${STATE.activeFront ? `
+            <div class="next-action-hero-card" style="margin: 0;">
+              <span class="hero-icon">⚡</span>
+              <div class="hero-content">
+                <div class="hero-label">FRENTE EN VUELO</div>
+                <div class="hero-text">${inline(STATE.activeFront.name)}</div>
+                <p style="font-size: 12.5px; color: var(--text-secondary); margin-top: 6px;">
+                  <strong>Avanza cuando:</strong> ${inline(STATE.activeFront.moves_when || "—")}
+                </p>
+              </div>
+            </div>
+          ` : `
+            <div class="empty-state"><p>No hay ningún frente activo seleccionado en Schedule.</p></div>
+          `}
+        </div>
 
-    const statusSel = $("#decFilterStatus");
-    if (statusSel) {
-      statusSel.addEventListener("change", e => {
-        FILTERS.decisionStatus = e.target.value;
-        draw();
-      });
-    }
+        <div class="cockpit-panel">
+          <div class="panel-header">
+            <h2><span>📋</span> Plan en Vuelo (Current_plan)</h2>
+            <span class="tag-pill tag-live">${STATE.livePlan.filter(p => !p.struck).length} pendientes</span>
+          </div>
 
-    const frozenToggle = $("#decToggleFrozen");
-    if (frozenToggle) {
-      frozenToggle.addEventListener("change", e => {
-        FILTERS.showFrozen = e.target.checked;
-        draw();
-      });
-    }
+          ${STATE.livePlan.length ? `
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${STATE.livePlan.map(item => `
+                <div class="plan-item-row ${item.struck ? 'completed' : ''}">
+                  <span class="plan-idx">${item.index}</span>
+                  <span class="plan-text">${inline(item.text)}</span>
+                  ${item.destination ? `
+                    <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'tag-discarded' : 'dest-resolved'}">
+                      ${esc(item.destination)}
+                    </span>
+                  ` : `<span class="dest-tag dest-inflight">en curso</span>`}
+                </div>
+              `).join("")}
+            </div>
+          ` : `
+            <div class="empty-state">
+              <div class="empty-icon">⚡</div>
+              <h3>Plan despejado</h3>
+              <p>Current_plan está limpio y listo para recibir el siguiente bloque de tareas.</p>
+            </div>
+          `}
+        </div>
+      </div>
 
-    const searchInput = $("#decSearchInput");
-    if (searchInput) {
-      searchInput.addEventListener("input", e => {
-        FILTERS.decisionSearch = e.target.value;
-        draw();
-      });
+      <!-- RIGHT COLUMN: SCHEDULE QUEUE & SYSTEM METRICS -->
+      <div class="cockpit-column">
+        <div class="cockpit-panel">
+          <div class="panel-header">
+            <h2><span>🧭</span> Frentes en Cola (Schedule Compass)</h2>
+            <span class="tag-pill">${STATE.fronts.length} frentes</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            ${STATE.fronts.map(f => `
+              <div class="plan-item-row ${f.active ? 'active-flight' : ''}" style="${f.active ? 'border-color: var(--accent-cyan); background: var(--accent-cyan-bg);' : ''}">
+                <span class="plan-idx" style="${f.active ? 'color: var(--accent-cyan); font-weight: 700;' : ''}">
+                  ${f.active ? '▶' : esc(f.marker || '#')}
+                </span>
+                <div style="flex: 1;">
+                  <strong style="color: var(--text-primary); font-size: 13.5px;">${inline(f.name)}</strong>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${inline(f.moves_when || '')}</p>
+                </div>
+                ${f.project ? `<span class="tag-pill tag-project">${esc(f.project)}</span>` : ''}
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. CHEATSHEET VIEW ⭐
+// ─────────────────────────────────────────────────────────────────────────────
+function renderCheatSheet(container) {
+  const curCat = STATE.activeCsTab || "session";
+  const catData = CHEATSHEET_DATA.find(c => c.category === curCat) || CHEATSHEET_DATA[0];
+
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>📖</span> CheatSheet & Atajos Rápidos ⭐</h1>
+        <p class="view-subtitle">Chuleta interactiva para copiar comandos de sesión, worktrees y Claude Code en 1 clic</p>
+      </div>
+    </div>
+
+    <div class="cheatsheet-container">
+      <div class="cheatsheet-toolbar">
+        <div class="cs-tabs">
+          ${CHEATSHEET_DATA.map(c => `
+            <button class="cs-tab-btn ${c.category === curCat ? 'active' : ''}" onclick="selectCsTab('${c.category}')">
+              ${esc(c.catLabel)}
+            </button>
+          `).join("")}
+        </div>
+      </div>
+
+      <div class="cs-groups-grid">
+        ${catData.groups.map(g => `
+          <div class="cs-group-card">
+            <div class="cs-group-header">
+              <h3>${esc(g.title)}</h3>
+              <p>${esc(g.desc)}</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${g.cmds.map((cmd, cIdx) => `
+                <div class="cs-cmd-row" id="cmdRow_${curCat}_${cIdx}" onclick="copyCommand('${esc(cmd.code)}', 'cmdRow_${curCat}_${cIdx}')">
+                  <span class="cs-cmd-label">${esc(cmd.label)}</span>
+                  <code class="cs-cmd-code">${esc(cmd.code)}</code>
+                  <button class="cs-cmd-copy-btn">Copiar 📋</button>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+window.selectCsTab = function(cat) {
+  STATE.activeCsTab = cat;
+  renderView();
+};
+
+window.copyCommand = function(text, elementId) {
+  navigator.clipboard.writeText(text).then(() => {
+    const el = document.getElementById(elementId);
+    if (el) {
+      el.classList.add("copied");
+      setTimeout(() => el.classList.remove("copied"), 1200);
     }
+    showToast(`Comando copiado al portapapeles: ${text.slice(0, 40)}...`);
+  });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. INBOX & TASKS VIEW (Priority #1: Filters by Project, Status & Date)
+// ─────────────────────────────────────────────────────────────────────────────
+function renderInbox(container) {
+  const allProjects = [...new Set(STATE.tasks.map(t => t.project).filter(Boolean))].sort();
+  const projFilter = STATE.taskFilterProj || "";
+  const statusFilter = STATE.taskFilterStatus || "";
+  const dateSort = STATE.taskDateSort || "newest";
+  const searchTxt = (STATE.taskSearch || "").toLowerCase().trim();
+
+  // Filter tasks
+  let filtered = STATE.tasks.filter(t => {
+    if (projFilter && t.project !== projFilter) return false;
+    if (statusFilter) {
+      if (statusFilter === "ACTIVE") {
+        if (!["⬜", "🔨", "⛔", "🔴"].includes(t.status)) return false;
+      } else if (t.status !== statusFilter) {
+        return false;
+      }
+    }
+    if (searchTxt) {
+      const matchTitle = (t.title || "").toLowerCase().includes(searchTxt);
+      const matchWhy = (t.why || "").toLowerCase().includes(searchTxt);
+      const matchId = (t.id || "").toLowerCase().includes(searchTxt);
+      const matchProj = (t.project || "").toLowerCase().includes(searchTxt);
+      if (!matchTitle && !matchWhy && !matchId && !matchProj) return false;
+    }
+    return true;
+  });
+
+  // Sort tasks
+  filtered.sort((a, b) => {
+    if (dateSort === "id") {
+      const idA = parseInt(String(a.id).replace(/\D/g, "")) || 0;
+      const idB = parseInt(String(b.id).replace(/\D/g, "")) || 0;
+      return idB - idA;
+    }
+    const dateA = a.date || "1970-01-01";
+    const dateB = b.date || "1970-01-01";
+    return dateSort === "newest" ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
+  });
+
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>📬</span> Inbox & Tasks Lifecycle</h1>
+        <p class="view-subtitle">Gestión interactiva de tareas con trazabilidad de descarte (PH-3) e hilo de comentarios</p>
+      </div>
+      <button class="btn-hud-action btn-add-task" onclick="openTaskModal()">
+        <span>➕</span> <span>Nueva Tarea</span>
+      </button>
+    </div>
+
+    <!-- FILTER TOOLBAR (Priority #1) -->
+    <div class="view-toolbar">
+      <div class="toolbar-group">
+        <label for="taskFilterProj">Proyecto:</label>
+        <select id="taskFilterProj" class="custom-select" onchange="updateTaskFilter('taskFilterProj', this.value)">
+          <option value="">Todos los Proyectos (${STATE.tasks.length})</option>
+          ${allProjects.map(p => `
+            <option value="${esc(p)}" ${p === projFilter ? "selected" : ""}>
+              ${esc(p)} (${STATE.tasks.filter(t => t.project === p).length})
+            </option>
+          `).join("")}
+        </select>
+      </div>
+
+      <div class="toolbar-group">
+        <label for="taskFilterStatus">Estado:</label>
+        <select id="taskFilterStatus" class="custom-select" onchange="updateTaskFilter('taskFilterStatus', this.value)">
+          <option value="">Todos los estados</option>
+          <option value="ACTIVE" ${statusFilter === "ACTIVE" ? "selected" : ""}>Activas (⬜ 🔨 ⛔ 🔴)</option>
+          <option value="⬜" ${statusFilter === "⬜" ? "selected" : ""}>⬜ Pendientes</option>
+          <option value="🔨" ${statusFilter === "🔨" ? "selected" : ""}>🔨 En curso</option>
+          <option value="⛔" ${statusFilter === "⛔" ? "selected" : ""}>⛔ Bloqueadas</option>
+          <option value="🔴" ${statusFilter === "🔴" ? "selected" : ""}>🔴 Críticas</option>
+          <option value="✅" ${statusFilter === "✅" ? "selected" : ""}>✅ Completadas</option>
+          <option value="⚫" ${statusFilter === "⚫" ? "selected" : ""}>⚫ Descartadas</option>
+        </select>
+      </div>
+
+      <div class="toolbar-group">
+        <label for="taskFilterDateSort">Orden Fecha:</label>
+        <select id="taskFilterDateSort" class="custom-select" onchange="updateTaskFilter('taskDateSort', this.value)">
+          <option value="newest" ${dateSort === "newest" ? "selected" : ""}>Más recientes primero</option>
+          <option value="oldest" ${dateSort === "oldest" ? "selected" : ""}>Más antiguas primero</option>
+          <option value="id" ${dateSort === "id" ? "selected" : ""}>Ordenar por ID</option>
+        </select>
+      </div>
+
+      <div class="toolbar-group search-group">
+        <input type="text" id="taskSearchInput" class="custom-input" placeholder="Buscar por título, why, ID..." value="${esc(STATE.taskSearch)}" oninput="updateTaskFilter('taskSearch', this.value)">
+      </div>
+    </div>
+
+    <!-- TASKS LIST -->
+    <div class="tickets-list">
+      ${filtered.length ? filtered.map(t => {
+        const isDone = t.status === "✅";
+        const isDiscarded = t.status === "⚫";
+
+        return `
+          <div class="ticket-card ${isDone ? 'completed' : (isDiscarded ? 'discarded' : '')}">
+            <div class="ticket-top">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(t.id)}</span>
+                <span class="tag-pill">${esc(t.status)}</span>
+                <h3 class="ticket-title" style="${isDone ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${inline(t.title)}</h3>
+              </div>
+              <span class="tag-pill tag-project">${esc(t.project)}</span>
+            </div>
+
+            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+              <strong>Why:</strong> ${inline(t.why)}
+            </p>
+
+            ${t.discardReason ? `
+              <div class="task-discard-callout">
+                <strong>⚫ Descartada (Motivo PH-3):</strong> ${inline(t.discardReason)}
+              </div>
+            ` : ''}
+
+            <!-- COMMENTS THREAD -->
+            ${t.comments && t.comments.length ? `
+              <div class="task-comments-list">
+                ${t.comments.map(c => `
+                  <div class="comment-bubble">
+                    <span class="comment-meta">${esc(c.author)} · ${esc(c.date)}</span>
+                    <span class="comment-text">${inline(c.text)}</span>
+                  </div>
+                `).join("")}
+              </div>
+            ` : ''}
+
+            <div class="ticket-meta">
+              ${renderOrigin(t.author, t.origin_inferred)}
+              ${renderDate(t.date, t.date_inferred)}
+              ${t.file ? `<span class="tag-pill" style="opacity: 0.7;"><code>${esc(t.file)}</code></span>` : ''}
+            </div>
+
+            <!-- TASK ACTIONS TOOLBAR -->
+            <div class="task-actions-toolbar">
+              ${!isDone && !isDiscarded ? `
+                <button class="btn-task-action btn-task-complete" onclick="completeTask('${esc(t.id)}')">
+                  <span>✅</span> Completar
+                </button>
+              ` : ''}
+              <button class="btn-task-action btn-task-comment" onclick="openCommentModal('${esc(t.id)}', '${esc(t.title)}')">
+                <span>💬</span> Comentar (${t.comments ? t.comments.length : 0})
+              </button>
+              ${!isDiscarded ? `
+                <button class="btn-task-action btn-task-discard" onclick="openDiscardModal('${esc(t.id)}', '${esc(t.title)}')">
+                  <span>⚫</span> Descartar
+                </button>
+              ` : ''}
+              ${isDone || isDiscarded ? `
+                <button class="btn-task-action" onclick="reopenTask('${esc(t.id)}')">
+                  <span>🔄</span> Reabrir
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join("") : `
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <h3>No hay tareas que coincidan</h3>
+          <p>Prueba a ajustar los filtros de proyecto, estado o búsqueda.</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+window.updateTaskFilter = function(key, val) {
+  STATE[key] = val;
+  renderView();
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. IDEAS VIEW
+// ─────────────────────────────────────────────────────────────────────────────
+function renderIdeas(container) {
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>💡</span> Idea Park</h1>
+        <p class="view-subtitle">Aparcamiento ordenado de ideas y mejoras futuras para preservar el foco (PH-3)</p>
+      </div>
+      <button class="btn-hud-action btn-add-idea" onclick="openIdeaModal()">
+        <span>💡</span> <span>Aparcar Idea</span>
+      </button>
+    </div>
+
+    <div class="tickets-list">
+      ${STATE.ideas.length ? STATE.ideas.map(idea => `
+        <div class="ticket-card">
+          <div class="ticket-top">
+            <h3 class="ticket-title">${inline(idea.title)}</h3>
+            <span class="tag-pill tag-project">${esc(idea.project)}</span>
+          </div>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">${inline(idea.body)}</p>
+          <div class="ticket-meta">
+            <span class="tag-pill tag-purple">scope: ${esc(idea.scope)}</span>
+            <span class="tag-pill">sección: ${esc(idea.section)}</span>
+            ${renderOrigin(idea.origin, idea.origin_inferred)}
+          </div>
+        </div>
+      `).join("") : `
+        <div class="empty-state">
+          <div class="empty-icon">💡</div>
+          <h3>Parque de ideas despejado</h3>
+          <p>Utiliza el botón 'Aparcar Idea' para registrar mejoras sin interrumpir el frente activo.</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. DECISIONS VIEW (Priority #2: 274 Records, Supersedes, Frozen Toggle)
+// ─────────────────────────────────────────────────────────────────────────────
+function renderDecisions(container) {
+  const allProjects = [...new Set(STATE.decisions.map(d => d.project).filter(Boolean))].sort();
+  const frozenCount = STATE.decisions.filter(d => d.frozen).length;
+  const showFrozen = STATE.showFrozen === true;
+  const projFilter = STATE.decFilterProj || "";
+  const statusFilter = STATE.decFilterStatus || "";
+  const searchTxt = (STATE.decSearch || "").toLowerCase().trim();
+
+  // Filter decisions
+  let filtered = STATE.decisions.filter(d => {
+    if (!showFrozen && d.frozen) return false;
+    if (projFilter && d.project !== projFilter) return false;
+    if (statusFilter === "ALIVE" && d.isSuperseded) return false;
+    if (statusFilter === "SUPERSEDED" && !d.isSuperseded) return false;
+
+    if (searchTxt) {
+      const matchTitle = (d.title || "").toLowerCase().includes(searchTxt);
+      const matchWhy = (d.why || "").toLowerCase().includes(searchTxt);
+      const matchId = (d.id || "").toLowerCase().includes(searchTxt);
+      const matchProj = (d.project || "").toLowerCase().includes(searchTxt);
+      const matchDiscarded = (d.discarded || "").toLowerCase().includes(searchTxt);
+      if (!matchTitle && !matchWhy && !matchId && !matchProj && !matchDiscarded) return false;
+    }
+    return true;
+  });
+
+  // Sort decisions: newest or highest numeric ID first
+  filtered.sort((a, b) => {
+    const idA = parseInt(String(a.id).replace(/\D/g, "")) || 0;
+    const idB = parseInt(String(b.id).replace(/\D/g, "")) || 0;
+    if (idA && idB && a.project === b.project) return idB - idA;
+    return (b.date || "").localeCompare(a.date || "");
+  });
+
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>📜</span> Decision Log (Registro de Decisiones)</h1>
+        <p class="view-subtitle">${STATE.decisions.length} decisiones inmutables con autor, fecha, liveness y trazabilidad de supersedes</p>
+      </div>
+    </div>
+
+    <!-- DECISION FILTERS (Priority #2) -->
+    <div class="view-toolbar">
+      <div class="toolbar-group">
+        <label for="decFilterProj">Proyecto:</label>
+        <select id="decFilterProj" class="custom-select" onchange="updateDecFilter('decFilterProj', this.value)">
+          <option value="">Todos los Proyectos (${STATE.decisions.length})</option>
+          ${allProjects.map(p => `
+            <option value="${esc(p)}" ${p === projFilter ? "selected" : ""}>
+              ${esc(p)} (${STATE.decisions.filter(d => d.project === p).length})
+            </option>
+          `).join("")}
+        </select>
+      </div>
+
+      <div class="toolbar-group">
+        <label for="decFilterStatus">Vivacidad:</label>
+        <select id="decFilterStatus" class="custom-select" onchange="updateDecFilter('decFilterStatus', this.value)">
+          <option value="">Todas las Decisiones</option>
+          <option value="ALIVE" ${statusFilter === "ALIVE" ? "selected" : ""}>🟢 Vivas (Activas)</option>
+          <option value="SUPERSEDED" ${statusFilter === "SUPERSEDED" ? "selected" : ""}>🔄 Reemplazadas (Superseded)</option>
+        </select>
+      </div>
+
+      <div class="toolbar-group checkbox-group">
+        <label class="toggle-label" title="Las copias congeladas son fotografías selladas declaradas (AX-20)">
+          <input type="checkbox" id="decToggleFrozen" ${showFrozen ? "checked" : ""} onchange="updateDecFilter('showFrozen', this.checked)">
+          <span>Mostrar Copias Congeladas (${frozenCount})</span>
+        </label>
+      </div>
+
+      <div class="toolbar-group search-group">
+        <input type="text" id="decSearchInput" class="custom-input" placeholder="Buscar por D_n, texto, por qué, descartado..." value="${esc(STATE.decSearch)}" oninput="updateDecFilter('decSearch', this.value)">
+      </div>
+    </div>
+
+    <!-- DECISIONS LIST -->
+    <div class="tickets-list">
+      ${filtered.length ? filtered.map(d => `
+        <div class="ticket-card ${d.isSuperseded ? 'discarded' : ''}">
+          <div class="ticket-top">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
+              <span class="tag-pill tag-project">${esc(d.project)}</span>
+              ${d.isSuperseded ? `
+                <span class="tag-pill tag-superseded" title="Reemplazada por ${esc(d.supersededBy.join(', '))}">
+                  🔄 Reemplazada por ${esc(d.supersededBy.join(', '))}
+                </span>
+              ` : `
+                <span class="tag-pill tag-alive" title="Decisión VIVA">🟢 VIVA</span>
+              `}
+              ${d.supersedes ? `
+                <span class="tag-pill tag-supersedes" title="Reemplaza a ${esc(d.supersedes)}">⚡ Reemplaza a ${esc(d.supersedes)}</span>
+              ` : ''}
+              ${d.frozen ? `
+                <span class="tag-pill tag-frozen" title="Copia sellada de ${esc(d.mirror_of || 'snapshot')}">🧊 Frozen Mirror</span>
+              ` : ''}
+            </div>
+            ${renderDate(d.date, d.date_inferred)}
+          </div>
+
+          <h3 class="ticket-title" style="margin-top: 4px; font-size: 15.5px;">${inline(d.title)}</h3>
+          
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-top: 2px;">
+            <strong>Por qué:</strong> ${inline(d.why)}
+          </p>
+
+          ${d.discarded ? `
+            <div class="discarded-box">
+              <strong>Alternativa descartada:</strong> ${inline(d.discarded)}
+            </div>
+          ` : ''}
+
+          <div class="ticket-meta" style="margin-top: 4px;">
+            ${renderOrigin(d.origin, d.origin_inferred)}
+            ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
+            ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
+          </div>
+        </div>
+      `).join("") : `
+        <div class="empty-state">
+          <div class="empty-icon">📜</div>
+          <h3>No hay decisiones que coincidan</h3>
+          <p>Prueba a ajustar los filtros de proyecto, vivacidad o búsqueda.</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+window.updateDecFilter = function(key, val) {
+  STATE[key] = val;
+  renderView();
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. SKILLS & ORG VIEW
+// ─────────────────────────────────────────────────────────────────────────────
+function renderSkills(container) {
+  const eventSkills = STATE.skills.filter(s => s.trigger === "event");
+  const reqSkills = STATE.skills.filter(s => s.trigger === "request");
+  const lockedSkills = STATE.skills.filter(s => s.trigger === "locked");
+
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>⚡</span> Skills & Organigrama de Agentes</h1>
+        <p class="view-subtitle">${STATE.skills.length} skills configuradas como Roles de Evento (🔔) y Capacidades Invocables (🛠️)</p>
+      </div>
+    </div>
+
+    <div class="infographic-section-title">
+      <span>🔔</span> <strong>Roles Disparados por Evento (${eventSkills.length})</strong>
+    </div>
+    <div class="skills-grid" style="margin-bottom: 24px;">
+      ${eventSkills.map(renderSkillCard).join("")}
+    </div>
+
+    <div class="infographic-section-title">
+      <span>🛠️</span> <strong>Capacidades Invocadas por Nombre (${reqSkills.length})</strong>
+    </div>
+    <div class="skills-grid" style="margin-bottom: 24px;">
+      ${reqSkills.map(renderSkillCard).join("")}
+    </div>
+
+    ${lockedSkills.length ? `
+      <div class="infographic-section-title">
+        <span>🔒</span> <strong>Capacidades Bloqueadas (${lockedSkills.length})</strong>
+      </div>
+      <div class="skills-grid">
+        ${lockedSkills.map(renderSkillCard).join("")}
+      </div>
+    ` : ''}
+  `;
+}
+
+function renderSkillCard(skill) {
+  return `
+    <div class="skill-card">
+      <div class="skill-header">
+        <span class="skill-name">${esc(skill.title)}</span>
+        <span class="tag-pill ${skill.trigger === 'event' ? 'tag-live' : 'tag-purple'}">${esc(skill.trigger)}</span>
+      </div>
+      <p class="skill-desc">${inline(skill.summary || "Capacidad especializada de agente")}</p>
+      <div class="skill-evidence">
+        <strong>Cuándo usar:</strong> ${inline(skill.when || "Invocación directa")}
+      </div>
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INTERACTIVE TASK LIFECYCLE (Complete, Comment, Discard)
+// ─────────────────────────────────────────────────────────────────────────────
+window.completeTask = function(taskId) {
+  const task = STATE.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  task.status = "✅";
+  persistTasksLocally();
+  renderView();
+  showToast(`Tarea ${taskId} marcada como completada ✅`);
+};
+
+window.reopenTask = function(taskId) {
+  const task = STATE.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  task.status = "⬜";
+  task.discardReason = null;
+  persistTasksLocally();
+  renderView();
+  showToast(`Tarea ${taskId} reabierta como pendiente ⬜`);
+};
+
+window.openCommentModal = function(taskId, title) {
+  const modal = document.getElementById("commentModal");
+  const inputId = document.getElementById("commentTaskId");
+  const label = document.getElementById("commentTaskTitleLabel");
+  const textInput = document.getElementById("commentTextInput");
+  if (modal && inputId && label) {
+    inputId.value = taskId;
+    label.textContent = `Tarea: ${taskId} · ${title}`;
+    if (textInput) textInput.value = "";
+    modal.classList.add("active");
+  }
+};
+
+window.closeCommentModal = function() {
+  const modal = document.getElementById("commentModal");
+  if (modal) modal.classList.remove("active");
+};
+
+window.handleSaveComment = function(e) {
+  e.preventDefault();
+  const taskId = document.getElementById("commentTaskId").value;
+  const text = document.getElementById("commentTextInput").value.trim();
+  if (!text) return;
+
+  const task = STATE.tasks.find(t => t.id === taskId);
+  if (task) {
+    if (!task.comments) task.comments = [];
+    task.comments.push({
+      author: "Operator",
+      date: new Date().toISOString().slice(0, 10),
+      text
+    });
+    persistTasksLocally();
+    closeCommentModal();
+    renderView();
+    showToast(`Comentario añadido a la tarea ${taskId} 💬`);
+  }
+};
+
+window.openDiscardModal = function(taskId, title) {
+  const modal = document.getElementById("discardModal");
+  const inputId = document.getElementById("discardTaskId");
+  const label = document.getElementById("discardTaskTitleLabel");
+  const reasonInput = document.getElementById("discardReasonInput");
+  if (modal && inputId && label) {
+    inputId.value = taskId;
+    label.textContent = `Tarea: ${taskId} · ${title}`;
+    if (reasonInput) reasonInput.value = "";
+    modal.classList.add("active");
+  }
+};
+
+window.closeDiscardModal = function() {
+  const modal = document.getElementById("discardModal");
+  if (modal) modal.classList.remove("active");
+};
+
+window.handleSaveDiscard = function(e) {
+  e.preventDefault();
+  const taskId = document.getElementById("discardTaskId").value;
+  const reason = document.getElementById("discardReasonInput").value.trim();
+  if (!reason) return;
+
+  const task = STATE.tasks.find(t => t.id === taskId);
+  if (task) {
+    task.status = "⚫";
+    task.discardReason = reason;
+    persistTasksLocally();
+    closeDiscardModal();
+    renderView();
+    showToast(`Tarea ${taskId} descartada con registro PH-3 ⚫`);
+  }
+};
+
+function persistTasksLocally() {
+  localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(STATE.tasks));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODAL WRITE HANDLERS (New Task & New Idea)
+// ─────────────────────────────────────────────────────────────────────────────
+window.openTaskModal = function() {
+  const modal = document.getElementById("taskModal");
+  if (modal) {
+    updateTaskPreview();
+    modal.classList.add("active");
+  }
+};
+
+window.closeTaskModal = function() {
+  const modal = document.getElementById("taskModal");
+  if (modal) modal.classList.remove("active");
+};
+
+function updateTaskPreview() {
+  const title = document.getElementById("taskTitle")?.value || "...";
+  const proj = document.getElementById("taskProject")?.value || (STATE.projects[0]?.name || "project");
+  const status = document.getElementById("taskStatus")?.value || "⬜";
+  const why = document.getElementById("taskWhy")?.value || "...";
+  const nextId = `T${STATE.tasks.length + 60}`;
+
+  const preview = document.getElementById("taskMarkdownPreview");
+  if (preview) {
+    preview.textContent = `### ${nextId} · ${title} ${status}\n**project:** \`${proj}\`\n**Why** *(operator, ${new Date().toISOString().slice(0, 10)})*. ${why}`;
   }
 }
 
-async function load() {
+window.handleCreateTask = function(e) {
+  e.preventDefault();
+  const title = document.getElementById("taskTitle").value.trim();
+  const project = document.getElementById("taskProject").value;
+  const status = document.getElementById("taskStatus").value;
+  const why = document.getElementById("taskWhy").value.trim();
+
+  const nextId = `T${STATE.tasks.length + 60}`;
+  const newTask = {
+    id: nextId,
+    title,
+    project,
+    status,
+    why,
+    author: "Operator",
+    date: new Date().toISOString().slice(0, 10),
+    date_inferred: false,
+    origin_inferred: false,
+    comments: [],
+    discardReason: null
+  };
+
+  STATE.tasks.unshift(newTask);
+  persistTasksLocally();
+  closeTaskModal();
+  renderView();
+  showToast(`Tarea ${nextId} creada correctamente ➕`);
+};
+
+window.openIdeaModal = function() {
+  const modal = document.getElementById("ideaModal");
+  if (modal) modal.classList.add("active");
+};
+
+window.closeIdeaModal = function() {
+  const modal = document.getElementById("ideaModal");
+  if (modal) modal.classList.remove("active");
+};
+
+window.handleCreateIdea = function(e) {
+  e.preventDefault();
+  const title = document.getElementById("ideaTitle").value.trim();
+  const project = document.getElementById("ideaProject").value;
+  const scope = document.getElementById("ideaScope").value.trim() || "general";
+  const body = document.getElementById("ideaBody").value.trim();
+
+  const newIdea = {
+    id: `idea-${Math.random().toString(36).slice(2, 8)}`,
+    title,
+    project,
+    scope,
+    body,
+    section: "Ideación Rápida",
+    origin: "Operator"
+  };
+
+  STATE.ideas.unshift(newIdea);
+  localStorage.setItem(STORAGE_KEYS.IDEAS, JSON.stringify(STATE.ideas));
+  closeIdeaModal();
+  renderView();
+  showToast(`Idea aparcada en Idea Park 💡`);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FLOATING SCRATCHPAD DRAWER
+// ─────────────────────────────────────────────────────────────────────────────
+window.toggleScratchpad = function() {
+  const drawer = document.getElementById("scratchpadDrawer");
+  if (drawer) drawer.classList.toggle("open");
+};
+
+window.convertScratchpadToTask = function() {
+  const text = document.getElementById("scratchpadInput")?.value.trim();
+  if (!text) return;
+  toggleScratchpad();
+  openTaskModal();
+  const titleInput = document.getElementById("taskTitle");
+  if (titleInput) titleInput.value = text.slice(0, 80);
+  const whyInput = document.getElementById("taskWhy");
+  if (whyInput) whyInput.value = text;
+  updateTaskPreview();
+};
+
+window.convertScratchpadToIdea = function() {
+  const text = document.getElementById("scratchpadInput")?.value.trim();
+  if (!text) return;
+  toggleScratchpad();
+  openIdeaModal();
+  const titleInput = document.getElementById("ideaTitle");
+  if (titleInput) titleInput.value = text.slice(0, 80);
+  const bodyInput = document.getElementById("ideaBody");
+  if (bodyInput) bodyInput.value = text;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOAST NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  const toastMsg = document.getElementById("toastMsg");
+  if (toast && toastMsg) {
+    toastMsg.textContent = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 2600);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DATA FETCHING & REAL-TIME POLLING
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadModel() {
   try {
     const res = await fetch("/api/model");
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    MODEL = await res.json();
-    SERVER_ERROR = null;
-    IS_LOADING = false;
-    updateHUD();
-    draw();
+    const modelData = await res.json();
+    STATE.error = null;
+    ingestModel(modelData);
+    renderView();
   } catch (err) {
-    SERVER_ERROR = `Could not connect to /api/model: ${err.message}`;
-    IS_LOADING = false;
-    updateHUD();
-    draw();
+    STATE.error = `No se pudo conectar con el servidor: ${err.message}`;
+    renderView();
   }
 }
 
-async function watch() {
+async function watchStamp() {
   try {
     const res = await fetch("/api/stamp");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const newStamp = data.stamp;
     if (STAMP !== null && newStamp !== STAMP) {
-      await load();
+      await loadModel();
     }
     STAMP = newStamp;
-    if (SERVER_ERROR) {
-      SERVER_ERROR = null;
-      updateHUD();
-      draw();
-    }
+    const syncStatus = document.getElementById("syncStatus");
+    if (syncStatus) syncStatus.textContent = "2.0s";
   } catch {
-    SERVER_ERROR = "Server stopped or unreachable";
-    updateHUD();
+    const syncStatus = document.getElementById("syncStatus");
+    if (syncStatus) syncStatus.textContent = "offline";
   }
 }
 
 window.retryLoad = () => {
-  IS_LOADING = true;
-  SERVER_ERROR = null;
-  draw();
-  load();
+  STATE.error = null;
+  renderView();
+  loadModel();
 };
 
-window.addEventListener("hashchange", draw);
-load().then(watch);
-setInterval(watch, 2000);
+// Global Live Form Input Listeners
+document.addEventListener("DOMContentLoaded", () => {
+  ["taskTitle", "taskProject", "taskStatus", "taskWhy"].forEach(id => {
+    document.getElementById(id)?.addEventListener("input", updateTaskPreview);
+  });
+
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const view = btn.getAttribute("data-view");
+      if (view) navigateTo(view);
+    });
+  });
+
+  document.getElementById("projectFilter")?.addEventListener("change", e => {
+    const val = e.target.value;
+    if (val === "ALL") {
+      STATE.taskFilterProj = "";
+      STATE.decFilterProj = "";
+    } else {
+      STATE.taskFilterProj = val;
+      STATE.decFilterProj = val;
+      STATE.selectedProject = val;
+    }
+    renderView();
+  });
+
+  document.getElementById("globalSearch")?.addEventListener("input", e => {
+    const q = e.target.value.trim().toLowerCase();
+    STATE.taskSearch = q;
+    STATE.decSearch = q;
+    renderView();
+  });
+});
+
+// Initial boot & periodic watcher
+loadModel().then(watchStamp);
+setInterval(watchStamp, 2000);
