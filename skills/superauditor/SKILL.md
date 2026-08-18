@@ -199,6 +199,27 @@ It does not reject — only the operator acts on vetoes. It does not read the tr
 not edit files, and it does not commit. **It does not propose**: a suggestion is not a finding,
 and if a tally ever counts one as the other, this role has stopped being what it is for.
 
+## Its log — one row per finding, not one entry per firing
+
+**Every employee-skill keeps a log** (`Marc, 2026-08-18`). **This file is where the row contract
+is defined; every other auditor cites it rather than restating it** (`MLabs:AX-20` — a declared
+winner, not three copies). This role's log lives instance-side, at the path the binding declares —
+`99_SYSTEM/logs/` in the founding instance; the ledger keeps the narrative, the log keeps the
+data. **State is the instance's; this file only says the log exists and what a row carries.**
+
+| Field | Contract |
+|---|---|
+| `ID` | `<prefix><nnn>`, never recycled, never renumbered |
+| `Round` · `Date` | the firing, and the day. Counting distinct rounds gives firings; counting rows gives findings |
+| `Status` | `fixed-same-round` · `fixed-later` · `open` · `accepted-not-fixed` · `withdrawn` |
+| **`Repeat of`** | **the earlier ID this recurs, or `—`. The field the log exists for** |
+| `Finding` · `Where` | one line each; the reasoning stays in the ledger |
+
+⚠️ **Read your own log before reporting.** A finding you raised before and that is still `open` is
+**a repeat, not a new finding** — say so and cite the ID. Without that the dismissal rule
+miscounts in the direction that never retires anyone: `N` counts firings that add nothing, and
+three unfixed findings re-raised score as three new ones.
+
 ## Dismissal
 
 Per `AGENTS.md` §6: the operator fixes **N** (consecutive firings that add nothing → retired:

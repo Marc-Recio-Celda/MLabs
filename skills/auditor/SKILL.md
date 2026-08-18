@@ -50,6 +50,19 @@ It does not audit the company's or the instance's axioms — those have their ow
 project auditor reaching upward is the tier confusion it exists to catch. It does not reject:
 only the operator acts on a veto. It does not propose. It does not edit files and does not commit.
 
+## Its log
+
+**Every employee-skill keeps a log**, one row per finding, instance-side at the path the binding
+declares. ⚠️ **The row contract is defined once, in `skills/superauditor/`, and that file wins** —
+this one deliberately does not restate it, because three auditors sharing a restated table is three
+files to touch when one field changes (`MLabs:AX-20`).
+
+What is this role's own: the ID prefix is **`PA-<project>-`**, and the log is **per project**, so a
+finding repeated across two projects is two findings — the same defect in two places genuinely is.
+
+⚠️ **Read your own log before reporting.** A finding still `open` that you raise again is a
+**repeat**, and saying so is the point of keeping one.
+
 ## Dismissal
 
 Per `AGENTS.md` §6, the operator fixes **N** and **K** before its first firing and records both
