@@ -113,7 +113,7 @@ still will.
 |---|---|---|
 | **Role** | **an event** — *"when a task closes"*, *"when an axiom set changes"* | something happened. It must never be convenient to skip |
 | **Capability** | **a request** — *"when the operator wants X"* | someone asked |
-| **Locked** | either, plus `disable-model-invocation: true` | only the operator calls it, by name. **The cost: its description leaves context entirely**, so the model no longer knows the skill exists — lock only what the model should never reach for, never a door it is supposed to route through |
+| **Locked** | either, plus `invoke: user-only` | it may never fire on its own, whatever the wording suggests |
 
 There is no `roles/` directory: a second home for the same employee is a second place to change
 one fact. What a role additionally needs — its dismissal criterion, its thresholds, its standing
