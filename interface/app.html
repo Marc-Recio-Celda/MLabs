@@ -1,0 +1,255 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Operations centre</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{
+    --bg:#fbfaf8; --panel:#fff; --ink:#1c1b19; --dim:#6b6862; --line:#e4e0d9;
+    --accent:#8a5a2b; --mark:#f3ede2; --strike:#a09a90;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#16151a; --panel:#1d1c22; --ink:#e8e6e1; --dim:#9a958c; --line:#2e2c35;
+           --accent:#d3a26a; --mark:#26242c; --strike:#6a655e; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.6 ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+  header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+         padding:14px 20px;display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+  h1{font-size:17px;margin:0;font-weight:650;letter-spacing:-.01em}
+  .meta{color:var(--dim);font-size:12.5px;font-family:var(--mono)}
+  .grow{flex:1}
+  select,button{font:inherit;font-size:13px;background:var(--panel);color:var(--ink);
+                border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer}
+  main{max-width:960px;margin:0 auto;padding:18px 20px 80px}
+  details{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+          margin:0 0 12px;overflow:hidden}
+  summary{padding:11px 15px;cursor:pointer;font-weight:600;display:flex;gap:10px;
+          align-items:center;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸";color:var(--dim);font-size:12px;transition:transform .12s}
+  details[open]>summary::before{transform:rotate(90deg)}
+  .kind{font:11px/1 var(--mono);color:var(--dim);border:1px solid var(--line);
+        border-radius:20px;padding:3px 8px;text-transform:lowercase}
+  .count{color:var(--dim);font-weight:400;font-size:12.5px;margin-left:auto;font-family:var(--mono)}
+  .body{padding:2px 18px 16px;border-top:1px solid var(--line)}
+  .blk{padding:9px 0;border-bottom:1px dashed var(--line)}
+  .blk:last-child{border-bottom:0}
+  .missing{color:var(--dim);font-style:italic;padding:12px 0}
+  h2,h3,h4{line-height:1.35;margin:14px 0 6px;font-size:15px}
+  h2{font-size:16px} h4{font-size:14px}
+  p,ul,ol,table{margin:7px 0}
+  ul,ol{padding-left:22px}
+  li{margin:3px 0}
+  code{font-family:var(--mono);font-size:12.5px;background:var(--mark);
+       padding:1.5px 5px;border-radius:4px}
+  pre{background:var(--mark);padding:11px 13px;border-radius:8px;overflow-x:auto}
+  pre code{background:none;padding:0}
+  blockquote{margin:8px 0;padding:2px 0 2px 13px;border-left:2px solid var(--line);color:var(--dim)}
+  del,s{color:var(--strike)}
+  a{color:var(--accent)}
+  table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top;font-size:13.5px}
+  th{background:var(--mark);font-weight:600}
+  .tag{font:11px/1 var(--mono);color:var(--accent);background:var(--mark);
+       border-radius:20px;padding:3px 7px;margin-right:6px}
+  .front{background:var(--panel);border:1px solid var(--accent);border-radius:10px;
+         padding:14px 18px;margin:0 0 16px}
+  .front .lbl{font:11px/1 var(--mono);color:var(--accent);text-transform:uppercase;
+              letter-spacing:.09em;display:block;margin-bottom:7px}
+  .err{background:var(--panel);border:1px solid var(--accent);border-radius:10px;
+       padding:16px 18px;white-space:pre-wrap;font-family:var(--mono);font-size:13px}
+  footer{color:var(--dim);font-size:12px;text-align:center;padding:20px;font-family:var(--mono)}
+</style>
+
+<header>
+  <h1 id="title">Operations centre</h1>
+  <span class="meta" id="stamp">loading…</span>
+  <span class="grow"></span>
+  <label class="meta">project
+    <select id="filter"><option value="">all</option></select>
+  </label>
+  <button id="expand">expand all</button>
+</header>
+<main>
+  <div id="front"></div>
+  <div id="panels"></div>
+</main>
+<footer>read-only · the markdown is the source · this page is a view</footer>
+
+<script>
+// ---- a small markdown renderer. Inline on purpose: an install step is what makes
+// a viewer stop opening in five years, so the engine ships with no dependencies.
+const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+function inline(s){
+  s = esc(s);
+  s = s.replace(/`([^`]+)`/g, (m,a)=>`<code>${a}</code>`);
+  s = s.replace(/~~([^~]+)~~/g, (m,a)=>`<del>${a}</del>`);
+  // bold first and non-greedy, because **bold with *italic* inside** is common in
+  // these files and a pattern that forbids an inner asterisk leaves them literal
+  s = s.replace(/\*\*([\s\S]+?)\*\*/g, (m,a)=>`<strong>${a}</strong>`);
+  s = s.replace(/(^|[^*\w])\*([^*\n]+)\*/g, (m,a,b)=>`${a}<em>${b}</em>`);
+  s = s.replace(/\[\[([^\]]+)\]\]/g, (m,a)=>`<code>${a}</code>`);
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m,a,b)=>{
+    // Link targets are untrusted: these files carry text collected from elsewhere.
+    // Anything but an ordinary relative or http(s) target renders as plain text.
+    const safe = /^(https?:\/\/|\/|\.{0,2}\/|#)/i.test(b) && !/["'<>]/.test(b);
+    return safe ? `<a href="${b}" rel="noopener noreferrer">${a}</a>` : `${a} <code>${b}</code>`;
+  });
+  return s;
+}
+
+function render(md){
+  const out = [], lines = md.split('\n');
+  let i = 0;
+  while (i < lines.length){
+    const L = lines[i];
+    if (/^```/.test(L)){
+      const buf = []; i++;
+      while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]);
+      i++; out.push(`<pre><code>${esc(buf.join('\n'))}</code></pre>`); continue;
+    }
+    if (/^\s*\|.*\|/.test(L)){
+      const rows = [];
+      while (i < lines.length && /^\s*\|/.test(lines[i])) rows.push(lines[i++]);
+      const cells = r => r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+      const head = cells(rows[0]);
+      const body = rows.slice(/^\s*\|[\s:|-]+\|\s*$/.test(rows[1]||'') ? 2 : 1);
+      out.push(`<table><thead><tr>${head.map(c=>`<th>${inline(c)}</th>`).join('')}</tr></thead>`
+        + `<tbody>${body.map(r=>`<tr>${cells(r).map(c=>`<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+      continue;
+    }
+    let m;
+    if ((m = L.match(/^(#{1,6})\s+(.*)$/))){
+      const n = Math.min(m[1].length + 1, 6);
+      out.push(`<h${n}>${inline(m[2])}</h${n}>`); i++; continue;
+    }
+    if (/^\s*>/.test(L)){
+      const buf = [];
+      while (i < lines.length && /^\s*>/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/,''));
+      out.push(`<blockquote>${render(buf.join('\n'))}</blockquote>`); continue;
+    }
+    if (/^\s*([-*+]|\d+\.)\s+/.test(L)){
+      const ord = /^\s*\d+\./.test(L), buf = [];
+      while (i < lines.length && /^\s*([-*+]|\d+\.)\s+/.test(lines[i])){
+        let item = lines[i++].replace(/^\s*([-*+]|\d+\.)\s+/, '');
+        while (i < lines.length && /^\s{2,}\S/.test(lines[i]) &&
+               !/^\s*([-*+]|\d+\.)\s+/.test(lines[i])) item += ' ' + lines[i++].trim();
+        buf.push(`<li>${inline(item)}</li>`);
+      }
+      out.push(ord ? `<ol>${buf.join('')}</ol>` : `<ul>${buf.join('')}</ul>`); continue;
+    }
+    if (/^\s*(---|===)\s*$/.test(L)){ i++; continue; }
+    if (!L.trim()){ i++; continue; }
+    const buf = [];
+    while (i < lines.length && lines[i].trim() && !/^(\s*[->#|`]|\s*\d+\.|\s*[-*+]\s)/.test(lines[i]))
+      buf.push(lines[i++]);
+    if (buf.length) out.push(`<p>${inline(buf.join(' '))}</p>`); else i++;
+  }
+  return out.join('\n');
+}
+
+// ---- blocks and the project: field. Splitting on headings is what lets the filter
+// hide an entry without hiding the file it lives in.
+function blocks(text){
+  const parts = [], lines = text.split('\n');
+  let cur = [];
+  for (const L of lines){
+    if (/^#{2,4}\s/.test(L) && cur.length){ parts.push(cur.join('\n')); cur = [L]; }
+    else cur.push(L);
+  }
+  if (cur.length) parts.push(cur.join('\n'));
+  return parts.map(t => ({ text: t, project: (t.match(/project:\s*`?([A-Za-z0-9_.-]+)`?/) || [])[1] || null }));
+}
+
+let DATA = null, projects = new Set();
+
+const openState = new Map();  // label -> open?, so a refresh does not re-collapse
+
+function draw(){
+  const f = document.getElementById('filter').value;
+  const panels = document.getElementById('panels');
+  // Remember what the reader had open before wiping. The trigger for a redraw is
+  // usually the operator saving the very file they are reading, so resetting the
+  // fold state here would punish the person this page exists for (AX-8).
+  for (const d of panels.querySelectorAll('details'))
+    openState.set(d.dataset.label, d.open);
+  panels.innerHTML = '';
+  let front = '';
+
+  for (const src of DATA.sources){
+    const wrap = document.createElement('details');
+    wrap.dataset.label = src.label;
+    wrap.open = openState.has(src.label) ? openState.get(src.label) : !!src.open;
+    let shown = 0, inner = '';
+
+    if (src.missing){
+      inner = `<div class="missing">Nothing at <code>${esc(src.wanted)}</code>.</div>`;
+    } else {
+      for (const file of src.files){
+        const bs = blocks(file.text).filter(b => !f || !b.project || b.project === f);
+        if (!bs.length) continue;
+        shown += bs.length;
+        if (src.files.length > 1) inner += `<h3>${esc(file.rel)}</h3>`;
+        inner += bs.map(b => `<div class="blk">${render(b.text)}</div>`).join('');
+        // the one row a person needs before anything else
+        if (src.kind === 'compass'){
+          const row = file.text.split('\n').find(l => l.includes('| ▶ |'));
+          if (row){
+            const c = row.replace(/^\s*\|/,'').split('|').map(x=>x.trim());
+            front = `<span class="lbl">active front</span>${inline(c[1]||'')}`
+                  + (c[3] ? `<p class="meta">moves when — ${esc(c[3])}</p>` : '');
+          }
+        }
+      }
+      if (!shown) inner = `<div class="missing">Nothing here for <code>${esc(f)}</code>.</div>`;
+    }
+    wrap.innerHTML = `<summary><span class="kind">${esc(src.kind)}</span>`
+      + `<span>${esc(src.label)}</span><span class="count">${shown||'—'}</span></summary>`
+      + `<div class="body">${inner}</div>`;
+    panels.appendChild(wrap);
+  }
+  document.getElementById('front').innerHTML = front ? `<div class="front">${front}</div>` : '';
+}
+
+async function load(){
+  const r = await fetch('/api/view');
+  DATA = await r.json();
+  document.getElementById('title').textContent = DATA.title;
+  document.title = DATA.title;  // the tab says which instance, not which program
+  const sel = document.getElementById('filter');
+  projects = new Set();
+  for (const s of DATA.sources) for (const f of s.files)
+    for (const b of blocks(f.text)) if (b.project) projects.add(b.project);
+  const keep = sel.value;
+  sel.innerHTML = '<option value="">all</option>'
+    + [...projects].sort().map(p=>`<option${p===keep?' selected':''}>${p}</option>`).join('');
+  document.getElementById('stamp').textContent =
+    new Date().toLocaleTimeString() + ' · ' + DATA.sources.length + ' sources';
+  draw();
+}
+
+// Polling, not a socket: the framework answers to live refresh all need a build
+// step, and the axiom that forbids one wins over the nicer mechanism.
+let last = null;
+async function watch(){
+  try{
+    const s = (await (await fetch('/api/stamp')).json()).stamp;
+    if (last !== null && s !== last) await load();
+    last = s;
+  }catch(e){ document.getElementById('stamp').textContent = 'server stopped'; }
+}
+
+document.getElementById('filter').addEventListener('change', draw);
+document.getElementById('expand').addEventListener('click', e => {
+  const all = [...document.querySelectorAll('details')];
+  const opening = all.some(d => !d.open);
+  all.forEach(d => { d.open = opening; openState.set(d.dataset.label, opening); });
+  e.target.textContent = opening ? 'collapse all' : 'expand all';
+});
+
+load().then(watch);
+setInterval(watch, 2000);
+</script>
