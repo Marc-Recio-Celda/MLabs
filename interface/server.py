@@ -13,6 +13,8 @@ Standard library only. No build step, no install.
 
 import argparse
 import http.server
+import importlib
+import mimetypes
 import json
 import os
 import socketserver
@@ -21,10 +23,17 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PAGE = HERE / "app.html"
+UI = HERE / "ui"
+
+sys.path.insert(0, str(HERE / "model"))
+import parse as model  # noqa: E402  — the model is a sibling, not a dependency
 
 # The document kinds the engine understands. An adapter naming anything else is
 # rejected at load, so a typo fails loudly instead of rendering an empty panel.
-KINDS = {"compass", "plan", "queue", "park", "record", "standing"}
+# ⚠️ Defined ONCE, in the model, and imported here. It was duplicated until
+# 2026-08-18, and adding a kind to one copy made the server refuse to start on a
+# valid adapter — two copies of one fact with no declared winner (MLabs:AX-20).
+KINDS = set(model.KINDS)
 
 
 class AdapterError(Exception):
@@ -69,7 +78,8 @@ def load_adapter(path):
             )
         if not (s.get("path") or s.get("glob")):
             raise AdapterError(f"Source {s['label']!r} names neither a path nor a glob.")
-    return {"title": data.get("title", "Operations centre"), "root": root, "sources": sources}
+    return {"title": data.get("title", "Operations centre"), "root": root,
+            "sources": sources, "path": str(p)}
 
 
 def resolve(root, spec):
@@ -153,6 +163,29 @@ def make_handler(adapter):
                     self._send(500, f"app.html is missing beside {HERE}", "text/plain")
                     return
                 self._send(200, PAGE.read_text(encoding="utf-8"), "text/html; charset=utf-8")
+            elif path == "/api/model":
+                # The typed model, which is what every view renders. /api/view below
+                # stays for the raw text a detail pane shows on demand.
+                try:
+                    # Re-read the model from disk like everything else here does. It
+                    # was imported once at startup until 2026-08-18, so editing the
+                    # parser served a stale classification with no sign anything was
+                    # wrong — the one failure mode this whole project exists to avoid.
+                    global model
+                    model = importlib.reload(model)
+                    body = json.dumps(model.parse_adapter(adapter["path"]), ensure_ascii=False)
+                except Exception as e:                      # a parser fault must not
+                    body = json.dumps({"entities": [], "problems": [   # blank the page
+                        {"path": str(adapter["path"]), "line": 0,
+                         "why": f"the model could not be built: {e}", "text": ""}]})
+                self._send(200, body, "application/json")
+            elif path.startswith("/ui/"):
+                f = (UI / path[4:]).resolve()
+                if UI not in f.parents or not f.is_file():
+                    self._send(404, "not found", "text/plain")
+                    return
+                ctype = mimetypes.guess_type(f.name)[0] or "text/plain"
+                self._send(200, f.read_text(encoding="utf-8"), f"{ctype}; charset=utf-8")
             elif path == "/api/view":
                 body = json.dumps({"title": adapter["title"], "sources": read_sources(adapter)})
                 self._send(200, body, "application/json")

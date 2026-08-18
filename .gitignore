@@ -24,8 +24,11 @@
 # is what keeps this directory cedible (`interface:AX-1`).
 !/interface
 !/interface/**
-# ...but never the interpreter's residue: `!/interface/**` is a wide gate.
-/interface/__pycache__/
+# ...but never the interpreter's residue: `!/interface/**` is a wide gate, and it
+# swallowed __pycache__ twice — the second time one directory deeper than the
+# first rule reached, and it got staged. Match it at any depth.
+/interface/**/__pycache__/
+/interface/**/*.pyc
 
 # The tool's view of the skills: a RELATIVE symlink, committed so a fresh clone has
 # working skills with nothing to run first. Only the link — everything else the tool

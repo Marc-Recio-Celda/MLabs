@@ -201,7 +201,7 @@ and if a tally ever counts one as the other, this role has stopped being what it
 
 ## Its log — one row per finding, not one entry per firing
 
-**Every employee-skill keeps a log** (`Marc, 2026-08-18`). **This file is where the row contract
+**Every employee-skill keeps a log.** **This file is where the row contract
 is defined; every other auditor cites it rather than restating it** (`MLabs:AX-20` — a declared
 winner, not three copies). This role's log lives instance-side, at the path the binding declares —
 `99_SYSTEM/logs/` in the founding instance; the ledger keeps the narrative, the log keeps the
