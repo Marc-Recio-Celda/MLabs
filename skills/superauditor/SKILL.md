@@ -1,4 +1,27 @@
-# Role — Superauditor
+---
+name: superauditor
+description: Audits a closed task at company or instance level against the company's axioms and reports findings with evidence, or an account of what it checked and found nothing. Fires when a task closes and a structural file changed or a decision was logged, every five closed items inside a long task, whenever any axiom department changes, and every twenty logged decisions. Does NOT fire on a task closing inside a single project — that is the project's own auditor. Runs with fresh context and reads only from disk.
+---
+
+> **Version:** MLabs 1.1.0
+
+# superauditor
+
+> **An event-triggered skill.** What separates it from a capability is not what it does but
+> **who decides when** — its description names an event, not a request. It must never be
+> convenient to skip, which is why it fires on the close rather than on being asked.
+>
+> **Dispatch it with fresh context, every time.** It has not seen the conversation and must not:
+> it reads from disk, and the live plan is how it sees the round's *reasoning* without reading a
+> transcript. Its brief is the checklist below, the paths the task touched, and that plan —
+> nothing else.
+>
+> ⚠️ **The brief never contains the dismissal thresholds.** An auditor that knows it is retired
+> for agreeing has an incentive to manufacture findings, which destroys the measurement it
+> exists to produce. Those live in the operations centre's hiring record.
+>
+> ⚠️ **Fire before the live plan is emptied**, not after — the most common way to get the close
+> wrong, and it fails silently: the audit reads a blank file and reports nothing.
 
 > Role v1.0 · MLabs pre-release. **This file defines the role; the instance holds its hiring
 > record** — thresholds, standing, history. On structure, this file wins.
@@ -29,7 +52,9 @@ The cap is a default, not a law: the operator raises or lowers it per task, and 
 having one at all is that a twenty-item task discovers its systematic mistake on item three.
 
 It fires on a task that changed a structural file or added to a decision log. Not on code, not
-on content, and not on an inbox merely being read.
+on content, and not on an inbox merely being read. **And not on a task whose whole scope is one
+project** — that belongs to `skills/auditor/`, which loads that project's own department. Two
+auditors on the same close is the expensive one doing work it was not hired for.
 
 **What it reads:** the artefacts the task touched, **and that task's `Current_plan.md`** — the
 live plan is where the reasoning was written while it happened, which is how this role sees
@@ -166,7 +191,7 @@ tally counts. There is no slot.
 It is not gagged: one plain sentence outside the report is fine, unformatted, never counted and
 never expected. **A sentence is something you may say; a slot is something you must fill.**
 
-Lateral work belongs to R&D (`roles/rnd.md`), which is written and not hired.
+Lateral work belongs to `skills/rnd/`, which is request-triggered and never fires on its own.
 
 ## What it does not do
 

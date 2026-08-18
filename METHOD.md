@@ -1,6 +1,6 @@
 # METHOD — how work actually flows
 
-> **Version:** unreleased · pre-release working draft (AX-20).
+> **Version:** 1.1.0
 
 > **The fourth document, and the only one you use every day.** `PHILOSOPHY.md` says what this
 > company optimises for; `AXIOMS.md` what may never be violated; **this file says how work
@@ -230,12 +230,27 @@ first view is the live task list and not a nice-to-have.
 
 | File | Kind | Holds |
 |---|---|---|
+**Four files, and two more only when they have content.**
+
+| File | Kind | Holds |
+|---|---|---|
 | `definition.md` | Standing | what this project is, and explicitly what it is not |
-| `architecture.md` | Standing | **the project's own axioms** (`AX-n`, project-scoped): what may never be violated *here* |
 | `state.md` | Standing | the present tense: would this still be true if work stopped today? |
-| `workflow.md` | Standing | the future tense: the sequenced plan, with blocks, dependencies and a fallback — AX-17's third drawer |
 | `Decision_Log.md` | Record | `Dn` with author, date, reasoning, and what was discarded |
 | `LOG_AGENTS.md` | Record | what each agent did **in this project** |
+| `architecture.md` | Standing | the project's own axioms — **created when the first one exists**, never as an empty table |
+| `skills/` | — | procedures that only make sense here — **created when the first one exists** |
+
+**No sequenced-plan file.** AX-17's third drawer is not a document: **it is a field.** Committed
+but not started work is a task in the central list carrying `blocked_by:`, and the sequence is
+the graph those edges describe — which is what a database wants and what an interface can render.
+A per-project plan file duplicated the tasks it ordered and went stale the moment one moved.
+Where the *reasoning* for an order matters, it is a decision; where the fallback matters, it is
+a decision too.
+
+**No references file.** A source is cited **in the decision it supported** (`AX-6`), which is
+what puts it in the generated database next to the thing it justified. Reading not yet tied to a
+decision is a park entry with the project's tag — not a second bibliography nobody prunes.
 
 No mailbox, no task list, no ideas file: those are central now.
 
@@ -261,6 +276,13 @@ being read.
 **Three short skills beat one long axiom department**, and the reason is load: a skill is paid
 once, when invoked; an axiom is paid on every turn of every task in that project.
 
+⚠️ **Skills are not free, and the cost is not where it looks.** A skill's *body* loads only when
+it fires, but its **name and description are always in context** — so the count of skills is paid
+continuously and their bodies are not. Two consequences: **write the description to say what it
+does *and* when to use it**, because that sentence is the entire trigger; and **keep descriptions
+distinct**, because two that overlap mean the wrong one fires and neither author finds out. The
+budget to watch is the sum of descriptions, never the sum of skills.
+
 **The three levels still repeat**
 — the company's philosophy inherited unchanged, the project's axioms its own, its decisions its
 own — and **each project gets its own dedicated auditor**, hired under the same rule with its own
@@ -271,7 +293,7 @@ copying one company's rules, it is instantiating a pattern that knows how to ins
 
 ```
 MLabs/                      the constitution — public, released, no state
-├── PHILOSOPHY · AXIOMS · METHOD · AGENTS · roles/
+├── PHILOSOPHY · AXIOMS · METHOD · AGENTS · skills/
 │
 ├── NEXUS/                  the operations centre — private, and the hub
 │   ├── AGENTS.md           the binding: pins an MLabs release; declares ledger and denylist
@@ -327,7 +349,7 @@ into a file nobody edits, with a check that fails on drift.
 | Something an agent found while doing something else | `MAILBOX.md`, one line, no investigating, no fixing (AX-25) |
 | Something that needs executing | `TASKS.md`, with its why |
 | Something interesting with no commitment | `IDEAS.md` — one line while fresh; expand only if it survives a second reading |
-| Committed, sequenced, but not started | The project's `workflow.md` — **not** the task list, **not** the compass. Cross-project: the same, under `project: cross` |
+| Committed, sequenced, but not started | `TASKS.md`, with `blocked_by:` naming what must land first. The sequence is a graph over the tasks, never a second document |
 | Anything going into a queue or a park | The central file for that kind, **with `project:` filled in** |
 | What you are doing right now | `Current_plan.md` |
 | What comes next across all projects | `Schedule.md`, one `▶` |

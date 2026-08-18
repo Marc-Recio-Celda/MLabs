@@ -9,12 +9,20 @@
 !/.gitignore
 !/README.md
 !/AGENTS.md
+!/CLAUDE.md
 !/PHILOSOPHY.md
 !/AXIOMS.md
 !/METHOD.md
-!/roles
-!/roles/**
 !/skills
 !/skills/**
+!/tools
+!/tools/**
+
+# The tool's view of the skills: a RELATIVE symlink, committed so a fresh clone has
+# working skills with nothing to run first. Only the link — everything else the tool
+# writes here (settings, local state) stays private by the re-exclusion below.
+!/.claude
+/.claude/*
+!/.claude/skills
 
 # Stage 2+ adds, one line per piece, when the piece exists: templates/, tools/.

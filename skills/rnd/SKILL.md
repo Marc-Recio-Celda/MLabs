@@ -3,10 +3,14 @@ name: rnd
 description: Lateral thinking against the company's own design, invoked on demand. Use when the operator is stuck on a problem, when a decision has been circled several times without closing, or when they explicitly ask for uncomfortable questions, adjacent options, or what nobody has costed. Never fires on its own.
 ---
 
+> **Version:** MLabs 1.1.0
+
 # rnd
 
-The role is written and not hired (`roles/rnd.md`). **This is its form:** a capability the
-operator calls, costing nothing when it is not called — which is almost always — and getting
+**A request-triggered skill, and deliberately nothing more.** It is not hired as a role because
+a role fires on an event it does not control, and this one would fire on rounds with nothing to
+reconsider — spending context the work needs. **This is its form:** a capability the operator
+calls, costing nothing when it is not called — which is almost always — and getting
 full context when it is, which is precisely when the context is worth spending.
 
 ## Why it is invoked and never scheduled

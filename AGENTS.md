@@ -1,6 +1,6 @@
 # AGENTS.md — how this company runs
 
-> **Version:** unreleased · pre-release working draft (AX-20).
+> **Version:** 1.1.0
 
 > The orchestration file: which roles exist, what each does, when each fires, and the rule that
 > governs hiring and firing. Every line here must pass two tests: *if an agent ignored it, would
@@ -105,22 +105,39 @@ still will.
 
 | Role | What it is | Fires | Defined in |
 |---|---|---|---|
-| **Superauditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip. **Checks decisions; does not propose** | **a task closes**, or every five closed items inside a long one | `roles/superauditor.md` |
+| **Superauditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip. **Checks decisions; does not propose** | four triggers — see `skills/superauditor/`, the single source | `skills/superauditor/` |
 
-**Written, not hired: R&D** (`roles/rnd.md`) — lateral work on the axioms, kept separate from
-the audit because a role paid for findings must not be invited to invent, and kept out of the
-org chart because its right form is an **invoked skill**: zero cost when not called, full
-context when it is.
+**Every employee is a skill file. What makes one a *role* is the shape of its description.**
 
-**Not yet hired — each enters only by the rule in §6, and not before:**
-
-| Role | Would be | Fires |
+| | Its description names | Fires because |
 |---|---|---|
-| Auditor | the superauditor's shape, scoped to one project | a proposal closes inside a project |
-| Messenger | gathers raw information, returns a cited report | on demand |
-| Dispatcher | hands each concrete task to a specialist executor | a task exists |
-| Bookkeeper | logs, decisions, staleness detection | after execution |
-| Analyst | **a script until reading the numbers needs judgement** | periodic |
+| **Role** | **an event** — *"when a task closes"*, *"when an axiom set changes"* | something happened. It must never be convenient to skip |
+| **Capability** | **a request** — *"when the operator wants X"* | someone asked |
+| **Locked** | either, plus `disable-model-invocation: true` | only the operator calls it, by name. **The cost: its description leaves context entirely**, so the model no longer knows the skill exists — lock only what the model should never reach for, never a door it is supposed to route through |
+
+There is no `roles/` directory: a second home for the same employee is a second place to change
+one fact. What a role additionally needs — its dismissal criterion, its thresholds, its standing
+— is **governance, not procedure**, and lives in the operations centre's hiring record, out of
+the role's own sight.
+
+⚠️ **An event named in prose is a best-effort trigger, not a hook.** A description saying *when a
+task closes* fires when the model notices the task closed. That is the same independence gap the
+audit's own record declares, and wiring a real hook is what closes it.
+
+**Written, not hired: R&D** (`skills/rnd/`) — lateral work on the axioms, kept separate from the
+audit because a role paid for findings must not be invited to invent, and left request-triggered
+because it would otherwise fire on rounds with nothing to reconsider.
+
+**Written and available.** A skill existing is not a hire: an event-triggered one only counts
+against §6 when the operator turns it on for real work.
+
+| Role | Status | What it is |
+|---|---|---|
+| **Auditor** | ✅ written · `skills/auditor/` | the superauditor's shape scoped to one project. **Hired per project**, each with its own criterion |
+| **Gatherer** | ✅ written · `skills/gather/` | collects and cites; **its value is burning someone else's context** |
+| **Dispatcher** | ✅ written · `skills/dispatch/` | hands work to the executor entitled to claim the answer |
+| Bookkeeper | ⏸ not written | logs, decisions, staleness. ⚠️ **Probably not a role**: staleness is decidable by comparison, which makes it a script (AX-13). What is left is writing entries, which every skill already does at its own close |
+| Analyst | ⏸ not written | **a script until reading the numbers needs judgement.** Three of the five health metrics are computable today and none is computed; build the numbers, then decide whether reading them needs a hire |
 
 Two things in the org chart are deliberately **not** roles: the **reasoner** (operator +
 assistant — the conversation itself, which cannot be isolated) and the **distributor** (*nothing
@@ -138,7 +155,7 @@ is lost* — a rule at round close, not an agent, because its context is the who
 | **Every queue and park entry carries `project:`** — a name or `cross`. The field the filter depends on is the field nothing else can infer | `grep -c '^- ' <file>` against `grep -c 'project:' <file>` on each central queue: the two must match, and a mismatch names the unrouted entries |
 | **Every axiom sits in exactly one tier** (company · instance · project) | at each cut, a company axiom that names a toolchain, a project or a person belongs one tier down; an instance rule copied into more than one project file is a duplicate with no winner (AX-20) |
 | **Every axiom names the clause it serves, and every clause has at least one axiom** | the coverage table at the foot of `AXIOMS.md`, regenerated at each cut; a clause at zero is a stated priority nothing implements |
-| **Every role file states its dismissal criterion** | grep for `## Dismissal` in `roles/*.md` — the *pattern and tally contract*; the operator's chosen thresholds live in the instance's hiring record, out of the role's own sight |
+| **Every event-triggered skill states its dismissal criterion** | grep for `## Dismissal` in `skills/*/SKILL.md` — the *pattern and tally contract*; the chosen thresholds live in the instance's hiring record, out of that skill's own sight |
 
 ⚠️ **Every check here reads `git ls-files` or a diff, never the working tree** — the tree at this
 root legitimately holds the instance and every project, which are none of this repo's business.
@@ -165,7 +182,7 @@ instance's ledger, and both live in the instance's hiring record, out of the rol
 
 ## 7. Gates
 
-- **A task closes** → the superauditor fires, once, over everything the task touched — after the destinations are read back and **before** the live plan is emptied (`METHOD.md` §2).
+- **A task closes** → **if a structural file changed or a decision was logged**, the superauditor fires, once, over everything the task touched — after the destinations are read back and **before** the live plan is emptied (`METHOD.md` §2). Its four triggers are stated in full in `skills/superauditor/`, which is the single source; this line is the gate, not the definition.
 - **Every close** → every open thread is enumerated with its destination, and *written* is
   claimed only after reading the file back from disk. A thread with no destination is a failure
   of the close, not an omission.

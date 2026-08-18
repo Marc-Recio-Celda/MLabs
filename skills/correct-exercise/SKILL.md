@@ -3,9 +3,10 @@ name: correct-exercise
 description: Reviews work the operator has already written — invoke when a finished exercise, a submitted solution, or existing code arrives to be corrected, improved, or put through a levelled code analysis; if the work does not exist yet and only a problem statement does, invoke learn instead.
 ---
 
+> **Version:** MLabs 1.1.0
+
 # correct-exercise
 
-> Written against `MLabs` pre-release (`MLabs:AX-20`).
 
 Finished work read the way the evaluator reads it, in an ephemeral session: no persistent state,
 no project layer. The stance is critical throughout — pedagogical support belongs to `learn`.
