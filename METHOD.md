@@ -91,7 +91,7 @@ at the close"* is the same failure with a delay.
 1. Every line struck, every residue routed to a destination.
 2. **Read each destination back from disk.** *Written* is verified, never remembered (AX-9);
    the interval between "I wrote that" and "that is on disk" is where work is lost.
-3. **Then the audit fires — but only if a structural file changed** (`skills/superauditor/`
+3. **Then the audit fires — but only if a structural file changed** (`skills/company-auditor/`
    holds the list, and the list of what is *not* structural is the load-bearing half). Most
    closes do not qualify and should not: the close writes the live set and the logs by
    definition, so an audit that counted those would fire every time and be read none of the

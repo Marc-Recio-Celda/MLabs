@@ -1,24 +1,27 @@
 ---
 name: audit
-description: Fires the superauditor over a closed task, or runs the saturation or promotion review. Use at the close of any task that changed a structural file or added a decision, every five closed items inside a long task, whenever an axiom set changes, and every twenty logged decisions.
+description: Dispatches an auditor over a closed task — company, instance or project, whichever department the work touched — or runs the saturation or promotion review. **Invoked by the operator, never automatic.** The natural moment is when an active front closes; use it also after a long stretch of work, or whenever you want a reading you did not ask for.
 ---
 
 # audit
 
-This skill **dispatches** the superauditor; it does not perform the audit. The role's definition
-is `roles/superauditor.md` and it is the single source for what gets checked.
+This skill **dispatches** an auditor; it does not perform the audit.
 
-## Which firing is this
+⚠️ **There are three now, one per department, and picking the right one is this skill's job:**
 
-| Trigger | Reads | Answers |
+| Department the task touched | Dispatch | Its definition, which is the single source |
 |---|---|---|
-| **A task closes** — a structural file changed, or a decision was logged | the artefacts the task touched **and the still-full live plan** | did this round violate anything |
-| **Five items closed** inside a long task | the same, so far | is there a systematic mistake to catch before item twenty |
-| **An axiom set changed** — any department | **every axiom in every department**, together | is the set still load-bearing, distinct and in force |
-| **Twenty new decisions logged** | the decisions since the last review | does the rule set still match the work |
+| The public structure — philosophy, the company axioms, the method, a skill, the allowlist | **company-auditor** | `skills/company-auditor/` |
+| The operations centre — its own axiom department, its binding, the shape of its live set | **instance-auditor** | `skills/instance-auditor/` |
+| One project's cartridge — its architecture, its contract, its own tooling | **project-auditor** | `skills/project-auditor/` |
 
-The first two are the same firing at different points. The last two are different questions on
-different clocks and are never merged into the first.
+**Two auditors on one close is the expensive one doing work it was not hired for.** If a task
+genuinely spans two departments, dispatch the higher one and say the lower was not run — an unrun
+check is reported as unrun, never as passed.
+
+⚠️ **Nothing here fires by itself.** The automatic trigger was retired 2026-08-18: five firings in
+one session cost more context than the work they audited. What is below describes how to brief one
+when you choose to.
 
 ## How to dispatch it
 
