@@ -10,6 +10,28 @@ description: Empties the mailbox by routing every entry to a destination the ope
 The working loop applied to the inbox — with **one step that may never be skipped**, because
 `AX-15` says nobody drains the queue they fill.
 
+## Read the whole pile before routing any of it
+
+**The operator's observation, 2026-08-19.** Two entries that are the same finding seen twice get worked twice if each is
+routed on arrival — and a queue that has been sitting produces those constantly, because the same
+defect keeps surfacing from different angles.
+
+**So: read everything first, then group, then route the groups.** The grouping is the saving; the
+routing is mechanical once it is done.
+
+## Batches of one to five, never the whole pile
+
+A queue is not drained in one act. **Take between one and five related entries per pass**, sized to
+what fits without the reading displacing the deciding — which is the same reason the audit stopped
+firing on every close.
+
+⚠️ **The count is not the point; the grouping is.** Five entries that share a cause are one
+decision with five destinations. Five unrelated ones are five decisions, and that is a slower pass
+even though the number matches.
+
+**A pass ends with its entries routed and confirmed, or it did not happen.** Leaving three of five
+half-decided is worse than taking three: the queue keeps its length and loses its meaning.
+
 ## 1. Scope it by filter, never take the whole pile
 
 Triage **one project, or one destination class**. Not thirty entries at once.
