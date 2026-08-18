@@ -3,7 +3,7 @@ name: autonomous-run
 description: Executes a defined objective end to end without stopping to ask, under standing approval, and returns a full report of everything done and every choice made. Use when the operator hands over a task and says to run it to completion — building a feature, a migration, a sweep across many files, anything where stopping at every fork would cost more than it protects.
 ---
 
-> **Version:** MLabs 1.1.0
+> **Version:** MLabs 1.0.0
 
 # autonomous-run
 
@@ -77,11 +77,14 @@ once, the mailbox is triaged.
 
 ## Closing
 
-The full close applies (`METHOD.md` §2): read every destination back from disk, **fire the audit
-over the artefacts and the still-full live plan**, then empty it.
+The full close applies (`METHOD.md` §2): read every destination back from disk, **and if the run
+changed a structural file, fire the audit over the artefacts and the still-full live plan**, then
+empty it.
 
-⚠️ **An autonomous run is exactly where the close is most tempting to skip and most necessary.**
-Nobody watched the work; the audit is the only thing that did.
+⚠️ **An autonomous run is where the audit is most valuable — and it still only fires on the same
+condition as any other close.** Nobody watched the work, so **name it in the report either way**:
+*audit fired, N findings* or *audit did not fire, nothing structural changed*. An unmentioned
+audit is indistinguishable from a skipped one, and this is the run where nobody could tell.
 
 ## Verification, as a prediction
 
