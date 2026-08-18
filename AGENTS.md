@@ -1,6 +1,6 @@
 # AGENTS.md — how this company runs
 
-> **Version:** 1.1.0
+> **Version:** 1.0.0
 
 > The orchestration file: which roles exist, what each does, when each fires, and the rule that
 > governs hiring and firing. Every line here must pass two tests: *if an agent ignored it, would
@@ -105,7 +105,7 @@ still will.
 
 | Role | What it is | Fires | Defined in |
 |---|---|---|---|
-| **Superauditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip. **Checks decisions; does not propose** | four triggers — see `skills/superauditor/`, the single source | `skills/superauditor/` |
+| **Superauditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip. **Checks decisions; does not propose** | **one event** — a close that changed a structural file. See `skills/superauditor/`, the single source | `skills/superauditor/` |
 
 **Every employee is a skill file. What makes one a *role* is the shape of its description.**
 
@@ -182,7 +182,7 @@ instance's ledger, and both live in the instance's hiring record, out of the rol
 
 ## 7. Gates
 
-- **A task closes** → **if a structural file changed or a decision was logged**, the superauditor fires, once, over everything the task touched — after the destinations are read back and **before** the live plan is emptied (`METHOD.md` §2). Its four triggers are stated in full in `skills/superauditor/`, which is the single source; this line is the gate, not the definition.
+- **A task closes** → **only if a structural file changed**, the superauditor fires, once, over everything the task touched — after the destinations are read back and **before** the live plan is emptied (`METHOD.md` §2). **A close that touched only the live set, the logs, notes, code or content does not fire it.** The two lists — structural, and expressly not structural — are stated in full in `skills/superauditor/`, which is the single source; this line is the gate, not the definition. The operator invokes it by name whenever they judge it worth the round.
 - **Every close** → every open thread is enumerated with its destination, and *written* is
   claimed only after reading the file back from disk. A thread with no destination is a failure
   of the close, not an omission.

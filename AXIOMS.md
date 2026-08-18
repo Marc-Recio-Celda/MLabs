@@ -1,6 +1,6 @@
 # AXIOMS — the rules that may never be violated
 
-> **Version:** 1.1.0
+> **Version:** 1.0.0
 > the first tagged release is stage 2's exit condition (AX-20).
 
 > **Level 2 of three.** Above this file, `PHILOSOPHY.md` says what the company optimises for and
@@ -34,8 +34,9 @@
 > `NEXUS:M-nn`; those pointers resolve only for the operator, and the originals never move.
 >
 > **The set is kept honest in both directions by the promotion review** (`skills/superauditor/`),
-> which every twenty decisions asks what is missing, what is contradicted, and — the direction
-> that stops inflation — **what is dead**: an axiom whose violation nobody would notice.
+> which the operator calls — around every twenty decisions is the cadence worth aiming at — to
+> ask what is missing, what is contradicted, and, the direction that stops inflation, **what is
+> dead**: an axiom whose violation nobody would notice.
 >
 > **Adding an axiom reviews the whole set, never just the new one.** A set saturates one entry
 > at a time, and no single addition ever looks like the one that did it; the only moment the

@@ -1,6 +1,6 @@
 # METHOD — how work actually flows
 
-> **Version:** 1.1.0
+> **Version:** 1.0.0
 
 > **The fourth document, and the only one you use every day.** `PHILOSOPHY.md` says what this
 > company optimises for; `AXIOMS.md` what may never be violated; **this file says how work
@@ -91,10 +91,14 @@ at the close"* is the same failure with a delay.
 1. Every line struck, every residue routed to a destination.
 2. **Read each destination back from disk.** *Written* is verified, never remembered (AX-9);
    the interval between "I wrote that" and "that is on disk" is where work is lost.
-3. **Then the superauditor fires** — over the artefacts *and over the live plan, which is still
-   full.* This is why the order matters: the plan is the only record of how the task thought,
-   and emptying it first would leave the auditor reading a blank file while believing it had
-   read the reasoning. **The audit precedes the erasure, always.**
+3. **Then the audit fires — but only if a structural file changed** (`skills/superauditor/`
+   holds the list, and the list of what is *not* structural is the load-bearing half). Most
+   closes do not qualify and should not: the close writes the live set and the logs by
+   definition, so an audit that counted those would fire every time and be read none of the
+   times. When it does fire it reads the artefacts *and the live plan, which is still full* —
+   the plan is the only record of how the task thought, and emptying it first leaves the
+   auditor reading a blank file while believing it read the reasoning. **The audit precedes
+   the erasure, always.** The operator can also call it on any close, for any reason.
 4. **Then the plan is emptied** — and only then.
 5. **Print what was touched** — one line per file, no pasted diffs. The table is not the review;
    it is the index that says where to look, and it is what makes an unasked-for change visible

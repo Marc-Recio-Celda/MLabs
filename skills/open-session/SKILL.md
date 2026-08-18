@@ -3,7 +3,7 @@ name: open-session
 description: Opens a working session over an MLabs instance and runs the loop from compass to close. Use at the start of any session on the knowledge base, a project, or the method itself — whether the operator names what they want to do or opens with nothing. Also use to close a task correctly, which is the half most sessions get wrong.
 ---
 
-> **Version:** MLabs 1.1.0
+> **Version:** MLabs 1.0.0
 
 # open-session
 
@@ -70,7 +70,9 @@ The order is the point, and getting it wrong silently disables the company's own
 
 1. Every line struck, every residue routed.
 2. **Read each destination back from disk.** *Written* is verified, never remembered (`AX-9`).
-3. **Fire the superauditor** — over the artefacts **and the live plan, which is still full.**
+3. **Fire the superauditor *only if a structural file changed*** — over the artefacts **and the
+   live plan, which is still full.** Most closes do not qualify; skipping it then is correct, not
+   a shortcut (`skills/superauditor/` holds both lists).
 4. **Only now empty the plan.**
 5. Print what was touched: one line per file, no pasted diffs.
 6. Move the compass.
@@ -78,8 +80,10 @@ The order is the point, and getting it wrong silently disables the company's own
 ⚠️ **Step 3 before step 4, always.** The live plan is the only record of how the task thought;
 emptying it first leaves the audit reading a blank file while believing it read the reasoning.
 
-⚠️ **In a long task the audit also fires every five closed items.** Strike lines through, do not
-delete them, or the mid-task firing sees nothing.
+⚠️ **Strike lines through; do not delete them.** The plan is read by the audit and, when the
+operator asks for a mid-task check, by that too — a deleted line is a step nobody can see was
+taken. **There is no automatic mid-task cadence**: the operator names one when a long task is
+worth it, and the default is none.
 
 ## What this skill does not do
 

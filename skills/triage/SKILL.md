@@ -3,7 +3,7 @@ name: triage
 description: Empties the mailbox by routing every entry to a destination the operator confirms. Use when the inbox has accumulated entries, when the compass names a triage, or when an agent's findings need integrating. Also use to triage a single project's entries by filter rather than taking the whole pile.
 ---
 
-> **Version:** MLabs 1.1.0
+> **Version:** MLabs 1.0.0
 
 # triage
 
@@ -59,8 +59,10 @@ those, because the decision to close them was made when the task was written.
 
 ## 6. Close
 
-Per `open-session` §5: read every destination back from disk, fire the superauditor over the
-still-full plan, then empty it.
+Per `open-session` §5: read every destination back from disk, then empty the plan. **A triage
+alone does not fire the superauditor** — draining a queue changes no structural file, and the
+audit fires on those and nothing else. If the triage routed something *into* an axiom department
+or a skill, it does.
 
 **The mailbox ends empty, or with what is unresolved named explicitly.** A mailbox that goes in
 full and comes out full means the session closed nothing.
