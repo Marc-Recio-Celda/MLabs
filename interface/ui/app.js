@@ -406,6 +406,36 @@ window.navigateTo = function(viewName) {
   renderView();
 };
 
+
+// A row shows a short line and opens for the rest. Long text read in full is text
+// read once and then skipped — and the live plan is the file that most needs reading.
+function summarise(text, max = 110) {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  if (t.length <= max) return { head: t, rest: null };
+  // cut at a sentence end if one is near, else at a word
+  const dot = t.slice(0, max + 40).search(/[.;:]\s/);
+  const cut = dot > 40 ? dot + 1 : t.lastIndexOf(" ", max);
+  return { head: t.slice(0, cut > 40 ? cut : max).trim(), rest: t.slice(cut > 40 ? cut : max).trim() };
+}
+
+function expandable(text, cls = "") {
+  const { head, rest } = summarise(text);
+  if (!rest) return `<span class="${cls}">${inline(head)}</span>`;
+  return `<span class="${cls}">${inline(head)}` +
+    `<button class="more-toggle" onclick="this.parentElement.classList.toggle('open')">…</button>` +
+    `<span class="more-body">${inline(rest)}</span></span>`;
+}
+
+
+// The compass honours the project filter too. Focusing on one project means the file
+// you read to decide what is next, not only the queues.
+// A front with no project is cross-project by design and always shows: hiding it would
+// hide exactly the dependencies that belong to no single project.
+function visibleFronts() {
+  const p = STATE.frontFilterProj;
+  return !p ? STATE.fronts : STATE.fronts.filter(f => !f.project || f.project === p);
+}
+
 function renderView() {
   const main = document.getElementById("mainContent");
   if (!main) return;
@@ -751,7 +781,7 @@ function renderCockpit(container) {
               ${STATE.livePlan.map(item => `
                 <div class="plan-item-row ${item.struck ? 'completed' : ''}">
                   <span class="plan-idx">${item.index}</span>
-                  <span class="plan-text">${inline(item.text)}</span>
+                  ${expandable(item.text, "plan-text")}
                   ${item.destination ? `
                     <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'tag-discarded' : 'dest-resolved'}">
                       ${esc(item.destination)}
@@ -775,21 +805,21 @@ function renderCockpit(container) {
         <div class="cockpit-panel">
           <div class="panel-header">
             <h2><span>🧭</span> Frentes en Cola (Schedule Compass)</h2>
-            <span class="tag-pill">${STATE.fronts.length} frentes</span>
+            <span class="tag-pill">${visibleFronts().length} frentes${STATE.frontFilterProj ? ` · ${esc(STATE.frontFilterProj)}` : ""}</span>
           </div>
           <div style="display: flex; flex-direction: column; gap: 8px;">
-            ${STATE.fronts.map(f => `
+            ${visibleFronts().length ? visibleFronts().map(f => `
               <div class="plan-item-row ${f.active ? 'active-flight' : ''}" style="${f.active ? 'border-color: var(--accent-cyan); background: var(--accent-cyan-bg);' : ''}">
                 <span class="plan-idx" style="${f.active ? 'color: var(--accent-cyan); font-weight: 700;' : ''}">
                   ${f.active ? '▶' : esc(f.marker || '#')}
                 </span>
                 <div style="flex: 1;">
                   <strong style="color: var(--text-primary); font-size: 13.5px;">${inline(f.name)}</strong>
-                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${inline(f.moves_when || '')}</p>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${expandable(f.moves_when || '')}</p>
                 </div>
                 ${f.project ? `<span class="tag-pill tag-project">${esc(f.project)}</span>` : ''}
               </div>
-            `).join("")}
+            `).join("") : `<div class="empty-state">Ningún frente en ${esc(STATE.frontFilterProj)}.</div>`}
           </div>
         </div>
       </div>
@@ -1228,53 +1258,178 @@ function renderSkills(container) {
   const reqSkills = STATE.skills.filter(s => s.trigger === "request");
   const lockedSkills = STATE.skills.filter(s => s.trigger === "locked");
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. SKILLS & ORG VIEW (Redesigned with rich layout, search & CLI commands)
+// ─────────────────────────────────────────────────────────────────────────────
+const SKILL_ICONS = {
+  "open-session": "⚡",
+  "triage": "📬",
+  "company-auditor": "🏛️",
+  "instance-auditor": "🔍",
+  "project-auditor": "🎯",
+  "audit": "🤖",
+  "autonomous-run": "🚀",
+  "code-cleanup": "🧹",
+  "redefine-project": "🔄",
+  "structure-project": "🏗️",
+  "rnd": "🔬",
+  "learn": "📚",
+  "correct-exercise": "✏️",
+  "dispatch": "📤",
+  "gather": "📥",
+  "release-cut": "🏷️"
+};
+
+function classifySkill(s) {
+  const name = s.title.toLowerCase();
+  if (name.includes("auditor") || s.trigger === "event") {
+    return {
+      type: "event",
+      label: "🔔 Rol de Evento",
+      badgeClass: "tag-live",
+      typeDesc: "Disparado automáticamente al cerrar tareas o modificar archivos estructurales"
+    };
+  }
+  if (s.trigger === "locked" || name === "release-cut") {
+    return {
+      type: "locked",
+      label: "🔒 Gobernanza / Release",
+      badgeClass: "tag-supersedes",
+      typeDesc: "Invocación restringida de gobierno o corte de release público"
+    };
+  }
+  return {
+    type: "request",
+    label: "🛠️ Capacidad Invocable",
+    badgeClass: "tag-purple",
+    typeDesc: "Invocada por nombre o comando directo por el operador"
+  };
+}
+
+function renderSkills(container) {
+  const filterType = STATE.skillFilterType || "ALL";
+  const searchTxt = (STATE.skillSearch || "").toLowerCase().trim();
+
+  const enrichedSkills = STATE.skills.map(s => ({
+    ...s,
+    icon: SKILL_ICONS[s.title] || "⚡",
+    classification: classifySkill(s)
+  }));
+
+  const eventCount = enrichedSkills.filter(s => s.classification.type === "event").length;
+  const reqCount = enrichedSkills.filter(s => s.classification.type === "request").length;
+  const lockedCount = enrichedSkills.filter(s => s.classification.type === "locked").length;
+
+  let filtered = enrichedSkills.filter(s => {
+    if (filterType !== "ALL" && s.classification.type !== filterType) return false;
+    if (searchTxt) {
+      const matchTitle = s.title.toLowerCase().includes(searchTxt);
+      const matchSummary = (s.summary || "").toLowerCase().includes(searchTxt);
+      const matchWhen = (s.when || "").toLowerCase().includes(searchTxt);
+      if (!matchTitle && !matchSummary && !matchWhen) return false;
+    }
+    return true;
+  });
+
   container.innerHTML = `
     <div class="view-header">
       <div class="view-title-group">
         <h1><span>⚡</span> Skills & Organigrama de Agentes</h1>
-        <p class="view-subtitle">${STATE.skills.length} skills configuradas como Roles de Evento (🔔) y Capacidades Invocables (🛠️)</p>
+        <p class="view-subtitle">Catálogo de capacidades especializadas y roles de auditoría de MLabs</p>
       </div>
     </div>
 
-    <div class="infographic-section-title">
-      <span>🔔</span> <strong>Roles Disparados por Evento (${eventSkills.length})</strong>
-    </div>
-    <div class="skills-grid" style="margin-bottom: 24px;">
-      ${eventSkills.map(renderSkillCard).join("")}
+    <!-- SKILLS STATS HUD -->
+    <div class="skills-stats-hud">
+      <div class="skill-stat-chip ${filterType === 'ALL' ? 'active' : ''}" onclick="updateSkillFilter('ALL')">
+        <span class="stat-count">${enrichedSkills.length}</span>
+        <span class="stat-name">Todas las Skills</span>
+      </div>
+      <div class="skill-stat-chip ${filterType === 'event' ? 'active' : ''}" onclick="updateSkillFilter('event')">
+        <span class="stat-count" style="color: var(--emerald);">${eventCount}</span>
+        <span class="stat-name">🔔 Roles de Evento</span>
+      </div>
+      <div class="skill-stat-chip ${filterType === 'request' ? 'active' : ''}" onclick="updateSkillFilter('request')">
+        <span class="stat-count" style="color: var(--purple);">${reqCount}</span>
+        <span class="stat-name">🛠️ Capacidades</span>
+      </div>
+      <div class="skill-stat-chip ${filterType === 'locked' ? 'active' : ''}" onclick="updateSkillFilter('locked')">
+        <span class="stat-count" style="color: var(--amber);">${lockedCount}</span>
+        <span class="stat-name">🔒 Gobernanza</span>
+      </div>
     </div>
 
-    <div class="infographic-section-title">
-      <span>🛠️</span> <strong>Capacidades Invocadas por Nombre (${reqSkills.length})</strong>
-    </div>
-    <div class="skills-grid" style="margin-bottom: 24px;">
-      ${reqSkills.map(renderSkillCard).join("")}
+    <!-- SKILLS TOOLBAR -->
+    <div class="view-toolbar" style="margin-top: 16px;">
+      <div class="toolbar-group search-group" style="flex: 1;">
+        <input type="text" id="skillSearchInput" class="custom-input" placeholder="Buscar skill por nombre, objetivo, condición de uso..." value="${esc(STATE.skillSearch || '')}" oninput="updateSkillSearch(this.value)">
+      </div>
+      <div class="toolbar-group">
+        <span class="tag-pill">${filtered.length} skills mostradas</span>
+      </div>
     </div>
 
-    ${lockedSkills.length ? `
-      <div class="infographic-section-title">
-        <span>🔒</span> <strong>Capacidades Bloqueadas (${lockedSkills.length})</strong>
-      </div>
-      <div class="skills-grid">
-        ${lockedSkills.map(renderSkillCard).join("")}
-      </div>
-    ` : ''}
+    <!-- SKILLS CARDS GRID -->
+    <div class="skills-enhanced-grid">
+      ${filtered.length ? filtered.map(renderEnhancedSkillCard).join("") : `
+        <div class="empty-state" style="grid-column: 1 / -1;">
+          <div class="empty-icon">⚡</div>
+          <h3>No hay skills que coincidan</h3>
+          <p>Prueba a buscar con otro término o selecciona 'Todas las Skills'.</p>
+        </div>
+      `}
+    </div>
   `;
 }
 
-function renderSkillCard(skill) {
+function renderEnhancedSkillCard(skill, idx) {
+  const cliCmd = `claude -p 'run ${skill.title}'`;
+  const rowId = `skillCmd_${idx}`;
+
   return `
-    <div class="skill-card">
-      <div class="skill-header">
-        <span class="skill-name">${esc(skill.title)}</span>
-        <span class="tag-pill ${skill.trigger === 'event' ? 'tag-live' : 'tag-purple'}">${esc(skill.trigger)}</span>
+    <div class="skill-enhanced-card">
+      <div class="skill-card-topbar">
+        <div class="skill-identity">
+          <span class="skill-icon-bubble">${skill.icon}</span>
+          <div>
+            <h3 class="skill-card-name">${esc(skill.title)}</h3>
+            <span class="skill-file-path">skills/${esc(skill.title)}/SKILL.md</span>
+          </div>
+        </div>
+        <span class="tag-pill ${skill.classification.badgeClass}">
+          ${esc(skill.classification.label)}
+        </span>
       </div>
-      <p class="skill-desc">${inline(skill.summary || "Capacidad especializada de agente")}</p>
-      <div class="skill-evidence">
-        <strong>Cuándo usar:</strong> ${inline(skill.when || "Invocación directa")}
+
+      <p class="skill-card-summary">${inline(skill.summary || "Capacidad especializada de agente para operaciones.")}</p>
+
+      <div class="skill-card-when-box">
+        <div class="when-box-label">
+          <span>🎯</span> <strong>CUÁNDO USAR / DISPARO:</strong>
+        </div>
+        <p class="when-box-text">${inline(skill.when || skill.evidence || "Invocación directa bajo demanda.")}</p>
+      </div>
+
+      <div class="skill-card-footer">
+        <div class="skill-cli-box" id="${rowId}" onclick="copyCommand('${esc(cliCmd)}', '${rowId}')" title="Clic para copiar comando de invocación">
+          <span class="cli-prompt-label">CLI:</span>
+          <code class="cli-prompt-code">${esc(cliCmd)}</code>
+          <button class="cli-copy-btn">Copiar 📋</button>
+        </div>
       </div>
     </div>
   `;
 }
+
+window.updateSkillFilter = function(type) {
+  STATE.skillFilterType = type;
+  renderView();
+};
+
+window.updateSkillSearch = function(q) {
+  STATE.skillSearch = q;
+  renderView();
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERACTIVE TASK LIFECYCLE (Complete, Comment, Discard)
@@ -1571,10 +1726,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (val === "ALL") {
       STATE.taskFilterProj = "";
       STATE.decFilterProj = "";
+      STATE.frontFilterProj = "";
     } else {
       STATE.taskFilterProj = val;
       STATE.decFilterProj = val;
-      STATE.selectedProject = val;
+      STATE.frontFilterProj = val;   // the compass too: focusing on a project means
+      STATE.selectedProject = val;   // the thing you read to decide what is next
     }
     renderView();
   });
