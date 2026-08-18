@@ -24,7 +24,7 @@ import re
 import sys
 from pathlib import Path
 
-KINDS = ("compass", "plan", "queue", "park", "record", "standing", "skills")
+KINDS = ("compass", "plan", "queue", "park", "record", "standing", "skills", "records")
 
 
 class Problem(dict):
@@ -91,6 +91,16 @@ def assign_ids(entities):
     seen = {}
     for e in entities:
         k = e["kind"]
+        # A record from the store already carries its identity — that is what the
+        # conversion bought. Slugging over it would replace a real `D3` with a made-up
+        # name and break every reference that points at it.
+        if e.get("_record_id"):
+            base = slug(k, e.get("project"), e["_record_id"])
+            n = seen.get(base, 0) + 1
+            seen[base] = n
+            e["id"] = e["_record_id"] if n == 1 else f'{e["_record_id"]}-{n}'
+            e["uid"] = base if n == 1 else f"{base}-{n}"
+            continue
         if k == "task":
             base = slug(k, e.get("id_raw") or e.get("title"))
         elif k == "project-state":
@@ -372,7 +382,25 @@ def parse_skills(path, text):
              "when": " ".join(when[1:]).strip() or None, "description": desc}], []
 
 
-PARSERS = {"skills": parse_skills, "queue": parse_queue, "park": parse_park, "compass": parse_compass,
+def parse_records(path, text):
+    """A record from the JSON store. No grammar, because there is nothing to guess.
+
+    This is what the conversion bought: the shapes below still parse prose, with all
+    the ambiguity that implies, while a record either has a field or does not. When
+    every collection has moved, most of this file goes.
+    """
+    try:
+        r = json.loads(text)
+    except json.JSONDecodeError as e:
+        return [], [Problem(path, 1, f"a record that is not valid JSON: {e}")]
+    if not isinstance(r, dict) or "id" not in r:
+        return [], [Problem(path, 1, "a record with no id")]
+    r.setdefault("project", None)
+    r["_record_id"] = r["id"]     # so assign_ids keeps it instead of slugging over it
+    return [r], []
+
+
+PARSERS = {"records": parse_records, "skills": parse_skills, "queue": parse_queue, "park": parse_park, "compass": parse_compass,
            "plan": parse_plan, "standing": parse_standing, "record": lambda p, t: ([], [])}
 
 
@@ -412,6 +440,8 @@ def parse_adapter(adapter_path):
             else:
                 ents, probs = PARSERS[kind](f, body)
             for e in ents:
+                if kind == "records":
+                    e["kind"] = src.get("entity") or "record"
                 e["source"] = src["label"]
                 try:
                     e["file"] = str(f.relative_to(sroot))
