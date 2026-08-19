@@ -1590,6 +1590,75 @@ body {
   border: 1px solid rgba(255, 215, 0, 0.35);
 }
 
+/* -- Sovereign Header Definition and Phase Elements -- */
+.proj-phase-badge-box {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  padding: 8px 14px;
+  text-align: right;
+  max-width: 340px;
+}
+
+.proj-phase-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  color: #ffe580;
+  letter-spacing: 0.6px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.proj-phase-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+.proj-definition-hero-card {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-top: 14px;
+}
+
+.proj-def-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #d1e7dd;
+  letter-spacing: 0.6px;
+  margin-bottom: 4px;
+}
+
+.proj-def-text {
+  font-size: 13.5px;
+  color: #ffffff;
+  line-height: 1.55;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* -- Project Card in Hub Definition & Phase Snippet -- */
+.project-card-phase-badge {
+  margin-top: -4px;
+  display: flex;
+}
+
+.project-card-def-snippet {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* ── RAMIFIED WORKFLOW TREE ── */
 .ramified-workflow-container {
   display: flex;

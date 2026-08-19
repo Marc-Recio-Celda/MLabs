@@ -145,15 +145,49 @@ const CHEATSHEET_DATA = [
 
 // Helper to generate dynamic ramified project block workflows from real project state & decisions
 function generateProjectRamifiedWorkflow(pName, decCount, pState, projectTasks = [], projectDecs = []) {
-  const decs = (projectDecs || []).map(d => d.id);
   const openTasks = projectTasks.filter(t => t.status !== "✅" && t.status !== "⚫");
   const closedTasks = projectTasks.filter(t => t.status === "✅");
+  const decIds = (projectDecs || []).map(d => d.id);
 
-  const b0Decs = decs.slice(0, Math.max(1, Math.min(6, Math.floor(decs.length / 3))));
-  const b1Decs = decs.slice(b0Decs.length, Math.max(b0Decs.length + 1, Math.min(decs.length, Math.floor((decs.length * 2) / 3))));
-  const b2Decs = decs.slice(b0Decs.length + b1Decs.length);
+  // If real blocks were parsed from state.md, use them!
+  if (pState && Array.isArray(pState.blocks) && pState.blocks.length > 0) {
+    return pState.blocks.map((b, bIdx) => {
+      const status = b.status || "pending";
+      const statusLabel = status === "completed" ? "✓ Listo" : (status === "active" ? "▶ En Curso" : "⏳ Pendiente");
+      
+      const subblocks = (b.subblocks || []).map(sub => {
+        // Find tasks matching this subblock ID (e.g. "B8.2" or "A1.1")
+        const matchingTasks = projectTasks.filter(t => t.title.includes(sub.id) || (t.why && t.why.includes(sub.id)));
+        const subTasks = matchingTasks.length ? matchingTasks : (sub.status === "active" ? openTasks : []);
+        
+        return {
+          id: sub.id,
+          kind: sub.kind || "🔨",
+          title: sub.title,
+          desc: sub.desc || sub.title,
+          status: sub.status || "pending",
+          tasks: subTasks
+        };
+      });
 
-  const phaseTitle = pState?.current_phase || "Fase de Integración y Ejecución";
+      return {
+        id: b.id,
+        title: b.title,
+        status,
+        statusLabel,
+        summary: b.summary || b.title,
+        decisions: decIds.slice(bIdx * 2, (bIdx + 1) * 2),
+        subblocks
+      };
+    });
+  }
+
+  // Fallback for projects without explicit blocks defined in state.md
+  const b0Decs = decIds.slice(0, Math.max(1, Math.min(6, Math.floor(decIds.length / 3))));
+  const b1Decs = decIds.slice(b0Decs.length, Math.max(b0Decs.length + 1, Math.min(decIds.length, Math.floor((decIds.length * 2) / 3))));
+  const b2Decs = decIds.slice(b0Decs.length + b1Decs.length);
+
+  const phaseTitle = pState?.phase_summary || pState?.current_phase || "Fase de Integración y Ejecución";
   const nextActionDesc = pState?.next_action || "Progreso de las tareas prioritarias del roadmap";
 
   return [
@@ -161,8 +195,8 @@ function generateProjectRamifiedWorkflow(pName, decCount, pState, projectTasks =
       id: "B0",
       title: "Definición, Arquitectura y Acuerdos de Cartridge",
       status: "completed",
-      statusLabel: "✓ Completado",
-      summary: `Estructura base del proyecto, definición de límites de scope, invariantes y primer bloque fundacional de decisiones.`,
+      statusLabel: "✓ Listo",
+      summary: "Estructura base del proyecto, definición de límites de scope, invariantes y decisiones fundacionales.",
       decisions: b0Decs,
       subblocks: [
         {
@@ -185,9 +219,9 @@ function generateProjectRamifiedWorkflow(pName, decCount, pState, projectTasks =
       id: "B1",
       title: `Desarrollo e Integración · ${esc(phaseTitle)}`,
       status: "active",
-      statusLabel: "▶ Frente Activo",
+      statusLabel: "▶ En Curso",
       summary: `Bloque en vuelo activo guiado por la acción inmediata: ${esc(nextActionDesc)}`,
-      decisions: b1Decs.length ? b1Decs : (decs.slice(0, 2)),
+      decisions: b1Decs.length ? b1Decs : (decIds.slice(0, 2)),
       subblocks: [
         {
           id: "B1.1",
@@ -209,7 +243,7 @@ function generateProjectRamifiedWorkflow(pName, decCount, pState, projectTasks =
       id: "B2",
       title: "Persistencia, Endpoints y Extensión Funcional",
       status: "pending",
-      statusLabel: "⏳ Planificado",
+      statusLabel: "⏳ Pendiente",
       summary: "Ampliación de funcionalidades, persistencia de datos estructurados y pruebas de integración.",
       decisions: b2Decs,
       subblocks: [
@@ -233,7 +267,7 @@ function generateProjectRamifiedWorkflow(pName, decCount, pState, projectTasks =
       id: "B3",
       title: "Validación, Auditoría de Cierre y Release",
       status: "pending",
-      statusLabel: "⏳ Planificado",
+      statusLabel: "⏳ Pendiente",
       summary: "Comprobación de invariantes, auditoría mediante project-auditor y preparación de entrega.",
       decisions: [],
       subblocks: [
@@ -430,7 +464,8 @@ function ingestModel(model) {
       if (!integratedThrough && parts[1]) integratedThrough = parts[1].replace(/[`*]/g, "").trim();
     }
 
-    const nextAction = pState?.next_action || pState?.resume_point || pState?.phase || "Revisión periódica de bloques";
+    const definition = pState?.definition || "Plataforma soberana bajo metodología MLabs con ciclo de vida desacoplado y gobernanza inmutable.";
+    const currentPhase = pState?.phase_summary || pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución";
 
     return {
       name,
@@ -443,7 +478,8 @@ function ingestModel(model) {
       nextAction,
       lastUpdated: rawLastUpdated || new Date().toISOString().slice(0, 10),
       integratedThrough: integratedThrough || `D${decCount || 1}`,
-      currentPhase: pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución",
+      currentPhase,
+      definition,
       file: pState ? pState.file : "",
       lab: pState?.lab || (pState ? getProjectLab(pState) : "MProjects"),
       workflow
@@ -1280,6 +1316,15 @@ function renderLabSection(labName, projects) {
               <span class="status-chip ${p.status === 'ACTIVE' ? 'status-active' : 'status-paused'}">${esc(p.status)}</span>
             </div>
 
+            <!-- FASE ACTUAL Y DEFINICIÓN -->
+            <div class="project-card-phase-badge">
+              <span class="card-badge badge-vine" style="font-size: 11px;">📍 ${inline(p.currentPhase)}</span>
+            </div>
+
+            <p class="project-card-def-snippet">
+              ${inline(p.definition)}
+            </p>
+
             <div class="progress-section">
               <div class="progress-labels">
                 <span>Progreso de Bloques</span>
@@ -1356,21 +1401,32 @@ function renderProjectDetailPage(container) {
       </div>
     </div>
 
-    <!-- SOVEREIGN PROJECT HERO HEADER -->
+    <!-- SOVEREIGN PROJECT HERO HEADER WITH FULL DEFINITION & PHASE -->
     <header class="chuleta-header proj-sovereign-header">
       <div class="brand">
-        <div class="kicker">${esc(labName)} · CARTRIDGE SOBERANO</div>
-        <div style="display: flex; align-items: center; gap: 14px; margin-top: 4px; flex-wrap: wrap;">
-          <span style="font-size: 32px;">${icon}</span>
-          <h1 style="margin: 0; font-size: 28px;">${esc(proj.name)}</h1>
-          <span class="card-badge badge-vine" style="font-size: 12px;">${esc(proj.status)}</span>
-          <span class="card-badge badge-gold" style="font-size: 12px;">Sincronizado: ${esc(proj.integratedThrough)}</span>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+          <div>
+            <div class="kicker">${esc(labName)} · CARTRIDGE SOBERANO</div>
+            <div style="display: flex; align-items: center; gap: 14px; margin-top: 4px; flex-wrap: wrap;">
+              <span style="font-size: 32px;">${icon}</span>
+              <h1 style="margin: 0; font-size: 28px;">${esc(proj.name)}</h1>
+              <span class="card-badge badge-vine" style="font-size: 12px;">${esc(proj.status)}</span>
+              <span class="card-badge badge-gold" style="font-size: 12px;">Sincronizado: ${esc(proj.integratedThrough)}</span>
+            </div>
+          </div>
+          <div class="proj-phase-badge-box">
+            <span class="proj-phase-tag">FASE TÉCNICA ACTUAL</span>
+            <div class="proj-phase-text">${inline(proj.currentPhase)}</div>
+          </div>
         </div>
-        <p class="header-lead" style="margin-top: 10px;">
-          <strong>Fase Actual:</strong> ${esc(proj.currentPhase)} · <strong>Última actualización:</strong> ${esc(proj.lastUpdated)}<br>
-          Cartridge soberano con ciclo de vida desacoplado, auditoría de eventos y roadmap ramificado determinista.
-        </p>
-        <div class="specs">
+
+        <!-- DEFINICIÓN INTEGRADA DEL PROYECTO (WHAT IT IS) -->
+        <div class="proj-definition-hero-card">
+          <div class="proj-def-label">DEFINICIÓN &amp; PROPÓSITO DEL PROYECTO</div>
+          <p class="proj-def-text">${inline(proj.definition)}</p>
+        </div>
+
+        <div class="specs" style="margin-top: 14px;">
           <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>🗺️ Bloques:</strong> ${proj.completedBlocks}/${proj.totalBlocks} (${proj.progress}%)</span>
           <span class="spec-pill" onclick="setProjectSubtab('decisions')"><strong>📜 Decisiones:</strong> ${liveDecs.length} Vivas (${projectDecs.length} Totales)</span>
           <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>📋 Tareas:</strong> ${projectTasks.length} (${activeTasks.length} Activas)</span>
@@ -1626,7 +1682,7 @@ function renderProjectArchitectureTab(proj) {
           </div>
         </div>
         <p style="font-size: 13.5px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
-          Plataforma soberana bajo metodología MLabs. Desacoplada de otros repositorios para permitir escalabilidad a 3× y 10× sin interferencias.
+          ${inline(proj.definition)}
         </p>
 
         <div class="callout tip" style="margin-top: 12px;">
