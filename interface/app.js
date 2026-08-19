@@ -143,25 +143,117 @@ const CHEATSHEET_DATA = [
   }
 ];
 
-// Helper to generate dynamic project block roadmaps from real project state & decisions
-function generateProjectBlocks(pName, decCount, pState) {
-  const count = Math.max(4, Math.min(10, Math.ceil((decCount || 10) / 10) + 3));
-  const blocks = [];
-  const currentPhase = pState?.current_phase || "Fase de ejecución";
+// Helper to generate dynamic ramified project block workflows from real project state & decisions
+function generateProjectRamifiedWorkflow(pName, decCount, pState, projectTasks = [], projectDecs = []) {
+  const decs = (projectDecs || []).map(d => d.id);
+  const openTasks = projectTasks.filter(t => t.status !== "✅" && t.status !== "⚫");
+  const closedTasks = projectTasks.filter(t => t.status === "✅");
 
-  for (let i = 0; i < count; i++) {
-    const isDone = i < count - 2;
-    const isActive = i === count - 2;
-    blocks.push({
-      id: `B${i}`,
-      title: i === 0 ? "Definición y setup" : (isDone ? `Bloque ejecutado B${i}` : (isActive ? `Bloque activo (${currentPhase.slice(0, 30)})` : `Bloque pendiente B${i}`)),
-      done: isDone,
-      active: isActive,
-      date: isDone ? "Completado" : (isActive ? "En curso" : "Pendiente"),
-      note: isDone ? `Bloque verificado e integrado` : (isActive ? `Frente en vuelo activo` : `Planificado`)
-    });
-  }
-  return blocks;
+  const b0Decs = decs.slice(0, Math.max(1, Math.min(6, Math.floor(decs.length / 3))));
+  const b1Decs = decs.slice(b0Decs.length, Math.max(b0Decs.length + 1, Math.min(decs.length, Math.floor((decs.length * 2) / 3))));
+  const b2Decs = decs.slice(b0Decs.length + b1Decs.length);
+
+  const phaseTitle = pState?.current_phase || "Fase de Integración y Ejecución";
+  const nextActionDesc = pState?.next_action || "Progreso de las tareas prioritarias del roadmap";
+
+  return [
+    {
+      id: "B0",
+      title: "Definición, Arquitectura y Acuerdos de Cartridge",
+      status: "completed",
+      statusLabel: "✓ Completado",
+      summary: `Estructura base del proyecto, definición de límites de scope, invariantes y primer bloque fundacional de decisiones.`,
+      decisions: b0Decs,
+      subblocks: [
+        {
+          id: "B0.1",
+          title: "Establecimiento del Cartridge y Definición Soberana",
+          status: "completed",
+          desc: "Fijación de objetivos medibles del MVP, entregables y criterios de éxito.",
+          tasks: []
+        },
+        {
+          id: "B0.2",
+          title: "Auditoría de Entorno, Esquemas y Dependencias",
+          status: "completed",
+          desc: "Verificación de compatibilidad y contratos de comunicación externa.",
+          tasks: closedTasks.slice(0, 1)
+        }
+      ]
+    },
+    {
+      id: "B1",
+      title: `Desarrollo e Integración · ${esc(phaseTitle)}`,
+      status: "active",
+      statusLabel: "▶ Frente Activo",
+      summary: `Bloque en vuelo activo guiado por la acción inmediata: ${esc(nextActionDesc)}`,
+      decisions: b1Decs.length ? b1Decs : (decs.slice(0, 2)),
+      subblocks: [
+        {
+          id: "B1.1",
+          title: "Implementación de Módulos Core y Adaptadores",
+          status: "completed",
+          desc: "Estructuración de componentes principales y sincronización de servicios.",
+          tasks: closedTasks.slice(1)
+        },
+        {
+          id: "B1.2",
+          title: "Acción Siguiente Inmediata (Next Action en Vuelo)",
+          status: "active",
+          desc: nextActionDesc,
+          tasks: openTasks
+        }
+      ]
+    },
+    {
+      id: "B2",
+      title: "Persistencia, Endpoints y Extensión Funcional",
+      status: "pending",
+      statusLabel: "⏳ Planificado",
+      summary: "Ampliación de funcionalidades, persistencia de datos estructurados y pruebas de integración.",
+      decisions: b2Decs,
+      subblocks: [
+        {
+          id: "B2.1",
+          title: "Ampliación de Esquemas y Modelos de Datos",
+          status: "pending",
+          desc: "Preparación de estructuras y capas de acceso seguro.",
+          tasks: []
+        },
+        {
+          id: "B2.2",
+          title: "Integración de Vistas y Consumo de Servicios",
+          status: "pending",
+          desc: "Visualización y renderizado reactivo de entidades.",
+          tasks: []
+        }
+      ]
+    },
+    {
+      id: "B3",
+      title: "Validación, Auditoría de Cierre y Release",
+      status: "pending",
+      statusLabel: "⏳ Planificado",
+      summary: "Comprobación de invariantes, auditoría mediante project-auditor y preparación de entrega.",
+      decisions: [],
+      subblocks: [
+        {
+          id: "B3.1",
+          title: "Paso de Gates de Auditoría y Verificación de Diff",
+          status: "pending",
+          desc: "Validación de higiene técnica, cero leaks y despersonalización.",
+          tasks: []
+        },
+        {
+          id: "B3.2",
+          title: "Sincronización de Estado en Presente Indicativo",
+          status: "pending",
+          desc: "Actualización de state.md y registro inmutable de decisiones.",
+          tasks: []
+        }
+      ]
+    }
+  ];
 }
 
 // Ingest typed model from server
@@ -322,9 +414,13 @@ function ingestModel(model) {
                    projectStates.find(ps => ps.project && ps.project.toLowerCase() === name.toLowerCase()) ||
                    projectStates.find(ps => ps.title && ps.title.toLowerCase().includes(name.toLowerCase()));
     const decCount = STATE.decisions.filter(d => d.project === name).length;
-    const roadmap = generateProjectBlocks(name, decCount, pState);
-    const completedBlocks = roadmap.filter(b => b.done).length;
-    const progress = roadmap.length ? Math.round((completedBlocks / roadmap.length) * 100) : 75;
+    const projectTasks = STATE.tasks.filter(t => t.project === name || t.project.startsWith(name));
+    const projectDecs = STATE.decisions.filter(d => d.project === name);
+    
+    const workflow = generateProjectRamifiedWorkflow(name, decCount, pState, projectTasks, projectDecs);
+    const completedBlocks = workflow.filter(b => b.status === "completed").length;
+    const totalBlocks = workflow.length;
+    const progress = totalBlocks ? Math.round((completedBlocks / totalBlocks) * 100) : 75;
 
     let rawLastUpdated = pState?.last_updated || "";
     let integratedThrough = pState?.integrated_through || "";
@@ -334,7 +430,7 @@ function ingestModel(model) {
       if (!integratedThrough && parts[1]) integratedThrough = parts[1].replace(/[`*]/g, "").trim();
     }
 
-    const nextAction = pState?.next_action || pState?.resume_point || pState?.phase || (roadmap.find(b => b.active)?.title || "Revisión periódica");
+    const nextAction = pState?.next_action || pState?.resume_point || pState?.phase || "Revisión periódica de bloques";
 
     return {
       name,
@@ -342,7 +438,7 @@ function ingestModel(model) {
       status: "ACTIVE",
       progress,
       completedBlocks,
-      totalBlocks: roadmap.length,
+      totalBlocks,
       decisionsCount: decCount,
       nextAction,
       lastUpdated: rawLastUpdated || new Date().toISOString().slice(0, 10),
@@ -350,7 +446,7 @@ function ingestModel(model) {
       currentPhase: pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución",
       file: pState ? pState.file : "",
       lab: pState?.lab || (pState ? getProjectLab(pState) : "MProjects"),
-      blocks: roadmap
+      workflow
     };
   });
 
@@ -498,6 +594,7 @@ function renderView() {
   switch (STATE.currentView) {
     case "overview": renderOverview(main); break;
     case "projects": renderProjectsHub(main); break;
+    case "project-detail": renderProjectDetailPage(main); break;
     case "cockpit": renderCockpit(main); break;
     case "cheatsheet": renderCheatSheet(main); break;
     case "inbox": renderInbox(main); break;
@@ -1084,7 +1181,7 @@ window.navigateTo = function(viewName) {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. PROJECTS HUB VIEW (Separated by Laboratories dynamically)
+// 2. PROJECTS HUB & SOVEREIGN PROJECT DEDICATED WEBS
 // ─────────────────────────────────────────────────────────────────────────────
 function getProjectLab(p) {
   if (p.lab && p.lab !== "General") return p.lab;
@@ -1100,7 +1197,6 @@ function getProjectLab(p) {
 
 function renderProjectsHub(container) {
   const selectedLab = STATE.selectedLabFilter || "ALL";
-  const selectedProj = STATE.projects.find(p => p.name === STATE.selectedProject) || STATE.projects[0];
 
   const enrichedProjects = STATE.projects.map(p => ({
     ...p,
@@ -1117,12 +1213,12 @@ function renderProjectsHub(container) {
     <div class="view-header">
       <div class="view-title-group">
         <h1><span>🚀</span> Projects Hub</h1>
-        <p class="view-subtitle">Organización de proyectos segregada por Laboratorios y Centros de Trabajo</p>
+        <p class="view-subtitle">Matriz de proyectos organizada por Laboratorios y Centros de Trabajo soberanos</p>
       </div>
     </div>
 
     <!-- LAB FILTER CHIPS -->
-    <div class="skills-stats-hud" style="margin-bottom: 20px;">
+    <div class="skills-stats-hud" style="margin-bottom: 24px;">
       <div class="skill-stat-chip ${selectedLab === 'ALL' ? 'active' : ''}" onclick="updateLabFilter('ALL')">
         <span class="stat-count">${enrichedProjects.length}</span>
         <span class="stat-name">🏢 Todos los Laboratorios</span>
@@ -1144,9 +1240,6 @@ function renderProjectsHub(container) {
       const labProjects = enrichedProjects.filter(p => p.lab === lab);
       return renderLabSection(lab, labProjects);
     }).join("") : renderLabSection(selectedLab, filteredProjects)}
-
-    <!-- PROJECT DETAIL DEEP DIVE -->
-    ${selectedProj ? renderProjectDeepDive(selectedProj) : ""}
   `;
 }
 
@@ -1167,7 +1260,7 @@ function renderLabSection(labName, projects) {
               <h2 class="lab-title">${esc(labName)}</h2>
               <span class="tag-pill ${badgeClass}">${esc(badgeLabel)}</span>
             </div>
-            <p class="lab-subtitle">Entorno de proyectos y operaciones asociadas a ${esc(labName)}</p>
+            <p class="lab-subtitle">Entorno de proyectos y operaciones soberanas asociadas a ${esc(labName)}</p>
           </div>
         </div>
         <div class="lab-stats-pills">
@@ -1178,7 +1271,7 @@ function renderLabSection(labName, projects) {
 
       <div class="projects-matrix-grid">
         ${projects.map(p => `
-          <div class="project-card ${p.name === STATE.selectedProject ? 'active-selected' : ''}" onclick="selectProject('${esc(p.name)}')">
+          <div class="project-card" onclick="openProjectDetail('${esc(p.name)}')">
             <div class="card-top">
               <div class="project-name-group">
                 <span class="project-rank">${esc(p.rank)}</span>
@@ -1205,6 +1298,10 @@ function renderLabSection(labName, projects) {
               <span class="meta-item">📜 ${p.decisionsCount} decisiones</span>
               <span class="meta-item">🕒 ${esc(p.lastUpdated)}</span>
             </div>
+
+            <div class="card-footer-action">
+              <span>Explorar Cartridge Soberano →</span>
+            </div>
           </div>
         `).join("")}
       </div>
@@ -1212,69 +1309,205 @@ function renderLabSection(labName, projects) {
   `;
 }
 
-function renderProjectDeepDive(proj) {
+// ─────────────────────────────────────────────────────────────────────────────
+// SOVEREIGN PROJECT DEDICATED PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+function renderProjectDetailPage(container) {
+  const projName = STATE.selectedProject || (STATE.projects[0] ? STATE.projects[0].name : "");
+  const proj = STATE.projects.find(p => p.name === projName) || STATE.projects[0];
+
+  if (!proj) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <h3>Proyecto no encontrado</h3>
+        <p>Selecciona un proyecto desde el Projects Hub.</p>
+        <button class="btn-hud-action" onclick="navigateTo('projects')">Volver a Projects Hub</button>
+      </div>
+    `;
+    return;
+  }
+
   const labName = getProjectLab(proj);
   const isPersonal = labName.toLowerCase().includes("proj");
   const icon = isPersonal ? "💼" : "🔬";
+  const activeTab = STATE.projectSubtab || "workflow";
+
   const projectTasks = STATE.tasks.filter(t => t.project === proj.name || t.project.startsWith(proj.name));
   const activeTasks = projectTasks.filter(t => ["⬜", "🔨", "⛔", "🔴"].includes(t.status));
-  const projectDecs = STATE.decisions.filter(d => d.project === proj.name).slice(0, 5);
+  const projectDecs = STATE.decisions.filter(d => d.project === proj.name);
+  const liveDecs = projectDecs.filter(d => !d.isSuperseded);
+
+  container.innerHTML = `
+    <!-- BREADCRUMB & TOP NAV -->
+    <div class="proj-page-breadcrumb-bar">
+      <button class="btn-back-hub" onclick="navigateTo('projects')">
+        <span>←</span> <span>Volver a Projects Hub</span>
+      </button>
+      <div class="proj-breadcrumb-path">
+        <span>Projects Hub</span> / <span>${esc(labName)}</span> / <strong>${esc(proj.name)}</strong>
+      </div>
+      <div class="proj-quick-switch">
+        <label for="quickProjSelect">Cambiar Proyecto:</label>
+        <select id="quickProjSelect" class="search-input" style="padding: 4px 8px; font-size: 12px; width: auto;" onchange="openProjectDetail(this.value)">
+          ${STATE.projects.map(p => `
+            <option value="${esc(p.name)}" ${p.name === proj.name ? 'selected' : ''}>${esc(p.name)} (${getProjectLab(p)})</option>
+          `).join("")}
+        </select>
+      </div>
+    </div>
+
+    <!-- SOVEREIGN PROJECT HERO HEADER -->
+    <header class="chuleta-header proj-sovereign-header">
+      <div class="brand">
+        <div class="kicker">${esc(labName)} · CARTRIDGE SOBERANO</div>
+        <div style="display: flex; align-items: center; gap: 14px; margin-top: 4px; flex-wrap: wrap;">
+          <span style="font-size: 32px;">${icon}</span>
+          <h1 style="margin: 0; font-size: 28px;">${esc(proj.name)}</h1>
+          <span class="card-badge badge-vine" style="font-size: 12px;">${esc(proj.status)}</span>
+          <span class="card-badge badge-gold" style="font-size: 12px;">Sincronizado: ${esc(proj.integratedThrough)}</span>
+        </div>
+        <p class="header-lead" style="margin-top: 10px;">
+          <strong>Fase Actual:</strong> ${esc(proj.currentPhase)} · <strong>Última actualización:</strong> ${esc(proj.lastUpdated)}<br>
+          Cartridge soberano con ciclo de vida desacoplado, auditoría de eventos y roadmap ramificado determinista.
+        </p>
+        <div class="specs">
+          <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>🗺️ Bloques:</strong> ${proj.completedBlocks}/${proj.totalBlocks} (${proj.progress}%)</span>
+          <span class="spec-pill" onclick="setProjectSubtab('decisions')"><strong>📜 Decisiones:</strong> ${liveDecs.length} Vivas (${projectDecs.length} Totales)</span>
+          <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>📋 Tareas:</strong> ${projectTasks.length} (${activeTasks.length} Activas)</span>
+          <span class="spec-pill active-pill" onclick="setProjectSubtab('state')"><strong>🎯 Next Action:</strong> ${inline(proj.nextAction.slice(0, 45))}...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- PROJECT INTERNAL TABS (TOC) -->
+    <nav class="toc-bar" style="margin: 20px 0 24px;">
+      <button class="toc-pill ${activeTab === 'workflow' ? 'active' : ''}" onclick="setProjectSubtab('workflow')"><span>🗺️</span> 1. Workflow Ramificado</button>
+      <button class="toc-pill ${activeTab === 'state' ? 'active' : ''}" onclick="setProjectSubtab('state')"><span>🎯</span> 2. Estado Vivo &amp; Next Action</button>
+      <button class="toc-pill ${activeTab === 'architecture' ? 'active' : ''}" onclick="setProjectSubtab('architecture')"><span>🏛️</span> 3. Arquitectura &amp; Definición</button>
+      <button class="toc-pill ${activeTab === 'decisions' ? 'active' : ''}" onclick="setProjectSubtab('decisions')"><span>📜</span> 4. Decisiones (${projectDecs.length})</button>
+      <button class="toc-pill ${activeTab === 'skills' ? 'active' : ''}" onclick="setProjectSubtab('skills')"><span>⚡</span> 5. Skills &amp; Operaciones</button>
+    </nav>
+
+    <!-- TAB CONTENT RENDERER -->
+    <div class="proj-tab-content-area">
+      ${renderProjectSubtabContent(proj, activeTab, projectTasks, projectDecs)}
+    </div>
+  `;
+}
+
+function renderProjectSubtabContent(proj, tab, projectTasks, projectDecs) {
+  switch (tab) {
+    case "workflow": return renderProjectWorkflowTab(proj, projectTasks, projectDecs);
+    case "state": return renderProjectStateTab(proj, projectTasks, projectDecs);
+    case "architecture": return renderProjectArchitectureTab(proj);
+    case "decisions": return renderProjectDecisionsTab(proj, projectDecs);
+    case "skills": return renderProjectSkillsTab(proj);
+    default: return renderProjectWorkflowTab(proj, projectTasks, projectDecs);
+  }
+}
+
+// ── TAB 1: WORKFLOW RAMIFICADO (Bloques, Subbloques y Log de Tareas) ──
+function renderProjectWorkflowTab(proj, projectTasks, projectDecs) {
+  const workflow = proj.workflow || [];
 
   return `
-    <div class="project-detail-panel" id="projectDetailSection">
-      <div class="detail-header">
-        <div class="detail-title-group">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 24px;">${icon}</span>
-            <h2>${esc(proj.name)} · Detalle del Cartridge</h2>
-            <span class="tag-pill tag-project">${esc(labName)}</span>
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">01</span> Mapa Ramificado de Fases, Bloques y Subbloques</h2>
+        <button class="btn-hud-action" onclick="openTaskModalForProject('${esc(proj.name)}')">
+          <span>➕</span> <span>Nueva Tarea para ${esc(proj.name)}</span>
+        </button>
+      </div>
+      <p class="lead">
+        Secuencia estructurada de ejecución. Cada bloque maestro engloba sus subbloques ramificados, verificaciones y tareas vivas.
+      </p>
+
+      <div class="ramified-workflow-container">
+        ${workflow.map((block, bIdx) => `
+          <div class="wf-master-block ${block.status}">
+            <div class="wf-master-header">
+              <div class="wf-master-title-row">
+                <span class="wf-master-id">${esc(block.id)}</span>
+                <div>
+                  <h3 class="wf-master-title">${esc(block.title)}</h3>
+                  <p class="wf-master-summary">${inline(block.summary)}</p>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                <span class="card-badge ${block.status === 'completed' ? 'badge-vine' : (block.status === 'active' ? 'badge-gold' : '')}">${esc(block.statusLabel)}</span>
+                ${block.decisions && block.decisions.length ? `
+                  <span class="card-badge badge-grape" title="Decisiones asociadas: ${block.decisions.join(', ')}">📜 ${block.decisions.length} Decs</span>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- SUBBLOCKS RAMIFICATION -->
+            <div class="wf-subblocks-tree">
+              ${block.subblocks && block.subblocks.length ? block.subblocks.map((sub, sIdx) => {
+                const subTasks = sub.tasks || [];
+                return `
+                  <div class="wf-subblock-node ${sub.status}">
+                    <div class="wf-subblock-connector"></div>
+                    <div class="wf-subblock-card">
+                      <div class="wf-subblock-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                          <span class="wf-subblock-id">${esc(sub.id)}</span>
+                          <h4 class="wf-subblock-title">${esc(sub.title)}</h4>
+                        </div>
+                        <span class="card-badge ${sub.status === 'completed' ? 'badge-vine' : (sub.status === 'active' ? 'badge-gold' : '')}">
+                          ${sub.status === 'completed' ? '✓ Listo' : (sub.status === 'active' ? '▶ En Curso' : '⏳ Pendiente')}
+                        </span>
+                      </div>
+                      <p class="wf-subblock-desc">${inline(sub.desc)}</p>
+
+                      <!-- SUBBLOCK EMBEDDED TASKS -->
+                      ${subTasks.length ? `
+                        <div class="wf-subblock-tasks">
+                          <div class="wf-tasks-title">📋 Tareas en este subbloque (${subTasks.length}):</div>
+                          <div class="tickets-list" style="margin-top: 8px;">
+                            ${subTasks.map(t => `
+                              <div class="ticket-card ${t.status === '✅' ? 'completed' : (t.status === '⚫' ? 'discarded' : '')}" style="background: #ffffff; padding: 12px 14px;">
+                                <div class="ticket-top">
+                                  <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="tag-pill tag-purple">${esc(t.id)}</span>
+                                    <span class="tag-pill">${esc(t.status)}</span>
+                                    <strong style="font-size: 13px;">${inline(t.title)}</strong>
+                                  </div>
+                                  ${renderDate(t.date, t.date_inferred)}
+                                </div>
+                                <p style="font-size: 12px; color: var(--ink-soft); margin: 4px 0 0;"><strong>Why:</strong> ${inline(t.why)}</p>
+                                <div class="task-actions-toolbar" style="margin-top: 8px;">
+                                  ${t.status !== '✅' && t.status !== '⚫' ? `
+                                    <button class="btn-task-action btn-task-complete" onclick="completeTask('${esc(t.id)}')"><span>✅</span> Completar</button>
+                                  ` : ''}
+                                  <button class="btn-task-action btn-task-comment" onclick="openCommentModal('${esc(t.id)}', '${esc(t.title)}')"><span>💬</span> Comentar</button>
+                                </div>
+                              </div>
+                            `).join("")}
+                          </div>
+                        </div>
+                      ` : ''}
+                    </div>
+                  </div>
+                `;
+              }).join("") : `
+                <div style="font-size: 12px; color: var(--ink-muted); padding: 8px 16px;">Sin subbloques detallados.</div>
+              `}
+            </div>
           </div>
-          <p class="detail-subtitle">${esc(proj.currentPhase)} · Integrado hasta ${esc(proj.integratedThrough)} · Actualizado: ${esc(proj.lastUpdated)}</p>
-        </div>
-      </div>
-
-      <!-- NEXT ACTION HERO -->
-      <div class="next-action-hero-card">
-        <span class="hero-icon">🎯</span>
-        <div class="hero-content">
-          <div class="hero-label">ACCIÓN SIGUIENTE INMEDIATA (NEXT ACTION)</div>
-          <div class="hero-text">${inline(proj.nextAction)}</div>
-        </div>
-      </div>
-
-      <!-- BLOCK STEPPER ROADMAP -->
-      <div class="stepper-section-title">
-        <span>🗺️ Roadmap de Bloques (B_0 a B_n)</span>
-        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--emerald);">
-          ${proj.completedBlocks} de ${proj.totalBlocks} completados (${proj.progress}%)
-        </span>
-      </div>
-
-      <div class="stepper-container">
-        ${proj.blocks.map((block, idx) => `
-          <div class="step-node ${block.done ? 'completed' : (block.active ? 'active-flight' : 'pending')}" title="${esc(block.note)}">
-            <span class="step-id">${block.done ? '✓' : (block.active ? '▶' : '⏳')} ${esc(block.id)}</span>
-            <span class="step-title">${esc(block.title)}</span>
-            <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">${esc(block.date)}</span>
-          </div>
-          ${idx < proj.blocks.length - 1 ? `<div class="step-connector ${block.done ? 'completed' : ''}"></div>` : ''}
         `).join("")}
       </div>
 
-      <!-- TASKS IN THIS PROJECT (LIVE PREVIEW) -->
-      <div class="project-tasks-preview-section">
+      <!-- COMPLETE TASK LIST FOR THE PROJECT -->
+      <div style="margin-top: 32px; border-top: 2px solid var(--line); padding-top: 24px;">
         <div class="section-subhead">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span>📋</span> <strong>Tareas de ${esc(proj.name)} (${projectTasks.length})</strong>
-            <span class="tag-pill tag-live">${activeTasks.length} activas</span>
+            <span>📋</span> <strong>Log Completo de Tareas de ${esc(proj.name)} (${projectTasks.length})</strong>
           </div>
-          <button class="btn-hud-action btn-add-task" onclick="openTaskModalForProject('${esc(proj.name)}')">
-            <span>➕</span> <span>Nueva Tarea para ${esc(proj.name)}</span>
-          </button>
         </div>
 
         ${projectTasks.length ? `
-          <div class="tickets-list" style="margin-top: 12px;">
+          <div class="tickets-list" style="margin-top: 14px;">
             ${projectTasks.map(t => `
               <div class="ticket-card ${t.status === '✅' ? 'completed' : (t.status === '⚫' ? 'discarded' : '')}">
                 <div class="ticket-top">
@@ -1285,77 +1518,296 @@ function renderProjectDeepDive(proj) {
                   </div>
                   ${renderDate(t.date, t.date_inferred)}
                 </div>
-
-                <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-top: 4px;">
+                <p style="font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin-top: 4px;">
                   <strong>Why:</strong> ${inline(t.why)}
                 </p>
-
-                ${t.discardReason ? `
-                  <div class="task-discard-callout">
-                    <strong>⚫ Descartada (PH-3):</strong> ${inline(t.discardReason)}
-                  </div>
-                ` : ''}
-
                 <div class="task-actions-toolbar">
                   ${t.status !== '✅' && t.status !== '⚫' ? `
-                    <button class="btn-task-action btn-task-complete" onclick="completeTask('${esc(t.id)}')">
-                      <span>✅</span> Completar
-                    </button>
+                    <button class="btn-task-action btn-task-complete" onclick="completeTask('${esc(t.id)}')"><span>✅</span> Completar</button>
                   ` : ''}
-                  <button class="btn-task-action btn-task-comment" onclick="openCommentModal('${esc(t.id)}', '${esc(t.title)}')">
-                    <span>💬</span> Comentar (${t.comments ? t.comments.length : 0})
-                  </button>
+                  <button class="btn-task-action btn-task-comment" onclick="openCommentModal('${esc(t.id)}', '${esc(t.title)}')"><span>💬</span> Comentar (${t.comments ? t.comments.length : 0})</button>
                   ${t.status !== '⚫' ? `
-                    <button class="btn-task-action btn-task-discard" onclick="openDiscardModal('${esc(t.id)}', '${esc(t.title)}')">
-                      <span>⚫</span> Descartar
-                    </button>
+                    <button class="btn-task-action btn-task-discard" onclick="openDiscardModal('${esc(t.id)}', '${esc(t.title)}')"><span>⚫</span> Descartar</button>
                   ` : ''}
                 </div>
               </div>
             `).join("")}
           </div>
         ` : `
-          <div class="empty-state" style="padding: 24px;">
+          <div class="empty-state" style="padding: 24px; margin-top: 12px;">
             <p>No hay tareas registradas para <strong>${esc(proj.name)}</strong>.</p>
           </div>
         `}
       </div>
+    </div>
+  `;
+}
 
-      <!-- RECENT DECISIONS IN THIS PROJECT -->
-      ${projectDecs.length ? `
-        <div class="project-tasks-preview-section" style="margin-top: 24px;">
-          <div class="section-subhead">
-            <span>📜</span> <strong>Últimas Decisiones de ${esc(proj.name)} (${proj.decisionsCount} totales)</strong>
-          </div>
-          <div class="tickets-list" style="margin-top: 12px;">
-            ${projectDecs.map(d => `
-              <div class="ticket-card ${d.isSuperseded ? 'discarded' : ''}">
-                <div class="ticket-top">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
-                    ${d.isSuperseded ? `
-                      <span class="tag-pill tag-superseded">🔄 Reemplazada</span>
-                    ` : `
-                      <span class="tag-pill tag-alive">🟢 VIVA</span>
-                    `}
-                  </div>
-                  ${renderDate(d.date, d.date_inferred)}
-                </div>
-                <h3 class="ticket-title" style="font-size: 14px; margin-top: 4px;">${inline(d.title)}</h3>
-                <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; margin-top: 2px;">
-                  <strong>Por qué:</strong> ${inline(d.why)}
-                </p>
-              </div>
-            `).join("")}
+// ── TAB 2: ESTADO VIVO (State Snapshot & Next Action) ──
+function renderProjectStateTab(proj, projectTasks, projectDecs) {
+  return `
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">02</span> Estado Vivo del Cartridge (state.md)</h2>
+      </div>
+      <p class="lead">
+        Instantánea en tiempo presente de la posición técnica verificada. <em>¿Seguiría siendo cierto si el trabajo se detuviera hoy?</em>
+      </p>
+
+      <!-- NEXT ACTION HERO BANNER -->
+      <div class="next-action-hero-card" style="margin-bottom: 24px;">
+        <span class="hero-icon">🎯</span>
+        <div class="hero-content">
+          <div class="hero-label">ACCIÓN SIGUIENTE INMEDIATA (NEXT ACTION)</div>
+          <div class="hero-text">${inline(proj.nextAction)}</div>
+          <div style="margin-top: 10px; display: flex; gap: 8px;">
+            <button class="gov-link-btn" onclick="copyToClipboard('claude -p \\'execute next action on ${esc(proj.name)}\\'', 'Comando de ejecución copiado')">
+              ⚡ Ejecutar Acción con Agente
+            </button>
           </div>
         </div>
-      ` : ''}
+      </div>
+
+      <div class="grid-2">
+        <div class="gov-bottom-card">
+          <div class="gov-bottom-card-head">
+            <span class="gov-level-badge badge-vine">SYNCHRONIZATION &amp; REPO</span>
+          </div>
+          <h3>Topología y Sincronía</h3>
+          <div style="font-size: 13px; color: var(--ink-soft); line-height: 1.6; display: flex; flex-direction: column; gap: 8px;">
+            <div><strong>Laboratorio / Entorno:</strong> ${esc(proj.lab)}</div>
+            <div><strong>Sincronizado hasta:</strong> <span class="card-badge badge-gold">${esc(proj.integratedThrough)}</span></div>
+            <div><strong>Última verificación:</strong> ${esc(proj.lastUpdated)}</div>
+            <div><strong>Archivo de Estado:</strong> <code>${esc(proj.file || "nexus/state.md")}</code></div>
+          </div>
+        </div>
+
+        <div class="gov-bottom-card">
+          <div class="gov-bottom-card-head">
+            <span class="gov-level-badge badge-grape">HEALTH &amp; GOVERNANCE</span>
+          </div>
+          <h3>Salud del Cartridge</h3>
+          <div class="gov-stat-grid" style="margin: 4px 0;">
+            <div class="gov-stat-box">
+              <span class="gov-stat-val">${proj.completedBlocks}/${proj.totalBlocks}</span>
+              <span class="gov-stat-lbl">Bloques</span>
+            </div>
+            <div class="gov-stat-box">
+              <span class="gov-stat-val">${proj.decisionsCount}</span>
+              <span class="gov-stat-lbl">Decisiones</span>
+            </div>
+            <div class="gov-stat-box">
+              <span class="gov-stat-val">${projectTasks.length}</span>
+              <span class="gov-stat-lbl">Tareas</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── TAB 3: ARQUITECTURA & DEFINICIÓN (Definition, MVP & Scope) ──
+function renderProjectArchitectureTab(proj) {
+  return `
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">03</span> Arquitectura, Objetivos y Límites (definition.md)</h2>
+      </div>
+      <p class="lead">
+        Definición inmutable de la iteración: qué es el proyecto, a quién pertenece, qué conforma el MVP y qué queda expresamente fuera de alcance.
+      </p>
+
+      <div class="gov-philosophy-panel" style="margin-bottom: 20px;">
+        <div class="gov-panel-header">
+          <div class="gov-panel-title">
+            <span class="gov-level-badge badge-vine">PROPÓSITO &amp; MVP</span>
+            <h3>Definición del Proyecto ${esc(proj.name)}</h3>
+          </div>
+        </div>
+        <p style="font-size: 13.5px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
+          Plataforma soberana bajo metodología MLabs. Desacoplada de otros repositorios para permitir escalabilidad a 3× y 10× sin interferencias.
+        </p>
+
+        <div class="callout tip" style="margin-top: 12px;">
+          <div class="callout-title"><span>🎯</span> Criterio de Éxito del MVP</div>
+          <p style="margin: 0; font-size: 13px;">El MVP se considera completo cuando el flujo principal puede ejecutarse de principio a fin de forma determinista y verificada contra sus gates de auditoría.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="gov-bottom-card">
+          <div class="gov-bottom-card-head">
+            <span class="gov-level-badge badge-gold">ENTREGABLES</span>
+          </div>
+          <h3>Entregables Principales</h3>
+          <div style="font-size: 12.5px; color: var(--ink-soft); line-height: 1.6;">
+            <div>• Código modular bajo ramas de trabajo independientes (ej. <code>feature/*</code> o rama activa).</div>
+            <div>• Registro de decisiones con justificación y alternativas descartadas.</div>
+            <div>• Documentación de arquitectura y contratos de agente verificables.</div>
+          </div>
+        </div>
+
+        <div class="gov-bottom-card">
+          <div class="gov-bottom-card-head">
+            <span class="gov-level-badge badge-rust">FUERA DE ALCANCE (OUT OF SCOPE)</span>
+          </div>
+          <h3>Límites y Restricciones</h3>
+          <div style="font-size: 12.5px; color: var(--ink-soft); line-height: 1.6;">
+            <div>🚫 Nunca acoplar el backend a estados volátiles de la interfaz.</div>
+            <div>🚫 No pusher a ramas productivas sin autorización explícita del operador.</div>
+            <div>🚫 Evitar optimizaciones prematuras antes de verificar los invariantes clave.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── TAB 4: DECISIONES (D_n Log) ──
+function renderProjectDecisionsTab(proj, projectDecs) {
+  const liveDecs = projectDecs.filter(d => !d.isSuperseded);
+  const supersededDecs = projectDecs.filter(d => d.isSuperseded);
+
+  return `
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">04</span> Registro de Decisiones de ${esc(proj.name)} (${projectDecs.length})</h2>
+      </div>
+      <p class="lead">
+        Historial append-only de decisiones técnicas tomadas en este proyecto, con su razonamiento (Why), fecha, autor y estado de vivacidad.
+      </p>
+
+      <div class="gov-stat-grid" style="margin-bottom: 20px;">
+        <div class="gov-stat-box">
+          <span class="gov-stat-val">${liveDecs.length}</span>
+          <span class="gov-stat-lbl">Decisiones Vivas</span>
+        </div>
+        <div class="gov-stat-box">
+          <span class="gov-stat-val">${supersededDecs.length}</span>
+          <span class="gov-stat-lbl">Reemplazadas</span>
+        </div>
+        <div class="gov-stat-box">
+          <span class="gov-stat-val">${projectDecs.length}</span>
+          <span class="gov-stat-lbl">Total Registrado</span>
+        </div>
+      </div>
+
+      ${projectDecs.length ? `
+        <div class="tickets-list">
+          ${projectDecs.map(d => `
+            <div class="ticket-card ${d.isSuperseded ? 'discarded' : ''}">
+              <div class="ticket-top">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
+                  ${d.isSuperseded ? `
+                    <span class="tag-pill tag-superseded">🔄 Reemplazada por ${esc(d.supersededBy.join(", "))}</span>
+                  ` : `
+                    <span class="tag-pill tag-alive">🟢 VIVA</span>
+                  `}
+                  <strong style="font-size: 14px;">${inline(d.title)}</strong>
+                </div>
+                ${renderDate(d.date, d.date_inferred)}
+              </div>
+              <p style="font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin-top: 6px;">
+                <strong>Por qué (Why):</strong> ${inline(d.why)}
+              </p>
+              ${d.discarded ? `
+                <div class="task-discard-callout" style="margin-top: 8px;">
+                  <strong>⚫ Alternativa descartada (PH-3):</strong> ${inline(d.discarded)}
+                </div>
+              ` : ''}
+            </div>
+          `).join("")}
+        </div>
+      ` : `
+        <div class="empty-state">
+          <p>No hay decisiones registradas aún para <strong>${esc(proj.name)}</strong>.</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+// ── TAB 5: SKILLS & OPERACIONES ──
+function renderProjectSkillsTab(proj) {
+  return `
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">05</span> Skills &amp; Operaciones sobre ${esc(proj.name)}</h2>
+      </div>
+      <p class="lead">
+        Capacidades y roles especializados para auditar, evolucionar o corregir este proyecto de forma determinista.
+      </p>
+
+      <div class="grid-2">
+        <div class="doc-card">
+          <div class="doc-card-head">
+            <span class="card-badge badge-vine">AUDITORÍA</span>
+            <span class="card-badge">project-auditor</span>
+          </div>
+          <h3>Auditar Proyecto</h3>
+          <p>Verifica los cambios y el diff del proyecto contra sus propios axiomas de proyecto y reglas de higiene.</p>
+          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard('claude -p \\'run project-auditor on ${esc(proj.name)}\\'', 'Comando copiado')">
+            📋 Copiar: claude -p 'run project-auditor on ${esc(proj.name)}'
+          </button>
+        </div>
+
+        <div class="doc-card">
+          <div class="doc-card-head">
+            <span class="card-badge badge-gold">ESTADO &amp; DERIVA</span>
+            <span class="card-badge">redefine-project</span>
+          </div>
+          <h3>Redefinir / Resincronizar</h3>
+          <p>Reescribe definition.md y state.md cuando el proyecto ha derivado o avanzado varias decisiones sin actualizar.</p>
+          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard('claude -p \\'run redefine-project on ${esc(proj.name)}\\'', 'Comando copiado')">
+            📋 Copiar: claude -p 'run redefine-project on ${esc(proj.name)}'
+          </button>
+        </div>
+
+        <div class="doc-card">
+          <div class="doc-card-head">
+            <span class="card-badge badge-grape">SESIÓN</span>
+            <span class="card-badge">open-session</span>
+          </div>
+          <h3>Abrir Sesión en Proyecto</h3>
+          <p>Fija el frente activo en este proyecto, prepara el plan numérico en vuelo y abre el ciclo de trabajo.</p>
+          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard('claude -p \\'open-session on ${esc(proj.name)}\\'', 'Comando copiado')">
+            📋 Copiar: claude -p 'open-session on ${esc(proj.name)}'
+          </button>
+        </div>
+
+        <div class="doc-card">
+          <div class="doc-card-head">
+            <span class="card-badge badge-cyan">LIMPIEZA</span>
+            <span class="card-badge">code-cleanup</span>
+          </div>
+          <h3>Limpieza Previa a Release</h3>
+          <p>Elimina comentarios arqueológicos, vocabulario privado y wikilinks antes de compartir o proponer PR.</p>
+          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard('claude -p \\'run code-cleanup on ${esc(proj.name)}\\'', 'Comando copiado')">
+            📋 Copiar: claude -p 'run code-cleanup on ${esc(proj.name)}'
+          </button>
+        </div>
+      </div>
     </div>
   `;
 }
 
 window.updateLabFilter = function(lab) {
   STATE.selectedLabFilter = lab;
+  renderView();
+};
+
+window.openProjectDetail = function(name) {
+  STATE.selectedProject = name;
+  STATE.currentView = "project-detail";
+  STATE.projectSubtab = "workflow";
+  renderView();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+window.setProjectSubtab = function(tabKey) {
+  STATE.projectSubtab = tabKey;
   renderView();
 };
 
@@ -1368,20 +1820,8 @@ window.openTaskModalForProject = function(projectName) {
   }
 };
 
-
-
 window.selectProject = function(name) {
-  STATE.selectedProject = name;
-  renderView();
-};
-
-window.openProjectDetail = function(name) {
-  STATE.selectedProject = name;
-  STATE.currentView = "projects";
-  document.querySelectorAll(".nav-item").forEach(btn => {
-    btn.classList.toggle("active", btn.getAttribute("data-view") === "projects");
-  });
-  renderView();
+  openProjectDetail(name);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
