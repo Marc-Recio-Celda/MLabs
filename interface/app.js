@@ -509,155 +509,633 @@ function renderView() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. OVERVIEW & ARCHITECTURE VIEW
+// 1. OVERVIEW & ARCHITECTURE VIEW (Garnatxa-Inspired Visual Matrix)
 // ─────────────────────────────────────────────────────────────────────────────
 function renderOverview(container) {
+  const activeWf = STATE.selectedWorkflowTab || "project";
+  const isCollapsed = (id) => Boolean(STATE.collapsedSections && STATE.collapsedSections[id]);
+
   container.innerHTML = `
+    <!-- HEADER HERO BANNER -->
     <div class="overview-hero">
-      <div class="hero-main-title">
-        <span>⚡</span> <span class="gradient-text">MLabs</span>
-        <span class="instance-badge" style="font-size: 13px;">v1.1.0 · Operations Cockpit</span>
+      <div class="hero-header-top">
+        <span class="hero-top-tag">MLABS · NEXUS v3.0 · SOVEREIGN OPERATIONAL MATRIX</span>
+        <span class="instance-badge">v1.1.0 · Single Source of Truth</span>
       </div>
+
+      <div class="hero-main-title">
+        <span>⚡</span> <span class="gradient-text">MLabs & NEXUS</span>
+      </div>
+
       <p class="hero-tagline">
-        <strong>MLabs es la Constitución pública · NEXUS es el País privado · Cada proyecto es un Cartridge soberano.</strong>
-        Orquestación determinista sin pérdida de contexto (PH-1 a PH-6).
+        <strong>MLabs es la Constitución pública · NEXUS es el País privado · Los Proyectos son Cartridges soberanos.</strong><br>
+        Entorno determinista de ejecución, gobernanza append-only y ergonomía cognitiva para máxima claridad operativa.
       </p>
 
+      <!-- LIVE SYSTEM METRICS RIBBON -->
       <div class="hero-metrics-row">
-        <div class="hero-metric-card">
+        <div class="hero-metric-card" onclick="navigateTo('projects')" style="cursor: pointer;" title="Ver todos los proyectos">
           <span class="hero-metric-val">${STATE.projects.length}</span>
-          <span class="hero-metric-label">Proyectos Soberanos</span>
+          <span class="hero-metric-label">🚀 Proyectos Soberanos</span>
         </div>
-        <div class="hero-metric-card">
+        <div class="hero-metric-card" onclick="navigateTo('decisions')" style="cursor: pointer;" title="Ver registro histórico de decisiones">
           <span class="hero-metric-val">${liveDecisions().length}+</span>
-          <span class="hero-metric-label">Decisiones (D_n)</span>
+          <span class="hero-metric-label">📜 Decisiones Vivas (D_n)</span>
         </div>
-        <div class="hero-metric-card">
+        <div class="hero-metric-card" onclick="navigateTo('skills')" style="cursor: pointer;" title="Ver catálogo de skills">
+          <span class="hero-metric-val">${STATE.skills.length}</span>
+          <span class="hero-metric-label">⚡ Skills & Roles</span>
+        </div>
+        <div class="hero-metric-card" onclick="navigateTo('inbox')" style="cursor: pointer;" title="Ver tareas y buzón">
           <span class="hero-metric-val">${STATE.tasks.length}</span>
-          <span class="hero-metric-label">Tareas Registradas</span>
+          <span class="hero-metric-label">📋 Tareas en Vuelo</span>
         </div>
-        <div class="hero-metric-card">
-          <span class="hero-metric-val">${STATE.activeFront ? "1 Único" : "0"}</span>
-          <span class="hero-metric-label">Frente Activo (▶)</span>
+        <div class="hero-metric-card" onclick="navigateTo('cockpit')" style="cursor: pointer;" title="Ver cockpit y frente activo">
+          <span class="hero-metric-val" style="color: var(--emerald);">${STATE.activeFront ? "1 Activo" : "0"}</span>
+          <span class="hero-metric-label">🎯 Frente en Marcha (▶)</span>
         </div>
       </div>
     </div>
 
-    <!-- 3-TIER ARCHITECTURE INFOGRAPHIC -->
-    <div class="infographic-section-title">
-      <span>🏛️</span> <strong>Infografía Arquitectónica de los 3 Niveles de la Empresa</strong>
+    <!-- QUICK JUMP NAVIGATION BAR (TOC PILLS) -->
+    <div class="quick-jump-bar">
+      <button class="jump-pill" onclick="jumpToSection('sec-tiers')"><span>🏛️</span> 01 · Tres Niveles</button>
+      <button class="jump-pill" onclick="jumpToSection('sec-philosophy')"><span>📜</span> 02 · Los 6 Principios</button>
+      <button class="jump-pill" onclick="jumpToSection('sec-workflows')"><span>🔄</span> 03 · Flujos de Trabajo</button>
+      <button class="jump-pill" onclick="jumpToSection('sec-ecosystem')"><span>🗺️</span> 04 · Ecosistema de Módulos</button>
     </div>
 
-    <div class="tiers-grid">
-      <div class="tier-card tier-1">
-        <div class="tier-header">
+    <!-- =========================================================================
+         SECCIÓN 01: LOS TRES NIVELES DE GOBERNANZA
+         ========================================================================= -->
+    <div class="overview-section-box" id="sec-tiers">
+      <div class="section-box-header" onclick="toggleOverviewSection('sec-tiers')">
+        <div class="section-box-title-group">
+          <span class="section-box-num">01</span>
           <div>
-            <div class="tier-level">NIVEL 1 · PÚBLICO</div>
-            <div class="tier-name">Filosofía Inmutable</div>
+            <h2 class="section-box-title">Gobernanza y Arquitectura en Tres Niveles</h2>
+            <p class="section-box-subtitle">La separación estricta entre Constitución pública, Operaciones privadas y Cartridges de proyecto</p>
           </div>
-          <span class="tier-file">PHILOSOPHY.md</span>
         </div>
-        <div class="tier-body">
-          Las 6 cláusulas rectoras inmutables. Definen lo que optimiza la compañía y <strong>rompen todo empate</strong>.
-        </div>
-        <div class="tier-rules-list">
-          <div class="tier-rule-item"><span>PH-1:</span> Verdad sobre coherencia superficial</div>
-          <div class="tier-rule-item"><span>PH-2:</span> Una única fuente de la verdad</div>
-          <div class="tier-rule-item"><span>PH-3:</span> Nada se pierde; descarte trazable</div>
-          <div class="tier-rule-item"><span>PH-4:</span> Ergonomía de atención</div>
-        </div>
+        <button class="btn-section-toggle" title="Plegar/Desplegar">${isCollapsed('sec-tiers') ? '▶ Mostrar' : '▼ Ocultar'}</button>
       </div>
 
-      <div class="tier-card tier-2">
-        <div class="tier-header">
+      <div class="section-box-content ${isCollapsed('sec-tiers') ? 'is-collapsed' : ''}">
+        <p class="section-intro-text">
+          La metodología desacopla la ley del estado: <strong>MLabs</strong> define cómo se trabaja; <strong>NEXUS</strong> guarda lo que ha ocurrido; y cada <strong>Proyecto</strong> opera como un repositorio soberano con su propio auditor y registro.
+        </p>
+
+        <div class="tiers-grid">
+          <!-- TIER 1 -->
+          <div class="tier-card tier-1">
+            <div class="tier-header">
+              <div>
+                <div class="tier-level">NIVEL 1 · PÚBLICO</div>
+                <div class="tier-name">Filosofía Inmutable</div>
+              </div>
+              <span class="tier-file">PHILOSOPHY.md</span>
+            </div>
+            <div class="tier-body">
+              Seis cláusulas fundacionales. Definen qué optimiza la empresa, qué rechaza y <strong>rompen todo empate de diseño</strong>.
+            </div>
+            <div class="tier-rules-list">
+              <div class="tier-rule-item"><span>PH-4:</span> Cero cajas negras · Estado en artefactos</div>
+              <div class="tier-rule-item"><span>PH-6:</span> Atención como recurso escaso · 1 frente (▶)</div>
+            </div>
+          </div>
+
+          <!-- TIER 2 -->
+          <div class="tier-card tier-2">
+            <div class="tier-header">
+              <div>
+                <div class="tier-level">NIVEL 2 · ESTRUCTURA</div>
+                <div class="tier-name">Axiomas y Reglas</div>
+              </div>
+              <span class="tier-file">AXIOMS.md</span>
+            </div>
+            <div class="tier-body">
+              28 axiomas técnicos verificables. Implementan la filosofía de forma determinista y gobiernan roles y checks.
+            </div>
+            <div class="tier-rules-list">
+              <div class="tier-rule-item"><span>AX-1:</span> Single source · Append-only</div>
+              <div class="tier-rule-item"><span>AX-11:</span> Criterio de despido N/K por rol</div>
+            </div>
+          </div>
+
+          <!-- TIER 3 -->
+          <div class="tier-card tier-3">
+            <div class="tier-header">
+              <div>
+                <div class="tier-level">NIVEL 3 · PRIVADO</div>
+                <div class="tier-name">Decisiones y Cartridges</div>
+              </div>
+              <span class="tier-file">NEXUS & Projects</span>
+            </div>
+            <div class="tier-body">
+              El estado real donde vive el trabajo: registro inmutable de decisiones con autor, fecha y por qué.
+            </div>
+            <div class="tier-rules-list">
+              <div class="tier-rule-item"><span>Decisiones:</span> ${liveDecisions().length} decisiones registradas</div>
+              <div class="tier-rule-item"><span>Proyectos:</span> 9 Cartridges independientes</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CALLOUT: LO QUE SE RECHAZA -->
+        <div class="refusal-callout-box">
+          <div class="refusal-callout-title">
+            <span>🛡️</span> <strong>Lo que esta empresa rechaza formalmente (PHILOSOPHY §Refusals)</strong>
+          </div>
+          <div class="refusal-grid">
+            <div class="refusal-item"><strong>🚫 Acumulación:</strong> Curación estricta; sólo se guarda lo que se va a usar.</div>
+            <div class="refusal-item"><strong>🚫 Complacencia:</strong> El sistema existe para preparar a su operador, no para darle la razón.</div>
+            <div class="refusal-item"><strong>🚫 Optimización vacía:</strong> Nada entra por pura estética; debe desbloquear trabajo real.</div>
+            <div class="refusal-item"><strong>🚫 Roles muertos:</strong> Todo rol sin hallazgos útiles se retira por contrato N/K (AX-11).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================================================
+         SECCIÓN 02: LOS 6 PRINCIPIOS DE FILOSOFÍA
+         ========================================================================= -->
+    <div class="overview-section-box" id="sec-philosophy">
+      <div class="section-box-header" onclick="toggleOverviewSection('sec-philosophy')">
+        <div class="section-box-title-group">
+          <span class="section-box-num">02</span>
           <div>
-            <div class="tier-level">NIVEL 2 · ESTRUCTURA</div>
-            <div class="tier-name">Axiomas y Reglas</div>
+            <h2 class="section-box-title">Los Seis Principios Rectores (PH-1 a PH-6)</h2>
+            <p class="section-box-subtitle">La brújula filosófica inmutable que rige todas las decisiones técnicas y operativas</p>
           </div>
-          <span class="tier-file">AXIOMS.md</span>
         </div>
-        <div class="tier-body">
-          28 axiomas técnicos verificables. Implementan la filosofía de forma determinista y gobiernan los roles.
-        </div>
-        <div class="tier-rules-list">
-          <div class="tier-rule-item"><span>AX-1:</span> Default-deny en repositorios</div>
-          <div class="tier-rule-item"><span>AX-7:</span> Cero pasos de compilación en herramientas</div>
-          <div class="tier-rule-item"><span>AX-11:</span> Criterio de despido N/K por rol</div>
-          <div class="tier-rule-item"><span>AX-21:</span> Carga quirúrgica de contexto</div>
-        </div>
+        <button class="btn-section-toggle" title="Plegar/Desplegar">${isCollapsed('sec-philosophy') ? '▶ Mostrar' : '▼ Ocultar'}</button>
       </div>
 
-      <div class="tier-card tier-3">
-        <div class="tier-header">
+      <div class="section-box-content ${isCollapsed('sec-philosophy') ? 'is-collapsed' : ''}">
+        <div class="philosophy-principles-grid">
+          <!-- PH-1 -->
+          <div class="principle-card">
+            <div class="principle-header">
+              <span class="principle-code">PH-1</span>
+              <h3 class="principle-title">El horizonte largo es la premisa</h3>
+            </div>
+            <p class="principle-desc">
+              Todo se construye para lo siguiente, no solo para hoy. Diseña para 3× a 10× el volumen actual. Lo que se aprende o construye una vez queda disponible y jamás se vuelve a aprender desde cero.
+            </p>
+            <div class="principle-rule-badge"><strong>Regla de oro:</strong> Una solución que sólo escala hoy es una postergación.</div>
+          </div>
+
+          <!-- PH-2 -->
+          <div class="principle-card">
+            <div class="principle-header">
+              <span class="principle-code">PH-2</span>
+              <h3 class="principle-title">El aprendizaje se compra con productividad ⏳</h3>
+            </div>
+            <p class="principle-desc">
+              Donde la velocidad y la comprensión chocan, <strong>gana la comprensión</strong>. Un atajo que el operador no entiende no es velocidad: es deuda con intereses. La transcripción se automatiza; el juicio no.
+            </p>
+            <div class="principle-rule-badge"><strong>Regla de oro:</strong> Cero atajos ciegos; entendimiento primero.</div>
+          </div>
+
+          <!-- PH-3 -->
+          <div class="principle-card">
+            <div class="principle-header">
+              <span class="principle-code">PH-3</span>
+              <h3 class="principle-title">Nada se pierde</h3>
+            </div>
+            <p class="principle-desc">
+              Sin datos no hay análisis. Un análisis puede rehacerse en cualquier momento; un dato perdido jamás se recupera. Esto cubre entradas, razonamiento y <strong>lo que se descartó con su motivo</strong>.
+            </p>
+            <div class="principle-rule-badge"><strong>Regla de oro:</strong> Registrar es barato; reconstruir es imposible.</div>
+          </div>
+
+          <!-- PH-4 -->
+          <div class="principle-card">
+            <div class="principle-header">
+              <span class="principle-code">PH-4</span>
+              <h3 class="principle-title">Cero cajas negras</h3>
+            </div>
+            <p class="principle-desc">
+              Toda decisión es trazable a su razonamiento. Un sistema cuyo dueño no puede explicarlo no puede ser corregido por él. El valor reside en los artefactos en disco, nunca en la memoria efímera del chat.
+            </p>
+            <div class="principle-rule-badge"><strong>Regla de oro:</strong> La herramienta es intercambiable; el estado es sagrado.</div>
+          </div>
+
+          <!-- PH-5 -->
+          <div class="principle-card">
+            <div class="principle-header">
+              <span class="principle-code">PH-5</span>
+              <h3 class="principle-title">El trabajo es modular</h3>
+            </div>
+            <p class="principle-desc">
+              Cada pieza es dueña de su propio ciclo de vida y versión. El acoplamiento se paga en cada cambio; la separación se paga una sola vez. Fronteras trazadas por <strong>propietario primero y tasa de cambio después</strong>.
+            </p>
+            <div class="principle-rule-badge"><strong>Regla de oro:</strong> Nunca agrupar por temática; separar por dueño.</div>
+          </div>
+
+          <!-- PH-6 -->
+          <div class="principle-card">
+            <div class="principle-header">
+              <span class="principle-code">PH-6</span>
+              <h3 class="principle-title">La atención es el recurso escaso</h3>
+            </div>
+            <p class="principle-desc">
+              Todo se registra; casi nada se carga en memoria a la vez. <strong>Un único frente activo (▶)</strong>. El coste crítico no es el almacenamiento en disco, sino lo que hay que retener en la cabeza para dar el siguiente paso.
+            </p>
+            <div class="principle-rule-badge"><strong>Regla de oro:</strong> Un solo frente a la vez; cero dispersión.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================================================
+         SECCIÓN 03: LOS 5 FLUJOS DE TRABAJO OPERATIVOS
+         ========================================================================= -->
+    <div class="overview-section-box" id="sec-workflows">
+      <div class="section-box-header" onclick="toggleOverviewSection('sec-workflows')">
+        <div class="section-box-title-group">
+          <span class="section-box-num">03</span>
           <div>
-            <div class="tier-level">NIVEL 3 · PRIVADO</div>
-            <div class="tier-name">Decisiones y Estado</div>
+            <h2 class="section-box-title">Los Cinco Flujos de Trabajo Operativos (Workflows)</h2>
+            <p class="section-box-subtitle">Protocolos estandarizados para operar cualquier proyecto combinando las skills del sistema</p>
           </div>
-          <span class="tier-file">Cartridges & System</span>
         </div>
-        <div class="tier-body">
-          El estado real donde vive el trabajo. Registros inmutables con autor, fecha, por qué y estado actual.
+        <button class="btn-section-toggle" title="Plegar/Desplegar">${isCollapsed('sec-workflows') ? '▶ Mostrar' : '▼ Ocultar'}</button>
+      </div>
+
+      <div class="section-box-content ${isCollapsed('sec-workflows') ? 'is-collapsed' : ''}">
+        <!-- WORKFLOW SELECTOR SUBTABS -->
+        <div class="workflow-tabs-bar">
+          <button class="wf-tab-btn ${activeWf === 'project' ? 'active' : ''}" onclick="setWorkflowTab('project')">
+            <span>🚀</span> 1. Trabajar en Proyecto
+          </button>
+          <button class="wf-tab-btn ${activeWf === 'environment' ? 'active' : ''}" onclick="setWorkflowTab('environment')">
+            <span>🛠️</span> 2. Mejorar Entorno
+          </button>
+          <button class="wf-tab-btn ${activeWf === 'knowledge' ? 'active' : ''}" onclick="setWorkflowTab('knowledge')">
+            <span>📚</span> 3. Añadir Temario / Teoría
+          </button>
+          <button class="wf-tab-btn ${activeWf === 'cartridge' ? 'active' : ''}" onclick="setWorkflowTab('cartridge')">
+            <span>🏗️</span> 4. Crear / Redefinir Proyecto
+          </button>
+          <button class="wf-tab-btn ${activeWf === 'coursework' ? 'active' : ''}" onclick="setWorkflowTab('coursework')">
+            <span>🎓</span> 5. Formación & Corrección
+          </button>
         </div>
-        <div class="tier-rules-list">
-          <div class="tier-rule-item"><span>Decisiones:</span> ${liveDecisions().length} decisiones con trazabilidad</div>
-          <div class="tier-rule-item"><span>Schedule:</span> Brújula con 1 único frente activo (▶)</div>
-          <div class="tier-rule-item"><span>Cartridges:</span> Proyectos soberanos e independientes</div>
-        </div>
+
+        <!-- ACTIVE WORKFLOW DETAIL CONTAINER -->
+        ${renderWorkflowDetail(activeWf)}
       </div>
     </div>
 
-    <!-- METHOD LOOP FLOWCHART -->
-    <div class="infographic-section-title">
-      <span>⚡</span> <strong>Flujo Canónico de una Sesión de Trabajo (METHOD.md)</strong>
-    </div>
+    <!-- =========================================================================
+         SECCIÓN 04: ECOSISTEMA DE MÓDULOS Y ACCESO DIRECTO
+         ========================================================================= -->
+    <div class="overview-section-box" id="sec-ecosystem">
+      <div class="section-box-header" onclick="toggleOverviewSection('sec-ecosystem')">
+        <div class="section-box-title-group">
+          <span class="section-box-num">04</span>
+          <div>
+            <h2 class="section-box-title">Ecosistema de Módulos y Navegación Directa</h2>
+            <p class="section-box-subtitle">Acceso directo a todos los subsistemas operativos del Cockpit</p>
+          </div>
+        </div>
+        <button class="btn-section-toggle" title="Plegar/Desplegar">${isCollapsed('sec-ecosystem') ? '▶ Mostrar' : '▼ Ocultar'}</button>
+      </div>
 
-    <div class="flowchart-card">
-      <div class="flowchart-nodes">
-        <div class="flow-node">
-          <span class="flow-node-step">PASO 1 · COMPASS</span>
-          <span class="flow-node-title">🧭 Orientar</span>
-          <p class="flow-node-desc">Lee la brújula Schedule. Identifica el frente activo único (▶) y confirma el objetivo.</p>
-        </div>
-        <div class="flow-node">
-          <span class="flow-node-step">PASO 2 · LIVE PLAN</span>
-          <span class="flow-node-title">🔨 Ejecutar</span>
-          <p class="flow-node-desc">Plan numérico en vuelo. Cada paso es visible para el operador.</p>
-        </div>
-        <div class="flow-node">
-          <span class="flow-node-step">PASO 3 · ROUTED CLOSE</span>
-          <span class="flow-node-title">🚪 Cerrar Enrutado</span>
-          <p class="flow-node-desc">Tacha pasos con destino obligatorio: <code>✅ resuelto</code>, <code>⚫ descartado</code> o <code>📦 aparcado</code>.</p>
-        </div>
-        <div class="flow-node">
-          <span class="flow-node-step">PASO 4 · AUDIT</span>
-          <span class="flow-node-title">🤖 Auditar</span>
-          <p class="flow-node-desc">El auditor valida las invariantes sobre el diff antes de vaciar el plan.</p>
+      <div class="section-box-content ${isCollapsed('sec-ecosystem') ? 'is-collapsed' : ''}">
+        <div class="ecosystem-jump-grid">
+          <div class="eco-card" onclick="navigateTo('projects')">
+            <div class="eco-card-header">
+              <span class="eco-icon">🚀</span>
+              <span class="tag-pill tag-live">${STATE.projects.length} Proyectos</span>
+            </div>
+            <h3 class="eco-title">Projects Hub</h3>
+            <p class="eco-desc">Cartera de proyectos organizada por centros de trabajo y laboratorios con estado y hojas de ruta B_n.</p>
+            <span class="eco-link">Abrir Projects Hub →</span>
+          </div>
+
+          <div class="eco-card" onclick="navigateTo('inbox')">
+            <div class="eco-card-header">
+              <span class="eco-icon">📋</span>
+              <span class="tag-pill tag-purple">${STATE.tasks.length} Tareas</span>
+            </div>
+            <h3 class="eco-title">Tareas & Buzón Central</h3>
+            <p class="eco-desc">Gestión reactiva de tickets, buzón central MAILBOX.md y acciones de ciclo de vida completas.</p>
+            <span class="eco-link">Abrir Inbox & Queues →</span>
+          </div>
+
+          <div class="eco-card" onclick="navigateTo('decisions')">
+            <div class="eco-card-header">
+              <span class="eco-icon">📜</span>
+              <span class="tag-pill tag-alive">${liveDecisions().length} Vivas</span>
+            </div>
+            <h3 class="eco-title">Log de Decisiones</h3>
+            <p class="eco-desc">Registro histórico append-only con autor, fecha, justificación y verificación de vivacidad (supersedes).</p>
+            <span class="eco-link">Abrir Decision Log →</span>
+          </div>
+
+          <div class="eco-card" onclick="navigateTo('skills')">
+            <div class="eco-card-header">
+              <span class="eco-icon">⚡</span>
+              <span class="tag-pill">${STATE.skills.length} Skills</span>
+            </div>
+            <h3 class="eco-title">Skills & Organigrama</h3>
+            <p class="eco-desc">Catálogo de capacidades especializadas, roles de auditoría de eventos y comandos CLI de un clic.</p>
+            <span class="eco-link">Abrir Skills & Org →</span>
+          </div>
         </div>
       </div>
-    </div>
-
-    <!-- TOPOLOGY MATRIX -->
-    <div class="infographic-section-title">
-      <span>🗺️</span> <strong>Topología de Cartridges y Repositorios</strong>
-    </div>
-
-    <div class="topology-grid">
-      ${STATE.projects.map(p => `
-        <div class="topology-card" onclick="openProjectDetail('${esc(p.name)}')" style="cursor: pointer;">
-          <div class="topology-card-title">
-            <span>${esc(p.name)}</span>
-            <span class="status-chip ${p.status === 'ACTIVE' ? 'status-active' : 'status-paused'}">${esc(p.status)}</span>
-          </div>
-          <p class="topology-card-desc">${esc(p.nextAction)}</p>
-          <div class="card-meta-row" style="margin-top: 8px;">
-            <span>${p.completedBlocks}/${p.totalBlocks} bloques</span>
-            <span><strong>${p.progress}%</strong> completado</span>
-          </div>
-        </div>
-      `).join("")}
     </div>
   `;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WORKFLOW DETAILS RENDERER
+// ─────────────────────────────────────────────────────────────────────────────
+function renderWorkflowDetail(type) {
+  switch (type) {
+    case "environment":
+      return `
+        <div class="workflow-detail-box">
+          <div class="wf-lead-text">
+            <strong>Objetivo:</strong> Auditar, refinar y evolucionar la metodología y los axiomas de la empresa sin derivar en dogma ni degradar el contexto.
+          </div>
+
+          <div class="workflow-flow-stepper">
+            <div class="wf-step-node">
+              <span class="wf-step-num">1</span>
+              <div class="wf-step-title">Detección de Tensión</div>
+              <p class="wf-step-desc">Se detecta una contradicción en logs, desacoplamiento o residuo en MAILBOX.md.</p>
+              <div class="wf-step-tag">MAILBOX.md / logs</div>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">2</span>
+              <div class="wf-step-title">Pensamiento Lateral</div>
+              <p class="wf-step-desc">Explora 3 a 5 ángulos no examinados y costea honestamente cada trade-off.</p>
+              <button class="wf-step-skill-btn" onclick="openSkillInCatalog('rnd')">⚡ Skill: rnd</button>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">3</span>
+              <div class="wf-step-title">Auditoría Estructural</div>
+              <p class="wf-step-desc">Verifica que ningún axioma se viole y comprueba la alineación con la filosofía.</p>
+              <button class="wf-step-skill-btn" onclick="openSkillInCatalog('company-auditor')">⚡ company-auditor</button>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">4</span>
+              <div class="wf-step-title">Promoción Append-Only</div>
+              <p class="wf-step-desc">Si se aprueba, se añade el nuevo axioma AX-x o se registra la decisión M-xxx.</p>
+              <div class="wf-step-tag">AXIOMS.md / NEXUS</div>
+            </div>
+          </div>
+
+          <div class="wf-meta-footer">
+            <span class="meta-tag"><strong>Regla clave:</strong> Los axiomas son append-only; nada se reescribe, solo se superpone (AX-1).</span>
+          </div>
+        </div>
+      `;
+
+    case "knowledge":
+      return `
+        <div class="workflow-detail-box">
+          <div class="wf-lead-text">
+            <strong>Objetivo:</strong> Ingerir y modularizar nueva teoría externa o <strong>destilar los aprendizajes técnicos generados en los propios proyectos</strong> hacia la base de conocimiento permanente.
+          </div>
+
+          <div class="workflow-flow-stepper">
+            <div class="wf-step-node">
+              <span class="wf-step-num">1</span>
+              <div class="wf-step-title">Fuente / Destilación</div>
+              <p class="wf-step-desc">Documentación externa o lecciones técnicas extraídas de un bloque cerrado de proyecto.</p>
+              <div class="wf-step-tag">Proyecto / Paper</div>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">2</span>
+              <div class="wf-step-title">Creación Atómica</div>
+              <p class="wf-step-desc">Clasifica e inserta la nota bajo el árbol canónico de la base de conocimiento.</p>
+              <button class="wf-step-skill-btn" onclick="openSkillInCatalog('create-note')">⚡ Skill: create-note</button>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">3</span>
+              <div class="wf-step-title">Estructuración Modular</div>
+              <p class="wf-step-desc">Difiere y estructura el temario en módulos reutilizables interconectados.</p>
+              <div class="wf-step-tag tag-purple">💡 Propuesta: estructurar-temario</div>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">4</span>
+              <div class="wf-step-title">Indexación Perpetua</div>
+              <p class="wf-step-desc">Se indexa en 00_INDEXES. Lo aprendido queda disponible para siempre (PH-1).</p>
+              <div class="wf-step-tag">00_INDEXES/</div>
+            </div>
+          </div>
+
+          <div class="wf-meta-footer">
+            <span class="meta-tag"><strong>Regla clave:</strong> Sin acumulación vacía; sólo se indexa lo que tiene aplicación real (PHILOSOPHY §Refusals).</span>
+          </div>
+        </div>
+      `;
+
+    case "cartridge":
+      return `
+        <div class="workflow-detail-box">
+          <div class="wf-lead-text">
+            <strong>Objetivo:</strong> Inicializar un nuevo cartridge de proyecto soberano o redefinir su definición y estado cuando la realidad del trabajo haya variado.
+          </div>
+
+          <div class="workflow-flow-stepper">
+            <div class="wf-step-node">
+              <span class="wf-step-num">1</span>
+              <div class="wf-step-title">Génesis del Cartridge</div>
+              <p class="wf-step-desc">Crea definición, axiomas locales, log de decisiones, estado y fila en el compass.</p>
+              <button class="wf-step-skill-btn" onclick="openSkillInCatalog('structure-project')">⚡ structure-project</button>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">2</span>
+              <div class="wf-step-title">Detección de Deriva</div>
+              <p class="wf-step-desc">El trabajo se anticipa al plan o los bloques ya no reflejan la realidad.</p>
+              <div class="wf-step-tag">state.md desincronizado</div>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">3</span>
+              <div class="wf-step-title">Redefinición Quirúrgica</div>
+              <p class="wf-step-desc">Reescribe definition.md y state.md y añade una decisión sin tocar otros proyectos.</p>
+              <button class="wf-step-skill-btn" onclick="openSkillInCatalog('redefine-project')">⚡ redefine-project</button>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">4</span>
+              <div class="wf-step-title">Soberanía de Estado</div>
+              <p class="wf-step-desc">El proyecto queda listo para ejecutar su siguiente bloque B_n en tiempo real.</p>
+              <div class="wf-step-tag">state.md actualizado</div>
+            </div>
+          </div>
+
+          <div class="wf-meta-footer">
+            <span class="meta-tag"><strong>Regla clave:</strong> Cada proyecto es un repositorio soberano; jamás se acoplan por temática (PH-5).</span>
+          </div>
+        </div>
+      `;
+
+    case "coursework":
+      return `
+        <div class="workflow-detail-box">
+          <div class="wf-lead-text">
+            <strong>Objetivo:</strong> Abordar problemas, asignaciones o coursework académico asegurando el entendimiento completo del operador (PH-2) antes de entregar.
+          </div>
+
+          <div class="workflow-flow-stepper">
+            <div class="wf-step-node">
+              <span class="wf-step-num">1</span>
+              <div class="wf-step-title">Enunciado & Guía</div>
+              <p class="wf-step-desc">Analiza el problema y genera una guía estructurada de resolución y razonamiento.</p>
+              <button class="wf-step-skill-btn" onclick="openSkillInCatalog('learn')">⚡ Skill: learn</button>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">2</span>
+              <div class="wf-step-title">Ejecución Consciente</div>
+              <p class="wf-step-desc">Se implementa la solución paso a paso asegurando que el operador asimila cada concepto.</p>
+              <div class="wf-step-tag tag-purple">💡 Propuesta: crear-guia</div>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">3</span>
+              <div class="wf-step-title">Corrección Multinivel</div>
+              <p class="wf-step-desc">Revisión exhaustiva de rigor matemático, robustez de código y calidad técnica.</p>
+              <button class="wf-step-skill-btn" onclick="openSkillInCatalog('correct-exercise')">⚡ correct-exercise</button>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">4</span>
+              <div class="wf-step-title">Consolidación</div>
+              <p class="wf-step-desc">Se archiva el deliverable en 97_COURSEWORK y se destila la teoría relevante.</p>
+              <div class="wf-step-tag">97_COURSEWORK/</div>
+            </div>
+          </div>
+
+          <div class="wf-meta-footer">
+            <span class="meta-tag"><strong>Regla clave:</strong> El entendimiento prevalece sobre la velocidad; cero soluciones no asimiladas (PH-2).</span>
+          </div>
+        </div>
+      `;
+
+    case "project":
+    default:
+      return `
+        <div class="workflow-detail-box">
+          <div class="wf-lead-text">
+            <strong>Objetivo:</strong> Ejecutar trabajo real en cualquier cartridge de proyecto con preparación de tareas, brújula Schedule, plan numérico en vuelo y auditoría de cierre.
+          </div>
+
+          <div class="workflow-flow-stepper">
+            <div class="wf-step-node">
+              <span class="wf-step-num">1</span>
+              <div class="wf-step-title">Orientar (Compass)</div>
+              <p class="wf-step-desc">Lee Schedule.md y mailbox.md. Fija el único frente activo (▶).</p>
+              <button class="wf-step-skill-btn" onclick="openSkillInCatalog('open-session')">⚡ open-session</button>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">2</span>
+              <div class="wf-step-title">Planificar en Vuelo</div>
+              <p class="wf-step-desc">Construye el plan numérico del sub-bloque antes de tocar ningún archivo.</p>
+              <button class="wf-step-skill-btn" onclick="openSkillInCatalog('current-plan')">⚡ current-plan</button>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">3</span>
+              <div class="wf-step-title">Ejecutar Bloque B_n</div>
+              <p class="wf-step-desc">Modifica código, datos y tests guiado por el hero de Next Action de state.md.</p>
+              <div class="wf-step-tag">state.md (B_n)</div>
+            </div>
+            <div class="wf-step-arrow">→</div>
+
+            <div class="wf-step-node">
+              <span class="wf-step-num">4</span>
+              <div class="wf-step-title">Auditar & Cerrar</div>
+              <p class="wf-step-desc">project-auditor valida el diff; se registran decisiones D_n y se actualiza state.md.</p>
+              <button class="wf-step-skill-btn" onclick="openSkillInCatalog('project-auditor')">⚡ project-auditor</button>
+            </div>
+          </div>
+
+          <div class="wf-meta-footer">
+            <span class="meta-tag"><strong>Regla clave:</strong> Toda tarea que cierra tacha su plan con destino obligatorio y audita antes de vaciar (METHOD §2).</span>
+          </div>
+        </div>
+      `;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OVERVIEW INTERACTION HANDLERS
+// ─────────────────────────────────────────────────────────────────────────────
+window.toggleOverviewSection = function(sectionId) {
+  STATE.collapsedSections = STATE.collapsedSections || {};
+  STATE.collapsedSections[sectionId] = !STATE.collapsedSections[sectionId];
+  renderView();
+};
+
+window.setWorkflowTab = function(tabKey) {
+  STATE.selectedWorkflowTab = tabKey;
+  renderView();
+};
+
+window.jumpToSection = function(sectionId) {
+  if (STATE.collapsedSections && STATE.collapsedSections[sectionId]) {
+    STATE.collapsedSections[sectionId] = false;
+    renderView();
+  }
+  const el = document.getElementById(sectionId);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+};
+
+window.openSkillInCatalog = function(skillName) {
+  STATE.currentView = "skills";
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.classList.toggle("active", btn.getAttribute("data-view") === "skills");
+  });
+  renderView();
+  setTimeout(() => {
+    const searchInput = document.getElementById("skillSearchInput");
+    if (searchInput) {
+      searchInput.value = skillName;
+      searchInput.dispatchEvent(new Event("input"));
+    }
+  }, 100);
+};
+
+window.navigateTo = function(viewName) {
+  STATE.currentView = viewName;
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.classList.toggle("active", btn.getAttribute("data-view") === viewName);
+  });
+  renderView();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. PROJECTS HUB VIEW (Separated by Laboratories dynamically)
