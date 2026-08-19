@@ -46,10 +46,18 @@
 > **becomes a decision** — that is a normal outcome, costs nothing, and is the mechanism by which
 > this file stays short.
 >
-> **Departments, not ranks.** Company axioms live here; **instance axioms live in the operations
-> centre**; project axioms live in their project. They differ in **scope, not in force** — inside
-> its own jurisdiction each binds equally, none overrides another, and **they are read and
-> reviewed together**, because a rule can only contradict another rule it shares a reader with.
+> **Departments with nested scope, not ranks.** `MLabs:AXIOMS.md` binds **everything, MLabs
+> included**; the instance department binds **everything done in this instance** — every project
+> in it, and not MLabs; each project's `architecture.md` binds **that project alone**. The scopes
+> contain one another, and **all of them are read and reviewed together**: a rule can only
+> contradict a rule it shares a reader with.
+>
+> ⚠️ **When two disagree it is not a standoff — the narrower one loses.** The wider department
+> already governed that ground before the narrow rule was written, so a project axiom
+> contradicting an instance axiom is not a tie between equals: it is a project axiom that should
+> not have been opened. The finding is *which one was wrong*, and it is the narrow one until the
+> wide one is amended on purpose. `MLabs:PHILOSOPHY.md` sits above all three and breaks ties
+> **between clauses at the same level**.
 
 | ID        | Status | Axiom                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Serves      | Origin                                                                         |
 | --------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------ |
