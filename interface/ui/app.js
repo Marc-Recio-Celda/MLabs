@@ -648,65 +648,152 @@ function renderOverview(container) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. PROJECTS HUB VIEW
+// 2. PROJECTS HUB VIEW (Separated by Laboratories dynamically)
 // ─────────────────────────────────────────────────────────────────────────────
+function getProjectLab(p) {
+  if (p.lab && p.lab !== "General") return p.lab;
+  if (p.file) {
+    const parts = p.file.replace(/\\/g, "/").split("/");
+    const nIdx = parts.lastIndexOf("nexus");
+    if (nIdx >= 2) {
+      return parts[nIdx - 2];
+    }
+  }
+  return "MProjects";
+}
+
 function renderProjectsHub(container) {
+  const selectedLab = STATE.selectedLabFilter || "ALL";
   const selectedProj = STATE.projects.find(p => p.name === STATE.selectedProject) || STATE.projects[0];
+
+  const enrichedProjects = STATE.projects.map(p => ({
+    ...p,
+    lab: getProjectLab(p)
+  }));
+
+  const discoveredLabs = Array.from(new Set(enrichedProjects.map(p => p.lab).filter(Boolean))).sort();
+
+  const filteredProjects = selectedLab === "ALL" 
+    ? enrichedProjects 
+    : enrichedProjects.filter(p => p.lab === selectedLab);
 
   container.innerHTML = `
     <div class="view-header">
       <div class="view-title-group">
         <h1><span>🚀</span> Projects Hub</h1>
-        <p class="view-subtitle">Cartera de proyectos clasificados por volumen de trabajo y decisiones históricas</p>
+        <p class="view-subtitle">Organización de proyectos segregada por Laboratorios y Centros de Trabajo</p>
       </div>
     </div>
 
-    <!-- PROJECTS MATRIX GRID -->
-    <div class="projects-matrix-grid">
-      ${STATE.projects.map(p => `
-        <div class="project-card ${p.name === STATE.selectedProject ? 'active-selected' : ''}" onclick="selectProject('${esc(p.name)}')">
-          <div class="card-top">
-            <div class="project-name-group">
-              <span class="project-rank">${esc(p.rank)}</span>
-              <h3 class="project-name">${esc(p.name)}</h3>
-            </div>
-            <span class="status-chip ${p.status === 'ACTIVE' ? 'status-active' : 'status-paused'}">${esc(p.status)}</span>
+    <!-- LAB FILTER CHIPS -->
+    <div class="skills-stats-hud" style="margin-bottom: 20px;">
+      <div class="skill-stat-chip ${selectedLab === 'ALL' ? 'active' : ''}" onclick="updateLabFilter('ALL')">
+        <span class="stat-count">${enrichedProjects.length}</span>
+        <span class="stat-name">🏢 Todos los Laboratorios</span>
+      </div>
+      ${discoveredLabs.map(lab => {
+        const labProjectsCount = enrichedProjects.filter(p => p.lab === lab).length;
+        const icon = lab.toLowerCase().includes("proj") ? "💼" : "🔬";
+        return `
+          <div class="skill-stat-chip ${selectedLab === lab ? 'active' : ''}" onclick="updateLabFilter('${esc(lab)}')">
+            <span class="stat-count">${labProjectsCount}</span>
+            <span class="stat-name">${icon} ${esc(lab)}</span>
           </div>
-
-          <div class="progress-section">
-            <div class="progress-labels">
-              <span>Progreso de Bloques</span>
-              <strong>${p.completedBlocks}/${p.totalBlocks} (${p.progress}%)</strong>
-            </div>
-            <div class="progress-bar-track">
-              <div class="progress-bar-fill" style="width: ${p.progress}%;"></div>
-            </div>
-          </div>
-
-          <div class="next-action-preview" title="${esc(p.nextAction)}">
-            <strong>Next:</strong> ${inline(p.nextAction)}
-          </div>
-
-          <div class="card-meta-row">
-            <span class="meta-item">📜 ${p.decisionsCount} decisiones</span>
-            <span class="meta-item">🕒 ${esc(p.lastUpdated)}</span>
-          </div>
-        </div>
-      `).join("")}
+        `;
+      }).join("")}
     </div>
+
+    <!-- LAB SECTIONS -->
+    ${selectedLab === "ALL" ? discoveredLabs.map(lab => {
+      const labProjects = enrichedProjects.filter(p => p.lab === lab);
+      return renderLabSection(lab, labProjects);
+    }).join("") : renderLabSection(selectedLab, filteredProjects)}
 
     <!-- PROJECT DETAIL DEEP DIVE -->
     ${selectedProj ? renderProjectDeepDive(selectedProj) : ""}
   `;
 }
 
-function renderProjectDeepDive(proj) {
+function renderLabSection(labName, projects) {
+  const isPersonal = labName.toLowerCase().includes("proj");
+  const icon = isPersonal ? "💼" : "🔬";
+  const badgeLabel = isPersonal ? "Lab Personal & Operaciones" : "Lab de Investigación & Genómica";
+  const badgeClass = isPersonal ? "tag-purple" : "tag-live";
+  const totalDecs = projects.reduce((acc, p) => acc + (p.decisionsCount || 0), 0);
+
   return `
-    <div class="project-detail-panel">
+    <div class="lab-group-container">
+      <div class="lab-group-header">
+        <div class="lab-title-group">
+          <span class="lab-icon-bubble">${icon}</span>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h2 class="lab-title">${esc(labName)}</h2>
+              <span class="tag-pill ${badgeClass}">${esc(badgeLabel)}</span>
+            </div>
+            <p class="lab-subtitle">Entorno de proyectos y operaciones asociadas a ${esc(labName)}</p>
+          </div>
+        </div>
+        <div class="lab-stats-pills">
+          <span class="tag-pill">${projects.length} proyectos</span>
+          <span class="tag-pill">📜 ${totalDecs} decisiones</span>
+        </div>
+      </div>
+
+      <div class="projects-matrix-grid">
+        ${projects.map(p => `
+          <div class="project-card ${p.name === STATE.selectedProject ? 'active-selected' : ''}" onclick="selectProject('${esc(p.name)}')">
+            <div class="card-top">
+              <div class="project-name-group">
+                <span class="project-rank">${esc(p.rank)}</span>
+                <h3 class="project-name">${esc(p.name)}</h3>
+              </div>
+              <span class="status-chip ${p.status === 'ACTIVE' ? 'status-active' : 'status-paused'}">${esc(p.status)}</span>
+            </div>
+
+            <div class="progress-section">
+              <div class="progress-labels">
+                <span>Progreso de Bloques</span>
+                <strong>${p.completedBlocks}/${p.totalBlocks} (${p.progress}%)</strong>
+              </div>
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill" style="width: ${p.progress}%;"></div>
+              </div>
+            </div>
+
+            <div class="next-action-preview" title="${esc(p.nextAction)}">
+              <strong>Next:</strong> ${inline(p.nextAction)}
+            </div>
+
+            <div class="card-meta-row">
+              <span class="meta-item">📜 ${p.decisionsCount} decisiones</span>
+              <span class="meta-item">🕒 ${esc(p.lastUpdated)}</span>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderProjectDeepDive(proj) {
+  const labName = getProjectLab(proj);
+  const isPersonal = labName.toLowerCase().includes("proj");
+  const icon = isPersonal ? "💼" : "🔬";
+  const projectTasks = STATE.tasks.filter(t => t.project === proj.name || t.project.startsWith(proj.name));
+  const activeTasks = projectTasks.filter(t => ["⬜", "🔨", "⛔", "🔴"].includes(t.status));
+  const projectDecs = STATE.decisions.filter(d => d.project === proj.name).slice(0, 5);
+
+  return `
+    <div class="project-detail-panel" id="projectDetailSection">
       <div class="detail-header">
         <div class="detail-title-group">
-          <h2>${esc(proj.name)} · Detalle del Cartridge</h2>
-          <p class="detail-subtitle">${esc(proj.currentPhase)} · Integrado hasta ${esc(proj.integratedThrough)}</p>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 24px;">${icon}</span>
+            <h2>${esc(proj.name)} · Detalle del Cartridge</h2>
+            <span class="tag-pill tag-project">${esc(labName)}</span>
+          </div>
+          <p class="detail-subtitle">${esc(proj.currentPhase)} · Integrado hasta ${esc(proj.integratedThrough)} · Actualizado: ${esc(proj.lastUpdated)}</p>
         </div>
       </div>
 
@@ -737,9 +824,115 @@ function renderProjectDeepDive(proj) {
           ${idx < proj.blocks.length - 1 ? `<div class="step-connector ${block.done ? 'completed' : ''}"></div>` : ''}
         `).join("")}
       </div>
+
+      <!-- TASKS IN THIS PROJECT (LIVE PREVIEW) -->
+      <div class="project-tasks-preview-section">
+        <div class="section-subhead">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>📋</span> <strong>Tareas de ${esc(proj.name)} (${projectTasks.length})</strong>
+            <span class="tag-pill tag-live">${activeTasks.length} activas</span>
+          </div>
+          <button class="btn-hud-action btn-add-task" onclick="openTaskModalForProject('${esc(proj.name)}')">
+            <span>➕</span> <span>Nueva Tarea para ${esc(proj.name)}</span>
+          </button>
+        </div>
+
+        ${projectTasks.length ? `
+          <div class="tickets-list" style="margin-top: 12px;">
+            ${projectTasks.map(t => `
+              <div class="ticket-card ${t.status === '✅' ? 'completed' : (t.status === '⚫' ? 'discarded' : '')}">
+                <div class="ticket-top">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(t.id)}</span>
+                    <span class="tag-pill">${esc(t.status)}</span>
+                    <h3 class="ticket-title" style="${t.status === '✅' ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${inline(t.title)}</h3>
+                  </div>
+                  ${renderDate(t.date, t.date_inferred)}
+                </div>
+
+                <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-top: 4px;">
+                  <strong>Why:</strong> ${inline(t.why)}
+                </p>
+
+                ${t.discardReason ? `
+                  <div class="task-discard-callout">
+                    <strong>⚫ Descartada (PH-3):</strong> ${inline(t.discardReason)}
+                  </div>
+                ` : ''}
+
+                <div class="task-actions-toolbar">
+                  ${t.status !== '✅' && t.status !== '⚫' ? `
+                    <button class="btn-task-action btn-task-complete" onclick="completeTask('${esc(t.id)}')">
+                      <span>✅</span> Completar
+                    </button>
+                  ` : ''}
+                  <button class="btn-task-action btn-task-comment" onclick="openCommentModal('${esc(t.id)}', '${esc(t.title)}')">
+                    <span>💬</span> Comentar (${t.comments ? t.comments.length : 0})
+                  </button>
+                  ${t.status !== '⚫' ? `
+                    <button class="btn-task-action btn-task-discard" onclick="openDiscardModal('${esc(t.id)}', '${esc(t.title)}')">
+                      <span>⚫</span> Descartar
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        ` : `
+          <div class="empty-state" style="padding: 24px;">
+            <p>No hay tareas registradas para <strong>${esc(proj.name)}</strong>.</p>
+          </div>
+        `}
+      </div>
+
+      <!-- RECENT DECISIONS IN THIS PROJECT -->
+      ${projectDecs.length ? `
+        <div class="project-tasks-preview-section" style="margin-top: 24px;">
+          <div class="section-subhead">
+            <span>📜</span> <strong>Últimas Decisiones de ${esc(proj.name)} (${proj.decisionsCount} totales)</strong>
+          </div>
+          <div class="tickets-list" style="margin-top: 12px;">
+            ${projectDecs.map(d => `
+              <div class="ticket-card ${d.isSuperseded ? 'discarded' : ''}">
+                <div class="ticket-top">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
+                    ${d.isSuperseded ? `
+                      <span class="tag-pill tag-superseded">🔄 Reemplazada</span>
+                    ` : `
+                      <span class="tag-pill tag-alive">🟢 VIVA</span>
+                    `}
+                  </div>
+                  ${renderDate(d.date, d.date_inferred)}
+                </div>
+                <h3 class="ticket-title" style="font-size: 14px; margin-top: 4px;">${inline(d.title)}</h3>
+                <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; margin-top: 2px;">
+                  <strong>Por qué:</strong> ${inline(d.why)}
+                </p>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      ` : ''}
     </div>
   `;
 }
+
+window.updateLabFilter = function(lab) {
+  STATE.selectedLabFilter = lab;
+  renderView();
+};
+
+window.openTaskModalForProject = function(projectName) {
+  openTaskModal();
+  const projSelect = document.getElementById("taskProject");
+  if (projSelect) {
+    projSelect.value = projectName;
+    updateTaskPreview();
+  }
+};
+
+
 
 window.selectProject = function(name) {
   STATE.selectedProject = name;
