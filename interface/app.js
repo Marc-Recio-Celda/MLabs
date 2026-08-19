@@ -555,70 +555,91 @@ function renderOverview(container) {
           <div class="gov-philosophy-panel">
             <div class="gov-panel-header">
               <div class="gov-panel-title">
-                <span class="gov-level-badge badge-vine">NIVEL 1 · INMUTABLE</span>
-                <h3>Los Seis Principios Rectores <small>PHILOSOPHY.md</small></h3>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                  <span class="gov-level-badge badge-vine">NIVEL 1 · PÚBLICO &amp; INMUTABLE</span>
+                  <span class="gov-file-tag">PHILOSOPHY.md</span>
+                </div>
+                <h3>Los Seis Principios Rectores</h3>
               </div>
-              <p class="gov-panel-subtitle">La brújula que rige todas las decisiones y <strong>rompe todo empate de diseño</strong>. Cambia casi nunca; sólo por el operador.</p>
+              <p class="gov-panel-subtitle">La brújula rectora que rige todas las decisiones técnicas y <strong>rompe todo empate de diseño</strong>. Modificable casi nunca; sólo por el operador.</p>
             </div>
 
             <div class="gov-principles-grid">
-              <div class="gov-principle">
-                <div class="gov-principle-id">PH-1</div>
-                <div class="gov-principle-body">
-                  <strong>El horizonte largo es la premisa</strong>
-                  <p>Todo se construye para lo siguiente, no solo para hoy. Diseña para 3× a 10× el volumen actual.</p>
-                  <div class="principle-rule"><strong>Regla:</strong> Solución que sólo escala hoy es postergación.</div>
+              <div class="gov-principle-card">
+                <div class="gov-principle-card-head">
+                  <span class="principle-badge">PH-1</span>
+                  <h4 class="principle-title">El horizonte largo es la premisa</h4>
+                </div>
+                <p class="principle-desc">Todo se construye para lo siguiente, no solo para hoy. Diseña para 3× a 10× el volumen actual. Lo que se aprende una vez no se vuelve a aprender desde cero.</p>
+                <div class="principle-rule-box">
+                  <span class="rule-kicker">REGLA DE ORO</span>
+                  <span class="rule-text">Solución que sólo escala hoy es postergación.</span>
                 </div>
               </div>
 
-              <div class="gov-principle">
-                <div class="gov-principle-id">PH-2</div>
-                <div class="gov-principle-body">
-                  <strong>El aprendizaje se compra con productividad</strong>
-                  <p>Donde la velocidad y la comprensión chocan, <strong>gana la comprensión</strong>. Un atajo que no se entiende es deuda.</p>
-                  <div class="principle-rule"><strong>Regla:</strong> Cero atajos ciegos; entendimiento primero.</div>
+              <div class="gov-principle-card">
+                <div class="gov-principle-card-head">
+                  <span class="principle-badge">PH-2</span>
+                  <h4 class="principle-title">El aprendizaje se compra con productividad</h4>
+                </div>
+                <p class="principle-desc">Donde la velocidad y la comprensión chocan, <strong>gana la comprensión</strong>. Un atajo que el operador no entiende no es velocidad: es deuda con intereses.</p>
+                <div class="principle-rule-box">
+                  <span class="rule-kicker">REGLA DE ORO</span>
+                  <span class="rule-text">Cero atajos ciegos; entendimiento primero.</span>
                 </div>
               </div>
 
-              <div class="gov-principle">
-                <div class="gov-principle-id">PH-3</div>
-                <div class="gov-principle-body">
-                  <strong>Nada se pierde</strong>
-                  <p>Sin datos no hay análisis. Un dato perdido jamás se recupera. Cubre entradas, razonamiento y <strong>los descartes con su motivo</strong>.</p>
-                  <div class="principle-rule"><strong>Regla:</strong> Registrar es barato; reconstruir es imposible.</div>
+              <div class="gov-principle-card">
+                <div class="gov-principle-card-head">
+                  <span class="principle-badge">PH-3</span>
+                  <h4 class="principle-title">Nada se pierde</h4>
+                </div>
+                <p class="principle-desc">Sin datos no hay análisis. Un dato perdido jamás se recupera. Esto cubre entradas, razonamiento, alternativas y <strong>los descartes con su motivo</strong>.</p>
+                <div class="principle-rule-box">
+                  <span class="rule-kicker">REGLA DE ORO</span>
+                  <span class="rule-text">Registrar es barato; reconstruir es imposible.</span>
                 </div>
               </div>
 
-              <div class="gov-principle">
-                <div class="gov-principle-id">PH-4</div>
-                <div class="gov-principle-body">
-                  <strong>Cero cajas negras</strong>
-                  <p>Toda decisión es trazable a su razonamiento. El valor reside en los artefactos en disco, no en la herramienta.</p>
-                  <div class="principle-rule"><strong>Regla:</strong> La herramienta es intercambiable; el estado es sagrado.</div>
+              <div class="gov-principle-card">
+                <div class="gov-principle-card-head">
+                  <span class="principle-badge">PH-4</span>
+                  <h4 class="principle-title">Cero cajas negras</h4>
+                </div>
+                <p class="principle-desc">Toda decisión es trazable a su origen y razonamiento. Un sistema cuyo dueño no puede explicarlo no puede ser corregido por él. El valor vive en los artefactos en disco.</p>
+                <div class="principle-rule-box">
+                  <span class="rule-kicker">REGLA DE ORO</span>
+                  <span class="rule-text">La herramienta es intercambiable; el estado es sagrado.</span>
                 </div>
               </div>
 
-              <div class="gov-principle">
-                <div class="gov-principle-id">PH-5</div>
-                <div class="gov-principle-body">
-                  <strong>El trabajo es modular</strong>
-                  <p>Cada pieza es dueña de su propio ciclo de vida. El acoplamiento se paga en cada cambio; la separación una sola vez.</p>
-                  <div class="principle-rule"><strong>Regla:</strong> Nunca agrupar por temática; separar por dueño.</div>
+              <div class="gov-principle-card">
+                <div class="gov-principle-card-head">
+                  <span class="principle-badge">PH-5</span>
+                  <h4 class="principle-title">El trabajo es modular</h4>
+                </div>
+                <p class="principle-desc">Cada pieza es dueña de su propio ciclo de vida y versión. El acoplamiento se paga en cada cambio; la separación una sola vez. Fronteras por <strong>propietario primero</strong>.</p>
+                <div class="principle-rule-box">
+                  <span class="rule-kicker">REGLA DE ORO</span>
+                  <span class="rule-text">Nunca agrupar por temática; separar por dueño.</span>
                 </div>
               </div>
 
-              <div class="gov-principle">
-                <div class="gov-principle-id">PH-6</div>
-                <div class="gov-principle-body">
-                  <strong>La atención es el recurso escaso</strong>
-                  <p>Todo se registra; casi nada se carga a la vez. <strong>Un único frente activo (▶)</strong>. El coste es lo que hay que retener en la cabeza.</p>
-                  <div class="principle-rule"><strong>Regla:</strong> Un solo frente a la vez; cero dispersión.</div>
+              <div class="gov-principle-card">
+                <div class="gov-principle-card-head">
+                  <span class="principle-badge">PH-6</span>
+                  <h4 class="principle-title">La atención es el recurso escaso</h4>
+                </div>
+                <p class="principle-desc">Todo se registra; casi nada se carga en memoria a la vez. <strong>Un único frente activo (▶)</strong>. El coste crítico no es el disco, sino lo que hay que retener en la cabeza.</p>
+                <div class="principle-rule-box">
+                  <span class="rule-kicker">REGLA DE ORO</span>
+                  <span class="rule-text">Un solo frente a la vez; cero dispersión.</span>
                 </div>
               </div>
             </div>
 
-            <div class="callout danger" style="margin-top: 16px;">
-              <div class="callout-title"><span>🛡️</span> Lo que esta empresa rechaza formalmente (§Refusals)</div>
+            <div class="callout danger" style="margin-top: 18px;">
+              <div class="callout-title"><span>🛡️</span> Lo que esta empresa rechaza formalmente (PHILOSOPHY §Refusals)</div>
               <div class="grid-2" style="margin-top: 8px; gap: 10px;">
                 <div><strong>🚫 Acumulación:</strong> Curación estricta; sólo se guarda lo que se va a usar.</div>
                 <div><strong>🚫 Complacencia:</strong> El sistema existe para preparar a su operador, no para darle la razón.</div>
@@ -630,41 +651,70 @@ function renderOverview(container) {
 
           <!-- ── PANEL INFERIOR: Axiomas + NEXUS lado a lado ── -->
           <div class="gov-bottom-row">
-            <div class="gov-bottom-card">
+            <!-- NIVEL 2: AXIOMAS -->
+            <div class="gov-bottom-card gov-card-axioms">
               <div class="gov-bottom-card-head">
-                <span class="gov-level-badge badge-gold">NIVEL 2 · ESTRUCTURA</span>
+                <span class="gov-level-badge badge-gold">NIVEL 2 · ESTRUCTURA &amp; LEY</span>
                 <span class="gov-file-tag">AXIOMS.md · AGENTS.md · METHOD.md</span>
               </div>
-              <h3>Axiomas y Reglas</h3>
-              <p>Reglas verificables que implementan la filosofía de forma determinista. Gobiernan roles, gates, checks y contratos de despido.</p>
-              <div class="gov-stat-row">
-                <div class="gov-stat"><span class="gov-stat-val">30</span><span class="gov-stat-lbl">Axiomas</span></div>
-                <div class="gov-stat"><span class="gov-stat-val">10</span><span class="gov-stat-lbl">Invariantes</span></div>
-                <div class="gov-stat"><span class="gov-stat-val">4</span><span class="gov-stat-lbl">Roles</span></div>
+              <h3 class="gov-bottom-title">Axiomas y Reglas Deterministas</h3>
+              <p class="gov-bottom-desc">Reglas técnicas verificables que implementan la filosofía. Gobiernan la orquestación de roles, invariantes de seguridad, checks automáticos y contratos de despido N/K.</p>
+              
+              <div class="gov-stat-grid">
+                <div class="gov-stat-box">
+                  <span class="gov-stat-val">30</span>
+                  <span class="gov-stat-lbl">Axiomas Activos</span>
+                </div>
+                <div class="gov-stat-box">
+                  <span class="gov-stat-val">10</span>
+                  <span class="gov-stat-lbl">Invariantes Gate</span>
+                </div>
+                <div class="gov-stat-box">
+                  <span class="gov-stat-val">4</span>
+                  <span class="gov-stat-lbl">Roles Auditados</span>
+                </div>
               </div>
-              <div class="gov-sample-rules">
-                <span class="gov-rule-chip"><strong>AX-1</strong> Append-only</span>
-                <span class="gov-rule-chip"><strong>AX-11</strong> Despido N/K</span>
-                <span class="gov-rule-chip"><strong>AX-20</strong> Fuente única</span>
-                <span class="gov-rule-chip"><strong>AX-21</strong> Carga selectiva</span>
+
+              <div class="gov-chips-container">
+                <div class="gov-chip-label">Axiomas Clave:</div>
+                <div class="gov-sample-rules">
+                  <span class="gov-rule-chip"><strong>AX-1</strong> Append-only</span>
+                  <span class="gov-rule-chip"><strong>AX-11</strong> Despido N/K</span>
+                  <span class="gov-rule-chip"><strong>AX-20</strong> Fuente única</span>
+                  <span class="gov-rule-chip"><strong>AX-21</strong> Carga selectiva</span>
+                  <span class="gov-rule-chip"><strong>AX-26</strong> Dueño primero</span>
+                </div>
               </div>
             </div>
 
-            <div class="gov-bottom-card">
+            <!-- NIVEL 3: NEXUS -->
+            <div class="gov-bottom-card gov-card-nexus">
               <div class="gov-bottom-card-head">
-                <span class="gov-level-badge badge-grape">NIVEL 3 · PRIVADO</span>
+                <span class="gov-level-badge badge-grape">NIVEL 3 · ESTADO PRIVADO</span>
                 <span class="gov-file-tag">NEXUS (operaciones)</span>
               </div>
-              <h3>Decisiones y Cartridges</h3>
-              <p>El estado real donde vive el trabajo: registro inmutable de decisiones con autor, fecha y razonamiento. Cada proyecto es un cartridge soberano.</p>
-              <div class="gov-stat-row">
-                <div class="gov-stat"><span class="gov-stat-val">${liveDecisions().length}</span><span class="gov-stat-lbl">Decisiones vivas</span></div>
-                <div class="gov-stat"><span class="gov-stat-val">${STATE.projects.length}</span><span class="gov-stat-lbl">Proyectos</span></div>
-                <div class="gov-stat"><span class="gov-stat-val">${STATE.tasks.length}</span><span class="gov-stat-lbl">Tareas</span></div>
+              <h3 class="gov-bottom-title">Decisiones y Cartridges Soberanos</h3>
+              <p class="gov-bottom-desc">Donde vive la empresa real: registro histórico inmutable de decisiones con autor, fecha y razonamiento. Cada proyecto opera como un cartridge soberano con su propio ciclo de vida.</p>
+              
+              <div class="gov-stat-grid">
+                <div class="gov-stat-box">
+                  <span class="gov-stat-val">${liveDecisions().length}</span>
+                  <span class="gov-stat-lbl">Decisiones Vivas</span>
+                </div>
+                <div class="gov-stat-box">
+                  <span class="gov-stat-val">${STATE.projects.length}</span>
+                  <span class="gov-stat-lbl">Proyectos Soberanos</span>
+                </div>
+                <div class="gov-stat-box">
+                  <span class="gov-stat-val">${STATE.tasks.length}</span>
+                  <span class="gov-stat-lbl">Tareas en Vuelo</span>
+                </div>
               </div>
+
               <div class="gov-nexus-links">
-                <button class="gov-link-btn" onclick="navigateTo('decisions')">📜 Decision Log →</button>
-                <button class="gov-link-btn" onclick="navigateTo('projects')">🚀 Projects Hub →</button>
+                <button class="gov-link-btn" onclick="navigateTo('decisions')">📜 Ver Decision Log →</button>
+                <button class="gov-link-btn" onclick="navigateTo('projects')">🚀 Abrir Projects Hub →</button>
+                <button class="gov-link-btn" onclick="navigateTo('inbox')">📋 Ir al Buzón →</button>
               </div>
             </div>
           </div>

@@ -664,6 +664,14 @@ body {
   user-select: none;
 }
 
+.section-body {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.section-body.is-collapsed {
+  display: none !important;
+}
+
 .section-head h2 {
   font-size: 19px;
   font-weight: 800;
@@ -851,140 +859,181 @@ body {
   margin-top: 8px;
 }
 
-/* ═══ GOVERNANCE PANEL LAYOUT ═══ */
+/* ═══ GOVERNANCE PANEL LAYOUT (Editorial Style) ═══ */
 
 /* -- Top panel: Philosophy -- */
 .gov-philosophy-panel {
-  background: linear-gradient(135deg, rgba(91, 124, 83, 0.06), rgba(198, 154, 62, 0.04));
-  border: 1px solid rgba(91, 124, 83, 0.18);
-  border-radius: var(--radius-lg);
-  padding: 24px 28px 20px;
-  margin-bottom: 20px;
+  background: #faf8f2;
+  border: 1px solid #dfd8c8;
+  border-top: 4px solid var(--vine);
+  border-radius: 14px;
+  padding: 26px 30px 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 16px rgba(40, 30, 20, 0.03);
 }
 
 .gov-panel-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 20px;
-  margin-bottom: 20px;
+  gap: 24px;
+  margin-bottom: 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   flex-wrap: wrap;
 }
 
 .gov-panel-title h3 {
-  margin: 6px 0 0;
-  font-size: 17px;
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
   color: var(--ink);
-}
-
-.gov-panel-title h3 small {
-  font-weight: 400;
-  font-size: 12px;
-  color: var(--ink-muted);
-  margin-left: 6px;
+  letter-spacing: -0.2px;
 }
 
 .gov-panel-subtitle {
   font-size: 13px;
   color: var(--ink-soft);
-  max-width: 340px;
+  max-width: 440px;
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.55;
   align-self: center;
 }
 
 .gov-level-badge {
   display: inline-block;
+  font-family: var(--font-mono);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.6px;
   text-transform: uppercase;
-  padding: 3px 10px;
-  border-radius: 20px;
-  background: var(--paper);
-  border: 1px solid var(--line);
+  padding: 3px 9px;
+  border-radius: 4px;
 }
 
-/* -- Principles as horizontal rows -- */
+.gov-file-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* -- Principles Grid: 3 columns for rhythm and breath -- */
 .gov-principles-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
 }
 
-.gov-principle {
+.gov-principle-card {
+  background: #ffffff;
+  border: 1px solid #e5dfd2;
+  border-radius: 12px;
+  padding: 20px 20px 18px;
   display: flex;
-  gap: 12px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(45, 35, 25, 0.03);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-.gov-principle:hover {
+.gov-principle-card:hover {
+  transform: translateY(-2px);
   border-color: var(--vine);
-  box-shadow: 0 2px 8px rgba(91, 124, 83, 0.10);
+  box-shadow: 0 6px 20px rgba(91, 124, 83, 0.12);
 }
 
-.gov-principle-id {
-  flex-shrink: 0;
-  width: 42px;
-  height: 42px;
+.gov-principle-card-head {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.principle-badge {
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.5px;
   color: var(--vine-deep);
-  background: rgba(91, 124, 83, 0.10);
-  border-radius: 50%;
-  border: 2px solid rgba(91, 124, 83, 0.20);
+  background: rgba(91, 124, 83, 0.12);
+  border: 1px solid rgba(91, 124, 83, 0.28);
+  padding: 2px 7px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
-.gov-principle-body strong {
-  display: block;
-  font-size: 13.5px;
+.principle-title {
+  font-size: 14px;
+  font-weight: 700;
   color: var(--ink);
-  margin-bottom: 4px;
+  margin: 0;
+  line-height: 1.35;
 }
 
-.gov-principle-body p {
+.principle-desc {
   font-size: 12px;
   color: var(--ink-soft);
-  line-height: 1.5;
-  margin: 0 0 4px;
+  line-height: 1.55;
+  margin: 0 0 14px;
+  flex-grow: 1;
+}
+
+.principle-rule-box {
+  background: rgba(91, 124, 83, 0.08);
+  border-left: 3px solid var(--vine);
+  padding: 8px 12px;
+  border-radius: 0 6px 6px 0;
+  margin-top: auto;
+}
+
+.rule-kicker {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--vine-deep);
+  margin-bottom: 2px;
+}
+
+.rule-text {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
 }
 
 /* -- Bottom row: Axioms + NEXUS side by side -- */
 .gov-bottom-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 20px;
 }
 
 .gov-bottom-card {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  padding: 20px 22px;
+  background: #faf8f2;
+  border: 1px solid #dfd8c8;
+  border-radius: 14px;
+  padding: 24px 26px 22px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+  box-shadow: 0 4px 16px rgba(40, 30, 20, 0.03);
 }
 
-.gov-bottom-card h3 {
-  margin: 0;
-  font-size: 16px;
-  color: var(--ink);
+.gov-card-axioms {
+  border-top: 4px solid var(--gold);
 }
 
-.gov-bottom-card p {
-  font-size: 12.5px;
-  color: var(--ink-soft);
-  line-height: 1.55;
-  margin: 0;
+.gov-card-nexus {
+  border-top: 4px solid var(--grape);
 }
 
 .gov-bottom-card-head {
@@ -994,31 +1043,42 @@ body {
   flex-wrap: wrap;
 }
 
-.gov-file-tag {
-  font-size: 10.5px;
-  font-weight: 500;
-  color: var(--ink-muted);
-  background: rgba(0,0,0,0.03);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+.gov-bottom-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.2px;
 }
 
-.gov-stat-row {
-  display: flex;
-  gap: 16px;
-  margin-top: 4px;
+.gov-bottom-desc {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  margin: 0;
 }
 
-.gov-stat {
+.gov-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid #e5dfd2;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.gov-stat-box {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  text-align: center;
+  gap: 3px;
 }
 
 .gov-stat-val {
-  font-size: 22px;
+  font-family: var(--font-mono);
+  font-size: 20px;
   font-weight: 800;
   color: var(--ink);
   line-height: 1;
@@ -1026,55 +1086,80 @@ body {
 
 .gov-stat-lbl {
   font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.gov-chips-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gov-chip-label {
+  font-size: 11px;
+  font-weight: 700;
   color: var(--ink-muted);
-  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .gov-sample-rules {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 4px;
 }
 
 .gov-rule-chip {
   font-size: 11px;
-  padding: 3px 10px;
+  font-family: var(--font-sans);
   background: rgba(198, 154, 62, 0.10);
-  border: 1px solid rgba(198, 154, 62, 0.25);
-  border-radius: 12px;
-  color: var(--ink-soft);
+  border: 1px solid rgba(198, 154, 62, 0.28);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: var(--ink);
+  font-weight: 500;
 }
 
 .gov-rule-chip strong {
-  color: var(--gold);
-  margin-right: 3px;
+  color: #8a6418;
+  margin-right: 2px;
 }
 
 .gov-nexus-links {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: auto;
-  padding-top: 8px;
+  padding-top: 4px;
 }
 
 .gov-link-btn {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--vine-deep);
-  background: rgba(91, 124, 83, 0.08);
-  border: 1px solid rgba(91, 124, 83, 0.20);
-  border-radius: var(--radius-md);
+  font-size: 11.5px;
+  font-weight: 700;
   padding: 7px 14px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s;
+  border: 1px solid rgba(109, 74, 124, 0.28);
+  background: rgba(109, 74, 124, 0.08);
+  color: var(--grape);
+  transition: all 0.18s ease;
 }
 
 .gov-link-btn:hover {
-  background: rgba(91, 124, 83, 0.15);
-  border-color: var(--vine);
+  background: var(--grape);
+  color: #ffffff;
+  border-color: var(--grape);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(109, 74, 124, 0.22);
+}
+
+@media (max-width: 1100px) {
+  .gov-principles-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 800px) {
