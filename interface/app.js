@@ -10,10 +10,14 @@ const STORAGE_KEYS = {
 
 let STATE = {
   activeFront: null,
+  cockpitSelectedFrontId: null,
+  cockpitFilterProj: "ALL",
   fronts: [],
   projects: [],
   tasks: [],
   livePlan: [],
+  livePlanMeta: null,
+  plans: [],
   mailbox: [],
   ideas: [],
   decisions: [],
@@ -54,6 +58,42 @@ function inline(s) {
   t = t.replace(/~~([^~]+)~~/g, (_, a) => `<del>${a}</del>`);
   return t;
 }
+
+window.copyToClipboard = function(text, msg, evt) {
+  if (!text) return;
+  const target = evt?.currentTarget || (typeof event !== "undefined" ? event?.currentTarget : null);
+
+  const fallbackCopy = (str) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = str;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+    } catch (err) {
+      console.warn('execCommand copy error', err);
+    }
+    document.body.removeChild(textArea);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {
+      fallbackCopy(text);
+    });
+  } else {
+    fallbackCopy(text);
+  }
+
+  if (target) {
+    target.classList.add("copied-pulse");
+    setTimeout(() => target.classList.remove("copied-pulse"), 1200);
+  }
+  showToast(msg || `Copiado: ${text.slice(0, 45)}`);
+};
 
 function renderDate(dateStr, isInferred = false) {
   if (!dateStr) return "";
@@ -299,7 +339,7 @@ function ingestModel(model) {
   STATE.fronts = entities.filter(e => e.kind === "front");
   STATE.activeFront = STATE.fronts.find(e => e.active) || (STATE.fronts[0] || null);
 
-  // Live Plan items
+  // Live Plan items & metadata
   STATE.livePlan = entities.filter(e => e.kind === "plan-item").map(e => ({
     id: e.id,
     index: e.index || 1,
@@ -307,6 +347,27 @@ function ingestModel(model) {
     struck: Boolean(e.struck),
     destination: e.destination || "",
     project: e.project || "cross"
+  }));
+  STATE.livePlanMeta = entities.find(e => e.kind === "live-plan-meta") || null;
+
+  // Persistent Plans (from data/plans/*.json)
+  STATE.plans = entities.filter(e => e.kind === "plan").map(e => ({
+    id: e._record_id || e.id || "",
+    project: e.project || "nexus",
+    task: e.task || e.title || "",
+    sub_block: e.sub_block || "",
+    status: e.status || "closed",
+    date: e.date || "",
+    closed_on: e.closed_on || e.closed_date || null,
+    author: e.author || e.origin || "Operator",
+    order_why: e.order_why || "",
+    items: Array.isArray(e.items) ? e.items.map(it => ({
+      index: it.index || 1,
+      text: it.text || "",
+      status: it.status || (it.struck ? "done" : "open"),
+      destination: it.destination || it.outcome || (it.struck ? "✅ resolved" : ""),
+      completed_at: it.completed_at || it.date || null
+    })) : []
   }));
 
   // Decisions (all decision and method-decision records)
@@ -1419,29 +1480,30 @@ function renderProjectDetailPage(container) {
           <p class="proj-def-text">${inline(proj.definition)}</p>
         </div>
 
-        <!-- DIRECTORIO DE TRABAJO & REPOSITORIO GITHUB (COPIABLES) -->
-        <div class="proj-locations-bar">
-          <div class="proj-loc-pill" onclick="copyToClipboard('${esc(proj.codeRepo)}', 'Directorio de trabajo copiado al portapapeles')" title="Clic para copiar ruta del workspace">
-            <span class="loc-icon">📂</span>
-            <span class="loc-label">Workspace:</span>
-            <code class="loc-code">${esc(proj.codeRepo)}</code>
-            <span class="loc-copy-hint">📋</span>
-          </div>
-          ${proj.remoteUrl ? `
-            <div class="proj-loc-pill" onclick="copyToClipboard('${esc(proj.remoteUrl)}', 'URL del repositorio copiada al portapapeles')" title="Clic para copiar URL de GitHub">
-              <span class="loc-icon">🐙</span>
-              <span class="loc-label">GitHub:</span>
-              <code class="loc-code">${esc(proj.remoteUrl)}</code>
-              <span class="loc-copy-hint">📋</span>
-            </div>
-          ` : ''}
-        </div>
-
+        <!-- SPECS HUD (BLOQUES, DECISIONES, TAREAS, NEXT ACTION) -->
         <div class="specs" style="margin-top: 14px;">
           <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>🗺️ Bloques:</strong> ${proj.completedBlocks}/${proj.totalBlocks} (${proj.progress}%)</span>
           <span class="spec-pill" onclick="setProjectSubtab('decisions')"><strong>📜 Decisiones:</strong> ${liveDecs.length} Vivas (${projectDecs.length} Totales)</span>
           <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>📋 Tareas:</strong> ${projectTasks.length} (${activeTasks.length} Activas)</span>
           <span class="spec-pill active-pill" onclick="setProjectSubtab('state')"><strong>🎯 Next Action:</strong> ${inline(proj.nextAction.slice(0, 45))}...</span>
+        </div>
+
+        <!-- DIRECTORIO DE TRABAJO & REPOSITORIO GITHUB (COPIABLES, DEBAJO DE SPECS) -->
+        <div class="proj-locations-bar">
+          <div class="proj-loc-pill" onclick="copyToClipboard('${esc(proj.codeRepo)}', 'Directorio de trabajo copiado', event)" title="Clic para copiar ruta del workspace">
+            <span class="loc-icon">📂</span>
+            <span class="loc-label">Workspace:</span>
+            <code class="loc-code">${esc(proj.codeRepo)}</code>
+            <span class="loc-copy-hint">📋 Copiar</span>
+          </div>
+          ${proj.remoteUrl ? `
+            <div class="proj-loc-pill" onclick="copyToClipboard('${esc(proj.remoteUrl)}', 'URL del repositorio copiada', event)" title="Clic para copiar URL de GitHub">
+              <span class="loc-icon">🐙</span>
+              <span class="loc-label">GitHub:</span>
+              <code class="loc-code">${esc(proj.remoteUrl)}</code>
+              <span class="loc-copy-hint">📋 Copiar</span>
+            </div>
+          ` : ''}
         </div>
       </div>
     </header>
@@ -1894,90 +1956,349 @@ window.selectProject = function(name) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. COCKPIT & LIVE VIEW
 // ─────────────────────────────────────────────────────────────────────────────
+window.selectCockpitFront = function(frontId) {
+  STATE.cockpitSelectedFrontId = frontId;
+  renderView();
+};
+
+window.setCockpitFilter = function(proj) {
+  STATE.cockpitFilterProj = proj;
+  renderView();
+};
+
 function renderCockpit(container) {
+  const allProjects = Array.from(new Set(STATE.fronts.map(f => f.project).filter(Boolean))).sort();
+  const filterProj = STATE.cockpitFilterProj || "ALL";
+  
+  const filteredFronts = filterProj === "ALL" 
+    ? STATE.fronts 
+    : STATE.fronts.filter(f => f.project && f.project.toLowerCase() === filterProj.toLowerCase());
+
+  // Determine selected front
+  let selectedFront = null;
+  if (STATE.cockpitSelectedFrontId) {
+    selectedFront = STATE.fronts.find(f => f.id === STATE.cockpitSelectedFrontId || f.name === STATE.cockpitSelectedFrontId);
+  }
+  if (!selectedFront) {
+    selectedFront = STATE.activeFront || filteredFronts[0] || STATE.fronts[0] || null;
+  }
+
+  // Check if selected front is the active flight
+  const isActiveFlight = Boolean(selectedFront && (selectedFront.active || (STATE.activeFront && selectedFront.id === STATE.activeFront.id)));
+  
+  // Check if there is a persistent plan for this front
+  const persistentPlan = STATE.plans.find(p => 
+    (p.task && selectedFront?.name && selectedFront.name.includes(p.task)) ||
+    (selectedFront?.project && p.project === selectedFront.project) ||
+    (p.sub_block && selectedFront?.name && selectedFront.name.includes(p.sub_block))
+  );
+
+  // Live plan stats
+  const totalLive = STATE.livePlan.length;
+  const completedLive = STATE.livePlan.filter(p => p.struck).length;
+  const pendingLive = totalLive - completedLive;
+  const livePct = totalLive ? Math.round((completedLive / totalLive) * 100) : 0;
+
+  // Active front stats
+  const activeCount = STATE.fronts.filter(f => f.active).length;
+  const pausedCount = STATE.fronts.filter(f => f.marker === "⏸").length;
+  const queueCount = STATE.fronts.length - activeCount - pausedCount;
+
   container.innerHTML = `
     <div class="view-header">
       <div class="view-title-group">
         <h1><span>🧭</span> Operations Cockpit & Live Flight</h1>
-        <p class="view-subtitle">Supervisión en tiempo real del frente activo y el plan en vuelo</p>
+        <p class="view-subtitle">Supervisión en tiempo real de frentes en cola (Schedule) y ejecución de planes en vuelo</p>
+      </div>
+      <div class="header-stats-bar">
+        <span class="spec-pill active-pill" onclick="selectCockpitFront('${STATE.activeFront?.id || ''}')" style="cursor: pointer;" title="Ir al Frente Activo">
+          <strong>⚡ En Vuelo:</strong> ${activeCount} (▶)
+        </span>
+        <span class="spec-pill" style="border-color: var(--gold-border); color: #8a6418; background: var(--gold-bg);">
+          <strong>⏸ En Pausa:</strong> ${pausedCount}
+        </span>
+        <span class="spec-pill">
+          <strong>⏳ En Cola:</strong> ${queueCount}
+        </span>
       </div>
     </div>
 
     <div class="cockpit-grid">
-      <!-- LEFT COLUMN: ACTIVE FRONT & LIVE PLAN -->
-      <div class="cockpit-column">
-        <div class="cockpit-panel">
+      <!-- LEFT COLUMN: SCHEDULE COMPASS / FRENTES EN COLA -->
+      <div class="cockpit-column-left">
+        <div class="cockpit-panel schedule-queue-panel">
           <div class="panel-header">
-            <h2><span>▶</span> Frente Activo Único</h2>
-          </div>
-          ${STATE.activeFront ? `
-            <div class="next-action-hero-card" style="margin: 0;">
-              <span class="hero-icon">⚡</span>
-              <div class="hero-content">
-                <div class="hero-label">FRENTE EN VUELO</div>
-                <div class="hero-text">${inline(STATE.activeFront.name)}</div>
-                <p style="font-size: 12.5px; color: var(--text-secondary); margin-top: 6px;">
-                  <strong>Avanza cuando:</strong> ${inline(STATE.activeFront.moves_when || "—")}
-                </p>
-              </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h2><span>🎯</span> Frentes en Cola (Schedule)</h2>
+              <span class="tag-pill tag-live">${filteredFronts.length}</span>
             </div>
-          ` : `
-            <div class="empty-state"><p>No hay ningún frente activo seleccionado en Schedule.</p></div>
-          `}
-        </div>
-
-        <div class="cockpit-panel">
-          <div class="panel-header">
-            <h2><span>📋</span> Plan en Vuelo (Current_plan)</h2>
-            <span class="tag-pill tag-live">${STATE.livePlan.filter(p => !p.struck).length} pendientes</span>
           </div>
 
-          ${STATE.livePlan.length ? `
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              ${STATE.livePlan.map(item => `
-                <div class="plan-item-row ${item.struck ? 'completed' : ''}">
-                  <span class="plan-idx">${item.index}</span>
-                  ${expandable(item.text, "plan-text")}
-                  ${item.destination ? `
-                    <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'tag-discarded' : 'dest-resolved'}">
-                      ${esc(item.destination)}
+          <!-- Project Filter Chips -->
+          <div class="cockpit-filter-chips">
+            <button class="chip-filter ${filterProj === 'ALL' ? 'active' : ''}" onclick="setCockpitFilter('ALL')">
+              Todos (${STATE.fronts.length})
+            </button>
+            ${allProjects.map(proj => {
+              const count = STATE.fronts.filter(f => f.project === proj).length;
+              return `
+                <button class="chip-filter ${filterProj.toLowerCase() === proj.toLowerCase() ? 'active' : ''}" onclick="setCockpitFilter('${esc(proj)}')">
+                  ${esc(proj)} (${count})
+                </button>
+              `;
+            }).join("")}
+          </div>
+
+          <!-- Fronts List -->
+          <div class="cockpit-fronts-list">
+            ${filteredFronts.length ? filteredFronts.map((f) => {
+              const isSelected = selectedFront && (selectedFront.id === f.id || (selectedFront.name === f.name && selectedFront.line === f.line));
+              const isAct = Boolean(f.active);
+              const isPaused = f.marker === "⏸";
+              const isOrdinal = f.marker && /^\d+$/.test(f.marker);
+
+              let markerBadge = "";
+              if (isAct) {
+                markerBadge = `<span class="front-marker-badge marker-active" title="Frente Activo Único">▶</span>`;
+              } else if (isPaused) {
+                markerBadge = `<span class="front-marker-badge marker-paused" title="Frente en Pausa">⏸</span>`;
+              } else if (isOrdinal) {
+                markerBadge = `<span class="front-marker-badge marker-ordinal" title="Prioridad en Cola">${esc(f.marker)}</span>`;
+              } else {
+                markerBadge = `<span class="front-marker-badge marker-subtle">·</span>`;
+              }
+
+              return `
+                <div class="cockpit-front-card ${isSelected ? 'selected' : ''} ${isAct ? 'is-active-flight' : ''} ${isPaused ? 'is-paused-front' : ''}"
+                     onclick="selectCockpitFront('${esc(f.id || f.name)}')">
+                  <div class="front-card-top">
+                    ${markerBadge}
+                    <div class="front-card-title-group">
+                      <strong class="front-card-title">${inline(f.name)}</strong>
+                      ${f.project ? `<span class="tag-pill tag-project">${esc(f.project)}</span>` : ''}
+                    </div>
+                  </div>
+
+                  ${(f.moves_when || f.waits_on) ? `
+                    <div class="front-card-condition">
+                      <span class="condition-icon">${isPaused ? '⏸' : '⏳'}</span>
+                      <span class="condition-text">${expandable(f.moves_when || f.waits_on || '')}</span>
+                    </div>
+                  ` : ''}
+
+                  <div class="front-card-footer">
+                    <span class="front-status-indicator">
+                      ${isAct ? '<span class="status-dot pulse-dot"></span> Plan en vuelo activo' : 
+                        isPaused ? '<span class="status-dot paused-dot"></span> Frente en pausa' : 
+                        '<span class="status-dot queue-dot"></span> En espera de turno'}
                     </span>
-                  ` : `<span class="dest-tag dest-inflight">en curso</span>`}
+                    <span class="select-arrow">${isSelected ? '●' : '→'}</span>
+                  </div>
                 </div>
-              `).join("")}
-            </div>
-          ` : `
-            <div class="empty-state">
-              <div class="empty-icon">⚡</div>
-              <h3>Plan despejado</h3>
-              <p>Current_plan está limpio y listo para recibir el siguiente bloque de tareas.</p>
-            </div>
-          `}
+              `;
+            }).join("") : `
+              <div class="empty-state">
+                <p>No hay frentes registrados para el filtro <strong>${esc(filterProj)}</strong>.</p>
+              </div>
+            `}
+          </div>
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: SCHEDULE QUEUE & SYSTEM METRICS -->
-      <div class="cockpit-column">
-        <div class="cockpit-panel">
-          <div class="panel-header">
-            <h2><span>🧭</span> Frentes en Cola (Schedule Compass)</h2>
-            <span class="tag-pill">${visibleFronts().length} frentes${STATE.frontFilterProj ? ` · ${esc(STATE.frontFilterProj)}` : ""}</span>
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            ${visibleFronts().length ? visibleFronts().map(f => `
-              <div class="plan-item-row ${f.active ? 'active-flight' : ''}" style="${f.active ? 'border-color: var(--accent-cyan); background: var(--accent-cyan-bg);' : ''}">
-                <span class="plan-idx" style="${f.active ? 'color: var(--accent-cyan); font-weight: 700;' : ''}">
-                  ${f.active ? '▶' : esc(f.marker || '#')}
-                </span>
-                <div style="flex: 1;">
-                  <strong style="color: var(--text-primary); font-size: 13.5px;">${inline(f.name)}</strong>
-                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${expandable(f.moves_when || '')}</p>
+      <!-- RIGHT COLUMN: DETAILED PLAN VIEW -->
+      <div class="cockpit-column-right">
+        ${selectedFront ? `
+          <div class="cockpit-panel plan-detail-panel">
+            <!-- FRONT HERO HEADER -->
+            <div class="plan-detail-hero ${isActiveFlight ? 'hero-active-flight' : selectedFront.marker === '⏸' ? 'hero-paused-flight' : 'hero-queue-flight'}">
+              <div class="plan-hero-top-row">
+                <div class="hero-status-badges">
+                  ${isActiveFlight ? `
+                    <span class="tag-pill tag-live-glow"><span class="pulse-dot"></span> ▶ FRENTE ACTIVO EN VUELO</span>
+                  ` : selectedFront.marker === "⏸" ? `
+                    <span class="tag-pill tag-paused-gold">⏸ FRENTE EN PAUSA</span>
+                  ` : `
+                    <span class="tag-pill tag-queue-purple">⏳ EN COLA ${selectedFront.marker ? `#${selectedFront.marker}` : ''}</span>
+                  `}
+                  ${selectedFront.project ? `<span class="tag-pill tag-project-hero">${esc(selectedFront.project)}</span>` : ''}
                 </div>
-                ${f.project ? `<span class="tag-pill tag-project">${esc(f.project)}</span>` : ''}
+                ${selectedFront.described_in ? `
+                  <button class="btn-copy-ref" onclick="copyToClipboard('${esc(selectedFront.described_in)}', 'Ubicación copiada', event)">
+                    <span>📁 Copiar ubicación</span>
+                  </button>
+                ` : ''}
               </div>
-            `).join("") : `<div class="empty-state">Ningún frente en ${esc(STATE.frontFilterProj)}.</div>`}
+
+              <h2 class="plan-hero-title">${inline(selectedFront.name)}</h2>
+
+              ${(selectedFront.moves_when || selectedFront.waits_on) ? `
+                <div class="hero-condition-banner">
+                  <span class="condition-banner-label">AVANZA CUANDO:</span>
+                  <span class="condition-banner-val">${inline(selectedFront.moves_when || selectedFront.waits_on || "—")}</span>
+                </div>
+              ` : ''}
+
+              ${selectedFront.described_in ? `
+                <div class="hero-location-row">
+                  <span class="loc-label">Definido en:</span>
+                  <code>${esc(selectedFront.described_in)}</code>
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- PLAN BODY / CONTENT -->
+            ${isActiveFlight ? `
+              <!-- ACTIVE LIVE FLIGHT (Current_plan.md) -->
+              <div class="live-plan-section">
+                <div class="section-title-row">
+                  <div class="section-title-left">
+                    <h3><span>📋</span> Plan de Vuelo Activo (Current_plan)</h3>
+                    ${STATE.livePlanMeta?.task ? `<span class="tag-pill tag-live">${esc(STATE.livePlanMeta.task)}</span>` : ''}
+                  </div>
+                  <div class="section-stats-pills">
+                    <span class="mini-stat-pill done-pill">✓ ${completedLive} resueltos</span>
+                    <span class="mini-stat-pill inflight-pill">⚡ ${pendingLive} pendientes</span>
+                  </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="plan-progress-wrapper">
+                  <div class="plan-progress-bar">
+                    <div class="plan-progress-fill" style="width: ${livePct}%;"></div>
+                  </div>
+                  <span class="plan-progress-pct">${livePct}%</span>
+                </div>
+
+                <!-- Order Why Card (if present) -->
+                ${STATE.livePlanMeta?.order_why ? `
+                  <div class="order-why-card">
+                    <div class="order-why-header">
+                      <span class="order-why-icon">🧠</span>
+                      <strong>Razón de la secuencia (Order Why)</strong>
+                      <span class="order-why-badge">PH-3 / AX-11</span>
+                    </div>
+                    <div class="order-why-body">
+                      ${inline(STATE.livePlanMeta.order_why)}
+                    </div>
+                  </div>
+                ` : ''}
+
+                <!-- Plan Items List -->
+                <div class="plan-items-container">
+                  ${STATE.livePlan.length ? STATE.livePlan.map(item => `
+                    <div class="plan-item-row ${item.struck ? 'completed' : 'in-progress'}">
+                      <div class="plan-idx-circle ${item.struck ? 'idx-done' : 'idx-active'}">
+                        ${item.struck ? '✓' : item.index}
+                      </div>
+                      <div class="plan-text-content">
+                        ${expandable(item.text, "plan-text")}
+                      </div>
+                      ${item.destination ? `
+                        <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'dest-discarded' : 'dest-resolved'}">
+                          ${esc(item.destination)}
+                        </span>
+                      ` : `<span class="dest-tag dest-inflight"><span class="dot-spin"></span> en curso</span>`}
+                    </div>
+                  `).join("") : `
+                    <div class="empty-state">
+                      <div class="empty-icon">⚡</div>
+                      <h3>Plan despejado</h3>
+                      <p>Current_plan está listo para recibir el siguiente sub-bloque de trabajo.</p>
+                    </div>
+                  `}
+                </div>
+
+                <div class="live-sync-notice">
+                  <span>⚡ Sincronización en tiempo real activa (<code>/api/stamp</code> cada 2.0s). Edita <code>Current_plan.md</code> o invoca la skill <code>current-plan</code> para actualizar instantáneamente.</span>
+                </div>
+              </div>
+            ` : persistentPlan ? `
+              <!-- PERSISTENT HISTORICAL / PAUSED PLAN -->
+              <div class="persistent-plan-section">
+                <div class="section-title-row">
+                  <div class="section-title-left">
+                    <h3><span>📜</span> Plan Registrado (${esc(persistentPlan.id)})</h3>
+                    <span class="tag-pill ${persistentPlan.status === 'active' ? 'tag-live' : persistentPlan.status === 'paused' ? 'tag-paused-gold' : 'tag-done'}">
+                      ${esc(persistentPlan.status.toUpperCase())}
+                    </span>
+                  </div>
+                  <div class="section-stats-pills">
+                    ${persistentPlan.date ? `<span class="mini-stat-pill">📅 ${esc(persistentPlan.date)}</span>` : ''}
+                    ${persistentPlan.closed_on ? `<span class="mini-stat-pill done-pill">🔒 Cerrado: ${esc(persistentPlan.closed_on)}</span>` : ''}
+                  </div>
+                </div>
+
+                ${persistentPlan.order_why ? `
+                  <div class="order-why-card">
+                    <div class="order-why-header">
+                      <span class="order-why-icon">🧠</span>
+                      <strong>Razón de la secuencia (Order Why)</strong>
+                    </div>
+                    <div class="order-why-body">
+                      ${inline(persistentPlan.order_why)}
+                    </div>
+                  </div>
+                ` : ''}
+
+                <div class="plan-items-container">
+                  ${persistentPlan.items.length ? persistentPlan.items.map(item => `
+                    <div class="plan-item-row ${item.status === 'done' ? 'completed' : ''}">
+                      <div class="plan-idx-circle ${item.status === 'done' ? 'idx-done' : 'idx-active'}">
+                        ${item.status === 'done' ? '✓' : item.index}
+                      </div>
+                      <div class="plan-text-content">
+                        ${expandable(item.text, "plan-text")}
+                      </div>
+                      ${item.destination ? `
+                        <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'dest-discarded' : 'dest-resolved'}">
+                          ${esc(item.destination)}
+                        </span>
+                      ` : `<span class="dest-tag dest-inflight">en curso</span>`}
+                    </div>
+                  `).join("") : `<div class="empty-state"><p>No hay subtareas registradas en este plan.</p></div>`}
+                </div>
+              </div>
+            ` : selectedFront.marker === "⏸" ? `
+              <!-- PAUSED FRONT EXPLANATION -->
+              <div class="front-state-card paused-state-card">
+                <div class="state-card-icon">⏸</div>
+                <h3>Frente Congelado / En Pausa</h3>
+                <p class="state-card-desc">
+                  Este frente está pausado intencionalmente para no competir por foco con el frente activo único (▶).
+                </p>
+                <div class="state-detail-box">
+                  <strong>Motivo de pausa / Reanudación:</strong>
+                  <p>${inline(selectedFront.moves_when || "Requiere confirmación antes de reanudar.")}</p>
+                </div>
+                <div class="state-guidance-box">
+                  <span>💡 Para reanudar este frente, selecciona el frente en <code>Schedule.md</code> y abre su plan con la skill <code>current-plan</code>.</span>
+                </div>
+              </div>
+            ` : `
+              <!-- QUEUED FRONT WAITING -->
+              <div class="front-state-card queued-state-card">
+                <div class="state-card-icon">🎯</div>
+                <h3>Frente en Cola de Espera</h3>
+                <p class="state-card-desc">
+                  Este frente está programado en la cola del Schedule. No tiene un plan activo instanciado todavía.
+                </p>
+                <div class="state-detail-box">
+                  <strong>Condición de avance:</strong>
+                  <p>${inline(selectedFront.moves_when || selectedFront.waits_on || "Secuenciado en el orden de trabajo.")}</p>
+                </div>
+                <div class="state-guidance-box">
+                  <span>💡 Cuando este frente pase a ser el activo (▶), se generará su plan de vuelo mediante la skill <code>current-plan</code>.</span>
+                </div>
+              </div>
+            `}
           </div>
-        </div>
+        ` : `
+          <div class="empty-state">
+            <div class="empty-icon">🧭</div>
+            <h3>Selecciona un Frente</h3>
+            <p>Elige un frente de la columna izquierda para inspeccionar su plan y estado detallado.</p>
+          </div>
+        `}
       </div>
     </div>
   `;

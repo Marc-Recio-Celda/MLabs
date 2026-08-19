@@ -252,14 +252,24 @@ def parse_compass(path, text):
         row = header_of(lines, i)
         if cells[0] in ("▶", "⏸", "?") or re.fullmatch(r"\d+", cells[0]):
             g = dict(zip(row, cells)) if row and len(row) == len(cells) else {}
+            fname = clean(g.get("Front", cells[1] if len(cells) > 1 else ""))
+            desc_in = clean(g.get("Where it is described", cells[2] if len(cells) > 2 else ""))
+            moves_w = clean(g.get("Moves when", cells[3] if len(cells) > 3 else None))
+
+            row_proj = project
+            if not row_proj:
+                pm = re.search(r"/(?:[^/]+/)?([^/]+)/nexus", desc_in)
+                if pm:
+                    row_proj = pm.group(1)
+                elif re.search(r"\b([a-zA-Z0-9_\-]+):[A-Z0-9]", desc_in):
+                    row_proj = re.search(r"\b([a-zA-Z0-9_\-]+):[A-Z0-9]", desc_in).group(1)
+
             ents.append({"kind": "front", "line": i + 1, "marker": cells[0],
                          "active": cells[0] == "▶",
-                         "name": clean(g.get("Front", cells[1] if len(cells) > 1 else "")),
-                         "described_in": clean(g.get("Where it is described",
-                                                     cells[2] if len(cells) > 2 else "")),
-                         "moves_when": clean(g.get("Moves when",
-                                                   cells[3] if len(cells) > 3 else None)),
-                         "project": project})
+                         "name": fname,
+                         "described_in": desc_in,
+                         "moves_when": moves_w,
+                         "project": row_proj})
             if row and len(row) != len(cells):
                 probs.append(Problem(path, i + 1,
                                      f"a compass row with {len(cells)} cells against a "
@@ -278,11 +288,29 @@ def parse_compass(path, text):
 
 
 def parse_plan(path, text):
-    """Live plan items. A struck line without a destination is a failed close."""
+    """Live plan items and metadata. A struck line without a destination is a failed close."""
     ents, probs, lines = [], [], text.splitlines()
     # The plan holds one task, so its items inherit that task's project from the header.
     hp = re.search(r"\*\*project:\*\*\s*`?([\w-]+)`?", text)
     plan_project = hp.group(1) if hp else None
+
+    task_match = re.search(r"\*\*Task:\*\*\s*`?([^·\n]+)`?", text)
+    compass_match = re.search(r"\*\*Compass row:\*\*\s*([^\n·]+)", text)
+    opened_match = re.search(r"\*\*Opened:\*\*\s*([^\n·]+)", text)
+    order_why_match = re.search(r"## The order, and why this order\s*\n\n(.*?)(?=\n##|\Z)", text, re.DOTALL)
+    order_why_text = clean(order_why_match.group(1)) if order_why_match else ""
+
+    ents.append({
+        "kind": "live-plan-meta",
+        "title": clean(task_match.group(1)) if task_match else "Plan en vuelo",
+        "task": clean(task_match.group(1)) if task_match else None,
+        "project": plan_project,
+        "compass_row": clean(compass_match.group(1)) if compass_match else None,
+        "opened": clean(opened_match.group(1)) if opened_match else None,
+        "order_why": order_why_text[:1000] if order_why_text else "",
+        "status": "active"
+    })
+
     DEST = r"(✅ resolved|→ *`?TASKS[^`]*`?|→ *integrated|→ *`?MAILBOX[^`]*`?|→ *park|⚫)"
     for i, line in enumerate(lines):
         m = re.match(r"^(?P<n>\d+)\.\s+(?P<text>.+)$", line)
@@ -298,7 +326,7 @@ def parse_plan(path, text):
         ents.append({"kind": "plan-item", "line": i + 1, "index": int(m.group("n")),
                      "project": plan_project,
                      "struck": struck, "destination": clean(dest.group(0)) if dest else None,
-                     "text": clean(re.sub(r"~~", "", body))[:200]})
+                     "text": clean(re.sub(r"~~", "", body))[:300]})
         if struck and not dest:
             probs.append(Problem(path, i + 1,
                                  "a struck plan item with no destination — a failed close", body))
@@ -623,7 +651,7 @@ def parse_adapter(adapter_path):
         sroot = (root / src["root"]).resolve() if src.get("root") else root
         paths = ([sroot / src["path"]] if src.get("path")
                  else sorted(sroot.glob(src.get("glob", ""))))
-        if not paths:
+        if not paths and not src.get("optional"):
             problems.append(Problem(src.get("path") or src.get("glob"), 0,
                                     f"source {src['label']!r} resolved to no file"))
         # A glob reports nothing when ONE of its containers is empty — so the source
