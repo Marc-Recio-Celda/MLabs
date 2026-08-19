@@ -1365,30 +1365,31 @@ body {
 }
 
 .project-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  background: #ffffff;
+  border: 1px solid #dfd8c8;
+  border-radius: 12px;
   padding: 20px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 2px 8px rgba(45, 35, 25, 0.03);
 }
 
 .project-card:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-medium);
+  background: #faf8f2;
+  border-color: var(--vine);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 6px 20px rgba(45, 35, 25, 0.07);
 }
 
 .project-card.active-selected {
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 0 2px var(--accent-cyan-glow), var(--shadow-md);
-  background: var(--bg-card-elevated);
+  border-color: var(--vine);
+  box-shadow: 0 0 0 2px rgba(91, 124, 83, 0.25), 0 4px 16px rgba(45, 35, 25, 0.06);
+  background: #ffffff;
 }
 
 .card-top {
@@ -1406,14 +1407,14 @@ body {
 .project-rank {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--ink-muted);
   font-weight: 700;
 }
 
 .project-name {
   font-size: 16px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 .status-chip {
@@ -1425,21 +1426,32 @@ body {
 }
 
 .status-active {
-  background: var(--emerald-bg);
-  color: var(--emerald);
-  border: 1px solid var(--emerald-border);
+  background: var(--vine-bg);
+  color: var(--vine-deep);
+  border: 1px solid var(--vine-border);
 }
 
 .status-paused {
-  background: var(--amber-bg);
-  color: var(--amber);
-  border: 1px solid var(--amber-border);
+  background: var(--gold-bg);
+  color: var(--gold-deep);
+  border: 1px solid var(--gold-border);
 }
 
 .status-discarded {
-  background: var(--coral-bg);
-  color: var(--coral);
-  border: 1px solid var(--coral-border);
+  background: var(--rust-bg);
+  color: var(--rust-deep);
+  border: 1px solid var(--rust-border);
+}
+
+.project-card-def-snippet {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .progress-section {
@@ -1472,12 +1484,13 @@ body {
 
 .card-meta-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 12px;
   font-size: 12px;
   color: var(--ink-muted);
   padding-top: 10px;
   border-top: 1px solid var(--line);
+  margin-top: auto;
 }
 
 .meta-item {
@@ -1486,31 +1499,15 @@ body {
   gap: 5px;
 }
 
-.next-action-preview {
-  font-size: 12.5px;
-  color: var(--ink);
-  background: var(--paper-subtle);
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  border-left: 3px solid var(--vine);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.card-footer-action {
+.card-footer-action-inline {
   font-size: 12px;
   font-weight: 700;
   color: var(--vine-deep);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: auto;
-  padding-top: 6px;
+  margin-left: auto;
   transition: transform 0.15s ease, color 0.15s ease;
 }
 
-.project-card:hover .card-footer-action {
+.project-card:hover .card-footer-action-inline {
   color: var(--vine);
   transform: translateX(3px);
 }

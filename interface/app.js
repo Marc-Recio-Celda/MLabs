@@ -1317,11 +1317,6 @@ function renderLabSection(labName, projects) {
               <span class="status-chip ${p.status === 'ACTIVE' ? 'status-active' : 'status-paused'}">${esc(p.status)}</span>
             </div>
 
-            <!-- FASE ACTUAL Y DEFINICIÓN -->
-            <div class="project-card-phase-badge">
-              <span class="card-badge badge-vine" style="font-size: 11px;">📍 ${inline(p.currentPhase)}</span>
-            </div>
-
             <p class="project-card-def-snippet">
               ${inline(p.definition)}
             </p>
@@ -1336,17 +1331,10 @@ function renderLabSection(labName, projects) {
               </div>
             </div>
 
-            <div class="next-action-preview" title="${esc(p.nextAction)}">
-              <strong>Next:</strong> ${inline(p.nextAction)}
-            </div>
-
             <div class="card-meta-row">
               <span class="meta-item">📜 ${p.decisionsCount} decisiones</span>
-              <span class="meta-item">🕒 ${esc(p.lastUpdated)}</span>
-            </div>
-
-            <div class="card-footer-action">
-              <span>Explorar Cartridge Soberano →</span>
+              <span class="meta-item">⚖️ Cartridge Soberano</span>
+              <span class="card-footer-action-inline">Explorar →</span>
             </div>
           </div>
         `).join("")}
