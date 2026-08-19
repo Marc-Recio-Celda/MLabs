@@ -806,38 +806,38 @@ function renderWorkflowDetail(type) {
           <div class="wf-stepper">
             <div class="wf-node">
               <span class="wf-node-step">1</span>
-              <div class="wf-node-title">Fuente / Destilación</div>
-              <p class="wf-node-desc">Documentación externa o lecciones técnicas extraídas de un bloque cerrado de proyecto.</p>
+              <div class="wf-node-title">Ingestión / Fuente</div>
+              <p class="wf-node-desc">Documentación externa, paper o lecciones técnicas extraídas de un bloque de proyecto.</p>
               <span class="card-badge" style="margin-top:auto; align-self:flex-start;">Proyecto / Paper</span>
             </div>
             <div class="wf-arrow">→</div>
 
             <div class="wf-node">
               <span class="wf-node-step">2</span>
-              <div class="wf-node-title">Creación Atómica</div>
-              <p class="wf-node-desc">Clasifica e inserta la nota bajo el árbol canónico de la base de conocimiento.</p>
-              <button class="wf-node-btn" onclick="openSkillInCatalog('create-note')">⚡ Skill: create-note</button>
-            </div>
-            <div class="wf-arrow">→</div>
-
-            <div class="wf-node">
-              <span class="wf-node-step">3</span>
               <div class="wf-node-title">Estructuración Modular</div>
-              <p class="wf-node-desc">Difiere y estructura el temario en módulos reutilizables interconectados.</p>
+              <p class="wf-node-desc">Define el árbol temático y descompone el temario en módulos interconectados antes de redactar.</p>
               <span class="card-badge badge-grape" style="margin-top:auto; align-self:flex-start;">💡 estructurar-temario</span>
             </div>
             <div class="wf-arrow">→</div>
 
             <div class="wf-node">
+              <span class="wf-node-step">3</span>
+              <div class="wf-node-title">Creación Atómica</div>
+              <p class="wf-node-desc">Redacta e inserta cada nota atómica sobre la estructura previa del árbol temático.</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('create-note')">⚡ Skill: create-note</button>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
               <span class="wf-node-step">4</span>
-              <div class="wf-node-title">Indexación Perpetua</div>
-              <p class="wf-node-desc">Se indexa en 00_INDEXES. Lo aprendido queda disponible para siempre (PH-1).</p>
-              <span class="card-badge badge-vine" style="margin-top:auto; align-self:flex-start;">00_INDEXES/</span>
+              <div class="wf-node-title">Auditoría & Coherencia</div>
+              <p class="wf-node-desc">Comprueba la integridad de wikilinks, indexa en 00_INDEXES y verifica coherencia.</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('instance-auditor')">⚡ instance-auditor</button>
             </div>
           </div>
 
           <div class="callout tip" style="margin-top: 14px; padding: 10px 14px;">
-            <strong>Regla clave:</strong> Sin acumulación vacía; sólo se indexa lo que tiene aplicación real (PHILOSOPHY §Refusals).
+            <strong>Regla clave:</strong> Estructurar primero para crear sobre una base modular clara; auditar coherencia y wikilinks antes de dar por cerrado (PH-1, PH-4).
           </div>
         </div>
       `;
