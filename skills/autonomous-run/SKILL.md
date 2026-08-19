@@ -25,6 +25,22 @@ the loop.
 4. **The stop conditions**, below. Naming them is what converts *"do not ask me"* into something
    the operator can safely mean.
 
+## Running a plan that already exists
+
+**This is the executor.** Where a plan record exists — written by `skills/current-plan/` — the
+brief is that record, and three of the four contract items are already answered by it: the
+objective is the sub-block, the boundary is what the plan names, and *done* is its last item
+carrying an outcome. **State them back anyway**, because restating a brief is the cheapest place a
+misread is caught.
+
+⚠️ **It does not rewrite the plan's order.** A plan whose order turns out wrong is a **stop** —
+that is `AX-14`, the premise failing — not something to quietly improve while executing. Say which
+item made it wrong and hand it back to `current-plan`.
+
+**Items get their outcome as they close**, never in a batch at the end: `done` · `mailbox` ·
+`ideas` · `discarded` with its reason. A run that dies at item nine must leave nine outcomes
+behind, which is the whole reason the record is written while working rather than after.
+
 ## The four stops — where autonomy ends
 
 Standing approval covers judgement calls inside the objective. It does not cover these, and

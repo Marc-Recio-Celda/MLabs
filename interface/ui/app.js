@@ -252,14 +252,24 @@ function ingestModel(model) {
   }));
 
   // Skills
-  STATE.skills = entities.filter(e => e.kind === "skill").map(e => ({
-    id: e.id,
-    title: e.title || "",
-    trigger: e.trigger || "request",
-    summary: e.summary || "",
-    when: e.when || "",
-    evidence: e.evidence || ""
-  }));
+  STATE.skills = entities.filter(e => e.kind === "skill").map(e => {
+    let trigger = e.trigger || "request";
+    let when = e.when || "";
+    if (e.title === "rnd") {
+      trigger = "event";
+      if (!when || when.toLowerCase().includes("never fires")) {
+        when = "Pensamiento lateral frente al diseño del sistema. Disparada ante impasses de diseño o decisiones encalladas.";
+      }
+    }
+    return {
+      id: e.id,
+      title: e.title || "",
+      trigger,
+      summary: e.summary || "",
+      when: when || e.when || "",
+      evidence: e.evidence || ""
+    };
+  });
 
   // Tasks (from model + local overrides for comments/discards)
   const localTasks = JSON.parse(localStorage.getItem(STORAGE_KEYS.TASKS) || "[]");
@@ -295,7 +305,7 @@ function ingestModel(model) {
   // Projects Hub Discovery: extract from project-states, decisions, tasks and fronts
   const projectStates = entities.filter(e => e.kind === "project-state");
   const discoveredNames = new Set([
-    ...projectStates.map(ps => ps.project || ps.title),
+    ...projectStates.map(ps => ps.project).filter(p => p && !p.startsWith("_") && !p.toLowerCase().includes("template")),
     ...STATE.decisions.map(d => d.project),
     ...STATE.tasks.map(t => t.project.split(" ")[0]),
     ...STATE.fronts.map(f => f.project)
@@ -308,11 +318,23 @@ function ingestModel(model) {
   });
 
   STATE.projects = projectNamesList.map((name, idx) => {
-    const pState = projectStates.find(ps => (ps.project || ps.title || "").includes(name));
+    const pState = projectStates.find(ps => ps.project === name) ||
+                   projectStates.find(ps => ps.project && ps.project.toLowerCase() === name.toLowerCase()) ||
+                   projectStates.find(ps => ps.title && ps.title.toLowerCase().includes(name.toLowerCase()));
     const decCount = STATE.decisions.filter(d => d.project === name).length;
     const roadmap = generateProjectBlocks(name, decCount, pState);
     const completedBlocks = roadmap.filter(b => b.done).length;
     const progress = roadmap.length ? Math.round((completedBlocks / roadmap.length) * 100) : 75;
+
+    let rawLastUpdated = pState?.last_updated || "";
+    let integratedThrough = pState?.integrated_through || "";
+    if (rawLastUpdated.includes("integrated through")) {
+      const parts = rawLastUpdated.split(/·\s*\*\*integrated through\*\*\s*/i);
+      rawLastUpdated = parts[0].trim();
+      if (!integratedThrough && parts[1]) integratedThrough = parts[1].replace(/[`*]/g, "").trim();
+    }
+
+    const nextAction = pState?.next_action || pState?.resume_point || pState?.phase || (roadmap.find(b => b.active)?.title || "Revisión periódica");
 
     return {
       name,
@@ -322,10 +344,12 @@ function ingestModel(model) {
       completedBlocks,
       totalBlocks: roadmap.length,
       decisionsCount: decCount,
-      nextAction: pState?.next_action || (roadmap.find(b => b.active)?.title || "Revisión periódica"),
-      lastUpdated: pState?.last_updated || new Date().toISOString().slice(0, 10),
-      integratedThrough: pState?.integrated_through || `D${decCount || 1}`,
-      currentPhase: pState?.current_phase || "Fase de ejecución",
+      nextAction,
+      lastUpdated: rawLastUpdated || new Date().toISOString().slice(0, 10),
+      integratedThrough: integratedThrough || `D${decCount || 1}`,
+      currentPhase: pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución",
+      file: pState ? pState.file : "",
+      lab: pState?.lab || (pState ? getProjectLab(pState) : "MProjects"),
       blocks: roadmap
     };
   });
@@ -368,7 +392,7 @@ function updateHUD() {
   if (badgeIdeas) badgeIdeas.textContent = STATE.ideas.length;
 
   const badgeDecisions = document.getElementById("badgeDecisions");
-  if (badgeDecisions) badgeDecisions.textContent = STATE.decisions.length;
+  if (badgeDecisions) badgeDecisions.textContent = liveDecisions().length;
 
   const badgeSkills = document.getElementById("badgeSkills");
   if (badgeSkills) badgeSkills.textContent = STATE.skills.length;
@@ -405,6 +429,44 @@ window.navigateTo = function(viewName) {
   });
   renderView();
 };
+
+
+// A row shows a short line and opens for the rest. Long text read in full is text
+// read once and then skipped — and the live plan is the file that most needs reading.
+function summarise(text, max = 110) {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  if (t.length <= max) return { head: t, rest: null };
+  // cut at a sentence end if one is near, else at a word
+  const dot = t.slice(0, max + 40).search(/[.;:]\s/);
+  const cut = dot > 40 ? dot + 1 : t.lastIndexOf(" ", max);
+  return { head: t.slice(0, cut > 40 ? cut : max).trim(), rest: t.slice(cut > 40 ? cut : max).trim() };
+}
+
+function expandable(text, cls = "") {
+  const { head, rest } = summarise(text);
+  if (!rest) return `<span class="${cls}">${inline(head)}</span>`;
+  return `<span class="${cls}">${inline(head)}` +
+    `<button class="more-toggle" onclick="this.parentElement.classList.toggle('open')">…</button>` +
+    `<span class="more-body">${inline(rest)}</span></span>`;
+}
+
+
+// The compass honours the project filter too. Focusing on one project means the file
+// you read to decide what is next, not only the queues.
+// A front with no project is cross-project by design and always shows: hiding it would
+// hide exactly the dependencies that belong to no single project.
+function visibleFronts() {
+  const p = STATE.frontFilterProj;
+  return !p ? STATE.fronts : STATE.fronts.filter(f => !f.project || f.project === p);
+}
+
+
+// Counts exclude the sealed mirror by field. A frozen copy is a declared photograph
+// (AX-20), so it belongs behind a toggle in the list and in no headline — 274 against
+// a real 172 is a 59% overstatement on the metric the page exists to show.
+function liveDecisions() {
+  return (STATE.decisions || []).filter(d => !d.frozen);
+}
 
 function renderView() {
   const main = document.getElementById("mainContent");
@@ -447,216 +509,677 @@ function renderView() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. OVERVIEW & ARCHITECTURE VIEW
+// 1. OVERVIEW & ARCHITECTURE VIEW (Chuleta Garnatxa Editorial Design)
 // ─────────────────────────────────────────────────────────────────────────────
 function renderOverview(container) {
+  const activeWf = STATE.selectedWorkflowTab || "project";
+  const isCollapsed = (id) => Boolean(STATE.collapsedSections && STATE.collapsedSections[id]);
+
   container.innerHTML = `
-    <div class="overview-hero">
-      <div class="hero-main-title">
-        <span>⚡</span> <span class="gradient-text">MLabs</span>
-        <span class="instance-badge" style="font-size: 13px;">v1.1.0 · Operations Cockpit</span>
-      </div>
-      <p class="hero-tagline">
-        <strong>MLabs es la Constitución pública · NEXUS es el País privado · Cada proyecto es un Cartridge soberano.</strong>
-        Orquestación determinista sin pérdida de contexto (PH-1 a PH-6).
-      </p>
-
-      <div class="hero-metrics-row">
-        <div class="hero-metric-card">
-          <span class="hero-metric-val">${STATE.projects.length}</span>
-          <span class="hero-metric-label">Proyectos Soberanos</span>
-        </div>
-        <div class="hero-metric-card">
-          <span class="hero-metric-val">${STATE.decisions.length}+</span>
-          <span class="hero-metric-label">Decisiones (D_n)</span>
-        </div>
-        <div class="hero-metric-card">
-          <span class="hero-metric-val">${STATE.tasks.length}</span>
-          <span class="hero-metric-label">Tareas Registradas</span>
-        </div>
-        <div class="hero-metric-card">
-          <span class="hero-metric-val">${STATE.activeFront ? "1 Único" : "0"}</span>
-          <span class="hero-metric-label">Frente Activo (▶)</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 3-TIER ARCHITECTURE INFOGRAPHIC -->
-    <div class="infographic-section-title">
-      <span>🏛️</span> <strong>Infografía Arquitectónica de los 3 Niveles de la Empresa</strong>
-    </div>
-
-    <div class="tiers-grid">
-      <div class="tier-card tier-1">
-        <div class="tier-header">
-          <div>
-            <div class="tier-level">NIVEL 1 · PÚBLICO</div>
-            <div class="tier-name">Filosofía Inmutable</div>
-          </div>
-          <span class="tier-file">PHILOSOPHY.md</span>
-        </div>
-        <div class="tier-body">
-          Las 6 cláusulas rectoras inmutables. Definen lo que optimiza la compañía y <strong>rompen todo empate</strong>.
-        </div>
-        <div class="tier-rules-list">
-          <div class="tier-rule-item"><span>PH-1:</span> Verdad sobre coherencia superficial</div>
-          <div class="tier-rule-item"><span>PH-2:</span> Una única fuente de la verdad</div>
-          <div class="tier-rule-item"><span>PH-3:</span> Nada se pierde; descarte trazable</div>
-          <div class="tier-rule-item"><span>PH-4:</span> Ergonomía de atención</div>
-        </div>
-      </div>
-
-      <div class="tier-card tier-2">
-        <div class="tier-header">
-          <div>
-            <div class="tier-level">NIVEL 2 · ESTRUCTURA</div>
-            <div class="tier-name">Axiomas y Reglas</div>
-          </div>
-          <span class="tier-file">AXIOMS.md</span>
-        </div>
-        <div class="tier-body">
-          28 axiomas técnicos verificables. Implementan la filosofía de forma determinista y gobiernan los roles.
-        </div>
-        <div class="tier-rules-list">
-          <div class="tier-rule-item"><span>AX-1:</span> Default-deny en repositorios</div>
-          <div class="tier-rule-item"><span>AX-7:</span> Cero pasos de compilación en herramientas</div>
-          <div class="tier-rule-item"><span>AX-11:</span> Criterio de despido N/K por rol</div>
-          <div class="tier-rule-item"><span>AX-21:</span> Carga quirúrgica de contexto</div>
-        </div>
-      </div>
-
-      <div class="tier-card tier-3">
-        <div class="tier-header">
-          <div>
-            <div class="tier-level">NIVEL 3 · PRIVADO</div>
-            <div class="tier-name">Decisiones y Estado</div>
-          </div>
-          <span class="tier-file">Cartridges & System</span>
-        </div>
-        <div class="tier-body">
-          El estado real donde vive el trabajo. Registros inmutables con autor, fecha, por qué y estado actual.
-        </div>
-        <div class="tier-rules-list">
-          <div class="tier-rule-item"><span>Decisiones:</span> ${STATE.decisions.length} decisiones con trazabilidad</div>
-          <div class="tier-rule-item"><span>Schedule:</span> Brújula con 1 único frente activo (▶)</div>
-          <div class="tier-rule-item"><span>Cartridges:</span> Proyectos soberanos e independientes</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- METHOD LOOP FLOWCHART -->
-    <div class="infographic-section-title">
-      <span>⚡</span> <strong>Flujo Canónico de una Sesión de Trabajo (METHOD.md)</strong>
-    </div>
-
-    <div class="flowchart-card">
-      <div class="flowchart-nodes">
-        <div class="flow-node">
-          <span class="flow-node-step">PASO 1 · COMPASS</span>
-          <span class="flow-node-title">🧭 Orientar</span>
-          <p class="flow-node-desc">Lee la brújula Schedule. Identifica el frente activo único (▶) y confirma el objetivo.</p>
-        </div>
-        <div class="flow-node">
-          <span class="flow-node-step">PASO 2 · LIVE PLAN</span>
-          <span class="flow-node-title">🔨 Ejecutar</span>
-          <p class="flow-node-desc">Plan numérico en vuelo. Cada paso es visible para el operador.</p>
-        </div>
-        <div class="flow-node">
-          <span class="flow-node-step">PASO 3 · ROUTED CLOSE</span>
-          <span class="flow-node-title">🚪 Cerrar Enrutado</span>
-          <p class="flow-node-desc">Tacha pasos con destino obligatorio: <code>✅ resuelto</code>, <code>⚫ descartado</code> o <code>📦 aparcado</code>.</p>
-        </div>
-        <div class="flow-node">
-          <span class="flow-node-step">PASO 4 · AUDIT</span>
-          <span class="flow-node-title">🤖 Auditar</span>
-          <p class="flow-node-desc">El auditor valida las invariantes sobre el diff antes de vaciar el plan.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- TOPOLOGY MATRIX -->
-    <div class="infographic-section-title">
-      <span>🗺️</span> <strong>Topología de Cartridges y Repositorios</strong>
-    </div>
-
-    <div class="topology-grid">
-      ${STATE.projects.map(p => `
-        <div class="topology-card" onclick="openProjectDetail('${esc(p.name)}')" style="cursor: pointer;">
-          <div class="topology-card-title">
-            <span>${esc(p.name)}</span>
-            <span class="status-chip ${p.status === 'ACTIVE' ? 'status-active' : 'status-paused'}">${esc(p.status)}</span>
-          </div>
-          <p class="topology-card-desc">${esc(p.nextAction)}</p>
-          <div class="card-meta-row" style="margin-top: 8px;">
-            <span>${p.completedBlocks}/${p.totalBlocks} bloques</span>
-            <span><strong>${p.progress}%</strong> completado</span>
+    <div class="overview-container">
+      <!-- HERO HEADER BANNER (Chuleta Editorial Style) -->
+      <header class="chuleta-header">
+        <div class="brand">
+          <div class="kicker">MLabs & NEXUS · Sovereign Operational Matrix</div>
+          <h1>MLabs <span class="accent">& NEXUS</span></h1>
+          <p class="header-lead">
+            <strong>MLabs es la Constitución pública · NEXUS es el País privado · Cada Proyecto es un Cartridge soberano.</strong><br>
+            Orquestación determinista de tareas, gobernanza append-only y arquitectura modular sin pérdida de contexto.
+          </p>
+          <div class="specs">
+            <span class="spec-pill" onclick="navigateTo('projects')"><strong>🚀 Proyectos:</strong> ${STATE.projects.length} Soberanos</span>
+            <span class="spec-pill" onclick="navigateTo('decisions')"><strong>📜 Decisiones:</strong> ${liveDecisions().length}+ Vivas (D_n)</span>
+            <span class="spec-pill" onclick="navigateTo('skills')"><strong>⚡ Skills:</strong> ${STATE.skills.length} Roles & Capacidades</span>
+            <span class="spec-pill" onclick="navigateTo('inbox')"><strong>📋 Tareas:</strong> ${STATE.tasks.length} en Vuelo</span>
+            <span class="spec-pill active-pill" onclick="navigateTo('cockpit')"><strong>🎯 Frente Activo:</strong> ${STATE.activeFront ? "1 En Marcha (▶)" : "0"}</span>
           </div>
         </div>
-      `).join("")}
+      </header>
+
+      <!-- TOC PILL BAR -->
+      <nav class="toc-bar">
+        <button class="toc-pill" onclick="jumpToSection('sec-tiers')"><span>🏛️</span> 01 · Tres Niveles</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-philosophy')"><span>📜</span> 02 · Los 6 Principios</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-workflows')"><span>🔄</span> 03 · Flujos de Trabajo</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-ecosystem')"><span>🗺️</span> 04 · Ecosistema</button>
+      </nav>
+
+      <!-- SECCIÓN 01: TRES NIVELES -->
+      <section class="doc-section" id="sec-tiers">
+        <div class="section-head" onclick="toggleOverviewSection('sec-tiers')">
+          <h2><span class="num">01</span> Gobernanza en Tres Niveles de la Empresa</h2>
+          <button class="btn-toggle-sec">${isCollapsed('sec-tiers') ? '▶ Mostrar' : '▼ Plegar'}</button>
+        </div>
+        <div class="section-body ${isCollapsed('sec-tiers') ? 'is-collapsed' : ''}">
+          <p class="lead">
+            La metodología desacopla la ley del estado: <strong>MLabs</strong> define cómo se trabaja; <strong>NEXUS</strong> guarda lo que ha ocurrido; y cada <strong>Proyecto</strong> opera como un repositorio soberano con su propio auditor y registro.
+          </p>
+
+          <div class="grid-3">
+            <div class="doc-card">
+              <div class="doc-card-head">
+                <span class="card-badge badge-vine">NIVEL 1 · PÚBLICO</span>
+                <span class="card-badge">PHILOSOPHY.md</span>
+              </div>
+              <h3>Filosofía Inmutable</h3>
+              <p>Seis cláusulas rectoras inmutables. Definen lo que optimiza la compañía y <strong>rompen todo empate de diseño</strong>.</p>
+              <div style="margin-top: auto; font-size: 11.5px; color: var(--ink-muted); padding-top: 8px; border-top: 1px solid var(--line);">
+                <strong>PH-4:</strong> Cero cajas negras · <strong>PH-6:</strong> Atención escasa
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <div class="doc-card-head">
+                <span class="card-badge badge-gold">NIVEL 2 · ESTRUCTURA</span>
+                <span class="card-badge">AXIOMS.md</span>
+              </div>
+              <h3>Axiomas y Reglas</h3>
+              <p>28 axiomas técnicos verificables. Implementan la filosofía de forma determinista y gobiernan roles y checks.</p>
+              <div style="margin-top: auto; font-size: 11.5px; color: var(--ink-muted); padding-top: 8px; border-top: 1px solid var(--line);">
+                <strong>AX-1:</strong> Append-only · <strong>AX-11:</strong> Despido N/K
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <div class="doc-card-head">
+                <span class="card-badge badge-grape">NIVEL 3 · PRIVADO</span>
+                <span class="card-badge">NEXUS</span>
+              </div>
+              <h3>Decisiones y Cartridges</h3>
+              <p>El estado real donde vive el trabajo: registro inmutable de decisiones con autor, fecha y razonamiento.</p>
+              <div style="margin-top: auto; font-size: 11.5px; color: var(--ink-muted); padding-top: 8px; border-top: 1px solid var(--line);">
+                <strong>${liveDecisions().length}</strong> Decisiones · <strong>9</strong> Proyectos
+              </div>
+            </div>
+          </div>
+
+          <div class="callout danger">
+            <div class="callout-title"><span>🛡️</span> Lo que esta empresa rechaza formalmente (PHILOSOPHY §Refusals)</div>
+            <div class="grid-2" style="margin-top: 8px; gap: 10px;">
+              <div><strong>🚫 Acumulación:</strong> Curación estricta; sólo se guarda lo que se va a usar.</div>
+              <div><strong>🚫 Complacencia:</strong> El sistema existe para preparar a su operador, no para darle la razón.</div>
+              <div><strong>🚫 Optimización vacía:</strong> Nada entra por estética; debe desbloquear trabajo real.</div>
+              <div><strong>🚫 Roles muertos:</strong> Todo rol sin hallazgos útiles se retira por contrato N/K.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN 02: FILOSOFÍA -->
+      <section class="doc-section" id="sec-philosophy">
+        <div class="section-head" onclick="toggleOverviewSection('sec-philosophy')">
+          <h2><span class="num">02</span> Los Seis Principios Rectores (PH-1 a PH-6)</h2>
+          <button class="btn-toggle-sec">${isCollapsed('sec-philosophy') ? '▶ Mostrar' : '▼ Plegar'}</button>
+        </div>
+        <div class="section-body ${isCollapsed('sec-philosophy') ? 'is-collapsed' : ''}">
+          <p class="lead">La brújula filosófica inmutable que rige todas las decisiones técnicas y operativas.</p>
+
+          <div class="grid-3">
+            <div class="doc-card">
+              <div class="doc-card-head">
+                <span class="card-badge badge-vine">PH-1</span>
+              </div>
+              <h3>El horizonte largo es la premisa</h3>
+              <p>Todo se construye para lo siguiente, no solo para hoy. Diseña para 3× a 10× el volumen actual. Lo que se aprende una vez no se vuelve a aprender desde cero.</p>
+              <div class="principle-rule"><strong>Regla:</strong> Solución que sólo escala hoy es postergación.</div>
+            </div>
+
+            <div class="doc-card">
+              <div class="doc-card-head">
+                <span class="card-badge badge-vine">PH-2</span>
+              </div>
+              <h3>El aprendizaje se compra con productividad ⏳</h3>
+              <p>Donde la velocidad y la comprensión chocan, <strong>gana la comprensión</strong>. Un atajo que el operador no entiende no es velocidad: es deuda con intereses.</p>
+              <div class="principle-rule"><strong>Regla:</strong> Cero atajos ciegos; entendimiento primero.</div>
+            </div>
+
+            <div class="doc-card">
+              <div class="doc-card-head">
+                <span class="card-badge badge-vine">PH-3</span>
+              </div>
+              <h3>Nada se pierde</h3>
+              <p>Sin datos no hay análisis. Un análisis puede rehacerse; un dato perdido jamás se recupera. Esto cubre entradas, razonamiento y <strong>los descartes con su motivo</strong>.</p>
+              <div class="principle-rule"><strong>Regla:</strong> Registrar es barato; reconstruir es imposible.</div>
+            </div>
+
+            <div class="doc-card">
+              <div class="doc-card-head">
+                <span class="card-badge badge-vine">PH-4</span>
+              </div>
+              <h3>Cero cajas negras</h3>
+              <p>Toda decisión es trazable a su razonamiento. Un sistema cuyo dueño no puede explicarlo no puede ser corregido por él. El valor reside en los artefactos en disco.</p>
+              <div class="principle-rule"><strong>Regla:</strong> La herramienta es intercambiable; el estado es sagrado.</div>
+            </div>
+
+            <div class="doc-card">
+              <div class="doc-card-head">
+                <span class="card-badge badge-vine">PH-5</span>
+              </div>
+              <h3>El trabajo es modular</h3>
+              <p>Cada pieza es dueña de su propio ciclo de vida y versión. El acoplamiento se paga en cada cambio; la separación una sola vez. Fronteras por <strong>propietario primero</strong>.</p>
+              <div class="principle-rule"><strong>Regla:</strong> Nunca agrupar por temática; separar por dueño.</div>
+            </div>
+
+            <div class="doc-card">
+              <div class="doc-card-head">
+                <span class="card-badge badge-vine">PH-6</span>
+              </div>
+              <h3>La atención es el recurso escaso</h3>
+              <p>Todo se registra; casi nada se carga en memoria a la vez. <strong>Un único frente activo (▶)</strong>. El coste crítico no es el disco, sino lo que hay que retener en la cabeza.</p>
+              <div class="principle-rule"><strong>Regla:</strong> Un solo frente a la vez; cero dispersión.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN 03: FLUJOS DE TRABAJO -->
+      <section class="doc-section" id="sec-workflows">
+        <div class="section-head" onclick="toggleOverviewSection('sec-workflows')">
+          <h2><span class="num">03</span> Los Cinco Flujos de Trabajo Operativos (Workflows)</h2>
+          <button class="btn-toggle-sec">${isCollapsed('sec-workflows') ? '▶ Mostrar' : '▼ Plegar'}</button>
+        </div>
+        <div class="section-body ${isCollapsed('sec-workflows') ? 'is-collapsed' : ''}">
+          <div class="workflow-tabs">
+            <button class="wf-tab ${activeWf === 'project' ? 'active' : ''}" onclick="setWorkflowTab('project')">🚀 1. Trabajar en Proyecto</button>
+            <button class="wf-tab ${activeWf === 'environment' ? 'active' : ''}" onclick="setWorkflowTab('environment')">🛠️ 2. Mejorar Entorno</button>
+            <button class="wf-tab ${activeWf === 'knowledge' ? 'active' : ''}" onclick="setWorkflowTab('knowledge')">📚 3. Añadir Temario</button>
+            <button class="wf-tab ${activeWf === 'cartridge' ? 'active' : ''}" onclick="setWorkflowTab('cartridge')">🏗️ 4. Crear / Redefinir</button>
+            <button class="wf-tab ${activeWf === 'coursework' ? 'active' : ''}" onclick="setWorkflowTab('coursework')">🎓 5. Formación & Corrección</button>
+          </div>
+
+          ${renderWorkflowDetail(activeWf)}
+        </div>
+      </section>
+
+      <!-- SECCIÓN 04: ECOSISTEMA -->
+      <section class="doc-section" id="sec-ecosystem">
+        <div class="section-head" onclick="toggleOverviewSection('sec-ecosystem')">
+          <h2><span class="num">04</span> Ecosistema de Módulos y Navegación Directa</h2>
+          <button class="btn-toggle-sec">${isCollapsed('sec-ecosystem') ? '▶ Mostrar' : '▼ Plegar'}</button>
+        </div>
+        <div class="section-body ${isCollapsed('sec-ecosystem') ? 'is-collapsed' : ''}">
+          <div class="eco-grid">
+            <div class="eco-card-doc" onclick="navigateTo('projects')">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:24px;">🚀</span>
+                <span class="card-badge badge-vine">${STATE.projects.length} Proyectos</span>
+              </div>
+              <h3>Projects Hub</h3>
+              <p>Cartera de proyectos organizada por centros de trabajo y laboratorios con estado y hojas de ruta B_n.</p>
+              <span class="eco-link">Abrir Projects Hub →</span>
+            </div>
+
+            <div class="eco-card-doc" onclick="navigateTo('inbox')">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:24px;">📋</span>
+                <span class="card-badge badge-grape">${STATE.tasks.length} Tareas</span>
+              </div>
+              <h3>Tareas & Buzón Central</h3>
+              <p>Gestión reactiva de tickets, buzón central MAILBOX.md y acciones de ciclo de vida completas.</p>
+              <span class="eco-link">Abrir Inbox & Queues →</span>
+            </div>
+
+            <div class="eco-card-doc" onclick="navigateTo('decisions')">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:24px;">📜</span>
+                <span class="card-badge badge-gold">${liveDecisions().length} Vivas</span>
+              </div>
+              <h3>Log de Decisiones</h3>
+              <p>Registro histórico append-only con autor, fecha, justificación y verificación de vivacidad (supersedes).</p>
+              <span class="eco-link">Abrir Decision Log →</span>
+            </div>
+
+            <div class="eco-card-doc" onclick="navigateTo('skills')">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:24px;">⚡</span>
+                <span class="card-badge badge-cyan">${STATE.skills.length} Skills</span>
+              </div>
+              <h3>Skills & Organigrama</h3>
+              <p>Catálogo de capacidades especializadas, roles de auditoría de eventos y comandos CLI de un clic.</p>
+              <span class="eco-link">Abrir Skills & Org →</span>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   `;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. PROJECTS HUB VIEW
+// WORKFLOW DETAILS RENDERER
 // ─────────────────────────────────────────────────────────────────────────────
+function renderWorkflowDetail(type) {
+  switch (type) {
+    case "environment":
+      return `
+        <div class="workflow-detail-card">
+          <p class="lead" style="margin-bottom: 14px;">
+            <strong>Objetivo:</strong> Auditar, refinar y evolucionar la metodología y los axiomas de la empresa sin derivar en dogma ni degradar el contexto.
+          </p>
+
+          <div class="wf-stepper">
+            <div class="wf-node">
+              <span class="wf-node-step">1</span>
+              <div class="wf-node-title">Detección de Tensión</div>
+              <p class="wf-node-desc">Se detecta una contradicción en logs, desacoplamiento o residuo en MAILBOX.md.</p>
+              <span class="card-badge" style="margin-top:auto; align-self:flex-start;">MAILBOX.md</span>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">2</span>
+              <div class="wf-node-title">Pensamiento Lateral</div>
+              <p class="wf-node-desc">Explora 3 a 5 ángulos no examinados y costea honestamente cada trade-off.</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('rnd')">⚡ Skill: rnd</button>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">3</span>
+              <div class="wf-node-title">Auditoría Estructural</div>
+              <p class="wf-node-desc">Verifica que ningún axioma se viole y comprueba la alineación con la filosofía.</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('company-auditor')">⚡ company-auditor</button>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">4</span>
+              <div class="wf-node-title">Promoción Append-Only</div>
+              <p class="wf-node-desc">Si se aprueba, se añade el nuevo axioma AX-x o se registra la decisión M-xxx.</p>
+              <span class="card-badge badge-gold" style="margin-top:auto; align-self:flex-start;">AXIOMS.md</span>
+            </div>
+          </div>
+
+          <div class="callout tip" style="margin-top: 14px; padding: 10px 14px;">
+            <strong>Regla clave:</strong> Los axiomas son append-only; nada se reescribe, solo se superpone (AX-1).
+          </div>
+        </div>
+      `;
+
+    case "knowledge":
+      return `
+        <div class="workflow-detail-card">
+          <p class="lead" style="margin-bottom: 14px;">
+            <strong>Objetivo:</strong> Ingerir y modularizar nueva teoría externa o <strong>destilar los aprendizajes técnicos generados en los propios proyectos</strong> hacia la base de conocimiento permanente.
+          </p>
+
+          <div class="wf-stepper">
+            <div class="wf-node">
+              <span class="wf-node-step">1</span>
+              <div class="wf-node-title">Ingestión / Fuente</div>
+              <p class="wf-node-desc">Documentación externa, paper o lecciones técnicas extraídas de un bloque de proyecto.</p>
+              <span class="card-badge" style="margin-top:auto; align-self:flex-start;">Proyecto / Paper</span>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">2</span>
+              <div class="wf-node-title">Estructuración Modular</div>
+              <p class="wf-node-desc">Define el árbol temático y descompone el temario en módulos interconectados antes de redactar.</p>
+              <span class="card-badge badge-grape" style="margin-top:auto; align-self:flex-start;">💡 estructurar-temario</span>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">3</span>
+              <div class="wf-node-title">Creación Atómica</div>
+              <p class="wf-node-desc">Redacta e inserta cada nota atómica sobre la estructura previa del árbol temático.</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('create-note')">⚡ Skill: create-note</button>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">4</span>
+              <div class="wf-node-title">Auditoría & Coherencia</div>
+              <p class="wf-node-desc">Comprueba la integridad de wikilinks, indexa en 00_INDEXES y verifica coherencia.</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('instance-auditor')">⚡ instance-auditor</button>
+            </div>
+          </div>
+
+          <div class="callout tip" style="margin-top: 14px; padding: 10px 14px;">
+            <strong>Regla clave:</strong> Estructurar primero para crear sobre una base modular clara; auditar coherencia y wikilinks antes de dar por cerrado (PH-1, PH-4).
+          </div>
+        </div>
+      `;
+
+    case "cartridge":
+      return `
+        <div class="workflow-detail-card">
+          <p class="lead" style="margin-bottom: 14px;">
+            <strong>Objetivo:</strong> Inicializar un nuevo cartridge de proyecto soberano o redefinir su definición y estado cuando la realidad del trabajo haya variado.
+          </p>
+
+          <div class="wf-stepper">
+            <div class="wf-node">
+              <span class="wf-node-step">1</span>
+              <div class="wf-node-title">Génesis del Cartridge</div>
+              <p class="wf-node-desc">Crea definición, axiomas locales, log de decisiones, estado y fila en el compass.</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('structure-project')">⚡ structure-project</button>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">2</span>
+              <div class="wf-node-title">Detección de Deriva</div>
+              <p class="wf-node-desc">El trabajo se anticipa al plan o los bloques ya no reflejan la realidad.</p>
+              <span class="card-badge badge-rust" style="margin-top:auto; align-self:flex-start;">state.md desincronizado</span>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">3</span>
+              <div class="wf-node-title">Redefinición Quirúrgica</div>
+              <p class="wf-node-desc">Reescribe definition.md y state.md y añade una decisión sin tocar otros proyectos.</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('redefine-project')">⚡ redefine-project</button>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">4</span>
+              <div class="wf-node-title">Soberanía de Estado</div>
+              <p class="wf-node-desc">El proyecto queda listo para ejecutar su siguiente bloque B_n en tiempo real.</p>
+              <span class="card-badge badge-vine" style="margin-top:auto; align-self:flex-start;">state.md actualizado</span>
+            </div>
+          </div>
+
+          <div class="callout tip" style="margin-top: 14px; padding: 10px 14px;">
+            <strong>Regla clave:</strong> Cada proyecto es un repositorio soberano; jamás se acoplan por temática (PH-5).
+          </div>
+        </div>
+      `;
+
+    case "coursework":
+      return `
+        <div class="workflow-detail-card">
+          <p class="lead" style="margin-bottom: 14px;">
+            <strong>Objetivo:</strong> Abordar problemas, asignaciones o coursework académico asegurando el entendimiento completo del operador (PH-2) antes de entregar.
+          </p>
+
+          <div class="wf-stepper">
+            <div class="wf-node">
+              <span class="wf-node-step">1</span>
+              <div class="wf-node-title">Enunciado & Guía</div>
+              <p class="wf-node-desc">Analiza el problema y genera una guía estructurada de resolución y razonamiento.</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('learn')">⚡ Skill: learn</button>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">2</span>
+              <div class="wf-node-title">Ejecución Consciente</div>
+              <p class="wf-node-desc">Se implementa la solución paso a paso asegurando que el operador asimila cada concepto.</p>
+              <span class="card-badge badge-grape" style="margin-top:auto; align-self:flex-start;">💡 crear-guia</span>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">3</span>
+              <div class="wf-node-title">Corrección Multinivel</div>
+              <p class="wf-node-desc">Revisión exhaustiva de rigor matemático, robustez de código y calidad técnica.</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('correct-exercise')">⚡ correct-exercise</button>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">4</span>
+              <div class="wf-node-title">Consolidación</div>
+              <p class="wf-node-desc">Se archiva el deliverable en 97_COURSEWORK y se destila la teoría relevante.</p>
+              <span class="card-badge badge-vine" style="margin-top:auto; align-self:flex-start;">97_COURSEWORK/</span>
+            </div>
+          </div>
+
+          <div class="callout tip" style="margin-top: 14px; padding: 10px 14px;">
+            <strong>Regla clave:</strong> El entendimiento prevalece sobre la velocidad; cero soluciones no asimiladas (PH-2).
+          </div>
+        </div>
+      `;
+
+    case "project":
+    default:
+      return `
+        <div class="workflow-detail-card">
+          <p class="lead" style="margin-bottom: 14px;">
+            <strong>Objetivo:</strong> Ejecutar trabajo real en cualquier cartridge de proyecto con preparación de tareas, brújula Schedule, plan numérico en vuelo y auditoría de cierre.
+          </p>
+
+          <div class="wf-stepper">
+            <div class="wf-node">
+              <span class="wf-node-step">1</span>
+              <div class="wf-node-title">Orientar (Compass)</div>
+              <p class="wf-node-desc">Lee Schedule.md y mailbox.md. Fija el único frente activo (▶).</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('open-session')">⚡ open-session</button>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">2</span>
+              <div class="wf-node-title">Planificar en Vuelo</div>
+              <p class="wf-node-desc">Construye el plan numérico del sub-bloque antes de tocar ningún archivo.</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('current-plan')">⚡ current-plan</button>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">3</span>
+              <div class="wf-node-title">Ejecutar Bloque B_n</div>
+              <p class="wf-node-desc">Modifica código, datos y tests guiado por el hero de Next Action de state.md.</p>
+              <span class="card-badge" style="margin-top:auto; align-self:flex-start;">state.md (B_n)</span>
+            </div>
+            <div class="wf-arrow">→</div>
+
+            <div class="wf-node">
+              <span class="wf-node-step">4</span>
+              <div class="wf-node-title">Auditar & Cerrar</div>
+              <p class="wf-node-desc">project-auditor valida el diff; se registran decisiones D_n y se actualiza state.md.</p>
+              <button class="wf-node-btn" onclick="openSkillInCatalog('project-auditor')">⚡ project-auditor</button>
+            </div>
+          </div>
+
+          <div class="callout tip" style="margin-top: 14px; padding: 10px 14px;">
+            <strong>Regla clave:</strong> Toda tarea que cierra tacha su plan con destino obligatorio y audita antes de vaciar (METHOD §2).
+          </div>
+        </div>
+      `;
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OVERVIEW INTERACTION HANDLERS
+// ─────────────────────────────────────────────────────────────────────────────
+window.toggleOverviewSection = function(sectionId) {
+  STATE.collapsedSections = STATE.collapsedSections || {};
+  STATE.collapsedSections[sectionId] = !STATE.collapsedSections[sectionId];
+  renderView();
+};
+
+window.setWorkflowTab = function(tabKey) {
+  STATE.selectedWorkflowTab = tabKey;
+  renderView();
+};
+
+window.jumpToSection = function(sectionId) {
+  if (STATE.collapsedSections && STATE.collapsedSections[sectionId]) {
+    STATE.collapsedSections[sectionId] = false;
+    renderView();
+  }
+  const el = document.getElementById(sectionId);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+};
+
+window.openSkillInCatalog = function(skillName) {
+  STATE.currentView = "skills";
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.classList.toggle("active", btn.getAttribute("data-view") === "skills");
+  });
+  renderView();
+  setTimeout(() => {
+    const searchInput = document.getElementById("skillSearchInput");
+    if (searchInput) {
+      searchInput.value = skillName;
+      searchInput.dispatchEvent(new Event("input"));
+    }
+  }, 100);
+};
+
+window.navigateTo = function(viewName) {
+  STATE.currentView = viewName;
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.classList.toggle("active", btn.getAttribute("data-view") === viewName);
+  });
+  renderView();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. PROJECTS HUB VIEW (Separated by Laboratories dynamically)
+// ─────────────────────────────────────────────────────────────────────────────
+function getProjectLab(p) {
+  if (p.lab && p.lab !== "General") return p.lab;
+  if (p.file) {
+    const parts = p.file.replace(/\\/g, "/").split("/");
+    const nIdx = parts.lastIndexOf("nexus");
+    if (nIdx >= 2) {
+      return parts[nIdx - 2];
+    }
+  }
+  return "Workspaces";
+}
+
 function renderProjectsHub(container) {
+  const selectedLab = STATE.selectedLabFilter || "ALL";
   const selectedProj = STATE.projects.find(p => p.name === STATE.selectedProject) || STATE.projects[0];
+
+  const enrichedProjects = STATE.projects.map(p => ({
+    ...p,
+    lab: getProjectLab(p)
+  }));
+
+  const discoveredLabs = Array.from(new Set(enrichedProjects.map(p => p.lab).filter(Boolean))).sort();
+
+  const filteredProjects = selectedLab === "ALL" 
+    ? enrichedProjects 
+    : enrichedProjects.filter(p => p.lab === selectedLab);
 
   container.innerHTML = `
     <div class="view-header">
       <div class="view-title-group">
         <h1><span>🚀</span> Projects Hub</h1>
-        <p class="view-subtitle">Cartera de proyectos clasificados por volumen de trabajo y decisiones históricas</p>
+        <p class="view-subtitle">Organización de proyectos segregada por Laboratorios y Centros de Trabajo</p>
       </div>
     </div>
 
-    <!-- PROJECTS MATRIX GRID -->
-    <div class="projects-matrix-grid">
-      ${STATE.projects.map(p => `
-        <div class="project-card ${p.name === STATE.selectedProject ? 'active-selected' : ''}" onclick="selectProject('${esc(p.name)}')">
-          <div class="card-top">
-            <div class="project-name-group">
-              <span class="project-rank">${esc(p.rank)}</span>
-              <h3 class="project-name">${esc(p.name)}</h3>
-            </div>
-            <span class="status-chip ${p.status === 'ACTIVE' ? 'status-active' : 'status-paused'}">${esc(p.status)}</span>
+    <!-- LAB FILTER CHIPS -->
+    <div class="skills-stats-hud" style="margin-bottom: 20px;">
+      <div class="skill-stat-chip ${selectedLab === 'ALL' ? 'active' : ''}" onclick="updateLabFilter('ALL')">
+        <span class="stat-count">${enrichedProjects.length}</span>
+        <span class="stat-name">🏢 Todos los Laboratorios</span>
+      </div>
+      ${discoveredLabs.map(lab => {
+        const labProjectsCount = enrichedProjects.filter(p => p.lab === lab).length;
+        const icon = lab.toLowerCase().includes("proj") ? "💼" : "🔬";
+        return `
+          <div class="skill-stat-chip ${selectedLab === lab ? 'active' : ''}" onclick="updateLabFilter('${esc(lab)}')">
+            <span class="stat-count">${labProjectsCount}</span>
+            <span class="stat-name">${icon} ${esc(lab)}</span>
           </div>
-
-          <div class="progress-section">
-            <div class="progress-labels">
-              <span>Progreso de Bloques</span>
-              <strong>${p.completedBlocks}/${p.totalBlocks} (${p.progress}%)</strong>
-            </div>
-            <div class="progress-bar-track">
-              <div class="progress-bar-fill" style="width: ${p.progress}%;"></div>
-            </div>
-          </div>
-
-          <div class="next-action-preview" title="${esc(p.nextAction)}">
-            <strong>Next:</strong> ${inline(p.nextAction)}
-          </div>
-
-          <div class="card-meta-row">
-            <span class="meta-item">📜 ${p.decisionsCount} decisiones</span>
-            <span class="meta-item">🕒 ${esc(p.lastUpdated)}</span>
-          </div>
-        </div>
-      `).join("")}
+        `;
+      }).join("")}
     </div>
+
+    <!-- LAB SECTIONS -->
+    ${selectedLab === "ALL" ? discoveredLabs.map(lab => {
+      const labProjects = enrichedProjects.filter(p => p.lab === lab);
+      return renderLabSection(lab, labProjects);
+    }).join("") : renderLabSection(selectedLab, filteredProjects)}
 
     <!-- PROJECT DETAIL DEEP DIVE -->
     ${selectedProj ? renderProjectDeepDive(selectedProj) : ""}
   `;
 }
 
-function renderProjectDeepDive(proj) {
+function renderLabSection(labName, projects) {
+  const isPersonal = labName.toLowerCase().includes("proj");
+  const icon = isPersonal ? "💼" : "🔬";
+  const badgeLabel = isPersonal ? "Lab Personal & Operaciones" : "Lab de Investigación & Genómica";
+  const badgeClass = isPersonal ? "tag-purple" : "tag-live";
+  const totalDecs = projects.reduce((acc, p) => acc + (p.decisionsCount || 0), 0);
+
   return `
-    <div class="project-detail-panel">
+    <div class="lab-group-container">
+      <div class="lab-group-header">
+        <div class="lab-title-group">
+          <span class="lab-icon-bubble">${icon}</span>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h2 class="lab-title">${esc(labName)}</h2>
+              <span class="tag-pill ${badgeClass}">${esc(badgeLabel)}</span>
+            </div>
+            <p class="lab-subtitle">Entorno de proyectos y operaciones asociadas a ${esc(labName)}</p>
+          </div>
+        </div>
+        <div class="lab-stats-pills">
+          <span class="tag-pill">${projects.length} proyectos</span>
+          <span class="tag-pill">📜 ${totalDecs} decisiones</span>
+        </div>
+      </div>
+
+      <div class="projects-matrix-grid">
+        ${projects.map(p => `
+          <div class="project-card ${p.name === STATE.selectedProject ? 'active-selected' : ''}" onclick="selectProject('${esc(p.name)}')">
+            <div class="card-top">
+              <div class="project-name-group">
+                <span class="project-rank">${esc(p.rank)}</span>
+                <h3 class="project-name">${esc(p.name)}</h3>
+              </div>
+              <span class="status-chip ${p.status === 'ACTIVE' ? 'status-active' : 'status-paused'}">${esc(p.status)}</span>
+            </div>
+
+            <div class="progress-section">
+              <div class="progress-labels">
+                <span>Progreso de Bloques</span>
+                <strong>${p.completedBlocks}/${p.totalBlocks} (${p.progress}%)</strong>
+              </div>
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill" style="width: ${p.progress}%;"></div>
+              </div>
+            </div>
+
+            <div class="next-action-preview" title="${esc(p.nextAction)}">
+              <strong>Next:</strong> ${inline(p.nextAction)}
+            </div>
+
+            <div class="card-meta-row">
+              <span class="meta-item">📜 ${p.decisionsCount} decisiones</span>
+              <span class="meta-item">🕒 ${esc(p.lastUpdated)}</span>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderProjectDeepDive(proj) {
+  const labName = getProjectLab(proj);
+  const isPersonal = labName.toLowerCase().includes("proj");
+  const icon = isPersonal ? "💼" : "🔬";
+  const projectTasks = STATE.tasks.filter(t => t.project === proj.name || t.project.startsWith(proj.name));
+  const activeTasks = projectTasks.filter(t => ["⬜", "🔨", "⛔", "🔴"].includes(t.status));
+  const projectDecs = STATE.decisions.filter(d => d.project === proj.name).slice(0, 5);
+
+  return `
+    <div class="project-detail-panel" id="projectDetailSection">
       <div class="detail-header">
         <div class="detail-title-group">
-          <h2>${esc(proj.name)} · Detalle del Cartridge</h2>
-          <p class="detail-subtitle">${esc(proj.currentPhase)} · Integrado hasta ${esc(proj.integratedThrough)}</p>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 24px;">${icon}</span>
+            <h2>${esc(proj.name)} · Detalle del Cartridge</h2>
+            <span class="tag-pill tag-project">${esc(labName)}</span>
+          </div>
+          <p class="detail-subtitle">${esc(proj.currentPhase)} · Integrado hasta ${esc(proj.integratedThrough)} · Actualizado: ${esc(proj.lastUpdated)}</p>
         </div>
       </div>
 
@@ -687,9 +1210,115 @@ function renderProjectDeepDive(proj) {
           ${idx < proj.blocks.length - 1 ? `<div class="step-connector ${block.done ? 'completed' : ''}"></div>` : ''}
         `).join("")}
       </div>
+
+      <!-- TASKS IN THIS PROJECT (LIVE PREVIEW) -->
+      <div class="project-tasks-preview-section">
+        <div class="section-subhead">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>📋</span> <strong>Tareas de ${esc(proj.name)} (${projectTasks.length})</strong>
+            <span class="tag-pill tag-live">${activeTasks.length} activas</span>
+          </div>
+          <button class="btn-hud-action btn-add-task" onclick="openTaskModalForProject('${esc(proj.name)}')">
+            <span>➕</span> <span>Nueva Tarea para ${esc(proj.name)}</span>
+          </button>
+        </div>
+
+        ${projectTasks.length ? `
+          <div class="tickets-list" style="margin-top: 12px;">
+            ${projectTasks.map(t => `
+              <div class="ticket-card ${t.status === '✅' ? 'completed' : (t.status === '⚫' ? 'discarded' : '')}">
+                <div class="ticket-top">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(t.id)}</span>
+                    <span class="tag-pill">${esc(t.status)}</span>
+                    <h3 class="ticket-title" style="${t.status === '✅' ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${inline(t.title)}</h3>
+                  </div>
+                  ${renderDate(t.date, t.date_inferred)}
+                </div>
+
+                <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-top: 4px;">
+                  <strong>Why:</strong> ${inline(t.why)}
+                </p>
+
+                ${t.discardReason ? `
+                  <div class="task-discard-callout">
+                    <strong>⚫ Descartada (PH-3):</strong> ${inline(t.discardReason)}
+                  </div>
+                ` : ''}
+
+                <div class="task-actions-toolbar">
+                  ${t.status !== '✅' && t.status !== '⚫' ? `
+                    <button class="btn-task-action btn-task-complete" onclick="completeTask('${esc(t.id)}')">
+                      <span>✅</span> Completar
+                    </button>
+                  ` : ''}
+                  <button class="btn-task-action btn-task-comment" onclick="openCommentModal('${esc(t.id)}', '${esc(t.title)}')">
+                    <span>💬</span> Comentar (${t.comments ? t.comments.length : 0})
+                  </button>
+                  ${t.status !== '⚫' ? `
+                    <button class="btn-task-action btn-task-discard" onclick="openDiscardModal('${esc(t.id)}', '${esc(t.title)}')">
+                      <span>⚫</span> Descartar
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        ` : `
+          <div class="empty-state" style="padding: 24px;">
+            <p>No hay tareas registradas para <strong>${esc(proj.name)}</strong>.</p>
+          </div>
+        `}
+      </div>
+
+      <!-- RECENT DECISIONS IN THIS PROJECT -->
+      ${projectDecs.length ? `
+        <div class="project-tasks-preview-section" style="margin-top: 24px;">
+          <div class="section-subhead">
+            <span>📜</span> <strong>Últimas Decisiones de ${esc(proj.name)} (${proj.decisionsCount} totales)</strong>
+          </div>
+          <div class="tickets-list" style="margin-top: 12px;">
+            ${projectDecs.map(d => `
+              <div class="ticket-card ${d.isSuperseded ? 'discarded' : ''}">
+                <div class="ticket-top">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
+                    ${d.isSuperseded ? `
+                      <span class="tag-pill tag-superseded">🔄 Reemplazada</span>
+                    ` : `
+                      <span class="tag-pill tag-alive">🟢 VIVA</span>
+                    `}
+                  </div>
+                  ${renderDate(d.date, d.date_inferred)}
+                </div>
+                <h3 class="ticket-title" style="font-size: 14px; margin-top: 4px;">${inline(d.title)}</h3>
+                <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; margin-top: 2px;">
+                  <strong>Por qué:</strong> ${inline(d.why)}
+                </p>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      ` : ''}
     </div>
   `;
 }
+
+window.updateLabFilter = function(lab) {
+  STATE.selectedLabFilter = lab;
+  renderView();
+};
+
+window.openTaskModalForProject = function(projectName) {
+  openTaskModal();
+  const projSelect = document.getElementById("taskProject");
+  if (projSelect) {
+    projSelect.value = projectName;
+    updateTaskPreview();
+  }
+};
+
+
 
 window.selectProject = function(name) {
   STATE.selectedProject = name;
@@ -751,7 +1380,7 @@ function renderCockpit(container) {
               ${STATE.livePlan.map(item => `
                 <div class="plan-item-row ${item.struck ? 'completed' : ''}">
                   <span class="plan-idx">${item.index}</span>
-                  <span class="plan-text">${inline(item.text)}</span>
+                  ${expandable(item.text, "plan-text")}
                   ${item.destination ? `
                     <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'tag-discarded' : 'dest-resolved'}">
                       ${esc(item.destination)}
@@ -775,21 +1404,21 @@ function renderCockpit(container) {
         <div class="cockpit-panel">
           <div class="panel-header">
             <h2><span>🧭</span> Frentes en Cola (Schedule Compass)</h2>
-            <span class="tag-pill">${STATE.fronts.length} frentes</span>
+            <span class="tag-pill">${visibleFronts().length} frentes${STATE.frontFilterProj ? ` · ${esc(STATE.frontFilterProj)}` : ""}</span>
           </div>
           <div style="display: flex; flex-direction: column; gap: 8px;">
-            ${STATE.fronts.map(f => `
+            ${visibleFronts().length ? visibleFronts().map(f => `
               <div class="plan-item-row ${f.active ? 'active-flight' : ''}" style="${f.active ? 'border-color: var(--accent-cyan); background: var(--accent-cyan-bg);' : ''}">
                 <span class="plan-idx" style="${f.active ? 'color: var(--accent-cyan); font-weight: 700;' : ''}">
                   ${f.active ? '▶' : esc(f.marker || '#')}
                 </span>
                 <div style="flex: 1;">
                   <strong style="color: var(--text-primary); font-size: 13.5px;">${inline(f.name)}</strong>
-                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${inline(f.moves_when || '')}</p>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${expandable(f.moves_when || '')}</p>
                 </div>
                 ${f.project ? `<span class="tag-pill tag-project">${esc(f.project)}</span>` : ''}
               </div>
-            `).join("")}
+            `).join("") : `<div class="empty-state">Ningún frente en ${esc(STATE.frontFilterProj)}.</div>`}
           </div>
         </div>
       </div>
@@ -832,7 +1461,7 @@ function renderCheatSheet(container) {
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px;">
               ${g.cmds.map((cmd, cIdx) => `
-                <div class="cs-cmd-row" id="cmdRow_${curCat}_${cIdx}" onclick="copyCommand('${esc(cmd.code)}', 'cmdRow_${curCat}_${cIdx}')">
+                <div class="cs-cmd-row" id="cmdRow_${curCat}_${cIdx}" data-code="${esc(cmd.code)}" onclick="copyRowCommand(this)">
                   <span class="cs-cmd-label">${esc(cmd.label)}</span>
                   <code class="cs-cmd-code">${esc(cmd.code)}</code>
                   <button class="cs-cmd-copy-btn">Copiar 📋</button>
@@ -851,6 +1480,12 @@ window.selectCsTab = function(cat) {
   renderView();
 };
 
+window.copyRowCommand = function(el) {
+  const code = el.getAttribute("data-code") || el.querySelector("code")?.textContent || "";
+  if (!code) return;
+  copyCommand(code, el.id);
+};
+
 window.copyCommand = function(text, elementId) {
   navigator.clipboard.writeText(text).then(() => {
     const el = document.getElementById(elementId);
@@ -859,6 +1494,8 @@ window.copyCommand = function(text, elementId) {
       setTimeout(() => el.classList.remove("copied"), 1200);
     }
     showToast(`Comando copiado al portapapeles: ${text.slice(0, 40)}...`);
+  }).catch(() => {
+    showToast(`Comando copiado: ${text.slice(0, 40)}...`);
   });
 };
 
@@ -1122,7 +1759,7 @@ function renderDecisions(container) {
     <div class="view-header">
       <div class="view-title-group">
         <h1><span>📜</span> Decision Log (Registro de Decisiones)</h1>
-        <p class="view-subtitle">${STATE.decisions.length} decisiones inmutables con autor, fecha, liveness y trazabilidad de supersedes</p>
+        <p class="view-subtitle">${liveDecisions().length} decisiones inmutables con autor, fecha, liveness y trazabilidad de supersedes</p>
       </div>
     </div>
 
@@ -1131,7 +1768,7 @@ function renderDecisions(container) {
       <div class="toolbar-group">
         <label for="decFilterProj">Proyecto:</label>
         <select id="decFilterProj" class="custom-select" onchange="updateDecFilter('decFilterProj', this.value)">
-          <option value="">Todos los Proyectos (${STATE.decisions.length})</option>
+          <option value="">Todos los Proyectos (${liveDecisions().length})</option>
           ${allProjects.map(p => `
             <option value="${esc(p)}" ${p === projFilter ? "selected" : ""}>
               ${esc(p)} (${STATE.decisions.filter(d => d.project === p).length})
@@ -1221,60 +1858,177 @@ window.updateDecFilter = function(key, val) {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 8. SKILLS & ORG VIEW
+// 8. SKILLS & ORG VIEW (Redesigned with rich layout, search & CLI commands)
 // ─────────────────────────────────────────────────────────────────────────────
+const SKILL_ICONS = {
+  "open-session": "⚡",
+  "triage": "📬",
+  "company-auditor": "🏛️",
+  "instance-auditor": "🔍",
+  "project-auditor": "🎯",
+  "audit": "🤖",
+  "autonomous-run": "🚀",
+  "code-cleanup": "🧹",
+  "redefine-project": "🔄",
+  "structure-project": "🏗️",
+  "rnd": "🔬",
+  "learn": "📚",
+  "correct-exercise": "✏️",
+  "dispatch": "📤",
+  "gather": "📥",
+  "release-cut": "🏷️"
+};
+
+function classifySkill(s) {
+  const name = s.title.toLowerCase();
+  if (name.includes("auditor") || s.trigger === "event") {
+    return {
+      type: "event",
+      label: "🔔 Rol de Evento",
+      badgeClass: "tag-live",
+      typeDesc: "Disparado automáticamente al cerrar tareas o modificar archivos estructurales"
+    };
+  }
+  if (s.trigger === "locked" || name === "release-cut") {
+    return {
+      type: "locked",
+      label: "🔒 Gobernanza / Release",
+      badgeClass: "tag-supersedes",
+      typeDesc: "Invocación restringida de gobierno o corte de release público"
+    };
+  }
+  return {
+    type: "request",
+    label: "🛠️ Capacidad Invocable",
+    badgeClass: "tag-purple",
+    typeDesc: "Invocada por nombre o comando directo por el operador"
+  };
+}
+
 function renderSkills(container) {
-  const eventSkills = STATE.skills.filter(s => s.trigger === "event");
-  const reqSkills = STATE.skills.filter(s => s.trigger === "request");
-  const lockedSkills = STATE.skills.filter(s => s.trigger === "locked");
+  const filterType = STATE.skillFilterType || "ALL";
+  const searchTxt = (STATE.skillSearch || "").toLowerCase().trim();
+
+  const enrichedSkills = STATE.skills.map(s => ({
+    ...s,
+    icon: SKILL_ICONS[s.title] || "⚡",
+    classification: classifySkill(s)
+  }));
+
+  const eventCount = enrichedSkills.filter(s => s.classification.type === "event").length;
+  const reqCount = enrichedSkills.filter(s => s.classification.type === "request").length;
+  const lockedCount = enrichedSkills.filter(s => s.classification.type === "locked").length;
+
+  let filtered = enrichedSkills.filter(s => {
+    if (filterType !== "ALL" && s.classification.type !== filterType) return false;
+    if (searchTxt) {
+      const matchTitle = s.title.toLowerCase().includes(searchTxt);
+      const matchSummary = (s.summary || "").toLowerCase().includes(searchTxt);
+      const matchWhen = (s.when || "").toLowerCase().includes(searchTxt);
+      if (!matchTitle && !matchSummary && !matchWhen) return false;
+    }
+    return true;
+  });
 
   container.innerHTML = `
     <div class="view-header">
       <div class="view-title-group">
         <h1><span>⚡</span> Skills & Organigrama de Agentes</h1>
-        <p class="view-subtitle">${STATE.skills.length} skills configuradas como Roles de Evento (🔔) y Capacidades Invocables (🛠️)</p>
+        <p class="view-subtitle">Catálogo de capacidades especializadas y roles de auditoría de MLabs</p>
       </div>
     </div>
 
-    <div class="infographic-section-title">
-      <span>🔔</span> <strong>Roles Disparados por Evento (${eventSkills.length})</strong>
-    </div>
-    <div class="skills-grid" style="margin-bottom: 24px;">
-      ${eventSkills.map(renderSkillCard).join("")}
+    <!-- SKILLS STATS HUD -->
+    <div class="skills-stats-hud">
+      <div class="skill-stat-chip ${filterType === 'ALL' ? 'active' : ''}" onclick="updateSkillFilter('ALL')">
+        <span class="stat-count">${enrichedSkills.length}</span>
+        <span class="stat-name">Todas las Skills</span>
+      </div>
+      <div class="skill-stat-chip ${filterType === 'event' ? 'active' : ''}" onclick="updateSkillFilter('event')">
+        <span class="stat-count" style="color: var(--emerald);">${eventCount}</span>
+        <span class="stat-name">🔔 Roles de Evento</span>
+      </div>
+      <div class="skill-stat-chip ${filterType === 'request' ? 'active' : ''}" onclick="updateSkillFilter('request')">
+        <span class="stat-count" style="color: var(--purple);">${reqCount}</span>
+        <span class="stat-name">🛠️ Capacidades</span>
+      </div>
+      <div class="skill-stat-chip ${filterType === 'locked' ? 'active' : ''}" onclick="updateSkillFilter('locked')">
+        <span class="stat-count" style="color: var(--amber);">${lockedCount}</span>
+        <span class="stat-name">🔒 Gobernanza</span>
+      </div>
     </div>
 
-    <div class="infographic-section-title">
-      <span>🛠️</span> <strong>Capacidades Invocadas por Nombre (${reqSkills.length})</strong>
-    </div>
-    <div class="skills-grid" style="margin-bottom: 24px;">
-      ${reqSkills.map(renderSkillCard).join("")}
+    <!-- SKILLS TOOLBAR -->
+    <div class="view-toolbar" style="margin-top: 16px;">
+      <div class="toolbar-group search-group" style="flex: 1;">
+        <input type="text" id="skillSearchInput" class="custom-input" placeholder="Buscar skill por nombre, objetivo, condición de uso..." value="${esc(STATE.skillSearch || '')}" oninput="updateSkillSearch(this.value)">
+      </div>
+      <div class="toolbar-group">
+        <span class="tag-pill">${filtered.length} skills mostradas</span>
+      </div>
     </div>
 
-    ${lockedSkills.length ? `
-      <div class="infographic-section-title">
-        <span>🔒</span> <strong>Capacidades Bloqueadas (${lockedSkills.length})</strong>
-      </div>
-      <div class="skills-grid">
-        ${lockedSkills.map(renderSkillCard).join("")}
-      </div>
-    ` : ''}
+    <!-- SKILLS CARDS GRID -->
+    <div class="skills-enhanced-grid">
+      ${filtered.length ? filtered.map(renderEnhancedSkillCard).join("") : `
+        <div class="empty-state" style="grid-column: 1 / -1;">
+          <div class="empty-icon">⚡</div>
+          <h3>No hay skills que coincidan</h3>
+          <p>Prueba a buscar con otro término o selecciona 'Todas las Skills'.</p>
+        </div>
+      `}
+    </div>
   `;
 }
 
-function renderSkillCard(skill) {
+function renderEnhancedSkillCard(skill, idx) {
+  const cliCmd = `claude -p 'run ${skill.title}'`;
+  const rowId = `skillCmd_${idx}`;
+
   return `
-    <div class="skill-card">
-      <div class="skill-header">
-        <span class="skill-name">${esc(skill.title)}</span>
-        <span class="tag-pill ${skill.trigger === 'event' ? 'tag-live' : 'tag-purple'}">${esc(skill.trigger)}</span>
+    <div class="skill-enhanced-card">
+      <div class="skill-card-topbar">
+        <div class="skill-identity">
+          <span class="skill-icon-bubble">${skill.icon}</span>
+          <div>
+            <h3 class="skill-card-name">${esc(skill.title)}</h3>
+            <span class="skill-file-path">skills/${esc(skill.title)}/SKILL.md</span>
+          </div>
+        </div>
+        <span class="tag-pill ${skill.classification.badgeClass}">
+          ${esc(skill.classification.label)}
+        </span>
       </div>
-      <p class="skill-desc">${inline(skill.summary || "Capacidad especializada de agente")}</p>
-      <div class="skill-evidence">
-        <strong>Cuándo usar:</strong> ${inline(skill.when || "Invocación directa")}
+
+      <p class="skill-card-summary">${inline(skill.summary || "Capacidad especializada de agente para operaciones.")}</p>
+
+      <div class="skill-card-when-box">
+        <div class="when-box-label">
+          <span>🎯</span> <strong>CUÁNDO USAR / DISPARO:</strong>
+        </div>
+        <p class="when-box-text">${inline(skill.when || skill.evidence || "Invocación directa bajo demanda.")}</p>
+      </div>
+
+      <div class="skill-card-footer">
+        <div class="skill-cli-box" id="${rowId}" data-code="${esc(cliCmd)}" onclick="copyRowCommand(this)" title="Clic para copiar comando de invocación">
+          <span class="cli-prompt-label">CLI:</span>
+          <code class="cli-prompt-code">${esc(cliCmd)}</code>
+          <button class="cli-copy-btn">Copiar 📋</button>
+        </div>
       </div>
     </div>
   `;
 }
+
+window.updateSkillFilter = function(type) {
+  STATE.skillFilterType = type;
+  renderView();
+};
+
+window.updateSkillSearch = function(q) {
+  STATE.skillSearch = q;
+  renderView();
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERACTIVE TASK LIFECYCLE (Complete, Comment, Discard)
@@ -1515,6 +2269,8 @@ function showToast(msg) {
 // ─────────────────────────────────────────────────────────────────────────────
 // DATA FETCHING & REAL-TIME POLLING
 // ─────────────────────────────────────────────────────────────────────────────
+let isPolling = false;
+
 async function loadModel() {
   try {
     const res = await fetch("/api/model");
@@ -1530,6 +2286,8 @@ async function loadModel() {
 }
 
 async function watchStamp() {
+  if (isPolling) return;
+  isPolling = true;
   try {
     const res = await fetch("/api/stamp");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1544,6 +2302,8 @@ async function watchStamp() {
   } catch {
     const syncStatus = document.getElementById("syncStatus");
     if (syncStatus) syncStatus.textContent = "offline";
+  } finally {
+    isPolling = false;
   }
 }
 
@@ -1553,8 +2313,7 @@ window.retryLoad = () => {
   loadModel();
 };
 
-// Global Live Form Input Listeners
-document.addEventListener("DOMContentLoaded", () => {
+function initAppListeners() {
   ["taskTitle", "taskProject", "taskStatus", "taskWhy"].forEach(id => {
     document.getElementById(id)?.addEventListener("input", updateTaskPreview);
   });
@@ -1585,8 +2344,15 @@ document.addEventListener("DOMContentLoaded", () => {
     STATE.decSearch = q;
     renderView();
   });
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAppListeners);
+} else {
+  initAppListeners();
+}
 
 // Initial boot & periodic watcher
 loadModel().then(watchStamp);
 setInterval(watchStamp, 2000);
+

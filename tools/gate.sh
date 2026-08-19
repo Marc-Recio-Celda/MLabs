@@ -82,6 +82,23 @@ if hits=$(grep -rHnE '(^|[^A-Za-z_])(99_SYSTEM|98_PROJECTS|0[1-8]_[A-Z][a-zA-Z]*
   fi
 fi
 
+# 3 · The tracked set is exactly the allowlist — BOTH directions. A surplus file is a
+#     leak; a `!` line with nothing behind it is scaffolding. Until 2026-08-19 only the
+#     second was checked, so a private file force-added past .gitignore passed with a
+#     green tick — the one failure mode with nothing else behind it.
+while read -r f; do
+  [ -n "$f" ] || continue
+  keep=0
+  while read -r line; do
+    path="${line#\!/}"; path="${path%/\*\*}"
+    [ -n "$path" ] || continue
+    case "$f" in "$path"|"$path"/*) keep=1; break ;; esac
+  done < <(grep '^!/' .gitignore 2>/dev/null)
+  if [ $keep -eq 0 ]; then
+    echo "  ✗ tracked but named by no allowlist line: $f"
+    fail=1
+  fi
+done < <(git ls-files)
 # 3 · The tracked set is exactly the allowlist. A surplus file is a leak; a `!` line
 #     with nothing behind it is scaffolding.
 while read -r line; do

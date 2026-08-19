@@ -47,22 +47,18 @@ is declared and logged as a defect in the index** — never as licence to read l
 
 ## 4. Work the loop
 
-Rewrite the live plan to hold **this task and nothing else**: the items, in the order they will
-be done, and the reason for that order — written *while* deciding, not summarised after.
+**Planning moved out on 2026-08-19 and lives in `skills/current-plan/`.** It used to be here
+because planning happened once, when a session opened; under the block flow it is a discrete act
+repeated once per sub-block. **That file wins on everything about how a plan is written** — this
+section is the routing, not the rules.
 
-Then work the list, **striking lines through and never deleting them**. Every item leaves with a
-destination from the closed vocabulary (`METHOD.md` §2): resolved · task list · integrated ·
-mailbox · park · discarded with its reason. **A struck line with no destination is a failed
-close**, not an omission (`AX-9`).
+Invoke it when a sub-block is reached. Then work the list: every item leaves with an outcome from
+the closed vocabulary (`METHOD.md` §2), items that spawn items are written down immediately, and
+**anything the operator says outside the task is captured in the same turn** — a conversation ends
+and takes its contents with it.
 
-**When an item spawns others, write them down immediately, right after the current one** — even,
-and especially, when they are unrelated. It does not interrupt: the new line takes its place and
-gets a destination like everything else. Most will be parked or discarded, and that is a
-successful outcome.
-
-**When the operator says anything that is not part of this task, capture it in the same turn.**
-One line, in the park, with its `project:`. Not at the close — a conversation ends and takes its
-contents with it.
+⚠️ **The plan closes; it is never deleted** (`current-plan`, *Closing*). Deleting it drops the
+order-and-why and the discarded-with-reason items, which live nowhere else.
 
 ## 5. Close, in this order
 
