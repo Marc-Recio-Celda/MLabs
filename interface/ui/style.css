@@ -848,7 +848,248 @@ body {
   border-left: 3px solid var(--vine);
   padding: 6px 10px;
   border-radius: 0 4px 4px 0;
+  margin-top: 8px;
+}
+
+/* ═══ GOVERNANCE PANEL LAYOUT ═══ */
+
+/* -- Top panel: Philosophy -- */
+.gov-philosophy-panel {
+  background: linear-gradient(135deg, rgba(91, 124, 83, 0.06), rgba(198, 154, 62, 0.04));
+  border: 1px solid rgba(91, 124, 83, 0.18);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px 20px;
+  margin-bottom: 20px;
+}
+
+.gov-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.gov-panel-title h3 {
+  margin: 6px 0 0;
+  font-size: 17px;
+  color: var(--ink);
+}
+
+.gov-panel-title h3 small {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-left: 6px;
+}
+
+.gov-panel-subtitle {
+  font-size: 13px;
+  color: var(--ink-soft);
+  max-width: 340px;
+  margin: 0;
+  line-height: 1.5;
+  align-self: center;
+}
+
+.gov-level-badge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+/* -- Principles as horizontal rows -- */
+.gov-principles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.gov-principle {
+  display: flex;
+  gap: 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.gov-principle:hover {
+  border-color: var(--vine);
+  box-shadow: 0 2px 8px rgba(91, 124, 83, 0.10);
+}
+
+.gov-principle-id {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--vine-deep);
+  background: rgba(91, 124, 83, 0.10);
+  border-radius: 50%;
+  border: 2px solid rgba(91, 124, 83, 0.20);
+}
+
+.gov-principle-body strong {
+  display: block;
+  font-size: 13.5px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.gov-principle-body p {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0 0 4px;
+}
+
+/* -- Bottom row: Axioms + NEXUS side by side -- */
+.gov-bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.gov-bottom-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gov-bottom-card h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.gov-bottom-card p {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.gov-bottom-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gov-file-tag {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  background: rgba(0,0,0,0.03);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.gov-stat-row {
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.gov-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.gov-stat-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.gov-stat-lbl {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+.gov-sample-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.gov-rule-chip {
+  font-size: 11px;
+  padding: 3px 10px;
+  background: rgba(198, 154, 62, 0.10);
+  border: 1px solid rgba(198, 154, 62, 0.25);
+  border-radius: 12px;
+  color: var(--ink-soft);
+}
+
+.gov-rule-chip strong {
+  color: var(--gold);
+  margin-right: 3px;
+}
+
+.gov-nexus-links {
+  display: flex;
+  gap: 10px;
   margin-top: auto;
+  padding-top: 8px;
+}
+
+.gov-link-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vine-deep);
+  background: rgba(91, 124, 83, 0.08);
+  border: 1px solid rgba(91, 124, 83, 0.20);
+  border-radius: var(--radius-md);
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.gov-link-btn:hover {
+  background: rgba(91, 124, 83, 0.15);
+  border-color: var(--vine);
+}
+
+@media (max-width: 800px) {
+  .gov-principles-grid {
+    grid-template-columns: 1fr;
+  }
+  .gov-bottom-row {
+    grid-template-columns: 1fr;
+  }
+  .gov-panel-header {
+    flex-direction: column;
+  }
+  .gov-panel-subtitle {
+    max-width: 100%;
+  }
 }
 
 /* WORKFLOW TABS & STEPPER */

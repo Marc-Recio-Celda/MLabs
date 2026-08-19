@@ -538,144 +538,144 @@ function renderOverview(container) {
 
       <!-- TOC PILL BAR -->
       <nav class="toc-bar">
-        <button class="toc-pill" onclick="jumpToSection('sec-tiers')"><span>🏛️</span> 01 · Tres Niveles</button>
-        <button class="toc-pill" onclick="jumpToSection('sec-philosophy')"><span>📜</span> 02 · Los 6 Principios</button>
-        <button class="toc-pill" onclick="jumpToSection('sec-workflows')"><span>🔄</span> 03 · Flujos de Trabajo</button>
-        <button class="toc-pill" onclick="jumpToSection('sec-ecosystem')"><span>🗺️</span> 04 · Ecosistema</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-governance')"><span>🏛️</span> 01 · Gobernanza</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-workflows')"><span>🔄</span> 02 · Flujos de Trabajo</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-ecosystem')"><span>🗺️</span> 03 · Ecosistema</button>
       </nav>
 
-      <!-- SECCIÓN 01: TRES NIVELES -->
-      <section class="doc-section" id="sec-tiers">
-        <div class="section-head" onclick="toggleOverviewSection('sec-tiers')">
-          <h2><span class="num">01</span> Gobernanza en Tres Niveles de la Empresa</h2>
-          <button class="btn-toggle-sec">${isCollapsed('sec-tiers') ? '▶ Mostrar' : '▼ Plegar'}</button>
+      <!-- SECCIÓN 01: GOBERNANZA (tres niveles fusionados) -->
+      <section class="doc-section" id="sec-governance">
+        <div class="section-head" onclick="toggleOverviewSection('sec-governance')">
+          <h2><span class="num">01</span> Gobernanza — Filosofía, Axiomas y Estado</h2>
+          <button class="btn-toggle-sec">${isCollapsed('sec-governance') ? '▶ Mostrar' : '▼ Plegar'}</button>
         </div>
-        <div class="section-body ${isCollapsed('sec-tiers') ? 'is-collapsed' : ''}">
-          <p class="lead">
-            La metodología desacopla la ley del estado: <strong>MLabs</strong> define cómo se trabaja; <strong>NEXUS</strong> guarda lo que ha ocurrido; y cada <strong>Proyecto</strong> opera como un repositorio soberano con su propio auditor y registro.
-          </p>
+        <div class="section-body ${isCollapsed('sec-governance') ? 'is-collapsed' : ''}">
 
-          <div class="grid-3">
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">NIVEL 1 · PÚBLICO</span>
-                <span class="card-badge">PHILOSOPHY.md</span>
+          <!-- ── PANEL SUPERIOR: Filosofía Inmutable ── -->
+          <div class="gov-philosophy-panel">
+            <div class="gov-panel-header">
+              <div class="gov-panel-title">
+                <span class="gov-level-badge badge-vine">NIVEL 1 · INMUTABLE</span>
+                <h3>Los Seis Principios Rectores <small>PHILOSOPHY.md</small></h3>
               </div>
-              <h3>Filosofía Inmutable</h3>
-              <p>Seis cláusulas rectoras inmutables. Definen lo que optimiza la compañía y <strong>rompen todo empate de diseño</strong>.</p>
-              <div style="margin-top: auto; font-size: 11.5px; color: var(--ink-muted); padding-top: 8px; border-top: 1px solid var(--line);">
-                <strong>PH-4:</strong> Cero cajas negras · <strong>PH-6:</strong> Atención escasa
+              <p class="gov-panel-subtitle">La brújula que rige todas las decisiones y <strong>rompe todo empate de diseño</strong>. Cambia casi nunca; sólo por el operador.</p>
+            </div>
+
+            <div class="gov-principles-grid">
+              <div class="gov-principle">
+                <div class="gov-principle-id">PH-1</div>
+                <div class="gov-principle-body">
+                  <strong>El horizonte largo es la premisa</strong>
+                  <p>Todo se construye para lo siguiente, no solo para hoy. Diseña para 3× a 10× el volumen actual.</p>
+                  <div class="principle-rule"><strong>Regla:</strong> Solución que sólo escala hoy es postergación.</div>
+                </div>
+              </div>
+
+              <div class="gov-principle">
+                <div class="gov-principle-id">PH-2</div>
+                <div class="gov-principle-body">
+                  <strong>El aprendizaje se compra con productividad</strong>
+                  <p>Donde la velocidad y la comprensión chocan, <strong>gana la comprensión</strong>. Un atajo que no se entiende es deuda.</p>
+                  <div class="principle-rule"><strong>Regla:</strong> Cero atajos ciegos; entendimiento primero.</div>
+                </div>
+              </div>
+
+              <div class="gov-principle">
+                <div class="gov-principle-id">PH-3</div>
+                <div class="gov-principle-body">
+                  <strong>Nada se pierde</strong>
+                  <p>Sin datos no hay análisis. Un dato perdido jamás se recupera. Cubre entradas, razonamiento y <strong>los descartes con su motivo</strong>.</p>
+                  <div class="principle-rule"><strong>Regla:</strong> Registrar es barato; reconstruir es imposible.</div>
+                </div>
+              </div>
+
+              <div class="gov-principle">
+                <div class="gov-principle-id">PH-4</div>
+                <div class="gov-principle-body">
+                  <strong>Cero cajas negras</strong>
+                  <p>Toda decisión es trazable a su razonamiento. El valor reside en los artefactos en disco, no en la herramienta.</p>
+                  <div class="principle-rule"><strong>Regla:</strong> La herramienta es intercambiable; el estado es sagrado.</div>
+                </div>
+              </div>
+
+              <div class="gov-principle">
+                <div class="gov-principle-id">PH-5</div>
+                <div class="gov-principle-body">
+                  <strong>El trabajo es modular</strong>
+                  <p>Cada pieza es dueña de su propio ciclo de vida. El acoplamiento se paga en cada cambio; la separación una sola vez.</p>
+                  <div class="principle-rule"><strong>Regla:</strong> Nunca agrupar por temática; separar por dueño.</div>
+                </div>
+              </div>
+
+              <div class="gov-principle">
+                <div class="gov-principle-id">PH-6</div>
+                <div class="gov-principle-body">
+                  <strong>La atención es el recurso escaso</strong>
+                  <p>Todo se registra; casi nada se carga a la vez. <strong>Un único frente activo (▶)</strong>. El coste es lo que hay que retener en la cabeza.</p>
+                  <div class="principle-rule"><strong>Regla:</strong> Un solo frente a la vez; cero dispersión.</div>
+                </div>
               </div>
             </div>
 
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-gold">NIVEL 2 · ESTRUCTURA</span>
-                <span class="card-badge">AXIOMS.md</span>
+            <div class="callout danger" style="margin-top: 16px;">
+              <div class="callout-title"><span>🛡️</span> Lo que esta empresa rechaza formalmente (§Refusals)</div>
+              <div class="grid-2" style="margin-top: 8px; gap: 10px;">
+                <div><strong>🚫 Acumulación:</strong> Curación estricta; sólo se guarda lo que se va a usar.</div>
+                <div><strong>🚫 Complacencia:</strong> El sistema existe para preparar a su operador, no para darle la razón.</div>
+                <div><strong>🚫 Optimización vacía:</strong> Nada entra por estética; debe desbloquear trabajo real.</div>
+                <div><strong>🚫 Roles muertos:</strong> Todo rol sin hallazgos útiles se retira por contrato N/K.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── PANEL INFERIOR: Axiomas + NEXUS lado a lado ── -->
+          <div class="gov-bottom-row">
+            <div class="gov-bottom-card">
+              <div class="gov-bottom-card-head">
+                <span class="gov-level-badge badge-gold">NIVEL 2 · ESTRUCTURA</span>
+                <span class="gov-file-tag">AXIOMS.md · AGENTS.md · METHOD.md</span>
               </div>
               <h3>Axiomas y Reglas</h3>
-              <p>28 axiomas técnicos verificables. Implementan la filosofía de forma determinista y gobiernan roles y checks.</p>
-              <div style="margin-top: auto; font-size: 11.5px; color: var(--ink-muted); padding-top: 8px; border-top: 1px solid var(--line);">
-                <strong>AX-1:</strong> Append-only · <strong>AX-11:</strong> Despido N/K
+              <p>Reglas verificables que implementan la filosofía de forma determinista. Gobiernan roles, gates, checks y contratos de despido.</p>
+              <div class="gov-stat-row">
+                <div class="gov-stat"><span class="gov-stat-val">30</span><span class="gov-stat-lbl">Axiomas</span></div>
+                <div class="gov-stat"><span class="gov-stat-val">10</span><span class="gov-stat-lbl">Invariantes</span></div>
+                <div class="gov-stat"><span class="gov-stat-val">4</span><span class="gov-stat-lbl">Roles</span></div>
+              </div>
+              <div class="gov-sample-rules">
+                <span class="gov-rule-chip"><strong>AX-1</strong> Append-only</span>
+                <span class="gov-rule-chip"><strong>AX-11</strong> Despido N/K</span>
+                <span class="gov-rule-chip"><strong>AX-20</strong> Fuente única</span>
+                <span class="gov-rule-chip"><strong>AX-21</strong> Carga selectiva</span>
               </div>
             </div>
 
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-grape">NIVEL 3 · PRIVADO</span>
-                <span class="card-badge">NEXUS</span>
+            <div class="gov-bottom-card">
+              <div class="gov-bottom-card-head">
+                <span class="gov-level-badge badge-grape">NIVEL 3 · PRIVADO</span>
+                <span class="gov-file-tag">NEXUS (operaciones)</span>
               </div>
               <h3>Decisiones y Cartridges</h3>
-              <p>El estado real donde vive el trabajo: registro inmutable de decisiones con autor, fecha y razonamiento.</p>
-              <div style="margin-top: auto; font-size: 11.5px; color: var(--ink-muted); padding-top: 8px; border-top: 1px solid var(--line);">
-                <strong>${liveDecisions().length}</strong> Decisiones · <strong>9</strong> Proyectos
+              <p>El estado real donde vive el trabajo: registro inmutable de decisiones con autor, fecha y razonamiento. Cada proyecto es un cartridge soberano.</p>
+              <div class="gov-stat-row">
+                <div class="gov-stat"><span class="gov-stat-val">${liveDecisions().length}</span><span class="gov-stat-lbl">Decisiones vivas</span></div>
+                <div class="gov-stat"><span class="gov-stat-val">${STATE.projects.length}</span><span class="gov-stat-lbl">Proyectos</span></div>
+                <div class="gov-stat"><span class="gov-stat-val">${STATE.tasks.length}</span><span class="gov-stat-lbl">Tareas</span></div>
+              </div>
+              <div class="gov-nexus-links">
+                <button class="gov-link-btn" onclick="navigateTo('decisions')">📜 Decision Log →</button>
+                <button class="gov-link-btn" onclick="navigateTo('projects')">🚀 Projects Hub →</button>
               </div>
             </div>
           </div>
 
-          <div class="callout danger">
-            <div class="callout-title"><span>🛡️</span> Lo que esta empresa rechaza formalmente (PHILOSOPHY §Refusals)</div>
-            <div class="grid-2" style="margin-top: 8px; gap: 10px;">
-              <div><strong>🚫 Acumulación:</strong> Curación estricta; sólo se guarda lo que se va a usar.</div>
-              <div><strong>🚫 Complacencia:</strong> El sistema existe para preparar a su operador, no para darle la razón.</div>
-              <div><strong>🚫 Optimización vacía:</strong> Nada entra por estética; debe desbloquear trabajo real.</div>
-              <div><strong>🚫 Roles muertos:</strong> Todo rol sin hallazgos útiles se retira por contrato N/K.</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- SECCIÓN 02: FILOSOFÍA -->
-      <section class="doc-section" id="sec-philosophy">
-        <div class="section-head" onclick="toggleOverviewSection('sec-philosophy')">
-          <h2><span class="num">02</span> Los Seis Principios Rectores (PH-1 a PH-6)</h2>
-          <button class="btn-toggle-sec">${isCollapsed('sec-philosophy') ? '▶ Mostrar' : '▼ Plegar'}</button>
-        </div>
-        <div class="section-body ${isCollapsed('sec-philosophy') ? 'is-collapsed' : ''}">
-          <p class="lead">La brújula filosófica inmutable que rige todas las decisiones técnicas y operativas.</p>
-
-          <div class="grid-3">
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">PH-1</span>
-              </div>
-              <h3>El horizonte largo es la premisa</h3>
-              <p>Todo se construye para lo siguiente, no solo para hoy. Diseña para 3× a 10× el volumen actual. Lo que se aprende una vez no se vuelve a aprender desde cero.</p>
-              <div class="principle-rule"><strong>Regla:</strong> Solución que sólo escala hoy es postergación.</div>
-            </div>
-
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">PH-2</span>
-              </div>
-              <h3>El aprendizaje se compra con productividad ⏳</h3>
-              <p>Donde la velocidad y la comprensión chocan, <strong>gana la comprensión</strong>. Un atajo que el operador no entiende no es velocidad: es deuda con intereses.</p>
-              <div class="principle-rule"><strong>Regla:</strong> Cero atajos ciegos; entendimiento primero.</div>
-            </div>
-
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">PH-3</span>
-              </div>
-              <h3>Nada se pierde</h3>
-              <p>Sin datos no hay análisis. Un análisis puede rehacerse; un dato perdido jamás se recupera. Esto cubre entradas, razonamiento y <strong>los descartes con su motivo</strong>.</p>
-              <div class="principle-rule"><strong>Regla:</strong> Registrar es barato; reconstruir es imposible.</div>
-            </div>
-
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">PH-4</span>
-              </div>
-              <h3>Cero cajas negras</h3>
-              <p>Toda decisión es trazable a su razonamiento. Un sistema cuyo dueño no puede explicarlo no puede ser corregido por él. El valor reside en los artefactos en disco.</p>
-              <div class="principle-rule"><strong>Regla:</strong> La herramienta es intercambiable; el estado es sagrado.</div>
-            </div>
-
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">PH-5</span>
-              </div>
-              <h3>El trabajo es modular</h3>
-              <p>Cada pieza es dueña de su propio ciclo de vida y versión. El acoplamiento se paga en cada cambio; la separación una sola vez. Fronteras por <strong>propietario primero</strong>.</p>
-              <div class="principle-rule"><strong>Regla:</strong> Nunca agrupar por temática; separar por dueño.</div>
-            </div>
-
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">PH-6</span>
-              </div>
-              <h3>La atención es el recurso escaso</h3>
-              <p>Todo se registra; casi nada se carga en memoria a la vez. <strong>Un único frente activo (▶)</strong>. El coste crítico no es el disco, sino lo que hay que retener en la cabeza.</p>
-              <div class="principle-rule"><strong>Regla:</strong> Un solo frente a la vez; cero dispersión.</div>
-            </div>
-          </div>
         </div>
       </section>
 
       <!-- SECCIÓN 03: FLUJOS DE TRABAJO -->
       <section class="doc-section" id="sec-workflows">
         <div class="section-head" onclick="toggleOverviewSection('sec-workflows')">
-          <h2><span class="num">03</span> Los Cinco Flujos de Trabajo Operativos (Workflows)</h2>
+          <h2><span class="num">02</span> Los Cinco Flujos de Trabajo Operativos (Workflows)</h2>
           <button class="btn-toggle-sec">${isCollapsed('sec-workflows') ? '▶ Mostrar' : '▼ Plegar'}</button>
         </div>
         <div class="section-body ${isCollapsed('sec-workflows') ? 'is-collapsed' : ''}">
@@ -694,7 +694,7 @@ function renderOverview(container) {
       <!-- SECCIÓN 04: ECOSISTEMA -->
       <section class="doc-section" id="sec-ecosystem">
         <div class="section-head" onclick="toggleOverviewSection('sec-ecosystem')">
-          <h2><span class="num">04</span> Ecosistema de Módulos y Navegación Directa</h2>
+          <h2><span class="num">03</span> Ecosistema de Módulos y Navegación Directa</h2>
           <button class="btn-toggle-sec">${isCollapsed('sec-ecosystem') ? '▶ Mostrar' : '▼ Plegar'}</button>
         </div>
         <div class="section-body ${isCollapsed('sec-ecosystem') ? 'is-collapsed' : ''}">
