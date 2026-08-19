@@ -125,14 +125,15 @@ task closes* fires when the model notices the task closed. That is the same inde
 audit's own record declares, and wiring a real hook is what closes it.
 
 **Written, not hired: R&D** (`skills/rnd/`) — lateral work on the axioms, kept separate from the
-audit because a role paid for findings must not be invited to invent, and left request-triggered
-because it would otherwise fire on rounds with nothing to reconsider.
+audit because a role paid for findings must not be invited to invent; fires when decisions circle
+or a design hits an impasse.
 
 **Written and available.** A skill existing is not a hire: an event-triggered one only counts
 against §6 when the operator turns it on for real work.
 
 | Role | Status | What it is |
 |---|---|---|
+| **R&D** | ✅ written · `skills/rnd/` | lateral thinking against company design; **fires on impasses or circled decisions** |
 | **Auditor** | ✅ written · `skills/project-auditor/` | the company auditor's shape scoped to one project. **Hired per project**, each with its own criterion |
 | **Gatherer** | ✅ written · `skills/gather/` | collects and cites; **its value is burning someone else's context** |
 | **Dispatcher** | ✅ written · `skills/dispatch/` | hands work to the executor entitled to claim the answer |

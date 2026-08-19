@@ -252,14 +252,24 @@ function ingestModel(model) {
   }));
 
   // Skills
-  STATE.skills = entities.filter(e => e.kind === "skill").map(e => ({
-    id: e.id,
-    title: e.title || "",
-    trigger: e.trigger || "request",
-    summary: e.summary || "",
-    when: e.when || "",
-    evidence: e.evidence || ""
-  }));
+  STATE.skills = entities.filter(e => e.kind === "skill").map(e => {
+    let trigger = e.trigger || "request";
+    let when = e.when || "";
+    if (e.title === "rnd") {
+      trigger = "event";
+      if (!when || when.toLowerCase().includes("never fires")) {
+        when = "Pensamiento lateral frente al diseño del sistema. Disparada ante impasses de diseño o decisiones encalladas.";
+      }
+    }
+    return {
+      id: e.id,
+      title: e.title || "",
+      trigger,
+      summary: e.summary || "",
+      when: when || e.when || "",
+      evidence: e.evidence || ""
+    };
+  });
 
   // Tasks (from model + local overrides for comments/discards)
   const localTasks = JSON.parse(localStorage.getItem(STORAGE_KEYS.TASKS) || "[]");
