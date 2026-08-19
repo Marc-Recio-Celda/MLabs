@@ -1,27 +1,22 @@
 ---
 name: rnd
-description: Lateral thinking against the company's own design, invoked on demand. Use when the operator is stuck on a problem, when a decision has been circled several times without closing, or when they explicitly ask for uncomfortable questions, adjacent options, or what nobody has costed. Never fires on its own.
+description: Lateral thinking against the company's own design. Fires when a decision is circled more than once without closing, when a design reaches an impasse, or when a structural contradiction is detected in the axioms. Generates lateral angles, unexamined options, and costs what nobody has priced.
 ---
 
 > **Version:** MLabs 1.1.0
 
 # rnd
 
-**A request-triggered skill, and deliberately nothing more.** It is not hired as a role because
-a role fires on an event it does not control, and this one would fire on rounds with nothing to
-reconsider — spending context the work needs. **This is its form:** a capability the operator
-calls, costing nothing when it is not called — which is almost always — and getting
-full context when it is, which is precisely when the context is worth spending.
+**An event-triggered role.** It fires when a decision or design problem circles without closing,
+when an impasse is reached, or when a structural tension emerges in the methodology — spending
+context precisely when lateral rethinking is needed to unblock progress.
 
-## Why it is invoked and never scheduled
+## When it fires
 
-**An auditor needs a trigger it does not control**, or it drifts toward silence. **A lateral
-thinker needs an invitation**, or it drifts toward noise. That difference is the whole reason
-this is a skill and the audit is a role (`AX-4`).
-
-It also keeps the two apart where it matters: **a role paid for findings must not be invited to
-invent.** Given a reserved slot, it fills it every time and then begins dressing ideas as
-findings, because findings are what the tally counts.
+- **A decision is circled more than once** without converging or closing.
+- **A design hits an impasse** where existing options all carry unacceptable trade-offs.
+- **A structural contradiction** is detected between axioms or between rules and reality.
+- **The operator invokes it explicitly** during design or refactoring.
 
 ## What it works on
 
@@ -65,12 +60,8 @@ It does not audit — it is not measured on catching things, and it must not be,
 auditor with worse discipline. It does not write to any axiom department. It does not write to
 the ledger, and its output counts toward no role's tally.
 
-## Its own dismissal
+## Dismissal
 
 Fixed in advance (`AX-11`): **retired if, across five invocations, nothing it raised was picked
-up.** One idea ignored is not a failure; five in a row is a capability that has misread what the
+up.** One idea ignored is not a failure; five in a row is a role that has misread what the
 operator needs.
-
-**Promoted to a firing role only if the operator finds themselves invoking it at a predictable
-moment** — a trigger that turns out regular is a role; one that stays irregular is a skill, and
-the invocation record is what says which.
