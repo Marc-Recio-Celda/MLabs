@@ -295,7 +295,7 @@ function ingestModel(model) {
   // Projects Hub Discovery: extract from project-states, decisions, tasks and fronts
   const projectStates = entities.filter(e => e.kind === "project-state");
   const discoveredNames = new Set([
-    ...projectStates.map(ps => ps.project || ps.title),
+    ...projectStates.map(ps => ps.project).filter(p => p && !p.startsWith("_") && !p.toLowerCase().includes("template")),
     ...STATE.decisions.map(d => d.project),
     ...STATE.tasks.map(t => t.project.split(" ")[0]),
     ...STATE.fronts.map(f => f.project)
@@ -308,11 +308,23 @@ function ingestModel(model) {
   });
 
   STATE.projects = projectNamesList.map((name, idx) => {
-    const pState = projectStates.find(ps => (ps.project || ps.title || "").includes(name));
+    const pState = projectStates.find(ps => 
+      ps.project === name || 
+      (ps.project && ps.project.toLowerCase() === name.toLowerCase()) ||
+      (ps.title && ps.title.toLowerCase().includes(name.toLowerCase()))
+    );
     const decCount = STATE.decisions.filter(d => d.project === name).length;
     const roadmap = generateProjectBlocks(name, decCount, pState);
     const completedBlocks = roadmap.filter(b => b.done).length;
     const progress = roadmap.length ? Math.round((completedBlocks / roadmap.length) * 100) : 75;
+
+    let rawLastUpdated = pState?.last_updated || "";
+    let integratedThrough = pState?.integrated_through || "";
+    if (rawLastUpdated.includes("integrated through")) {
+      const parts = rawLastUpdated.split(/·\s*\*\*integrated through\*\*\s*/i);
+      rawLastUpdated = parts[0].trim();
+      if (!integratedThrough && parts[1]) integratedThrough = parts[1].replace(/[`*]/g, "").trim();
+    }
 
     return {
       name,
@@ -323,9 +335,9 @@ function ingestModel(model) {
       totalBlocks: roadmap.length,
       decisionsCount: decCount,
       nextAction: pState?.next_action || (roadmap.find(b => b.active)?.title || "Revisión periódica"),
-      lastUpdated: pState?.last_updated || new Date().toISOString().slice(0, 10),
-      integratedThrough: pState?.integrated_through || `D${decCount || 1}`,
-      currentPhase: pState?.current_phase || "Fase de ejecución",
+      lastUpdated: rawLastUpdated || new Date().toISOString().slice(0, 10),
+      integratedThrough: integratedThrough || `D${decCount || 1}`,
+      currentPhase: pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución",
       blocks: roadmap
     };
   });
