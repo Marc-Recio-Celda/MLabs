@@ -125,15 +125,14 @@ task closes* fires when the model notices the task closed. That is the same inde
 audit's own record declares, and wiring a real hook is what closes it.
 
 **Written, not hired: R&D** (`skills/rnd/`) — lateral work on the axioms, kept separate from the
-audit because a role paid for findings must not be invited to invent; fires when decisions circle
-or a design hits an impasse.
+audit because a role paid for findings must not be invited to invent, and left request-triggered
+because it would otherwise fire on rounds with nothing to reconsider.
 
 **Written and available.** A skill existing is not a hire: an event-triggered one only counts
 against §6 when the operator turns it on for real work.
 
 | Role | Status | What it is |
 |---|---|---|
-| **R&D** | ✅ written · `skills/rnd/` | lateral thinking against company design; **fires on impasses or circled decisions** |
 | **Auditor** | ✅ written · `skills/project-auditor/` | the company auditor's shape scoped to one project. **Hired per project**, each with its own criterion |
 | **Gatherer** | ✅ written · `skills/gather/` | collects and cites; **its value is burning someone else's context** |
 | **Dispatcher** | ✅ written · `skills/dispatch/` | hands work to the executor entitled to claim the answer |
@@ -157,7 +156,7 @@ is lost* — a rule at round close, not an agent, because its context is the who
 | **Every axiom sits in exactly one tier** (company · instance · project) | at each cut, a company axiom that names a toolchain, a project or a person belongs one tier down; an instance rule copied into more than one project file is a duplicate with no winner (AX-20) |
 | **Every axiom names the clause it serves, and every clause has at least one axiom** | the coverage table at the foot of `AXIOMS.md`, regenerated at each cut; a clause at zero is a stated priority nothing implements |
 | **Every event-triggered skill states its dismissal criterion** | grep for `## Dismissal` in `skills/*/SKILL.md` — the *pattern and tally contract*; the chosen thresholds live in the instance's hiring record, out of that skill's own sight |
-| **Never push to `master` without explicit operator permission.** All working sessions, development and automated runs stay strictly on working branches (`workspace` or task branches). Merging or pushing to `master` is a release gate event requiring explicit human approval | verification that no agent workflow targets `origin master` automatically |
+| **Never push to `master` without explicit operator permission.** All working sessions, development and automated runs stay strictly on working branches (e.g. active development or task branches). Merging or pushing to `master` is a release gate event requiring explicit human approval | verification that no agent workflow targets `origin master` automatically |
 
 ⚠️ **Every check here reads `git ls-files` or a diff, never the working tree** — the tree at this
 root legitimately holds the instance and every project, which are none of this repo's business.
