@@ -464,6 +464,7 @@ function ingestModel(model) {
       if (!integratedThrough && parts[1]) integratedThrough = parts[1].replace(/[`*]/g, "").trim();
     }
 
+    const nextAction = pState?.next_action || pState?.resume_point || pState?.phase || "Progreso de las tareas prioritarias del roadmap";
     const definition = pState?.definition || "Plataforma soberana bajo metodología MLabs con ciclo de vida desacoplado y gobernanza inmutable.";
     const currentPhase = pState?.phase_summary || pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución";
 
