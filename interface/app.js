@@ -308,11 +308,9 @@ function ingestModel(model) {
   });
 
   STATE.projects = projectNamesList.map((name, idx) => {
-    const pState = projectStates.find(ps => 
-      ps.project === name || 
-      (ps.project && ps.project.toLowerCase() === name.toLowerCase()) ||
-      (ps.title && ps.title.toLowerCase().includes(name.toLowerCase()))
-    );
+    const pState = projectStates.find(ps => ps.project === name) ||
+                   projectStates.find(ps => ps.project && ps.project.toLowerCase() === name.toLowerCase()) ||
+                   projectStates.find(ps => ps.title && ps.title.toLowerCase().includes(name.toLowerCase()));
     const decCount = STATE.decisions.filter(d => d.project === name).length;
     const roadmap = generateProjectBlocks(name, decCount, pState);
     const completedBlocks = roadmap.filter(b => b.done).length;
@@ -326,6 +324,8 @@ function ingestModel(model) {
       if (!integratedThrough && parts[1]) integratedThrough = parts[1].replace(/[`*]/g, "").trim();
     }
 
+    const nextAction = pState?.next_action || pState?.resume_point || pState?.phase || (roadmap.find(b => b.active)?.title || "Revisión periódica");
+
     return {
       name,
       rank: `#${idx + 1}`,
@@ -334,7 +334,7 @@ function ingestModel(model) {
       completedBlocks,
       totalBlocks: roadmap.length,
       decisionsCount: decCount,
-      nextAction: pState?.next_action || (roadmap.find(b => b.active)?.title || "Revisión periódica"),
+      nextAction,
       lastUpdated: rawLastUpdated || new Date().toISOString().slice(0, 10),
       integratedThrough: integratedThrough || `D${decCount || 1}`,
       currentPhase: pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución",
