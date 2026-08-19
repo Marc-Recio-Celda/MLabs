@@ -338,6 +338,8 @@ function ingestModel(model) {
       lastUpdated: rawLastUpdated || new Date().toISOString().slice(0, 10),
       integratedThrough: integratedThrough || `D${decCount || 1}`,
       currentPhase: pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución",
+      file: pState ? pState.file : "",
+      lab: pState?.lab || (pState ? getProjectLab(pState) : "MProjects"),
       blocks: roadmap
     };
   });
