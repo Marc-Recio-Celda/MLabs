@@ -1639,6 +1639,66 @@ body {
   font-weight: 400;
 }
 
+/* -- Sovereign Header Workspace & Repository Locations -- */
+.proj-locations-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.proj-loc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.proj-loc-pill:hover {
+  background: rgba(0, 0, 0, 0.32);
+  border-color: #ffe580;
+  transform: translateY(-1px);
+}
+
+.proj-loc-pill .loc-icon {
+  font-size: 14px;
+}
+
+.proj-loc-pill .loc-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #d1e7dd;
+  letter-spacing: 0.4px;
+}
+
+.proj-loc-pill .loc-code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.proj-loc-pill .loc-copy-hint {
+  font-size: 11px;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.proj-loc-pill:hover .loc-copy-hint {
+  opacity: 1;
+}
+
 /* -- Project Card in Hub Definition & Phase Snippet -- */
 .project-card-phase-badge {
   margin-top: -4px;

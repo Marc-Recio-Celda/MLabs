@@ -483,6 +483,41 @@ def parse_standing(path, text, project_pattern=None):
                                     "status": "completed" if "✅" in sub_status else ("active" if any(s in sub_status for s in ["🔨", "▶"]) else "pending")
                                 })
 
+    # 4. Extract Code Repo and Remote URL from metadata tables
+    code_repo = ""
+    remote_url = ""
+    for line in lines:
+        if re.search(r"\|\s*\*{0,2}Remote\*{0,2}\s*\|", line, re.I):
+            parts = [p.strip() for p in line.split("|")[1:-1]]
+            if len(parts) >= 2:
+                remote_url = parts[1].replace("`", "").split("—")[0].strip()
+        elif re.search(r"\|\s*\*{0,2}Code repo\*{0,2}\s*\|", line, re.I):
+            parts = [p.strip() for p in line.split("|")[1:-1]]
+            if len(parts) >= 2:
+                code_repo = parts[1].replace("`", "").split("—")[0].strip()
+
+    # Fallback to definition.md if not in state.md
+    if (not code_repo or not remote_url) and (path.parent / "definition.md").exists():
+        try:
+            def_text = (path.parent / "definition.md").read_text(encoding="utf-8")
+            for line in def_text.splitlines():
+                if not remote_url and re.search(r"\|\s*\*{0,2}Remote\*{0,2}\s*\|", line, re.I):
+                    parts = [p.strip() for p in line.split("|")[1:-1]]
+                    if len(parts) >= 2:
+                        remote_url = parts[1].replace("`", "").split("—")[0].strip()
+                elif not code_repo and re.search(r"\|\s*\*{0,2}Code repo\*{0,2}\s*\|", line, re.I):
+                    parts = [p.strip() for p in line.split("|")[1:-1]]
+                    if len(parts) >= 2:
+                        code_repo = parts[1].replace("`", "").split("—")[0].strip()
+        except Exception:
+            pass
+
+    if not code_repo:
+        try:
+            code_repo = str(path.parent.parent.resolve())
+        except Exception:
+            code_repo = f"~/Documents/{project}"
+
     ent = {
         "kind": "project-state",
         "line": 1,
@@ -490,6 +525,8 @@ def parse_standing(path, text, project_pattern=None):
         "project": project,
         "definition": definition,
         "phase_summary": phase_summary,
+        "code_repo": code_repo,
+        "remote_url": remote_url,
         "blocks": board_blocks,
         **fields
     }

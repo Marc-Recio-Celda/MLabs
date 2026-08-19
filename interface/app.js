@@ -467,6 +467,8 @@ function ingestModel(model) {
     const nextAction = pState?.next_action || pState?.resume_point || pState?.phase || "Progreso de las tareas prioritarias del roadmap";
     const definition = pState?.definition || "Plataforma soberana bajo metodología MLabs con ciclo de vida desacoplado y gobernanza inmutable.";
     const currentPhase = pState?.phase_summary || pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución";
+    const codeRepo = pState?.code_repo || "";
+    const remoteUrl = pState?.remote_url || "";
 
     return {
       name,
@@ -481,6 +483,8 @@ function ingestModel(model) {
       integratedThrough: integratedThrough || `D${decCount || 1}`,
       currentPhase,
       definition,
+      codeRepo,
+      remoteUrl,
       file: pState ? pState.file : "",
       lab: pState?.lab || (pState ? getProjectLab(pState) : "MProjects"),
       workflow
@@ -1413,6 +1417,24 @@ function renderProjectDetailPage(container) {
         <div class="proj-definition-hero-card">
           <div class="proj-def-label">DEFINICIÓN &amp; PROPÓSITO DEL PROYECTO</div>
           <p class="proj-def-text">${inline(proj.definition)}</p>
+        </div>
+
+        <!-- DIRECTORIO DE TRABAJO & REPOSITORIO GITHUB (COPIABLES) -->
+        <div class="proj-locations-bar">
+          <div class="proj-loc-pill" onclick="copyToClipboard('${esc(proj.codeRepo)}', 'Directorio de trabajo copiado al portapapeles')" title="Clic para copiar ruta del workspace">
+            <span class="loc-icon">📂</span>
+            <span class="loc-label">Workspace:</span>
+            <code class="loc-code">${esc(proj.codeRepo)}</code>
+            <span class="loc-copy-hint">📋</span>
+          </div>
+          ${proj.remoteUrl ? `
+            <div class="proj-loc-pill" onclick="copyToClipboard('${esc(proj.remoteUrl)}', 'URL del repositorio copiada al portapapeles')" title="Clic para copiar URL de GitHub">
+              <span class="loc-icon">🐙</span>
+              <span class="loc-label">GitHub:</span>
+              <code class="loc-code">${esc(proj.remoteUrl)}</code>
+              <span class="loc-copy-hint">📋</span>
+            </div>
+          ` : ''}
         </div>
 
         <div class="specs" style="margin-top: 14px;">
