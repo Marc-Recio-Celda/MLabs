@@ -562,6 +562,38 @@ def parse_standing(path, text, project_pattern=None):
         except Exception:
             code_repo = f"~/Documents/{project}"
 
+    # Extract Git metadata (branch, latest commit) if repo exists
+    git_info = {}
+    if code_repo:
+        try:
+            import subprocess
+            repo_dir = Path(os.path.expanduser(code_repo)).resolve()
+            if not repo_dir.exists() and (path.parent.parent / project).exists():
+                repo_dir = path.parent.parent / project
+            if (repo_dir / ".git").exists() or repo_dir.is_dir():
+                branch = subprocess.check_output(
+                    ["git", "-C", str(repo_dir), "branch", "--show-current"],
+                    text=True, stderr=subprocess.DEVNULL, timeout=0.5
+                ).strip()
+                commit_out = subprocess.check_output(
+                    ["git", "-C", str(repo_dir), "log", "-1", "--format=%h	%s	%cd", "--date=short"],
+                    text=True, stderr=subprocess.DEVNULL, timeout=0.5
+                ).strip().split("	")
+                if len(commit_out) >= 3:
+                    git_info = {
+                        "git_branch": branch or "main",
+                        "git_commit": commit_out[0],
+                        "git_commit_msg": commit_out[1],
+                        "git_commit_date": commit_out[2]
+                    }
+                elif len(commit_out) == 1 and commit_out[0]:
+                    git_info = {
+                        "git_branch": branch or "main",
+                        "git_commit": commit_out[0]
+                    }
+        except Exception:
+            pass
+
     ent = {
         "kind": "project-state",
         "line": 1,
@@ -571,6 +603,10 @@ def parse_standing(path, text, project_pattern=None):
         "phase_summary": phase_summary,
         "code_repo": code_repo,
         "remote_url": remote_url,
+        "git_branch": git_info.get("git_branch", ""),
+        "git_commit": git_info.get("git_commit", ""),
+        "git_commit_msg": git_info.get("git_commit_msg", ""),
+        "git_commit_date": git_info.get("git_commit_date", ""),
         "blocks": board_blocks,
         **fields
     }

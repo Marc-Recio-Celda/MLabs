@@ -121,8 +121,8 @@ const CHEATSHEET_DATA = [
         title: "Session Lifecycle (Canonical Loop)",
         desc: "The canonical MLabs method loop: Open -> Orient -> Execute -> Close -> Audit.",
         cmds: [
-          { label: "Open session", code: "claude -p 'open a session: read Schedule, report the active front, and ask if we work it'", hint: "Prompt" },
-          { label: "Close task cleanly", code: "claude -p 'close this task: strike each item in Current_plan with its destination, update state, empty the plan, and run company-auditor'", hint: "Prompt" },
+          { label: "Open session", code: "claude -p 'open a session: read COMPASS.md, report the active front, and ask if we work it'", hint: "Prompt" },
+          { label: "Close task cleanly", code: "claude -p 'close this task: strike each item in PLAN.md with its destination, update state, close the plan, and run company-auditor'", hint: "Prompt" },
           { label: "Audit working tree", code: "claude -p 'run the company-auditor over everything touched in this task'", hint: "Prompt" }
         ]
       },
@@ -530,11 +530,19 @@ function ingestModel(model) {
     const currentPhase = pState?.phase_summary || pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución";
     const codeRepo = pState?.code_repo || "";
     const remoteUrl = pState?.remote_url || "";
+    const gitBranch = pState?.git_branch || "";
+    const gitCommit = pState?.git_commit || "";
+    const gitCommitMsg = pState?.git_commit_msg || "";
+    const gitCommitDate = pState?.git_commit_date || "";
 
     return {
       name,
       rank: `#${idx + 1}`,
       status: "ACTIVE",
+      gitBranch,
+      gitCommit,
+      gitCommitMsg,
+      gitCommitDate,
       progress,
       completedBlocks,
       totalBlocks,
@@ -577,7 +585,7 @@ function updateHUD() {
     } else {
       frontEl.innerHTML = `
         <span class="front-marker">⏸ COMPASS</span>
-        <span class="front-title">Sin frente activo en Schedule</span>
+        <span class="front-title">Sin frente activo en COMPASS</span>
       `;
     }
   }
@@ -1194,7 +1202,7 @@ function renderWorkflowDetail(type) {
       return `
         <div class="workflow-detail-card">
           <p class="lead" style="margin-bottom: 14px;">
-            <strong>Objetivo:</strong> Ejecutar trabajo real en cualquier cartridge de proyecto con preparación de tareas, brújula Schedule, plan numérico en vuelo y auditoría de cierre.
+            <strong>Objetivo:</strong> Ejecutar trabajo real en cualquier cartridge de proyecto con preparación de tareas, brújula COMPASS, plan numérico en vuelo y auditoría de cierre.
           </p>
 
           <div class="wf-stepper">
@@ -1417,6 +1425,47 @@ function renderLabSection(labName, projects) {
 // ─────────────────────────────────────────────────────────────────────────────
 // SOVEREIGN PROJECT DEDICATED PAGE
 // ─────────────────────────────────────────────────────────────────────────────
+
+function getRemoteHttpUrl(remote) {
+  if (!remote) return "";
+  let url = String(remote).trim();
+  if (url.startsWith("git@github.com:")) {
+    url = "https://github.com/" + url.slice("git@github.com:".length);
+  }
+  if (url.endsWith(".git")) {
+    url = url.slice(0, -4);
+  }
+  return url.startsWith("http") ? url : "";
+}
+
+window.toggleRepoDropdown = function(event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const menu = document.getElementById("repoDropdownMenu");
+  const btn = document.querySelector(".repo-dropdown-btn");
+  if (!menu) return;
+  const isShowing = menu.classList.contains("show");
+  if (isShowing) {
+    menu.classList.remove("show");
+    btn?.classList.remove("active");
+  } else {
+    menu.classList.add("show");
+    btn?.classList.add("active");
+  }
+};
+
+document.addEventListener("click", (e) => {
+  const wrapper = document.getElementById("repoDropdownWrapper");
+  if (wrapper && !wrapper.contains(e.target)) {
+    const menu = document.getElementById("repoDropdownMenu");
+    const btn = document.querySelector(".repo-dropdown-btn");
+    menu?.classList.remove("show");
+    btn?.classList.remove("active");
+  }
+});
+
 function renderProjectDetailPage(container) {
   const projName = STATE.selectedProject || (STATE.projects[0] ? STATE.projects[0].name : "");
   const proj = STATE.projects.find(p => p.name === projName) || STATE.projects[0];
@@ -1486,30 +1535,13 @@ function renderProjectDetailPage(container) {
           <p class="proj-def-text">${inline(proj.definition)}</p>
         </div>
 
-        <!-- SPECS HUD (BLOQUES, DECISIONES, TAREAS, NEXT ACTION) -->
-        <div class="specs" style="margin-top: 14px;">
+        <!-- SPECS HUD (BLOQUES, DECISIONES, TAREAS, NEXT ACTION, GIT STATUS) -->
+        <div class="specs" style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.12);">
           <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>🗺️ Bloques:</strong> ${proj.completedBlocks}/${proj.totalBlocks} (${proj.progress}%)</span>
           <span class="spec-pill" onclick="setProjectSubtab('decisions')"><strong>📜 Decisiones:</strong> ${liveDecs.length} Vivas (${projectDecs.length} Totales)</span>
           <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>📋 Tareas:</strong> ${projectTasks.length} (${activeTasks.length} Activas)</span>
-          <span class="spec-pill active-pill" onclick="setProjectSubtab('state')"><strong>🎯 Next Action:</strong> ${inline(proj.nextAction.slice(0, 45))}...</span>
-        </div>
-
-        <!-- DIRECTORIO DE TRABAJO & REPOSITORIO GITHUB (COPIABLES, DEBAJO DE SPECS) -->
-        <div class="proj-locations-bar">
-          <div class="proj-loc-pill" onclick="copyToClipboard('${esc(proj.codeRepo)}', 'Directorio de trabajo copiado', event)" title="Clic para copiar ruta del workspace">
-            <span class="loc-icon">📂</span>
-            <span class="loc-label">Workspace:</span>
-            <code class="loc-code">${esc(proj.codeRepo)}</code>
-            <span class="loc-copy-hint">📋 Copiar</span>
-          </div>
-          ${proj.remoteUrl ? `
-            <div class="proj-loc-pill" onclick="copyToClipboard('${esc(proj.remoteUrl)}', 'URL del repositorio copiada', event)" title="Clic para copiar URL de GitHub">
-              <span class="loc-icon">🐙</span>
-              <span class="loc-label">GitHub:</span>
-              <code class="loc-code">${esc(proj.remoteUrl)}</code>
-              <span class="loc-copy-hint">📋 Copiar</span>
-            </div>
-          ` : ''}
+          <span class="spec-pill active-pill" onclick="setProjectSubtab('state')"><strong>🎯 Next Action:</strong> ${inline(proj.nextAction.slice(0, 48))}...</span>
+          <span class="spec-pill" onclick="setProjectSubtab('repos')" title="Ver repositorio, rama y commits"><strong>🐙 Git:</strong> ${esc(proj.gitBranch || (proj.remoteUrl ? 'conectado' : 'local'))}${proj.gitCommit ? ` (<code>${esc(proj.gitCommit)}</code>)` : ''}</span>
         </div>
       </div>
     </header>
@@ -1521,6 +1553,7 @@ function renderProjectDetailPage(container) {
       <button class="toc-pill ${activeTab === 'architecture' ? 'active' : ''}" onclick="setProjectSubtab('architecture')"><span>🏛️</span> 3. Arquitectura &amp; Definición</button>
       <button class="toc-pill ${activeTab === 'decisions' ? 'active' : ''}" onclick="setProjectSubtab('decisions')"><span>📜</span> 4. Decisiones (${projectDecs.length})</button>
       <button class="toc-pill ${activeTab === 'skills' ? 'active' : ''}" onclick="setProjectSubtab('skills')"><span>⚡</span> 5. Skills &amp; Operaciones</button>
+      <button class="toc-pill ${activeTab === 'repos' ? 'active' : ''}" onclick="setProjectSubtab('repos')"><span>🐙</span> 6. Repos &amp; Git</button>
     </nav>
 
     <!-- TAB CONTENT RENDERER -->
@@ -1537,6 +1570,7 @@ function renderProjectSubtabContent(proj, tab, projectTasks, projectDecs) {
     case "architecture": return renderProjectArchitectureTab(proj);
     case "decisions": return renderProjectDecisionsTab(proj, projectDecs);
     case "skills": return renderProjectSkillsTab(proj);
+    case "repos": return renderProjectReposTab(proj);
     default: return renderProjectWorkflowTab(proj, projectTasks, projectDecs);
   }
 }
@@ -1649,7 +1683,7 @@ function renderProjectWorkflowTab(proj, projectTasks, projectDecs) {
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(t.id)}</span>
                     <span class="tag-pill">${esc(t.status)}</span>
-                    <h3 class="ticket-title" style="${t.status === '✅' ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${inline(t.title)}</h3>
+                    <h3 class="ticket-title" style="${t.status === '✅' ? 'opacity: 0.88;' : ''}">${inline(t.title)}</h3>
                   </div>
                   ${renderDate(t.date, t.date_inferred)}
                 </div>
@@ -1831,9 +1865,9 @@ function renderProjectDecisionsTab(proj, projectDecs) {
       ${projectDecs.length ? `
         <div class="tickets-list">
           ${projectDecs.map(d => `
-            <div class="ticket-card ${d.isSuperseded ? 'discarded' : ''}">
+            <div class="ticket-card decision-card ${d.isSuperseded ? 'discarded' : ''}">
               <div class="ticket-top">
-                <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                   <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
                   ${d.isSuperseded ? `
                     <span class="tag-pill tag-superseded">🔄 Reemplazada por ${esc(d.supersededBy.join(", "))}</span>
@@ -1844,13 +1878,25 @@ function renderProjectDecisionsTab(proj, projectDecs) {
                 </div>
                 ${renderDate(d.date, d.date_inferred)}
               </div>
-              <p style="font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin-top: 6px;">
-                <strong>Por qué (Why):</strong> ${inline(d.why)}
-              </p>
-              ${d.discarded ? `
-                <div class="task-discard-callout" style="margin-top: 8px;">
-                  <strong>⚫ Alternativa descartada (PH-3):</strong> ${inline(d.discarded)}
-                </div>
+              ${(d.why || d.discarded) ? `
+                <details class="decision-details">
+                  <summary>
+                    <span class="toggle-icon">▶</span>
+                    <span>Ver razonamiento (Why)${d.discarded ? ' y descartados' : ''}</span>
+                  </summary>
+                  <div class="decision-body-content">
+                    ${d.why ? `
+                      <div class="decision-why-text">
+                        <strong>Por qué (Why):</strong> ${inline(d.why)}
+                      </div>
+                    ` : ''}
+                    ${d.discarded ? `
+                      <div class="task-discard-callout" style="margin-top: 4px;">
+                        <strong>⚫ Alternativa descartada (PH-3):</strong> ${inline(d.discarded)}
+                      </div>
+                    ` : ''}
+                  </div>
+                </details>
               ` : ''}
             </div>
           `).join("")}
@@ -1959,6 +2005,165 @@ window.selectProject = function(name) {
   openProjectDetail(name);
 };
 
+
+// ── TAB 6: REPOS & GIT DASHBOARD ──
+function renderProjectReposTab(proj) {
+  const remoteHttp = getRemoteHttpUrl(proj.remoteUrl);
+
+  return `
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">06</span> Repositorios, Workspace y Control de Versiones</h2>
+        ${proj.gitBranch ? `<span class="tag-pill tag-live">🌿 Rama activa: ${esc(proj.gitBranch)}</span>` : ''}
+      </div>
+      <p class="lead">
+        Ubicaciones soberanas de código fuente, repositorio remoto en GitHub, directorio de trabajo local y cartridge de gobernanza desacoplado en NEXUS.
+      </p>
+
+      <!-- REPOSITORIES & LOCATIONS GRID -->
+      <div class="repo-cards-grid">
+        <!-- 1. GITHUB REMOTE -->
+        <div class="repo-loc-card">
+          <div class="repo-loc-header">
+            <div class="repo-loc-title-group">
+              <span class="repo-loc-icon">🐙</span>
+              <h3 class="repo-loc-title">Repositorio Remoto</h3>
+            </div>
+            <span class="card-badge ${proj.remoteUrl ? 'badge-vine' : ''}">${proj.remoteUrl ? 'GitHub Conectado' : 'Sin Remote'}</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.5;">
+            Repositorio público o privado en GitHub sincronizado con el ciclo de vida del proyecto.
+          </p>
+
+          <div class="repo-path-box">
+            <code>${esc(proj.remoteUrl || 'No configurado en state.md')}</code>
+          </div>
+
+          ${proj.remoteUrl ? `
+            <div class="repo-actions-row">
+              <button class="btn-repo-action" onclick="copyToClipboard('${esc(proj.remoteUrl)}', 'URL de GitHub copiada', event)">
+                <span>📋 Copiar URL</span>
+              </button>
+              ${remoteHttp ? `
+                <a href="${esc(remoteHttp)}" target="_blank" rel="noopener noreferrer" class="btn-repo-action" style="color: var(--vine-deep); border-color: var(--vine-border);">
+                  <span>↗️ Abrir en GitHub</span>
+                </a>
+              ` : ''}
+              <button class="btn-repo-action" onclick="copyToClipboard('git clone ${esc(proj.remoteUrl)}', 'Comando git clone copiado', event)">
+                <span>💻 Copiar git clone</span>
+              </button>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 2. LOCAL WORKSPACE & COMMIT -->
+        <div class="repo-loc-card">
+          <div class="repo-loc-header">
+            <div class="repo-loc-title-group">
+              <span class="repo-loc-icon">💻</span>
+              <h3 class="repo-loc-title">Workspace Local (Directorio de Código)</h3>
+            </div>
+            ${proj.gitBranch ? `<span class="tag-pill tag-purple" style="font-weight: 700;">${esc(proj.gitBranch)}</span>` : '<span class="card-badge">Local</span>'}
+          </div>
+
+          <p style="font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.5;">
+            Árbol de trabajo en la máquina local donde se ejecutan los scripts, tests y builds.
+          </p>
+
+          <div class="repo-path-box">
+            <code>${esc(proj.codeRepo || '~/Documents/' + proj.name)}</code>
+          </div>
+
+          ${proj.gitCommit ? `
+            <div class="repo-commit-box">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span class="tag-pill tag-purple" style="font-weight: 800; font-family: var(--font-mono);">${esc(proj.gitCommit)}</span>
+                <strong style="font-size: 13px; color: var(--ink);">${inline(proj.gitCommitMsg || 'Commit activo')}</strong>
+              </div>
+              ${proj.gitCommitDate ? `<span style="font-size: 11.5px; color: var(--ink-muted); margin-top: 4px; display: block;">📅 Fecha del commit: ${esc(proj.gitCommitDate)}</span>` : ''}
+            </div>
+          ` : ''}
+
+          <div class="repo-actions-row">
+            <button class="btn-repo-action" onclick="copyToClipboard('${esc(proj.codeRepo)}', 'Ruta del workspace copiada', event)">
+              <span>📋 Copiar Ruta</span>
+            </button>
+            <button class="btn-repo-action" onclick="copyToClipboard('cd ${esc(proj.codeRepo)}', 'Comando cd copiado', event)">
+              <span>💻 Copiar cd</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. NEXUS CARTRIDGE -->
+        <div class="repo-loc-card">
+          <div class="repo-loc-header">
+            <div class="repo-loc-title-group">
+              <span class="repo-loc-icon">🏛️</span>
+              <h3 class="repo-loc-title">Cartridge de Gobernanza (NEXUS)</h3>
+            </div>
+            <span class="card-badge badge-gold">Desacoplado</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.5;">
+            Estructura de metadatos, estado vivo, definición arquitectónica y log append-only de decisiones (PH-5).
+          </p>
+
+          <div class="repo-path-box">
+            <code>${esc(proj.name)}/nexus/ (state.md · Decision_Log.md · definition.md)</code>
+          </div>
+
+          <div class="repo-actions-row">
+            <button class="btn-repo-action" onclick="copyToClipboard('${esc(proj.name)}/nexus/state.md', 'Ruta state.md copiada', event)">
+              <span>🎯 Copiar state.md</span>
+            </button>
+            <button class="btn-repo-action" onclick="copyToClipboard('${esc(proj.name)}/nexus/Decision_Log.md', 'Ruta Decision_Log.md copiada', event)">
+              <span>📜 Copiar Decision_Log.md</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- GIT TERMINAL TOOLS & QUICK COMMANDS -->
+      <div class="repo-git-tools-card">
+        <div class="git-tools-header">
+          <span>⚡</span> <span>Comandos Rápidos de Terminal para ${esc(proj.name)}</span>
+        </div>
+        <div class="git-commands-grid">
+          <div class="git-cmd-item" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git status', 'Comando git status copiado', event)">
+            <div>
+              <code>git status</code>
+              <div class="git-cmd-desc">Inspeccionar cambios y ramas</div>
+            </div>
+            <span>📋</span>
+          </div>
+          <div class="git-cmd-item" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git log -n 5 --oneline', 'Comando git log copiado', event)">
+            <div>
+              <code>git log -n 5 --oneline</code>
+              <div class="git-cmd-desc">Ver últimos 5 commits</div>
+            </div>
+            <span>📋</span>
+          </div>
+          <div class="git-cmd-item" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git pull origin ${esc(proj.gitBranch || 'main')}', 'Comando git pull copiado', event)">
+            <div>
+              <code>git pull origin ${esc(proj.gitBranch || 'main')}</code>
+              <div class="git-cmd-desc">Descargar últimos cambios</div>
+            </div>
+            <span>📋</span>
+          </div>
+          <div class="git-cmd-item" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git diff HEAD~1..HEAD', 'Comando git diff copiado', event)">
+            <div>
+              <code>git diff HEAD~1..HEAD</code>
+              <div class="git-cmd-desc">Revisar diff del último commit</div>
+            </div>
+            <span>📋</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. COCKPIT & LIVE VIEW
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1971,6 +2176,30 @@ window.setCockpitFilter = function(proj) {
   STATE.cockpitFilterProj = proj;
   renderView();
 };
+
+
+function autoScrollPlanContainer(smooth = true) {
+  requestAnimationFrame(() => {
+    const container = document.querySelector(".plan-items-container");
+    if (!container) return;
+
+    const completedItems = container.querySelectorAll(".plan-item-row.completed");
+    if (completedItems.length > 0) {
+      const lastCompleted = completedItems[completedItems.length - 1];
+      const targetTop = lastCompleted.offsetTop;
+      if (smooth) {
+        container.scrollTo({
+          top: Math.max(0, targetTop - 4),
+          behavior: "smooth"
+        });
+      } else {
+        container.scrollTop = Math.max(0, targetTop - 4);
+      }
+    } else {
+      container.scrollTop = 0;
+    }
+  });
+}
 
 function renderCockpit(container) {
   const allProjects = Array.from(new Set(STATE.fronts.map(f => f.project).filter(Boolean))).sort();
@@ -2014,7 +2243,7 @@ function renderCockpit(container) {
     <div class="view-header">
       <div class="view-title-group">
         <h1><span>🧭</span> Operations Cockpit & Live Flight</h1>
-        <p class="view-subtitle">Supervisión en tiempo real de frentes en cola (Schedule) y ejecución de planes en vuelo</p>
+        <p class="view-subtitle">Supervisión en tiempo real de la brújula de frentes (COMPASS) y planes en vuelo (PLAN.md)</p>
       </div>
       <div class="header-stats-bar">
         <span class="spec-pill active-pill" onclick="selectCockpitFront('${STATE.activeFront?.id || ''}')" style="cursor: pointer;" title="Ir al Frente Activo">
@@ -2035,7 +2264,7 @@ function renderCockpit(container) {
         <div class="cockpit-panel schedule-queue-panel">
           <div class="panel-header">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <h2><span>🎯</span> Frentes en Cola (Schedule)</h2>
+              <h2><span>🎯</span> Frentes en Cola (COMPASS)</h2>
               <span class="tag-pill tag-live">${filteredFronts.length}</span>
             </div>
           </div>
@@ -2158,7 +2387,7 @@ function renderCockpit(container) {
               <div class="live-plan-section">
                 <div class="section-title-row">
                   <div class="section-title-left">
-                    <h3><span>📋</span> Plan de Vuelo Activo (Current_plan)</h3>
+                    <h3><span>📋</span> Plan de Vuelo Activo (PLAN.md)</h3>
                     ${STATE.livePlanMeta?.task ? `<span class="tag-pill tag-live">${esc(STATE.livePlanMeta.task)}</span>` : ''}
                   </div>
                   <div class="section-stats-pills">
@@ -2209,7 +2438,7 @@ function renderCockpit(container) {
                     <div class="empty-state">
                       <div class="empty-icon">⚡</div>
                       <h3>Plan despejado</h3>
-                      <p>Current_plan está listo para recibir el siguiente sub-bloque de trabajo.</p>
+                      <p>PLAN.md está listo para recibir el siguiente sub-bloque de trabajo.</p>
                     </div>
                   `}
                 </div>
@@ -2286,7 +2515,7 @@ function renderCockpit(container) {
                 <div class="state-card-icon">🎯</div>
                 <h3>Frente en Cola de Espera</h3>
                 <p class="state-card-desc">
-                  Este frente está programado en la cola del Schedule. No tiene un plan activo instanciado todavía.
+                  Este frente está programado en la brújula COMPASS. No tiene un plan activo instanciado todavía.
                 </p>
                 <div class="state-detail-box">
                   <strong>Condición de avance:</strong>
@@ -2308,6 +2537,8 @@ function renderCockpit(container) {
       </div>
     </div>
   `;
+  // Auto-scroll plan container to the last completed item
+  autoScrollPlanContainer(true);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2490,7 +2721,7 @@ function renderInbox(container) {
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(t.id)}</span>
                 <span class="tag-pill">${esc(t.status)}</span>
-                <h3 class="ticket-title" style="${isDone ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${inline(t.title)}</h3>
+                <h3 class="ticket-title" style="${isDone ? 'opacity: 0.88;' : ''}">${inline(t.title)}</h3>
               </div>
               <span class="tag-pill tag-project">${esc(t.project)}</span>
             </div>
@@ -2685,7 +2916,7 @@ function renderDecisions(container) {
     <!-- DECISIONS LIST -->
     <div class="tickets-list">
       ${filtered.length ? filtered.map(d => `
-        <div class="ticket-card ${d.isSuperseded ? 'discarded' : ''}">
+        <div class="ticket-card decision-card ${d.isSuperseded ? 'discarded' : ''}">
           <div class="ticket-top">
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
@@ -2707,23 +2938,41 @@ function renderDecisions(container) {
             ${renderDate(d.date, d.date_inferred)}
           </div>
 
-          <h3 class="ticket-title" style="margin-top: 4px; font-size: 15.5px;">${inline(d.title)}</h3>
+          <h3 class="ticket-title" style="margin-top: 4px; font-size: 15px;">${inline(d.title)}</h3>
           
-          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-top: 2px;">
-            <strong>Por qué:</strong> ${inline(d.why)}
-          </p>
+          ${(d.why || d.discarded) ? `
+            <details class="decision-details">
+              <summary>
+                <span class="toggle-icon">▶</span>
+                <span>Ver razonamiento (Why)${d.discarded ? ' y descartados' : ''}</span>
+              </summary>
+              <div class="decision-body-content">
+                ${d.why ? `
+                  <div class="decision-why-text">
+                    <strong>Por qué (Why):</strong> ${inline(d.why)}
+                  </div>
+                ` : ''}
 
-          ${d.discarded ? `
-            <div class="discarded-box">
-              <strong>Alternativa descartada:</strong> ${inline(d.discarded)}
+                ${d.discarded ? `
+                  <div class="discarded-box" style="margin-top: 4px;">
+                    <strong>Alternativa descartada:</strong> ${inline(d.discarded)}
+                  </div>
+                ` : ''}
+
+                <div class="ticket-meta" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line);">
+                  ${renderOrigin(d.origin, d.origin_inferred)}
+                  ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
+                  ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
+                </div>
+              </div>
+            </details>
+          ` : `
+            <div class="ticket-meta" style="margin-top: 4px;">
+              ${renderOrigin(d.origin, d.origin_inferred)}
+              ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
+              ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
             </div>
-          ` : ''}
-
-          <div class="ticket-meta" style="margin-top: 4px;">
-            ${renderOrigin(d.origin, d.origin_inferred)}
-            ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
-            ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
-          </div>
+          `}
         </div>
       `).join("") : `
         <div class="empty-state">
