@@ -164,10 +164,18 @@ implements is how a system ends up protecting what is merely salient.**
 | **PH-4** | Zero black boxes | **11** | AX-2 · AX-6 · AX-7 · AX-12 · AX-13 · AX-14 · AX-18 · AX-22 · AX-24 · AX-30 · AX-31 |
 | **PH-5** | Modular work | **4** | AX-1 · AX-19 · AX-20 · AX-30 |
 | **PH-6** | Attention is scarce | **8** | AX-4 · AX-8 · AX-11 · AX-16 · AX-17 · AX-21 · AX-25 · AX-29 |
+| **PH-7** | Measured and provable ⚠️ | **0** | — |
 
 ⚠️ **The long horizon is the thinnest clause the company names first.** It is the standing first
 item for the promotion review's *upward* direction. An unbalanced set that says so is honest; one
 that hides it protects what is merely salient.
+
+⚠️ **`PH-7` is at zero and was opened at zero, on purpose (2026-08-20).** `PHILOSOPHY.md`'s own
+standard calls a clause with no axiom behind it *a value with no teeth*, and that is exactly what
+this row says. It is written down rather than left to be found because **the alternative is
+reverse-engineering axioms out of whatever gets measured first** — the clause is opened ahead of
+the rules so the rules are written against it. It is the standing first item for the *downward*
+direction until it is not zero.
 
 _Opened 2026-08-17. **28 in force**, 3 retired, 31 identifiers issued. **Next ID: AX-32.** From the
 first commit onward this file is append-only._

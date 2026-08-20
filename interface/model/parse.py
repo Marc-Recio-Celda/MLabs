@@ -594,6 +594,31 @@ def parse_standing(path, text, project_pattern=None):
         except Exception:
             pass
 
+    # Look for README.md or guide.md for Visual Usage Guide
+    readme_content = ""
+    readme_path = ""
+    possible_readmes = [
+        path.parent / "guide.md",
+        path.parent / "usage.md",
+        path.parent / "README.md",
+        path.parent.parent / "README.md",
+    ]
+    if code_repo:
+        try:
+            r_dir = Path(os.path.expanduser(code_repo)).resolve()
+            possible_readmes.insert(0, r_dir / "README.md")
+        except Exception:
+            pass
+
+    for rp in possible_readmes:
+        if rp.exists() and rp.is_file():
+            try:
+                readme_content = rp.read_text(encoding="utf-8")
+                readme_path = str(rp)
+                break
+            except Exception:
+                pass
+
     ent = {
         "kind": "project-state",
         "line": 1,
@@ -607,6 +632,8 @@ def parse_standing(path, text, project_pattern=None):
         "git_commit": git_info.get("git_commit", ""),
         "git_commit_msg": git_info.get("git_commit_msg", ""),
         "git_commit_date": git_info.get("git_commit_date", ""),
+        "readme_content": readme_content,
+        "readme_path": readme_path,
         "blocks": board_blocks,
         **fields
     }

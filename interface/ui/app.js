@@ -534,11 +534,15 @@ function ingestModel(model) {
     const gitCommit = pState?.git_commit || "";
     const gitCommitMsg = pState?.git_commit_msg || "";
     const gitCommitDate = pState?.git_commit_date || "";
+    const readmeContent = pState?.readme_content || "";
+    const readmePath = pState?.readme_path || "";
 
     return {
       name,
       rank: `#${idx + 1}`,
       status: "ACTIVE",
+      readmeContent,
+      readmePath,
       gitBranch,
       gitCommit,
       gitCommitMsg,
@@ -1535,13 +1539,12 @@ function renderProjectDetailPage(container) {
           <p class="proj-def-text">${inline(proj.definition)}</p>
         </div>
 
-        <!-- SPECS HUD (BLOQUES, DECISIONES, TAREAS, NEXT ACTION, GIT STATUS) -->
+        <!-- SPECS HUD (BLOQUES, DECISIONES, TAREAS, NEXT ACTION) -->
         <div class="specs" style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.12);">
           <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>🗺️ Bloques:</strong> ${proj.completedBlocks}/${proj.totalBlocks} (${proj.progress}%)</span>
           <span class="spec-pill" onclick="setProjectSubtab('decisions')"><strong>📜 Decisiones:</strong> ${liveDecs.length} Vivas (${projectDecs.length} Totales)</span>
           <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>📋 Tareas:</strong> ${projectTasks.length} (${activeTasks.length} Activas)</span>
-          <span class="spec-pill active-pill" onclick="setProjectSubtab('state')"><strong>🎯 Next Action:</strong> ${inline(proj.nextAction.slice(0, 48))}...</span>
-          <span class="spec-pill" onclick="setProjectSubtab('repos')" title="Ver repositorio, rama y commits"><strong>🐙 Git:</strong> ${esc(proj.gitBranch || (proj.remoteUrl ? 'conectado' : 'local'))}${proj.gitCommit ? ` (<code>${esc(proj.gitCommit)}</code>)` : ''}</span>
+          <span class="spec-pill active-pill" onclick="setProjectSubtab('state')"><strong>🎯 Next Action:</strong> ${inline(proj.nextAction.slice(0, 52))}...</span>
         </div>
       </div>
     </header>
@@ -1554,6 +1557,7 @@ function renderProjectDetailPage(container) {
       <button class="toc-pill ${activeTab === 'decisions' ? 'active' : ''}" onclick="setProjectSubtab('decisions')"><span>📜</span> 4. Decisiones (${projectDecs.length})</button>
       <button class="toc-pill ${activeTab === 'skills' ? 'active' : ''}" onclick="setProjectSubtab('skills')"><span>⚡</span> 5. Skills &amp; Operaciones</button>
       <button class="toc-pill ${activeTab === 'repos' ? 'active' : ''}" onclick="setProjectSubtab('repos')"><span>🐙</span> 6. Repos &amp; Git</button>
+      <button class="toc-pill ${activeTab === 'guide' ? 'active' : ''}" onclick="setProjectSubtab('guide')"><span>📖</span> 7. Guía de Uso</button>
     </nav>
 
     <!-- TAB CONTENT RENDERER -->
@@ -1571,6 +1575,7 @@ function renderProjectSubtabContent(proj, tab, projectTasks, projectDecs) {
     case "decisions": return renderProjectDecisionsTab(proj, projectDecs);
     case "skills": return renderProjectSkillsTab(proj);
     case "repos": return renderProjectReposTab(proj);
+    case "guide": return renderProjectGuideTab(proj);
     default: return renderProjectWorkflowTab(proj, projectTasks, projectDecs);
   }
 }
@@ -2006,15 +2011,16 @@ window.selectProject = function(name) {
 };
 
 
-// ── TAB 6: REPOS & GIT DASHBOARD ──
+// ── TAB 6: REPOS & GIT DASHBOARD (CON GUÍA CHEATSHEET DESPLEGABLE) ──
 function renderProjectReposTab(proj) {
   const remoteHttp = getRemoteHttpUrl(proj.remoteUrl);
+  const activeBranch = proj.gitBranch || "dev";
 
   return `
     <div class="doc-section">
       <div class="section-head" style="cursor: default;">
         <h2><span class="num">06</span> Repositorios, Workspace y Control de Versiones</h2>
-        ${proj.gitBranch ? `<span class="tag-pill tag-live">🌿 Rama activa: ${esc(proj.gitBranch)}</span>` : ''}
+        ${proj.gitBranch ? `<span class="tag-pill tag-live">🌿 Rama activa: ${esc(proj.gitBranch)}</span>` : '<span class="tag-pill tag-alive">🌿 Ramas estándar: master · ${esc(activeBranch)}</span>'}
       </div>
       <p class="lead">
         Ubicaciones soberanas de código fuente, repositorio remoto en GitHub, directorio de trabajo local y cartridge de gobernanza desacoplado en NEXUS.
@@ -2033,7 +2039,7 @@ function renderProjectReposTab(proj) {
           </div>
 
           <p style="font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.5;">
-            Repositorio público o privado en GitHub sincronizado con el ciclo de vida del proyecto.
+            Repositorio en GitHub sincronizado con el ciclo de vida del proyecto.
           </p>
 
           <div class="repo-path-box">
@@ -2124,42 +2130,461 @@ function renderProjectReposTab(proj) {
         </div>
       </div>
 
-      <!-- GIT TERMINAL TOOLS & QUICK COMMANDS -->
-      <div class="repo-git-tools-card">
-        <div class="git-tools-header">
-          <span>⚡</span> <span>Comandos Rápidos de Terminal para ${esc(proj.name)}</span>
+      <!-- GUÍA OPERATIVA & CHEATSHEET GITHUB (DESPLEGABLE) -->
+      <div style="margin-top: 28px;">
+        <div class="section-head" style="cursor: default; margin-bottom: 8px;">
+          <h3><span>📖</span> Guía Operativa de Comandos Git &amp; GitHub (master ⇄ ${esc(activeBranch)})</h3>
+          <span class="card-badge badge-vine">CheatSheet Integrada</span>
         </div>
-        <div class="git-commands-grid">
-          <div class="git-cmd-item" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git status', 'Comando git status copiado', event)">
-            <div>
-              <code>git status</code>
-              <div class="git-cmd-desc">Inspeccionar cambios y ramas</div>
+        <p class="lead" style="font-size: 13px; margin-bottom: 16px;">
+          Comandos esenciales de la chuleta de <code>GitHub Workflow Guide</code> contextualizados para <strong>${esc(proj.name)}</strong> con copiado rápido en 1 clic.
+        </p>
+
+        <div class="git-guide-container">
+          <!-- SECCIÓN 1: FLUJO DIARIO EN RAMA ACTIVA -->
+          <details class="git-guide-accordion" open>
+            <summary>
+              <div class="accordion-title">
+                <span>🌿</span>
+                <span>1. Flujo Diario de Trabajo en Rama Activa (<code>${esc(activeBranch)}</code>)</span>
+              </div>
+              <span class="accordion-chevron">▼</span>
+            </summary>
+            <div class="git-guide-content">
+              <div class="git-cmd-box" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git switch ${esc(activeBranch)} && git pull origin ${esc(activeBranch)}', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">1. Cambiar a rama de trabajo y actualizar</span>
+                  <code class="git-cmd-code">cd ${esc(proj.codeRepo)} && git switch ${esc(activeBranch)} && git pull origin ${esc(activeBranch)}</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git status -s', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">2. Revisar cambios en el árbol de trabajo</span>
+                  <code class="git-cmd-code">git status -s</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git add -A && git commit -m \'feat(${esc(proj.name)}): avance en sub-bloque activo\'', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">3. Preparar commit estructurado</span>
+                  <code class="git-cmd-code">git add -A && git commit -m "feat(${esc(proj.name)}): avance en sub-bloque activo"</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git push origin ${esc(activeBranch)}', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">4. Subir cambios a la rama de trabajo</span>
+                  <code class="git-cmd-code">git push origin ${esc(activeBranch)}</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
             </div>
-            <span>📋</span>
+          </details>
+
+          <!-- SECCIÓN 2: MERGE SEGURO HACIA MASTER -->
+          <details class="git-guide-accordion">
+            <summary>
+              <div class="accordion-title">
+                <span>🔀</span>
+                <span>2. Integración y Merge Seguro de <code>${esc(activeBranch)}</code> hacia <code>master</code></span>
+              </div>
+              <span class="accordion-chevron">▼</span>
+            </summary>
+            <div class="git-guide-content">
+              <div class="git-cmd-box" onclick="copyToClipboard('git switch master && git pull origin master', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">1. Cambiar a master y sincronizar con remoto</span>
+                  <code class="git-cmd-code">git switch master && git pull origin master</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git merge --no-ff ${esc(activeBranch)} -m \'merge: integrate ${esc(activeBranch)} branch updates into master\'', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">2. Merge explícito sin fast-forward (burbuja de commit)</span>
+                  <code class="git-cmd-code">git merge --no-ff ${esc(activeBranch)} -m "merge: integrate ${esc(activeBranch)} branch updates into master"</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git push origin master && git switch ${esc(activeBranch)}', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">3. Pushear master limpio y volver a la rama de trabajo</span>
+                  <code class="git-cmd-code">git push origin master && git switch ${esc(activeBranch)}</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+            </div>
+          </details>
+
+          <!-- SECCIÓN 3: INICIALIZAR NUEVO REPO & PRIMER COMMIT -->
+          <details class="git-guide-accordion">
+            <summary>
+              <div class="accordion-title">
+                <span>🚀</span>
+                <span>3. Inicialización de un Nuevo Repositorio &amp; Primer Commit</span>
+              </div>
+              <span class="accordion-chevron">▼</span>
+            </summary>
+            <div class="git-guide-content">
+              <div class="git-cmd-box" onclick="copyToClipboard('git init && git branch -M main', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">1. Inicializar repositorio y fijar rama principal</span>
+                  <code class="git-cmd-code">git init && git branch -M main</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git add .gitignore && git commit -m \'chore: initial gitignore\'', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">2. Commitear .gitignore antes que cualquier archivo ⭐</span>
+                  <code class="git-cmd-code">git add .gitignore && git commit -m "chore: initial gitignore"</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git count-objects -vH', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">3. Comprobar peso del repositorio antes de subir</span>
+                  <code class="git-cmd-code">git count-objects -vH</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git remote add origin ${esc(proj.remoteUrl || 'git@github.com:organization/' + proj.name + '.git')} && git push -u origin main', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">4. Vincular remoto en GitHub y subir upstream</span>
+                  <code class="git-cmd-code">git remote add origin ${esc(proj.remoteUrl || 'git@github.com:organization/' + proj.name + '.git')} && git push -u origin main</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+            </div>
+          </details>
+
+          <!-- SECCIÓN 4: WORKTREES & AISLAMIENTO DE AGENTES -->
+          <details class="git-guide-accordion">
+            <summary>
+              <div class="accordion-title">
+                <span>🌳</span>
+                <span>4. Gestión de Worktrees (Aislamiento de Agentes)</span>
+              </div>
+              <span class="accordion-chevron">▼</span>
+            </summary>
+            <div class="git-guide-content">
+              <div class="git-cmd-box" onclick="copyToClipboard('git worktree list', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">1. Listar worktrees activos</span>
+                  <code class="git-cmd-code">git worktree list</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git worktree add .claude/worktrees/task-1 -b task/${esc(proj.name)}-1', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">2. Crear worktree aislado para tarea</span>
+                  <code class="git-cmd-code">git worktree add .claude/worktrees/task-1 -b task/${esc(proj.name)}-1</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git worktree remove .claude/worktrees/task-1 && git worktree prune', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">3. Eliminar worktree y podar referencias</span>
+                  <code class="git-cmd-code">git worktree remove .claude/worktrees/task-1 && git worktree prune</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+            </div>
+          </details>
+
+          <!-- SECCIÓN 5: CUENTAS SSH MULTI-USUARIO -->
+          <details class="git-guide-accordion">
+            <summary>
+              <div class="accordion-title">
+                <span>🔑</span>
+                <span>5. Diagnóstico de Cuentas SSH / GitHub en la Máquina</span>
+              </div>
+              <span class="accordion-chevron">▼</span>
+            </summary>
+            <div class="git-guide-content">
+              <div class="git-cmd-box" onclick="copyToClipboard('ssh -T git@github.com', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">1. Comprobar qué cuenta responde en GitHub</span>
+                  <code class="git-cmd-code">ssh -T git@github.com</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git clone git@github-work:${esc(proj.name)}.git', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">2. Clonar usando alias SSH personal (~/.ssh/config)</span>
+                  <code class="git-cmd-code">git clone git@github-work:${esc(proj.name)}.git</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+            </div>
+          </details>
+
+          <!-- SECCIÓN 6: HOOKS & GATES -->
+          <details class="git-guide-accordion">
+            <summary>
+              <div class="accordion-title">
+                <span>🛠️</span>
+                <span>6. Resolución de Bloqueos en Commits (Linters &amp; Gate)</span>
+              </div>
+              <span class="accordion-chevron">▼</span>
+            </summary>
+            <div class="git-guide-content">
+              <div class="git-cmd-box" onclick="copyToClipboard('ruff check --fix .', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">1. Autocorregir formato y linting con ruff</span>
+                  <code class="git-cmd-code">ruff check --fix .</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('pre-commit run --all-files', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">2. Probar hooks de pre-commit manualmente sin commit</span>
+                  <code class="git-cmd-code">pre-commit run --all-files</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('tools/gate.sh', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">3. Ejecutar gate de integridad de MLabs</span>
+                  <code class="git-cmd-code">tools/gate.sh</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+
+function getProjectIcon(name) {
+  if (!name) return "📦";
+  const n = name.toLowerCase();
+  if (n.includes("doc") || n.includes("md") || n.includes("format") || n.includes("paper")) return "📖";
+  if (n.includes("bio") || n.includes("gene") || n.includes("omics") || n.includes("viz") || n.includes("catalogue") || n.includes("plant")) return "🔬";
+  if (n.includes("folio") || n.includes("web") || n.includes("site") || n.includes("app")) return "💼";
+  if (n.includes("face") || n.includes("system") || n.includes("cockpit") || n.includes("matrix")) return "⚙️";
+  if (n.includes("trade") || n.includes("finance") || n.includes("stock") || n.includes("market")) return "📈";
+  if (n.includes("drop") || n.includes("file") || n.includes("cloud") || n.includes("sync")) return "💧";
+  return "📦";
+}
+
+// ── TAB 7: GUÍA DE USO & README VISUAL ──
+function renderProjectGuideTab(proj) {
+  const hasReadme = proj.readmeContent && proj.readmeContent.trim().length > 0;
+  const rawDoc = hasReadme ? proj.readmeContent : (proj.definition || "Sin guía de uso disponible para este proyecto.");
+
+  // Quickstart command heuristics based on project type
+  let quickInstallCmd = `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && npm install`;
+  let quickRunCmd = `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && npm run dev`;
+  let quickTestCmd = `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && npm test`;
+
+  const isPython = (proj.readmeContent && (proj.readmeContent.includes("python") || proj.readmeContent.includes(".venv") || proj.readmeContent.includes("pip install"))) || (proj.definition && proj.definition.toLowerCase().includes("python"));
+  if (isPython) {
+    quickInstallCmd = `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && source .venv/bin/activate && pip install -e .`;
+    quickRunCmd = `python main.py`;
+    quickTestCmd = `pytest`;
+  }
+
+  return `
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">07</span> Guía de Uso, Quickstart &amp; Documentación Visual</h2>
+        <span class="tag-pill tag-live">📖 Visual README</span>
+      </div>
+      <p class="lead">
+        Documentación interactiva, instrucciones de instalación, ejemplos de ejecución y guía de usuario representada de forma visual y accesible.
+      </p>
+
+      <!-- HERO BANNER -->
+      <div class="proj-guide-hero">
+        <div class="guide-hero-top">
+          <div class="guide-hero-title-group">
+            <div class="guide-hero-icon">${getProjectIcon(proj.name)}</div>
+            <div>
+              <h3 class="guide-hero-title">${esc(proj.name)}</h3>
+              <div style="font-size: 12px; color: var(--gold, #d8b26a); font-family: var(--font-mono); margin-top: 2px;">
+                ${proj.readmePath ? esc(proj.readmePath.split('/').slice(-2).join('/')) : 'Documentación Integrada'}
+              </div>
+            </div>
           </div>
-          <div class="git-cmd-item" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git log -n 5 --oneline', 'Comando git log copiado', event)">
-            <div>
-              <code>git log -n 5 --oneline</code>
-              <div class="git-cmd-desc">Ver últimos 5 commits</div>
-            </div>
-            <span>📋</span>
+          <div class="guide-hero-badges">
+            <span class="card-badge badge-vine">Gobernanza MLabs</span>
+            <span class="tag-pill tag-purple">${esc(proj.currentPhase || 'Producción')}</span>
           </div>
-          <div class="git-cmd-item" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git pull origin ${esc(proj.gitBranch || 'main')}', 'Comando git pull copiado', event)">
-            <div>
-              <code>git pull origin ${esc(proj.gitBranch || 'main')}</code>
-              <div class="git-cmd-desc">Descargar últimos cambios</div>
-            </div>
-            <span>📋</span>
+        </div>
+
+        <p class="guide-hero-desc">
+          ${inline(proj.definition || 'Módulo y solución soberana de software diseñada bajo los principios y arquitectura de MLabs.')}
+        </p>
+      </div>
+
+      <!-- QUICKSTART 3-STEP SEQUENCE -->
+      <div class="quickstart-steps-container">
+        <div class="quickstart-step-card">
+          <div class="step-card-header">
+            <span class="step-num-badge">1</span>
+            <h4 class="step-card-title">Instalación / Entorno</h4>
           </div>
-          <div class="git-cmd-item" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git diff HEAD~1..HEAD', 'Comando git diff copiado', event)">
-            <div>
-              <code>git diff HEAD~1..HEAD</code>
-              <div class="git-cmd-desc">Revisar diff del último commit</div>
-            </div>
-            <span>📋</span>
+          <p style="font-size: 12px; color: var(--ink-soft); margin: 0;">Preparar dependencias y entorno de ejecución local.</p>
+          <div class="repo-path-box" onclick="copyToClipboard('${quickInstallCmd}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
+            <code>${quickInstallCmd}</code>
+          </div>
+        </div>
+
+        <div class="quickstart-step-card">
+          <div class="step-card-header">
+            <span class="step-num-badge">2</span>
+            <h4 class="step-card-title">Ejecución / Dev Server</h4>
+          </div>
+          <p style="font-size: 12px; color: var(--ink-soft); margin: 0;">Lanzar el servicio, servidor o pipeline en desarrollo.</p>
+          <div class="repo-path-box" onclick="copyToClipboard('${quickRunCmd}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
+            <code>${quickRunCmd}</code>
+          </div>
+        </div>
+
+        <div class="quickstart-step-card">
+          <div class="step-card-header">
+            <span class="step-num-badge">3</span>
+            <h4 class="step-card-title">Tests &amp; Verificación</h4>
+          </div>
+          <p style="font-size: 12px; color: var(--ink-soft); margin: 0;">Comprobar integridad antes de commitear cambios.</p>
+          <div class="repo-path-box" onclick="copyToClipboard('${quickTestCmd}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
+            <code>${quickTestCmd}</code>
           </div>
         </div>
       </div>
+
+      <!-- VISUAL README / DOCUMENTATION BODY -->
+      <div class="readme-rendered-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 20px;">
+          <h3 style="margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+            <span>📄</span> <span>Contenido de la Guía &amp; README</span>
+          </h3>
+          <button class="btn-repo-action" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(rawDoc)}'), 'Documento completo copiado', event)">
+            <span>📋 Copiar Markdown Completo</span>
+          </button>
+        </div>
+
+        <div class="readme-markdown-body">
+          ${renderMarkdownBody(rawDoc)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Markdown parser helper for README body
+function renderMarkdownBody(text) {
+  if (!text) return "<p>Sin contenido.</p>";
+
+  const lines = text.split("\n");
+  let html = "";
+  let inCode = false;
+  let codeBuffer = [];
+  let inTable = false;
+  let tableBuffer = [];
+  let inList = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Code blocks
+    if (line.trim().startsWith("```")) {
+      if (inCode) {
+        html += `<pre><code>${esc(codeBuffer.join("\n"))}</code></pre>`;
+        codeBuffer = [];
+        inCode = false;
+      } else {
+        if (inList) { html += "</ul>"; inList = false; }
+        inCode = true;
+      }
+      continue;
+    }
+    if (inCode) {
+      codeBuffer.push(line);
+      continue;
+    }
+
+    // Tables
+    if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+      if (!inTable) {
+        if (inList) { html += "</ul>"; inList = false; }
+        inTable = true;
+        tableBuffer = [];
+      }
+      tableBuffer.push(line);
+      continue;
+    } else if (inTable) {
+      html += renderMarkdownTable(tableBuffer);
+      tableBuffer = [];
+      inTable = false;
+    }
+
+    // Headings
+    if (line.startsWith("# ")) {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<h2>${inline(line.slice(2))}</h2>`;
+    } else if (line.startsWith("## ")) {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<h3>${inline(line.slice(3))}</h3>`;
+    } else if (line.startsWith("### ")) {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<h4>${inline(line.slice(4))}</h4>`;
+    } else if (line.startsWith("> ")) {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<blockquote>${inline(line.slice(2))}</blockquote>`;
+    } else if (line.trim().startsWith("- ") || line.trim().startsWith("* ")) {
+      if (!inList) { html += "<ul>"; inList = true; }
+      html += `<li>${inline(line.trim().slice(2))}</li>`;
+    } else if (line.trim().length === 0) {
+      if (inList) { html += "</ul>"; inList = false; }
+    } else {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<p>${inline(line)}</p>`;
+    }
+  }
+
+  if (inCode) html += `<pre><code>${esc(codeBuffer.join("\n"))}</code></pre>`;
+  if (inTable) html += renderMarkdownTable(tableBuffer);
+  if (inList) html += "</ul>";
+
+  return html;
+}
+
+function renderMarkdownTable(lines) {
+  if (!lines || lines.length < 2) return "";
+  const headerParts = lines[0].split("|").slice(1, -1).map(p => p.trim());
+  let rows = [];
+  for (let i = 2; i < lines.length; i++) {
+    const cols = lines[i].split("|").slice(1, -1).map(p => p.trim());
+    if (cols.length > 0) rows.push(cols);
+  }
+
+  return `
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>${headerParts.map(h => `<th>${inline(h)}</th>`).join("")}</tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `<tr>${r.map(c => `<td>${inline(c)}</td>`).join("")}</tr>`).join("")}
+        </tbody>
+      </table>
     </div>
   `;
 }

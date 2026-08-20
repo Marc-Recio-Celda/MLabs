@@ -4220,3 +4220,338 @@ input[type="text"]:focus, textarea:focus {
   font-size: 11px;
   color: var(--ink-muted);
 }
+
+
+/* GIT GUIDE ACCORDION & COMMAND ROWS */
+.git-guide-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.git-guide-accordion {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.git-guide-accordion:hover {
+  border-color: var(--line-strong);
+}
+
+.git-guide-accordion summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--paper);
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.git-guide-accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.git-guide-accordion summary:hover {
+  background: var(--paper-subtle);
+}
+
+.git-guide-accordion summary .accordion-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.git-guide-accordion summary .accordion-chevron {
+  font-size: 11px;
+  color: var(--ink-muted);
+  transition: transform 0.2s ease;
+}
+
+.git-guide-accordion[open] summary .accordion-chevron {
+  transform: rotate(180deg);
+}
+
+.git-guide-content {
+  padding: 16px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--paper-card);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.git-cmd-box {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.git-cmd-box:hover {
+  border-color: var(--vine);
+  background: #ffffff;
+  box-shadow: var(--shadow-xs);
+}
+
+.git-cmd-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.git-cmd-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.git-cmd-code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--vine-deep);
+  background: var(--vine-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--vine-border);
+  display: inline-block;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.git-cmd-copy-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  background: var(--paper-subtle);
+  border: 1px solid var(--line);
+  padding: 3px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+
+/* TAB 7: PROJECT USAGE GUIDE & VISUAL README */
+.proj-guide-hero {
+  background: linear-gradient(135deg, rgba(32, 36, 45, 0.95), rgba(20, 22, 28, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg, 12px);
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.proj-guide-hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--vine), var(--gold, #d8b26a), var(--purple, #a872b2));
+}
+
+.guide-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.guide-hero-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.guide-hero-icon {
+  font-size: 28px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.guide-hero-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.guide-hero-desc {
+  font-size: 14px;
+  color: #d1d5db;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 900px;
+}
+
+.guide-hero-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quickstart-steps-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.quickstart-step-card {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.quickstart-step-card:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.step-num-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--vine-bg);
+  color: var(--vine-deep);
+  border: 1px solid var(--vine-border);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.step-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.readme-rendered-card {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg, 12px);
+  padding: 24px 28px;
+  box-shadow: var(--shadow-sm);
+}
+
+.readme-rendered-card h1,
+.readme-rendered-card h2,
+.readme-rendered-card h3 {
+  color: var(--ink);
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
+
+.readme-rendered-card h1:first-child,
+.readme-rendered-card h2:first-child {
+  margin-top: 0;
+}
+
+.readme-rendered-card p {
+  color: var(--ink-soft);
+  line-height: 1.65;
+  margin-bottom: 14px;
+}
+
+.readme-rendered-card ul,
+.readme-rendered-card ol {
+  color: var(--ink-soft);
+  padding-left: 24px;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.readme-rendered-card li {
+  margin-bottom: 6px;
+}
+
+.readme-rendered-card table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0 20px;
+  font-size: 13px;
+}
+
+.readme-rendered-card th,
+.readme-rendered-card td {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.readme-rendered-card th {
+  background: var(--paper-subtle);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.readme-rendered-card pre {
+  background: #14161a;
+  color: #e8e6e1;
+  border: 1px solid #2e333c;
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  margin: 14px 0 18px;
+}
+
+.readme-rendered-card blockquote {
+  border-left: 3px solid var(--vine);
+  background: var(--vine-bg);
+  padding: 12px 18px;
+  border-radius: 0 8px 8px 0;
+  margin: 16px 0;
+  color: var(--ink);
+  font-size: 13px;
+}
