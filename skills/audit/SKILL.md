@@ -57,7 +57,7 @@ touched · that task's live plan.
 ⚠️ **The brief never contains the dismissal thresholds — nor names the file that holds them.**
 An auditor that knows it is retired for agreeing has an incentive to manufacture findings, which
 destroys the measurement it exists to produce. `instance-auditor`'s first firing was briefed with
-`COMPANY.md` as its hiring record and **read `K` and `N` before it could know what the line was**,
+**the instance's hiring record** and **read `K` and `N` before it could know what the line was**,
 and said so (`IA-007`). Point the brief at the checklist, never at the record.
 
 ⚠️ **And if the task itself touched the hiring record, that path is withheld from the brief and the
@@ -151,7 +151,7 @@ row carries.
 |---|---|
 | `ID` | `<prefix><nnn>`, never recycled, never renumbered |
 | `Round` · `Date` | the firing, and the day |
-| `Acc` | `y` accepted · `n` rejected · `—` **not yet adjudicated**. `K` counts `y` and nothing else |
+| `Acc` | **the operator's ruling.** `y` accepted · `wrong` a false positive · `misrouted` true but another role's department · `declined` true and in scope, not acted on · `deferred` held for a named future event · `—` **not yet adjudicated**. `K` counts `y`; **precision counts `wrong` and nothing else** ⚠️ *Split 2026-08-20 — a single `n` had been carrying three different events and only the first is a quality failure. This file is the declared winner and was publishing the pre-split vocabulary for a day (`CA-071`)* |
 | `Status` | `fixed-same-round` · `fixed-later` · `open` · `accepted-not-fixed` · `withdrawn` |
 | **`Repeat of`** | **the earlier ID this recurs, or `—`. The field the log exists for.** It may cite **another role's prefix** — a finding one auditor raises and another re-raises is still a repeat |
 | `Finding` · `Where` | one line each; the reasoning stays in the ledger |
@@ -181,8 +181,14 @@ which is the failure `AX-1` exists to prevent, and the release gate blocks it.
 ⚠️ **This is a move, and it is what makes the numbers reproducible.** The tally used to grep
 `LOG_AGENTS.md`, where **all three roles publish**, so from the moment there were two roles one
 command counted them together and nothing separated them (`IA-006`). The ledger keeps the narrative;
-the log keeps the data. `COMPANY.md` §3 already says *Firings — computed, `metrics.py`* in one cell
-and *the tally lives in `LOG_AGENTS.md`* in another; **this settles it in favour of the first.**
+the log keeps the data. **The instance's hiring record** already says *Firings — computed, by the metrics script* in
+one cell and *the tally lives in the ledger* in another; **this settles it in favour of the first.**
+
+⚠️ **The filename is deliberately absent from this file, 2026-08-20** (`CA-073`). Until then the
+paragraph forbidding the brief to name the hiring record **named it three times, twice more further
+down** — so a dispatcher reading the prohibition learned the filename from the prohibition. The
+record is reached the way every other instance path is: **through the binding**, never by a name
+written here.
 
 ⚠️ **Rounds 1–7 belong to both scopes and count toward neither role's dismissal.** One role held
 both jurisdictions; splitting that history retroactively would be inventing a measurement.
