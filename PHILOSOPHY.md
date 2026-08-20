@@ -14,6 +14,21 @@
 > **This file breaks ties.** When two axioms both apply and disagree, it decides. When a
 > proposal satisfies every axiom and still feels wrong, this is where the objection lives.
 >
+> ⚠️ **A change here fires a review, and until 2026-08-20 it fired nothing.** `AXIOMS.md` has said
+> from the start that *"a change here fires the review over every axiom in every department"*; this
+> file, the tier that breaks every tie, had **a bar and no trigger** — *"a change here needs a case,
+> not a vote"* says how hard it is to add, and nothing says what runs afterwards. So `PH-7` was
+> opened, and the review that ran two days later checked whether it had axioms and **never asked
+> whether it belonged** (found by the operator, not by the auditor). **The tier with the most
+> leverage had the least review.** A change here now fires `company-auditor`'s `A5` — *does this
+> clause belong at this level* — alongside the axiom review `AXIOMS.md` already triggers.
+>
+> ⚠️ **And it is the one tier where a contradiction has no arbiter.** `AXIOMS.md` resolves a clash
+> between departments — *the narrower one loses* — and this file resolves a clash between axioms.
+> **Nothing resolves a clash between two clauses here.** That is not an oversight to fix with a
+> seventh rule; it is why the bar for entry is height rather than procedure, and why `A5` asks about
+> overlap before it asks about anything else.
+>
 > **It changes rarely, only by the operator, and explicitly — but it is not frozen.** Working on
 > the system is exactly what reveals that a clause has stopped being true, so a clause protected
 > from ever being questioned is dogma, not philosophy. The bar is height, not impossibility: a
