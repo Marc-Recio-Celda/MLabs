@@ -1,6 +1,6 @@
 ---
 name: release-cut
-description: Cuts a public release of the methodology repository — verifies the tracked set against the allowlist, proves the depersonalisation check actually fires before trusting it, runs the cold start, and tags. Use whenever a version is about to be tagged, published, or made public for the first time, and whenever an instance is about to pin a new release.
+description: Cuts a public release of the methodology repository — verifies the tracked set against the allowlist, proves the depersonalisation check actually fires before trusting it, runs the cold start, and tags. Use whenever a version is about to be tagged, published, or made public for the first time, and whenever a consuming instance is about to adopt a new release.
 ---
 
 > **Version:** MLabs 1.1.0
@@ -54,7 +54,7 @@ The denylist lives in the instance, never here: a list of names is itself person
 | Every event-triggered skill | states its dismissal criterion |
 | Every skill | has a description saying **what it does and when to use it**, and no two overlap |
 | Append-only | the diff since the last tag removes no line from a decision log |
-| Version stamps | every tracked document names the release it was written against |
+| Version stamps | every tracked document names the release it was written against. ⚠️ **Measured 2026-08-19: 11 skills at 1.1.0 against 6 at 1.0.0 and one with none** — `T76` carries it, and this check has never been run at a cut |
 
 ## 4 · The cold start — the one that actually tests the claim
 
@@ -71,7 +71,15 @@ the repository is not keeping.
 
 ## 5 · Tag
 
-Only now. The tag names the release an instance will pin, so it must be the thing that passed
+> ⚠️ **The cut records the commit it was cut against, and that is not optional** *(2026-08-19)*.
+> `AX-1`'s clause *"and pins the release it runs"* was **retired** — this instance co-develops MLabs
+> rather than consuming it, so the two repositories move in the same round and a pin is what a
+> consumer holds. **Retiring the pin removed the field that answered *which MLabs is this?***, so the
+> cut answers it instead: the tag message carries the commit, and a cut that does not is a release
+> nothing can be reproduced from. ⏳ The clause returns the day MLabs has a consumer that is not its
+> co-developer, and it returns as the consumer half only.
+
+Only now. The tag names the release a **consuming** instance will adopt, so it must be the thing that passed
 the four steps above, not the thing that was ready before them.
 
 Record in the instance's ledger what this cut checked and what it found — a release with no

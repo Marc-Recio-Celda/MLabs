@@ -10,10 +10,14 @@ const STORAGE_KEYS = {
 
 let STATE = {
   activeFront: null,
+  cockpitSelectedFrontId: null,
+  cockpitFilterProj: "ALL",
   fronts: [],
   projects: [],
   tasks: [],
   livePlan: [],
+  livePlanMeta: null,
+  plans: [],
   mailbox: [],
   ideas: [],
   decisions: [],
@@ -55,6 +59,42 @@ function inline(s) {
   return t;
 }
 
+window.copyToClipboard = function(text, msg, evt) {
+  if (!text) return;
+  const target = evt?.currentTarget || (typeof event !== "undefined" ? event?.currentTarget : null);
+
+  const fallbackCopy = (str) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = str;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+    } catch (err) {
+      console.warn('execCommand copy error', err);
+    }
+    document.body.removeChild(textArea);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {
+      fallbackCopy(text);
+    });
+  } else {
+    fallbackCopy(text);
+  }
+
+  if (target) {
+    target.classList.add("copied-pulse");
+    setTimeout(() => target.classList.remove("copied-pulse"), 1200);
+  }
+  showToast(msg || `Copiado: ${text.slice(0, 45)}`);
+};
+
 function renderDate(dateStr, isInferred = false) {
   if (!dateStr) return "";
   if (isInferred) {
@@ -81,8 +121,8 @@ const CHEATSHEET_DATA = [
         title: "Session Lifecycle (Canonical Loop)",
         desc: "The canonical MLabs method loop: Open -> Orient -> Execute -> Close -> Audit.",
         cmds: [
-          { label: "Open session", code: "claude -p 'open a session: read Schedule, report the active front, and ask if we work it'", hint: "Prompt" },
-          { label: "Close task cleanly", code: "claude -p 'close this task: strike each item in Current_plan with its destination, update state, empty the plan, and run company-auditor'", hint: "Prompt" },
+          { label: "Open session", code: "claude -p 'open a session: read COMPASS.md, report the active front, and ask if we work it'", hint: "Prompt" },
+          { label: "Close task cleanly", code: "claude -p 'close this task: strike each item in PLAN.md with its destination, update state, close the plan, and run company-auditor'", hint: "Prompt" },
           { label: "Audit working tree", code: "claude -p 'run the company-auditor over everything touched in this task'", hint: "Prompt" }
         ]
       },
@@ -143,25 +183,151 @@ const CHEATSHEET_DATA = [
   }
 ];
 
-// Helper to generate dynamic project block roadmaps from real project state & decisions
-function generateProjectBlocks(pName, decCount, pState) {
-  const count = Math.max(4, Math.min(10, Math.ceil((decCount || 10) / 10) + 3));
-  const blocks = [];
-  const currentPhase = pState?.current_phase || "Fase de ejecución";
+// Helper to generate dynamic ramified project block workflows from real project state & decisions
+function generateProjectRamifiedWorkflow(pName, decCount, pState, projectTasks = [], projectDecs = []) {
+  const openTasks = projectTasks.filter(t => t.status !== "✅" && t.status !== "⚫");
+  const closedTasks = projectTasks.filter(t => t.status === "✅");
+  const decIds = (projectDecs || []).map(d => d.id);
 
-  for (let i = 0; i < count; i++) {
-    const isDone = i < count - 2;
-    const isActive = i === count - 2;
-    blocks.push({
-      id: `B${i}`,
-      title: i === 0 ? "Definición y setup" : (isDone ? `Bloque ejecutado B${i}` : (isActive ? `Bloque activo (${currentPhase.slice(0, 30)})` : `Bloque pendiente B${i}`)),
-      done: isDone,
-      active: isActive,
-      date: isDone ? "Completado" : (isActive ? "En curso" : "Pendiente"),
-      note: isDone ? `Bloque verificado e integrado` : (isActive ? `Frente en vuelo activo` : `Planificado`)
+  // If real blocks were parsed from state.md, use them!
+  if (pState && Array.isArray(pState.blocks) && pState.blocks.length > 0) {
+    return pState.blocks.map((b, bIdx) => {
+      const status = b.status || "pending";
+      const statusLabel = status === "completed" ? "✓ Listo" : (status === "active" ? "▶ En Curso" : "⏳ Pendiente");
+      
+      const subblocks = (b.subblocks || []).map(sub => {
+        // Find tasks matching this subblock ID (e.g. "B8.2" or "A1.1")
+        const matchingTasks = projectTasks.filter(t => t.title.includes(sub.id) || (t.why && t.why.includes(sub.id)));
+        const subTasks = matchingTasks.length ? matchingTasks : (sub.status === "active" ? openTasks : []);
+        
+        return {
+          id: sub.id,
+          kind: sub.kind || "🔨",
+          title: sub.title,
+          desc: sub.desc || sub.title,
+          status: sub.status || "pending",
+          tasks: subTasks
+        };
+      });
+
+      return {
+        id: b.id,
+        title: b.title,
+        status,
+        statusLabel,
+        summary: b.summary || b.title,
+        decisions: decIds.slice(bIdx * 2, (bIdx + 1) * 2),
+        subblocks
+      };
     });
   }
-  return blocks;
+
+  // Fallback for projects without explicit blocks defined in state.md
+  const b0Decs = decIds.slice(0, Math.max(1, Math.min(6, Math.floor(decIds.length / 3))));
+  const b1Decs = decIds.slice(b0Decs.length, Math.max(b0Decs.length + 1, Math.min(decIds.length, Math.floor((decIds.length * 2) / 3))));
+  const b2Decs = decIds.slice(b0Decs.length + b1Decs.length);
+
+  const phaseTitle = pState?.phase_summary || pState?.current_phase || "Fase de Integración y Ejecución";
+  const nextActionDesc = pState?.next_action || "Progreso de las tareas prioritarias del roadmap";
+
+  return [
+    {
+      id: "B0",
+      title: "Definición, Arquitectura y Acuerdos de Cartridge",
+      status: "completed",
+      statusLabel: "✓ Listo",
+      summary: "Estructura base del proyecto, definición de límites de scope, invariantes y decisiones fundacionales.",
+      decisions: b0Decs,
+      subblocks: [
+        {
+          id: "B0.1",
+          title: "Establecimiento del Cartridge y Definición Soberana",
+          status: "completed",
+          desc: "Fijación de objetivos medibles del MVP, entregables y criterios de éxito.",
+          tasks: []
+        },
+        {
+          id: "B0.2",
+          title: "Auditoría de Entorno, Esquemas y Dependencias",
+          status: "completed",
+          desc: "Verificación de compatibilidad y contratos de comunicación externa.",
+          tasks: closedTasks.slice(0, 1)
+        }
+      ]
+    },
+    {
+      id: "B1",
+      title: `Desarrollo e Integración · ${esc(phaseTitle)}`,
+      status: "active",
+      statusLabel: "▶ En Curso",
+      summary: `Bloque en vuelo activo guiado por la acción inmediata: ${esc(nextActionDesc)}`,
+      decisions: b1Decs.length ? b1Decs : (decIds.slice(0, 2)),
+      subblocks: [
+        {
+          id: "B1.1",
+          title: "Implementación de Módulos Core y Adaptadores",
+          status: "completed",
+          desc: "Estructuración de componentes principales y sincronización de servicios.",
+          tasks: closedTasks.slice(1)
+        },
+        {
+          id: "B1.2",
+          title: "Acción Siguiente Inmediata (Next Action en Vuelo)",
+          status: "active",
+          desc: nextActionDesc,
+          tasks: openTasks
+        }
+      ]
+    },
+    {
+      id: "B2",
+      title: "Persistencia, Endpoints y Extensión Funcional",
+      status: "pending",
+      statusLabel: "⏳ Pendiente",
+      summary: "Ampliación de funcionalidades, persistencia de datos estructurados y pruebas de integración.",
+      decisions: b2Decs,
+      subblocks: [
+        {
+          id: "B2.1",
+          title: "Ampliación de Esquemas y Modelos de Datos",
+          status: "pending",
+          desc: "Preparación de estructuras y capas de acceso seguro.",
+          tasks: []
+        },
+        {
+          id: "B2.2",
+          title: "Integración de Vistas y Consumo de Servicios",
+          status: "pending",
+          desc: "Visualización y renderizado reactivo de entidades.",
+          tasks: []
+        }
+      ]
+    },
+    {
+      id: "B3",
+      title: "Validación, Auditoría de Cierre y Release",
+      status: "pending",
+      statusLabel: "⏳ Pendiente",
+      summary: "Comprobación de invariantes, auditoría mediante project-auditor y preparación de entrega.",
+      decisions: [],
+      subblocks: [
+        {
+          id: "B3.1",
+          title: "Paso de Gates de Auditoría y Verificación de Diff",
+          status: "pending",
+          desc: "Validación de higiene técnica, cero leaks y despersonalización.",
+          tasks: []
+        },
+        {
+          id: "B3.2",
+          title: "Sincronización de Estado en Presente Indicativo",
+          status: "pending",
+          desc: "Actualización de state.md y registro inmutable de decisiones.",
+          tasks: []
+        }
+      ]
+    }
+  ];
 }
 
 // Ingest typed model from server
@@ -173,7 +339,7 @@ function ingestModel(model) {
   STATE.fronts = entities.filter(e => e.kind === "front");
   STATE.activeFront = STATE.fronts.find(e => e.active) || (STATE.fronts[0] || null);
 
-  // Live Plan items
+  // Live Plan items & metadata
   STATE.livePlan = entities.filter(e => e.kind === "plan-item").map(e => ({
     id: e.id,
     index: e.index || 1,
@@ -181,6 +347,27 @@ function ingestModel(model) {
     struck: Boolean(e.struck),
     destination: e.destination || "",
     project: e.project || "cross"
+  }));
+  STATE.livePlanMeta = entities.find(e => e.kind === "live-plan-meta") || null;
+
+  // Persistent Plans (from data/plans/*.json)
+  STATE.plans = entities.filter(e => e.kind === "plan").map(e => ({
+    id: e._record_id || e.id || "",
+    project: e.project || "nexus",
+    task: e.task || e.title || "",
+    sub_block: e.sub_block || "",
+    status: e.status || "closed",
+    date: e.date || "",
+    closed_on: e.closed_on || e.closed_date || null,
+    author: e.author || e.origin || "Operator",
+    order_why: e.order_why || "",
+    items: Array.isArray(e.items) ? e.items.map(it => ({
+      index: it.index || 1,
+      text: it.text || "",
+      status: it.status || (it.struck ? "done" : "open"),
+      destination: it.destination || it.outcome || (it.struck ? "✅ resolved" : ""),
+      completed_at: it.completed_at || it.date || null
+    })) : []
   }));
 
   // Decisions (all decision and method-decision records)
@@ -322,9 +509,13 @@ function ingestModel(model) {
                    projectStates.find(ps => ps.project && ps.project.toLowerCase() === name.toLowerCase()) ||
                    projectStates.find(ps => ps.title && ps.title.toLowerCase().includes(name.toLowerCase()));
     const decCount = STATE.decisions.filter(d => d.project === name).length;
-    const roadmap = generateProjectBlocks(name, decCount, pState);
-    const completedBlocks = roadmap.filter(b => b.done).length;
-    const progress = roadmap.length ? Math.round((completedBlocks / roadmap.length) * 100) : 75;
+    const projectTasks = STATE.tasks.filter(t => t.project === name || t.project.startsWith(name));
+    const projectDecs = STATE.decisions.filter(d => d.project === name);
+    
+    const workflow = generateProjectRamifiedWorkflow(name, decCount, pState, projectTasks, projectDecs);
+    const completedBlocks = workflow.filter(b => b.status === "completed").length;
+    const totalBlocks = workflow.length;
+    const progress = totalBlocks ? Math.round((completedBlocks / totalBlocks) * 100) : 75;
 
     let rawLastUpdated = pState?.last_updated || "";
     let integratedThrough = pState?.integrated_through || "";
@@ -334,23 +525,48 @@ function ingestModel(model) {
       if (!integratedThrough && parts[1]) integratedThrough = parts[1].replace(/[`*]/g, "").trim();
     }
 
-    const nextAction = pState?.next_action || pState?.resume_point || pState?.phase || (roadmap.find(b => b.active)?.title || "Revisión periódica");
+    const nextAction = pState?.next_action || pState?.resume_point || pState?.phase || "Progreso de las tareas prioritarias del roadmap";
+    const definition = pState?.definition || "Plataforma soberana bajo metodología MLabs con ciclo de vida desacoplado y gobernanza inmutable.";
+    const currentPhase = pState?.phase_summary || pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución";
+    const codeRepo = pState?.code_repo || "";
+    const remoteUrl = pState?.remote_url || "";
+    const gitBranch = pState?.git_branch || "";
+    const gitCommit = pState?.git_commit || "";
+    const gitCommitMsg = pState?.git_commit_msg || "";
+    const gitCommitDate = pState?.git_commit_date || "";
+    const readmeContent = pState?.readme_content || "";
+    const readmePath = pState?.readme_path || "";
 
     return {
       name,
       rank: `#${idx + 1}`,
       status: "ACTIVE",
+      readmeContent,
+      readmePath,
+      gitBranch,
+      gitCommit,
+      gitCommitMsg,
+      gitCommitDate,
       progress,
       completedBlocks,
-      totalBlocks: roadmap.length,
+      totalBlocks,
       decisionsCount: decCount,
       nextAction,
       lastUpdated: rawLastUpdated || new Date().toISOString().slice(0, 10),
       integratedThrough: integratedThrough || `D${decCount || 1}`,
-      currentPhase: pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución",
+      currentPhase,
+      definition,
+      codeRepo,
+      remoteUrl,
       file: pState ? pState.file : "",
-      lab: pState?.lab || (pState ? getProjectLab(pState) : "MProjects"),
-      blocks: roadmap
+      // The fallback is the generic one `getProjectLab` already uses. Until 2026-08-19 it
+      // was the literal name of a grouping folder from one operations centre, hard-coded
+      // into the public engine — exactly the `interface:AX-1` breach this project exists to
+      // avoid. It was invisible to the release gate because that word was not on the
+      // instance's denylist; adding the word found this on the very first run, which is the
+      // argument for deriving that list from disk rather than remembering it.
+      lab: pState?.lab || (pState ? getProjectLab(pState) : "Workspaces"),
+      workflow
     };
   });
 
@@ -373,7 +589,7 @@ function updateHUD() {
     } else {
       frontEl.innerHTML = `
         <span class="front-marker">⏸ COMPASS</span>
-        <span class="front-title">Sin frente activo en Schedule</span>
+        <span class="front-title">Sin frente activo en COMPASS</span>
       `;
     }
   }
@@ -498,6 +714,7 @@ function renderView() {
   switch (STATE.currentView) {
     case "overview": renderOverview(main); break;
     case "projects": renderProjectsHub(main); break;
+    case "project-detail": renderProjectDetailPage(main); break;
     case "cockpit": renderCockpit(main); break;
     case "cheatsheet": renderCheatSheet(main); break;
     case "inbox": renderInbox(main); break;
@@ -538,144 +755,194 @@ function renderOverview(container) {
 
       <!-- TOC PILL BAR -->
       <nav class="toc-bar">
-        <button class="toc-pill" onclick="jumpToSection('sec-tiers')"><span>🏛️</span> 01 · Tres Niveles</button>
-        <button class="toc-pill" onclick="jumpToSection('sec-philosophy')"><span>📜</span> 02 · Los 6 Principios</button>
-        <button class="toc-pill" onclick="jumpToSection('sec-workflows')"><span>🔄</span> 03 · Flujos de Trabajo</button>
-        <button class="toc-pill" onclick="jumpToSection('sec-ecosystem')"><span>🗺️</span> 04 · Ecosistema</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-governance')"><span>🏛️</span> 01 · Gobernanza</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-workflows')"><span>🔄</span> 02 · Flujos de Trabajo</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-ecosystem')"><span>🗺️</span> 03 · Ecosistema</button>
       </nav>
 
-      <!-- SECCIÓN 01: TRES NIVELES -->
-      <section class="doc-section" id="sec-tiers">
-        <div class="section-head" onclick="toggleOverviewSection('sec-tiers')">
-          <h2><span class="num">01</span> Gobernanza en Tres Niveles de la Empresa</h2>
-          <button class="btn-toggle-sec">${isCollapsed('sec-tiers') ? '▶ Mostrar' : '▼ Plegar'}</button>
+      <!-- SECCIÓN 01: GOBERNANZA (tres niveles fusionados) -->
+      <section class="doc-section" id="sec-governance">
+        <div class="section-head" onclick="toggleOverviewSection('sec-governance')">
+          <h2><span class="num">01</span> Gobernanza — Filosofía, Axiomas y Estado</h2>
+          <button class="btn-toggle-sec">${isCollapsed('sec-governance') ? '▶ Mostrar' : '▼ Plegar'}</button>
         </div>
-        <div class="section-body ${isCollapsed('sec-tiers') ? 'is-collapsed' : ''}">
-          <p class="lead">
-            La metodología desacopla la ley del estado: <strong>MLabs</strong> define cómo se trabaja; <strong>NEXUS</strong> guarda lo que ha ocurrido; y cada <strong>Proyecto</strong> opera como un repositorio soberano con su propio auditor y registro.
-          </p>
+        <div class="section-body ${isCollapsed('sec-governance') ? 'is-collapsed' : ''}">
 
-          <div class="grid-3">
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">NIVEL 1 · PÚBLICO</span>
-                <span class="card-badge">PHILOSOPHY.md</span>
+          <!-- ── PANEL SUPERIOR: Filosofía Inmutable ── -->
+          <div class="gov-philosophy-panel">
+            <div class="gov-panel-header">
+              <div class="gov-panel-title">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                  <span class="gov-level-badge badge-vine">NIVEL 1 · PÚBLICO &amp; INMUTABLE</span>
+                  <span class="gov-file-tag">PHILOSOPHY.md</span>
+                </div>
+                <h3>Los Seis Principios Rectores</h3>
               </div>
-              <h3>Filosofía Inmutable</h3>
-              <p>Seis cláusulas rectoras inmutables. Definen lo que optimiza la compañía y <strong>rompen todo empate de diseño</strong>.</p>
-              <div style="margin-top: auto; font-size: 11.5px; color: var(--ink-muted); padding-top: 8px; border-top: 1px solid var(--line);">
-                <strong>PH-4:</strong> Cero cajas negras · <strong>PH-6:</strong> Atención escasa
+              <p class="gov-panel-subtitle">La brújula rectora que rige todas las decisiones técnicas y <strong>rompe todo empate de diseño</strong>. Modificable casi nunca; sólo por el operador.</p>
+            </div>
+
+            <div class="gov-principles-grid">
+              <div class="gov-principle-card">
+                <div class="gov-principle-card-head">
+                  <span class="principle-badge">PH-1</span>
+                  <h4 class="principle-title">El horizonte largo es la premisa</h4>
+                </div>
+                <p class="principle-desc">Todo se construye para lo siguiente, no solo para hoy. Diseña para 3× a 10× el volumen actual. Lo que se aprende una vez no se vuelve a aprender desde cero.</p>
+                <div class="principle-rule-box">
+                  <span class="rule-kicker">REGLA DE ORO</span>
+                  <span class="rule-text">Solución que sólo escala hoy es postergación.</span>
+                </div>
+              </div>
+
+              <div class="gov-principle-card">
+                <div class="gov-principle-card-head">
+                  <span class="principle-badge">PH-2</span>
+                  <h4 class="principle-title">El aprendizaje se compra con productividad</h4>
+                </div>
+                <p class="principle-desc">Donde la velocidad y la comprensión chocan, <strong>gana la comprensión</strong>. Un atajo que el operador no entiende no es velocidad: es deuda con intereses.</p>
+                <div class="principle-rule-box">
+                  <span class="rule-kicker">REGLA DE ORO</span>
+                  <span class="rule-text">Cero atajos ciegos; entendimiento primero.</span>
+                </div>
+              </div>
+
+              <div class="gov-principle-card">
+                <div class="gov-principle-card-head">
+                  <span class="principle-badge">PH-3</span>
+                  <h4 class="principle-title">Nada se pierde</h4>
+                </div>
+                <p class="principle-desc">Sin datos no hay análisis. Un dato perdido jamás se recupera. Esto cubre entradas, razonamiento, alternativas y <strong>los descartes con su motivo</strong>.</p>
+                <div class="principle-rule-box">
+                  <span class="rule-kicker">REGLA DE ORO</span>
+                  <span class="rule-text">Registrar es barato; reconstruir es imposible.</span>
+                </div>
+              </div>
+
+              <div class="gov-principle-card">
+                <div class="gov-principle-card-head">
+                  <span class="principle-badge">PH-4</span>
+                  <h4 class="principle-title">Cero cajas negras</h4>
+                </div>
+                <p class="principle-desc">Toda decisión es trazable a su origen y razonamiento. Un sistema cuyo dueño no puede explicarlo no puede ser corregido por él. El valor vive en los artefactos en disco.</p>
+                <div class="principle-rule-box">
+                  <span class="rule-kicker">REGLA DE ORO</span>
+                  <span class="rule-text">La herramienta es intercambiable; el estado es sagrado.</span>
+                </div>
+              </div>
+
+              <div class="gov-principle-card">
+                <div class="gov-principle-card-head">
+                  <span class="principle-badge">PH-5</span>
+                  <h4 class="principle-title">El trabajo es modular</h4>
+                </div>
+                <p class="principle-desc">Cada pieza es dueña de su propio ciclo de vida y versión. El acoplamiento se paga en cada cambio; la separación una sola vez. Fronteras por <strong>propietario primero</strong>.</p>
+                <div class="principle-rule-box">
+                  <span class="rule-kicker">REGLA DE ORO</span>
+                  <span class="rule-text">Nunca agrupar por temática; separar por dueño.</span>
+                </div>
+              </div>
+
+              <div class="gov-principle-card">
+                <div class="gov-principle-card-head">
+                  <span class="principle-badge">PH-6</span>
+                  <h4 class="principle-title">La atención es el recurso escaso</h4>
+                </div>
+                <p class="principle-desc">Todo se registra; casi nada se carga en memoria a la vez. <strong>Un único frente activo (▶)</strong>. El coste crítico no es el disco, sino lo que hay que retener en la cabeza.</p>
+                <div class="principle-rule-box">
+                  <span class="rule-kicker">REGLA DE ORO</span>
+                  <span class="rule-text">Un solo frente a la vez; cero dispersión.</span>
+                </div>
               </div>
             </div>
 
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-gold">NIVEL 2 · ESTRUCTURA</span>
-                <span class="card-badge">AXIOMS.md</span>
-              </div>
-              <h3>Axiomas y Reglas</h3>
-              <p>28 axiomas técnicos verificables. Implementan la filosofía de forma determinista y gobiernan roles y checks.</p>
-              <div style="margin-top: auto; font-size: 11.5px; color: var(--ink-muted); padding-top: 8px; border-top: 1px solid var(--line);">
-                <strong>AX-1:</strong> Append-only · <strong>AX-11:</strong> Despido N/K
-              </div>
-            </div>
-
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-grape">NIVEL 3 · PRIVADO</span>
-                <span class="card-badge">NEXUS</span>
-              </div>
-              <h3>Decisiones y Cartridges</h3>
-              <p>El estado real donde vive el trabajo: registro inmutable de decisiones con autor, fecha y razonamiento.</p>
-              <div style="margin-top: auto; font-size: 11.5px; color: var(--ink-muted); padding-top: 8px; border-top: 1px solid var(--line);">
-                <strong>${liveDecisions().length}</strong> Decisiones · <strong>9</strong> Proyectos
+            <div class="callout danger" style="margin-top: 18px;">
+              <div class="callout-title"><span>🛡️</span> Lo que esta empresa rechaza formalmente (PHILOSOPHY §Refusals)</div>
+              <div class="grid-2" style="margin-top: 8px; gap: 10px;">
+                <div><strong>🚫 Acumulación:</strong> Curación estricta; sólo se guarda lo que se va a usar.</div>
+                <div><strong>🚫 Complacencia:</strong> El sistema existe para preparar a su operador, no para darle la razón.</div>
+                <div><strong>🚫 Optimización vacía:</strong> Nada entra por estética; debe desbloquear trabajo real.</div>
+                <div><strong>🚫 Roles muertos:</strong> Todo rol sin hallazgos útiles se retira por contrato N/K.</div>
               </div>
             </div>
           </div>
 
-          <div class="callout danger">
-            <div class="callout-title"><span>🛡️</span> Lo que esta empresa rechaza formalmente (PHILOSOPHY §Refusals)</div>
-            <div class="grid-2" style="margin-top: 8px; gap: 10px;">
-              <div><strong>🚫 Acumulación:</strong> Curación estricta; sólo se guarda lo que se va a usar.</div>
-              <div><strong>🚫 Complacencia:</strong> El sistema existe para preparar a su operador, no para darle la razón.</div>
-              <div><strong>🚫 Optimización vacía:</strong> Nada entra por estética; debe desbloquear trabajo real.</div>
-              <div><strong>🚫 Roles muertos:</strong> Todo rol sin hallazgos útiles se retira por contrato N/K.</div>
+          <!-- ── PANEL INFERIOR: Axiomas + NEXUS lado a lado ── -->
+          <div class="gov-bottom-row">
+            <!-- NIVEL 2: AXIOMAS -->
+            <div class="gov-bottom-card gov-card-axioms">
+              <div class="gov-bottom-card-head">
+                <span class="gov-level-badge badge-gold">NIVEL 2 · ESTRUCTURA &amp; LEY</span>
+                <span class="gov-file-tag">AXIOMS.md · AGENTS.md · METHOD.md</span>
+              </div>
+              <h3 class="gov-bottom-title">Axiomas y Reglas Deterministas</h3>
+              <p class="gov-bottom-desc">Reglas técnicas verificables que implementan la filosofía. Gobiernan la orquestación de roles, invariantes de seguridad, checks automáticos y contratos de despido N/K.</p>
+              
+              <div class="gov-stat-grid">
+                <div class="gov-stat-box">
+                  <span class="gov-stat-val">30</span>
+                  <span class="gov-stat-lbl">Axiomas Activos</span>
+                </div>
+                <div class="gov-stat-box">
+                  <span class="gov-stat-val">10</span>
+                  <span class="gov-stat-lbl">Invariantes Gate</span>
+                </div>
+                <div class="gov-stat-box">
+                  <span class="gov-stat-val">4</span>
+                  <span class="gov-stat-lbl">Roles Auditados</span>
+                </div>
+              </div>
+
+              <div class="gov-chips-container">
+                <div class="gov-chip-label">Axiomas Clave:</div>
+                <div class="gov-sample-rules">
+                  <span class="gov-rule-chip"><strong>AX-1</strong> Append-only</span>
+                  <span class="gov-rule-chip"><strong>AX-11</strong> Despido N/K</span>
+                  <span class="gov-rule-chip"><strong>AX-20</strong> Fuente única</span>
+                  <span class="gov-rule-chip"><strong>AX-21</strong> Carga selectiva</span>
+                  <span class="gov-rule-chip"><strong>AX-26</strong> Dueño primero</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- NIVEL 3: NEXUS -->
+            <div class="gov-bottom-card gov-card-nexus">
+              <div class="gov-bottom-card-head">
+                <span class="gov-level-badge badge-grape">NIVEL 3 · ESTADO PRIVADO</span>
+                <span class="gov-file-tag">NEXUS (operaciones)</span>
+              </div>
+              <h3 class="gov-bottom-title">Decisiones y Cartridges Soberanos</h3>
+              <p class="gov-bottom-desc">Donde vive la empresa real: registro histórico inmutable de decisiones con autor, fecha y razonamiento. Cada proyecto opera como un cartridge soberano con su propio ciclo de vida.</p>
+              
+              <div class="gov-stat-grid">
+                <div class="gov-stat-box">
+                  <span class="gov-stat-val">${liveDecisions().length}</span>
+                  <span class="gov-stat-lbl">Decisiones Vivas</span>
+                </div>
+                <div class="gov-stat-box">
+                  <span class="gov-stat-val">${STATE.projects.length}</span>
+                  <span class="gov-stat-lbl">Proyectos Soberanos</span>
+                </div>
+                <div class="gov-stat-box">
+                  <span class="gov-stat-val">${STATE.tasks.length}</span>
+                  <span class="gov-stat-lbl">Tareas en Vuelo</span>
+                </div>
+              </div>
+
+              <div class="gov-nexus-links">
+                <button class="gov-link-btn" onclick="navigateTo('decisions')">📜 Ver Decision Log →</button>
+                <button class="gov-link-btn" onclick="navigateTo('projects')">🚀 Abrir Projects Hub →</button>
+                <button class="gov-link-btn" onclick="navigateTo('inbox')">📋 Ir al Buzón →</button>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      <!-- SECCIÓN 02: FILOSOFÍA -->
-      <section class="doc-section" id="sec-philosophy">
-        <div class="section-head" onclick="toggleOverviewSection('sec-philosophy')">
-          <h2><span class="num">02</span> Los Seis Principios Rectores (PH-1 a PH-6)</h2>
-          <button class="btn-toggle-sec">${isCollapsed('sec-philosophy') ? '▶ Mostrar' : '▼ Plegar'}</button>
-        </div>
-        <div class="section-body ${isCollapsed('sec-philosophy') ? 'is-collapsed' : ''}">
-          <p class="lead">La brújula filosófica inmutable que rige todas las decisiones técnicas y operativas.</p>
-
-          <div class="grid-3">
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">PH-1</span>
-              </div>
-              <h3>El horizonte largo es la premisa</h3>
-              <p>Todo se construye para lo siguiente, no solo para hoy. Diseña para 3× a 10× el volumen actual. Lo que se aprende una vez no se vuelve a aprender desde cero.</p>
-              <div class="principle-rule"><strong>Regla:</strong> Solución que sólo escala hoy es postergación.</div>
-            </div>
-
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">PH-2</span>
-              </div>
-              <h3>El aprendizaje se compra con productividad ⏳</h3>
-              <p>Donde la velocidad y la comprensión chocan, <strong>gana la comprensión</strong>. Un atajo que el operador no entiende no es velocidad: es deuda con intereses.</p>
-              <div class="principle-rule"><strong>Regla:</strong> Cero atajos ciegos; entendimiento primero.</div>
-            </div>
-
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">PH-3</span>
-              </div>
-              <h3>Nada se pierde</h3>
-              <p>Sin datos no hay análisis. Un análisis puede rehacerse; un dato perdido jamás se recupera. Esto cubre entradas, razonamiento y <strong>los descartes con su motivo</strong>.</p>
-              <div class="principle-rule"><strong>Regla:</strong> Registrar es barato; reconstruir es imposible.</div>
-            </div>
-
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">PH-4</span>
-              </div>
-              <h3>Cero cajas negras</h3>
-              <p>Toda decisión es trazable a su razonamiento. Un sistema cuyo dueño no puede explicarlo no puede ser corregido por él. El valor reside en los artefactos en disco.</p>
-              <div class="principle-rule"><strong>Regla:</strong> La herramienta es intercambiable; el estado es sagrado.</div>
-            </div>
-
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">PH-5</span>
-              </div>
-              <h3>El trabajo es modular</h3>
-              <p>Cada pieza es dueña de su propio ciclo de vida y versión. El acoplamiento se paga en cada cambio; la separación una sola vez. Fronteras por <strong>propietario primero</strong>.</p>
-              <div class="principle-rule"><strong>Regla:</strong> Nunca agrupar por temática; separar por dueño.</div>
-            </div>
-
-            <div class="doc-card">
-              <div class="doc-card-head">
-                <span class="card-badge badge-vine">PH-6</span>
-              </div>
-              <h3>La atención es el recurso escaso</h3>
-              <p>Todo se registra; casi nada se carga en memoria a la vez. <strong>Un único frente activo (▶)</strong>. El coste crítico no es el disco, sino lo que hay que retener en la cabeza.</p>
-              <div class="principle-rule"><strong>Regla:</strong> Un solo frente a la vez; cero dispersión.</div>
-            </div>
-          </div>
         </div>
       </section>
 
       <!-- SECCIÓN 03: FLUJOS DE TRABAJO -->
       <section class="doc-section" id="sec-workflows">
         <div class="section-head" onclick="toggleOverviewSection('sec-workflows')">
-          <h2><span class="num">03</span> Los Cinco Flujos de Trabajo Operativos (Workflows)</h2>
+          <h2><span class="num">02</span> Los Cinco Flujos de Trabajo Operativos (Workflows)</h2>
           <button class="btn-toggle-sec">${isCollapsed('sec-workflows') ? '▶ Mostrar' : '▼ Plegar'}</button>
         </div>
         <div class="section-body ${isCollapsed('sec-workflows') ? 'is-collapsed' : ''}">
@@ -694,7 +961,7 @@ function renderOverview(container) {
       <!-- SECCIÓN 04: ECOSISTEMA -->
       <section class="doc-section" id="sec-ecosystem">
         <div class="section-head" onclick="toggleOverviewSection('sec-ecosystem')">
-          <h2><span class="num">04</span> Ecosistema de Módulos y Navegación Directa</h2>
+          <h2><span class="num">03</span> Ecosistema de Módulos y Navegación Directa</h2>
           <button class="btn-toggle-sec">${isCollapsed('sec-ecosystem') ? '▶ Mostrar' : '▼ Plegar'}</button>
         </div>
         <div class="section-body ${isCollapsed('sec-ecosystem') ? 'is-collapsed' : ''}">
@@ -939,14 +1206,14 @@ function renderWorkflowDetail(type) {
       return `
         <div class="workflow-detail-card">
           <p class="lead" style="margin-bottom: 14px;">
-            <strong>Objetivo:</strong> Ejecutar trabajo real en cualquier cartridge de proyecto con preparación de tareas, brújula Schedule, plan numérico en vuelo y auditoría de cierre.
+            <strong>Objetivo:</strong> Ejecutar trabajo real en cualquier cartridge de proyecto con preparación de tareas, brújula COMPASS, plan numérico en vuelo y auditoría de cierre.
           </p>
 
           <div class="wf-stepper">
             <div class="wf-node">
               <span class="wf-node-step">1</span>
               <div class="wf-node-title">Orientar (Compass)</div>
-              <p class="wf-node-desc">Lee Schedule.md y mailbox.md. Fija el único frente activo (▶).</p>
+              <p class="wf-node-desc">Lee COMPASS.md y mailbox.md. Fija el único frente activo (▶).</p>
               <button class="wf-node-btn" onclick="openSkillInCatalog('open-session')">⚡ open-session</button>
             </div>
             <div class="wf-arrow">→</div>
@@ -1034,7 +1301,7 @@ window.navigateTo = function(viewName) {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. PROJECTS HUB VIEW (Separated by Laboratories dynamically)
+// 2. PROJECTS HUB & SOVEREIGN PROJECT DEDICATED WEBS
 // ─────────────────────────────────────────────────────────────────────────────
 function getProjectLab(p) {
   if (p.lab && p.lab !== "General") return p.lab;
@@ -1050,7 +1317,6 @@ function getProjectLab(p) {
 
 function renderProjectsHub(container) {
   const selectedLab = STATE.selectedLabFilter || "ALL";
-  const selectedProj = STATE.projects.find(p => p.name === STATE.selectedProject) || STATE.projects[0];
 
   const enrichedProjects = STATE.projects.map(p => ({
     ...p,
@@ -1067,12 +1333,12 @@ function renderProjectsHub(container) {
     <div class="view-header">
       <div class="view-title-group">
         <h1><span>🚀</span> Projects Hub</h1>
-        <p class="view-subtitle">Organización de proyectos segregada por Laboratorios y Centros de Trabajo</p>
+        <p class="view-subtitle">Matriz de proyectos organizada por Laboratorios y Centros de Trabajo soberanos</p>
       </div>
     </div>
 
     <!-- LAB FILTER CHIPS -->
-    <div class="skills-stats-hud" style="margin-bottom: 20px;">
+    <div class="skills-stats-hud" style="margin-bottom: 24px;">
       <div class="skill-stat-chip ${selectedLab === 'ALL' ? 'active' : ''}" onclick="updateLabFilter('ALL')">
         <span class="stat-count">${enrichedProjects.length}</span>
         <span class="stat-name">🏢 Todos los Laboratorios</span>
@@ -1094,9 +1360,6 @@ function renderProjectsHub(container) {
       const labProjects = enrichedProjects.filter(p => p.lab === lab);
       return renderLabSection(lab, labProjects);
     }).join("") : renderLabSection(selectedLab, filteredProjects)}
-
-    <!-- PROJECT DETAIL DEEP DIVE -->
-    ${selectedProj ? renderProjectDeepDive(selectedProj) : ""}
   `;
 }
 
@@ -1117,7 +1380,7 @@ function renderLabSection(labName, projects) {
               <h2 class="lab-title">${esc(labName)}</h2>
               <span class="tag-pill ${badgeClass}">${esc(badgeLabel)}</span>
             </div>
-            <p class="lab-subtitle">Entorno de proyectos y operaciones asociadas a ${esc(labName)}</p>
+            <p class="lab-subtitle">Entorno de proyectos y operaciones soberanas asociadas a ${esc(labName)}</p>
           </div>
         </div>
         <div class="lab-stats-pills">
@@ -1128,7 +1391,7 @@ function renderLabSection(labName, projects) {
 
       <div class="projects-matrix-grid">
         ${projects.map(p => `
-          <div class="project-card ${p.name === STATE.selectedProject ? 'active-selected' : ''}" onclick="selectProject('${esc(p.name)}')">
+          <div class="project-card" onclick="openProjectDetail('${esc(p.name)}')">
             <div class="card-top">
               <div class="project-name-group">
                 <span class="project-rank">${esc(p.rank)}</span>
@@ -1136,6 +1399,10 @@ function renderLabSection(labName, projects) {
               </div>
               <span class="status-chip ${p.status === 'ACTIVE' ? 'status-active' : 'status-paused'}">${esc(p.status)}</span>
             </div>
+
+            <p class="project-card-def-snippet">
+              ${inline(p.definition)}
+            </p>
 
             <div class="progress-section">
               <div class="progress-labels">
@@ -1147,13 +1414,10 @@ function renderLabSection(labName, projects) {
               </div>
             </div>
 
-            <div class="next-action-preview" title="${esc(p.nextAction)}">
-              <strong>Next:</strong> ${inline(p.nextAction)}
-            </div>
-
             <div class="card-meta-row">
               <span class="meta-item">📜 ${p.decisionsCount} decisiones</span>
-              <span class="meta-item">🕒 ${esc(p.lastUpdated)}</span>
+              <span class="meta-item">⚖️ Cartridge Soberano</span>
+              <span class="card-footer-action-inline">Explorar →</span>
             </div>
           </div>
         `).join("")}
@@ -1162,150 +1426,574 @@ function renderLabSection(labName, projects) {
   `;
 }
 
-function renderProjectDeepDive(proj) {
+// ─────────────────────────────────────────────────────────────────────────────
+// SOVEREIGN PROJECT DEDICATED PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getRemoteHttpUrl(remote) {
+  if (!remote) return "";
+  let url = String(remote).trim();
+  if (url.startsWith("git@github.com:")) {
+    url = "https://github.com/" + url.slice("git@github.com:".length);
+  }
+  if (url.endsWith(".git")) {
+    url = url.slice(0, -4);
+  }
+  return url.startsWith("http") ? url : "";
+}
+
+window.toggleRepoDropdown = function(event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const menu = document.getElementById("repoDropdownMenu");
+  const btn = document.querySelector(".repo-dropdown-btn");
+  if (!menu) return;
+  const isShowing = menu.classList.contains("show");
+  if (isShowing) {
+    menu.classList.remove("show");
+    btn?.classList.remove("active");
+  } else {
+    menu.classList.add("show");
+    btn?.classList.add("active");
+  }
+};
+
+document.addEventListener("click", (e) => {
+  const wrapper = document.getElementById("repoDropdownWrapper");
+  if (wrapper && !wrapper.contains(e.target)) {
+    const menu = document.getElementById("repoDropdownMenu");
+    const btn = document.querySelector(".repo-dropdown-btn");
+    menu?.classList.remove("show");
+    btn?.classList.remove("active");
+  }
+});
+
+function renderProjectDetailPage(container) {
+  const projName = STATE.selectedProject || (STATE.projects[0] ? STATE.projects[0].name : "");
+  const proj = STATE.projects.find(p => p.name === projName) || STATE.projects[0];
+
+  if (!proj) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <h3>Proyecto no encontrado</h3>
+        <p>Selecciona un proyecto desde el Projects Hub.</p>
+        <button class="btn-hud-action" onclick="navigateTo('projects')">Volver a Projects Hub</button>
+      </div>
+    `;
+    return;
+  }
+
   const labName = getProjectLab(proj);
   const isPersonal = labName.toLowerCase().includes("proj");
   const icon = isPersonal ? "💼" : "🔬";
+  const activeTab = STATE.projectSubtab || "workflow";
+
   const projectTasks = STATE.tasks.filter(t => t.project === proj.name || t.project.startsWith(proj.name));
   const activeTasks = projectTasks.filter(t => ["⬜", "🔨", "⛔", "🔴"].includes(t.status));
-  const projectDecs = STATE.decisions.filter(d => d.project === proj.name).slice(0, 5);
+  const projectDecs = STATE.decisions.filter(d => d.project === proj.name);
+  const liveDecs = projectDecs.filter(d => !d.isSuperseded);
+
+  container.innerHTML = `
+    <!-- BREADCRUMB & TOP NAV -->
+    <div class="proj-page-breadcrumb-bar">
+      <button class="btn-back-hub" onclick="navigateTo('projects')">
+        <span>←</span> <span>Volver a Projects Hub</span>
+      </button>
+      <div class="proj-breadcrumb-path">
+        <span>Projects Hub</span> / <span>${esc(labName)}</span> / <strong>${esc(proj.name)}</strong>
+      </div>
+      <div class="proj-quick-switch">
+        <label for="quickProjSelect">Cambiar Proyecto:</label>
+        <select id="quickProjSelect" class="search-input" style="padding: 4px 8px; font-size: 12px; width: auto;" onchange="openProjectDetail(this.value)">
+          ${STATE.projects.map(p => `
+            <option value="${esc(p.name)}" ${p.name === proj.name ? 'selected' : ''}>${esc(p.name)} (${getProjectLab(p)})</option>
+          `).join("")}
+        </select>
+      </div>
+    </div>
+
+    <!-- SOVEREIGN PROJECT HERO HEADER WITH FULL DEFINITION & PHASE -->
+    <header class="chuleta-header proj-sovereign-header">
+      <div class="brand">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+          <div>
+            <div class="kicker">${esc(labName)} · CARTRIDGE SOBERANO</div>
+            <div style="display: flex; align-items: center; gap: 14px; margin-top: 4px; flex-wrap: wrap;">
+              <span style="font-size: 32px;">${icon}</span>
+              <h1 style="margin: 0; font-size: 28px;">${esc(proj.name)}</h1>
+              <span class="card-badge badge-vine" style="font-size: 12px;">${esc(proj.status)}</span>
+              <span class="card-badge badge-gold" style="font-size: 12px;">Sincronizado: ${esc(proj.integratedThrough)}</span>
+            </div>
+          </div>
+          <div class="proj-phase-badge-box">
+            <span class="proj-phase-tag">FASE TÉCNICA ACTUAL</span>
+            <div class="proj-phase-text">${inline(proj.currentPhase)}</div>
+          </div>
+        </div>
+
+        <!-- DEFINICIÓN INTEGRADA DEL PROYECTO (WHAT IT IS) -->
+        <div class="proj-definition-hero-card">
+          <div class="proj-def-label">DEFINICIÓN &amp; PROPÓSITO DEL PROYECTO</div>
+          <p class="proj-def-text">${inline(proj.definition)}</p>
+        </div>
+
+        <!-- SPECS HUD (BLOQUES, DECISIONES, TAREAS, NEXT ACTION) -->
+        <div class="specs" style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.12);">
+          <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>🗺️ Bloques:</strong> ${proj.completedBlocks}/${proj.totalBlocks} (${proj.progress}%)</span>
+          <span class="spec-pill" onclick="setProjectSubtab('decisions')"><strong>📜 Decisiones:</strong> ${liveDecs.length} Vivas (${projectDecs.length} Totales)</span>
+          <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>📋 Tareas:</strong> ${projectTasks.length} (${activeTasks.length} Activas)</span>
+          <span class="spec-pill active-pill" onclick="setProjectSubtab('state')"><strong>🎯 Next Action:</strong> ${inline(proj.nextAction.slice(0, 52))}...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- PROJECT INTERNAL TABS (TOC) -->
+    <nav class="toc-bar" style="margin: 20px 0 24px;">
+      <button class="toc-pill ${activeTab === 'workflow' ? 'active' : ''}" onclick="setProjectSubtab('workflow')"><span>🗺️</span> 1. Workflow Ramificado</button>
+      <button class="toc-pill ${activeTab === 'state' ? 'active' : ''}" onclick="setProjectSubtab('state')"><span>🎯</span> 2. Estado Vivo &amp; Next Action</button>
+      <button class="toc-pill ${activeTab === 'architecture' ? 'active' : ''}" onclick="setProjectSubtab('architecture')"><span>🏛️</span> 3. Arquitectura &amp; Definición</button>
+      <button class="toc-pill ${activeTab === 'decisions' ? 'active' : ''}" onclick="setProjectSubtab('decisions')"><span>📜</span> 4. Decisiones (${projectDecs.length})</button>
+      <button class="toc-pill ${activeTab === 'skills' ? 'active' : ''}" onclick="setProjectSubtab('skills')"><span>⚡</span> 5. Skills &amp; Operaciones</button>
+      <button class="toc-pill ${activeTab === 'repos' ? 'active' : ''}" onclick="setProjectSubtab('repos')"><span>🐙</span> 6. Repos &amp; Git</button>
+      <button class="toc-pill ${activeTab === 'guide' ? 'active' : ''}" onclick="setProjectSubtab('guide')"><span>📖</span> 7. Guía de Uso</button>
+    </nav>
+
+    <!-- TAB CONTENT RENDERER -->
+    <div class="proj-tab-content-area">
+      ${renderProjectSubtabContent(proj, activeTab, projectTasks, projectDecs)}
+    </div>
+  `;
+}
+
+function renderProjectSubtabContent(proj, tab, projectTasks, projectDecs) {
+  switch (tab) {
+    case "workflow": return renderProjectWorkflowTab(proj, projectTasks, projectDecs);
+    case "state": return renderProjectStateTab(proj, projectTasks, projectDecs);
+    case "architecture": return renderProjectArchitectureTab(proj);
+    case "decisions": return renderProjectDecisionsTab(proj, projectDecs);
+    case "skills": return renderProjectSkillsTab(proj);
+    case "repos": return renderProjectReposTab(proj);
+    case "guide": return renderProjectGuideTab(proj);
+    default: return renderProjectWorkflowTab(proj, projectTasks, projectDecs);
+  }
+}
+
+// ── TAB 1: WORKFLOW RAMIFICADO (Bloques, Subbloques y Log de Tareas) ──
+function renderProjectWorkflowTab(proj, projectTasks, projectDecs) {
+  const workflow = proj.workflow || [];
 
   return `
-    <div class="project-detail-panel" id="projectDetailSection">
-      <div class="detail-header">
-        <div class="detail-title-group">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 24px;">${icon}</span>
-            <h2>${esc(proj.name)} · Detalle del Cartridge</h2>
-            <span class="tag-pill tag-project">${esc(labName)}</span>
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">01</span> Mapa Ramificado de Fases, Bloques y Subbloques</h2>
+        <button class="btn-hud-action" onclick="openTaskModalForProject('${esc(proj.name)}')">
+          <span>➕</span> <span>Nueva Tarea para ${esc(proj.name)}</span>
+        </button>
+      </div>
+      <p class="lead">
+        Secuencia estructurada de ejecución. Cada bloque maestro engloba sus subbloques ramificados, verificaciones y tareas vivas.
+      </p>
+
+      <div class="ramified-workflow-container">
+        ${workflow.map((block, bIdx) => `
+          <div class="wf-master-block ${block.status}">
+            <div class="wf-master-header">
+              <div class="wf-master-title-row">
+                <span class="wf-master-id">${esc(block.id)}</span>
+                <div>
+                  <h3 class="wf-master-title">${esc(block.title)}</h3>
+                  <p class="wf-master-summary">${inline(block.summary)}</p>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                <span class="card-badge ${block.status === 'completed' ? 'badge-vine' : (block.status === 'active' ? 'badge-gold' : '')}">${esc(block.statusLabel)}</span>
+                ${block.decisions && block.decisions.length ? `
+                  <span class="card-badge badge-grape" title="Decisiones asociadas: ${block.decisions.join(', ')}">📜 ${block.decisions.length} Decs</span>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- SUBBLOCKS RAMIFICATION -->
+            <div class="wf-subblocks-tree">
+              ${block.subblocks && block.subblocks.length ? block.subblocks.map((sub, sIdx) => {
+                const subTasks = sub.tasks || [];
+                return `
+                  <div class="wf-subblock-node ${sub.status}">
+                    <div class="wf-subblock-connector"></div>
+                    <div class="wf-subblock-card">
+                      <div class="wf-subblock-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                          <span class="wf-subblock-id">${esc(sub.id)}</span>
+                          <h4 class="wf-subblock-title">${esc(sub.title)}</h4>
+                        </div>
+                        <span class="card-badge ${sub.status === 'completed' ? 'badge-vine' : (sub.status === 'active' ? 'badge-gold' : '')}">
+                          ${sub.status === 'completed' ? '✓ Listo' : (sub.status === 'active' ? '▶ En Curso' : '⏳ Pendiente')}
+                        </span>
+                      </div>
+                      <p class="wf-subblock-desc">${inline(sub.desc)}</p>
+
+                      <!-- SUBBLOCK EMBEDDED TASKS -->
+                      ${subTasks.length ? `
+                        <div class="wf-subblock-tasks">
+                          <div class="wf-tasks-title">📋 Tareas en este subbloque (${subTasks.length}):</div>
+                          <div class="tickets-list" style="margin-top: 8px;">
+                            ${subTasks.map(t => `
+                              <div class="ticket-card ${t.status === '✅' ? 'completed' : (t.status === '⚫' ? 'discarded' : '')}" style="background: #ffffff; padding: 12px 14px;">
+                                <div class="ticket-top">
+                                  <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="tag-pill tag-purple">${esc(t.id)}</span>
+                                    <span class="tag-pill">${esc(t.status)}</span>
+                                    <strong style="font-size: 13px;">${inline(t.title)}</strong>
+                                  </div>
+                                  ${renderDate(t.date, t.date_inferred)}
+                                </div>
+                                <p style="font-size: 12px; color: var(--ink-soft); margin: 4px 0 0;"><strong>Why:</strong> ${inline(t.why)}</p>
+                                <div class="task-actions-toolbar" style="margin-top: 8px;">
+                                  ${t.status !== '✅' && t.status !== '⚫' ? `
+                                    <button class="btn-task-action btn-task-complete" onclick="completeTask('${esc(t.id)}')"><span>✅</span> Completar</button>
+                                  ` : ''}
+                                  <button class="btn-task-action btn-task-comment" onclick="openCommentModal('${esc(t.id)}', '${esc(t.title)}')"><span>💬</span> Comentar</button>
+                                </div>
+                              </div>
+                            `).join("")}
+                          </div>
+                        </div>
+                      ` : ''}
+                    </div>
+                  </div>
+                `;
+              }).join("") : `
+                <div style="font-size: 12px; color: var(--ink-muted); padding: 8px 16px;">Sin subbloques detallados.</div>
+              `}
+            </div>
           </div>
-          <p class="detail-subtitle">${esc(proj.currentPhase)} · Integrado hasta ${esc(proj.integratedThrough)} · Actualizado: ${esc(proj.lastUpdated)}</p>
-        </div>
-      </div>
-
-      <!-- NEXT ACTION HERO -->
-      <div class="next-action-hero-card">
-        <span class="hero-icon">🎯</span>
-        <div class="hero-content">
-          <div class="hero-label">ACCIÓN SIGUIENTE INMEDIATA (NEXT ACTION)</div>
-          <div class="hero-text">${inline(proj.nextAction)}</div>
-        </div>
-      </div>
-
-      <!-- BLOCK STEPPER ROADMAP -->
-      <div class="stepper-section-title">
-        <span>🗺️ Roadmap de Bloques (B_0 a B_n)</span>
-        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--emerald);">
-          ${proj.completedBlocks} de ${proj.totalBlocks} completados (${proj.progress}%)
-        </span>
-      </div>
-
-      <div class="stepper-container">
-        ${proj.blocks.map((block, idx) => `
-          <div class="step-node ${block.done ? 'completed' : (block.active ? 'active-flight' : 'pending')}" title="${esc(block.note)}">
-            <span class="step-id">${block.done ? '✓' : (block.active ? '▶' : '⏳')} ${esc(block.id)}</span>
-            <span class="step-title">${esc(block.title)}</span>
-            <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">${esc(block.date)}</span>
-          </div>
-          ${idx < proj.blocks.length - 1 ? `<div class="step-connector ${block.done ? 'completed' : ''}"></div>` : ''}
         `).join("")}
       </div>
 
-      <!-- TASKS IN THIS PROJECT (LIVE PREVIEW) -->
-      <div class="project-tasks-preview-section">
+      <!-- COMPLETE TASK LIST FOR THE PROJECT -->
+      <div style="margin-top: 32px; border-top: 2px solid var(--line); padding-top: 24px;">
         <div class="section-subhead">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span>📋</span> <strong>Tareas de ${esc(proj.name)} (${projectTasks.length})</strong>
-            <span class="tag-pill tag-live">${activeTasks.length} activas</span>
+            <span>📋</span> <strong>Log Completo de Tareas de ${esc(proj.name)} (${projectTasks.length})</strong>
           </div>
-          <button class="btn-hud-action btn-add-task" onclick="openTaskModalForProject('${esc(proj.name)}')">
-            <span>➕</span> <span>Nueva Tarea para ${esc(proj.name)}</span>
-          </button>
         </div>
 
         ${projectTasks.length ? `
-          <div class="tickets-list" style="margin-top: 12px;">
+          <div class="tickets-list" style="margin-top: 14px;">
             ${projectTasks.map(t => `
               <div class="ticket-card ${t.status === '✅' ? 'completed' : (t.status === '⚫' ? 'discarded' : '')}">
                 <div class="ticket-top">
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(t.id)}</span>
                     <span class="tag-pill">${esc(t.status)}</span>
-                    <h3 class="ticket-title" style="${t.status === '✅' ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${inline(t.title)}</h3>
+                    <h3 class="ticket-title" style="${t.status === '✅' ? 'opacity: 0.88;' : ''}">${inline(t.title)}</h3>
                   </div>
                   ${renderDate(t.date, t.date_inferred)}
                 </div>
-
-                <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-top: 4px;">
+                <p style="font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin-top: 4px;">
                   <strong>Why:</strong> ${inline(t.why)}
                 </p>
-
-                ${t.discardReason ? `
-                  <div class="task-discard-callout">
-                    <strong>⚫ Descartada (PH-3):</strong> ${inline(t.discardReason)}
-                  </div>
-                ` : ''}
-
                 <div class="task-actions-toolbar">
                   ${t.status !== '✅' && t.status !== '⚫' ? `
-                    <button class="btn-task-action btn-task-complete" onclick="completeTask('${esc(t.id)}')">
-                      <span>✅</span> Completar
-                    </button>
+                    <button class="btn-task-action btn-task-complete" onclick="completeTask('${esc(t.id)}')"><span>✅</span> Completar</button>
                   ` : ''}
-                  <button class="btn-task-action btn-task-comment" onclick="openCommentModal('${esc(t.id)}', '${esc(t.title)}')">
-                    <span>💬</span> Comentar (${t.comments ? t.comments.length : 0})
-                  </button>
+                  <button class="btn-task-action btn-task-comment" onclick="openCommentModal('${esc(t.id)}', '${esc(t.title)}')"><span>💬</span> Comentar (${t.comments ? t.comments.length : 0})</button>
                   ${t.status !== '⚫' ? `
-                    <button class="btn-task-action btn-task-discard" onclick="openDiscardModal('${esc(t.id)}', '${esc(t.title)}')">
-                      <span>⚫</span> Descartar
-                    </button>
+                    <button class="btn-task-action btn-task-discard" onclick="openDiscardModal('${esc(t.id)}', '${esc(t.title)}')"><span>⚫</span> Descartar</button>
                   ` : ''}
                 </div>
               </div>
             `).join("")}
           </div>
         ` : `
-          <div class="empty-state" style="padding: 24px;">
+          <div class="empty-state" style="padding: 24px; margin-top: 12px;">
             <p>No hay tareas registradas para <strong>${esc(proj.name)}</strong>.</p>
           </div>
         `}
       </div>
+    </div>
+  `;
+}
 
-      <!-- RECENT DECISIONS IN THIS PROJECT -->
-      ${projectDecs.length ? `
-        <div class="project-tasks-preview-section" style="margin-top: 24px;">
-          <div class="section-subhead">
-            <span>📜</span> <strong>Últimas Decisiones de ${esc(proj.name)} (${proj.decisionsCount} totales)</strong>
-          </div>
-          <div class="tickets-list" style="margin-top: 12px;">
-            ${projectDecs.map(d => `
-              <div class="ticket-card ${d.isSuperseded ? 'discarded' : ''}">
-                <div class="ticket-top">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
-                    ${d.isSuperseded ? `
-                      <span class="tag-pill tag-superseded">🔄 Reemplazada</span>
-                    ` : `
-                      <span class="tag-pill tag-alive">🟢 VIVA</span>
-                    `}
-                  </div>
-                  ${renderDate(d.date, d.date_inferred)}
-                </div>
-                <h3 class="ticket-title" style="font-size: 14px; margin-top: 4px;">${inline(d.title)}</h3>
-                <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; margin-top: 2px;">
-                  <strong>Por qué:</strong> ${inline(d.why)}
-                </p>
-              </div>
-            `).join("")}
+// ── TAB 2: ESTADO VIVO (State Snapshot & Next Action) ──
+function renderProjectStateTab(proj, projectTasks, projectDecs) {
+  return `
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">02</span> Estado Vivo del Cartridge (state.md)</h2>
+      </div>
+      <p class="lead">
+        Instantánea en tiempo presente de la posición técnica verificada. <em>¿Seguiría siendo cierto si el trabajo se detuviera hoy?</em>
+      </p>
+
+      <!-- NEXT ACTION HERO BANNER -->
+      <div class="next-action-hero-card" style="margin-bottom: 24px;">
+        <span class="hero-icon">🎯</span>
+        <div class="hero-content">
+          <div class="hero-label">ACCIÓN SIGUIENTE INMEDIATA (NEXT ACTION)</div>
+          <div class="hero-text">${inline(proj.nextAction)}</div>
+          <div style="margin-top: 10px; display: flex; gap: 8px;">
+            <button class="gov-link-btn" onclick="copyToClipboard('claude -p \\'execute next action on ${esc(proj.name)}\\'', 'Comando de ejecución copiado')">
+              ⚡ Ejecutar Acción con Agente
+            </button>
           </div>
         </div>
-      ` : ''}
+      </div>
+
+      <div class="grid-2">
+        <div class="gov-bottom-card">
+          <div class="gov-bottom-card-head">
+            <span class="gov-level-badge badge-vine">SYNCHRONIZATION &amp; REPO</span>
+          </div>
+          <h3>Topología y Sincronía</h3>
+          <div style="font-size: 13px; color: var(--ink-soft); line-height: 1.6; display: flex; flex-direction: column; gap: 8px;">
+            <div><strong>Laboratorio / Entorno:</strong> ${esc(proj.lab)}</div>
+            <div><strong>Sincronizado hasta:</strong> <span class="card-badge badge-gold">${esc(proj.integratedThrough)}</span></div>
+            <div><strong>Última verificación:</strong> ${esc(proj.lastUpdated)}</div>
+            <div><strong>Archivo de Estado:</strong> <code>${esc(proj.file || "nexus/state.md")}</code></div>
+          </div>
+        </div>
+
+        <div class="gov-bottom-card">
+          <div class="gov-bottom-card-head">
+            <span class="gov-level-badge badge-grape">HEALTH &amp; GOVERNANCE</span>
+          </div>
+          <h3>Salud del Cartridge</h3>
+          <div class="gov-stat-grid" style="margin: 4px 0;">
+            <div class="gov-stat-box">
+              <span class="gov-stat-val">${proj.completedBlocks}/${proj.totalBlocks}</span>
+              <span class="gov-stat-lbl">Bloques</span>
+            </div>
+            <div class="gov-stat-box">
+              <span class="gov-stat-val">${proj.decisionsCount}</span>
+              <span class="gov-stat-lbl">Decisiones</span>
+            </div>
+            <div class="gov-stat-box">
+              <span class="gov-stat-val">${projectTasks.length}</span>
+              <span class="gov-stat-lbl">Tareas</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── TAB 3: ARQUITECTURA & DEFINICIÓN (Definition, MVP & Scope) ──
+function renderProjectArchitectureTab(proj) {
+  return `
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">03</span> Arquitectura, Objetivos y Límites (definition.md)</h2>
+      </div>
+      <p class="lead">
+        Definición inmutable de la iteración: qué es el proyecto, a quién pertenece, qué conforma el MVP y qué queda expresamente fuera de alcance.
+      </p>
+
+      <div class="gov-philosophy-panel" style="margin-bottom: 20px;">
+        <div class="gov-panel-header">
+          <div class="gov-panel-title">
+            <span class="gov-level-badge badge-vine">PROPÓSITO &amp; MVP</span>
+            <h3>Definición del Proyecto ${esc(proj.name)}</h3>
+          </div>
+        </div>
+        <p style="font-size: 13.5px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
+          ${inline(proj.definition)}
+        </p>
+
+        <div class="callout tip" style="margin-top: 12px;">
+          <div class="callout-title"><span>🎯</span> Criterio de Éxito del MVP</div>
+          <p style="margin: 0; font-size: 13px;">El MVP se considera completo cuando el flujo principal puede ejecutarse de principio a fin de forma determinista y verificada contra sus gates de auditoría.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="gov-bottom-card">
+          <div class="gov-bottom-card-head">
+            <span class="gov-level-badge badge-gold">ENTREGABLES</span>
+          </div>
+          <h3>Entregables Principales</h3>
+          <div style="font-size: 12.5px; color: var(--ink-soft); line-height: 1.6;">
+            <div>• Código modular bajo ramas de trabajo independientes (ej. <code>feature/*</code> o rama activa).</div>
+            <div>• Registro de decisiones con justificación y alternativas descartadas.</div>
+            <div>• Documentación de arquitectura y contratos de agente verificables.</div>
+          </div>
+        </div>
+
+        <div class="gov-bottom-card">
+          <div class="gov-bottom-card-head">
+            <span class="gov-level-badge badge-rust">FUERA DE ALCANCE (OUT OF SCOPE)</span>
+          </div>
+          <h3>Límites y Restricciones</h3>
+          <div style="font-size: 12.5px; color: var(--ink-soft); line-height: 1.6;">
+            <div>🚫 Nunca acoplar el backend a estados volátiles de la interfaz.</div>
+            <div>🚫 No pusher a ramas productivas sin autorización explícita del operador.</div>
+            <div>🚫 Evitar optimizaciones prematuras antes de verificar los invariantes clave.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── TAB 4: DECISIONES (D_n Log) ──
+function renderProjectDecisionsTab(proj, projectDecs) {
+  const liveDecs = projectDecs.filter(d => !d.isSuperseded);
+  const supersededDecs = projectDecs.filter(d => d.isSuperseded);
+
+  return `
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">04</span> Registro de Decisiones de ${esc(proj.name)} (${projectDecs.length})</h2>
+      </div>
+      <p class="lead">
+        Historial append-only de decisiones técnicas tomadas en este proyecto, con su razonamiento (Why), fecha, autor y estado de vivacidad.
+      </p>
+
+      <div class="gov-stat-grid" style="margin-bottom: 20px;">
+        <div class="gov-stat-box">
+          <span class="gov-stat-val">${liveDecs.length}</span>
+          <span class="gov-stat-lbl">Decisiones Vivas</span>
+        </div>
+        <div class="gov-stat-box">
+          <span class="gov-stat-val">${supersededDecs.length}</span>
+          <span class="gov-stat-lbl">Reemplazadas</span>
+        </div>
+        <div class="gov-stat-box">
+          <span class="gov-stat-val">${projectDecs.length}</span>
+          <span class="gov-stat-lbl">Total Registrado</span>
+        </div>
+      </div>
+
+      ${projectDecs.length ? `
+        <div class="tickets-list">
+          ${projectDecs.map(d => `
+            <div class="ticket-card decision-card ${d.isSuperseded ? 'discarded' : ''}">
+              <div class="ticket-top">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
+                  ${d.isSuperseded ? `
+                    <span class="tag-pill tag-superseded">🔄 Reemplazada por ${esc(d.supersededBy.join(", "))}</span>
+                  ` : `
+                    <span class="tag-pill tag-alive">🟢 VIVA</span>
+                  `}
+                  <strong style="font-size: 14px;">${inline(d.title)}</strong>
+                </div>
+                ${renderDate(d.date, d.date_inferred)}
+              </div>
+              ${(d.why || d.discarded) ? `
+                <details class="decision-details">
+                  <summary>
+                    <span class="toggle-icon">▶</span>
+                    <span>Ver razonamiento (Why)${d.discarded ? ' y descartados' : ''}</span>
+                  </summary>
+                  <div class="decision-body-content">
+                    ${d.why ? `
+                      <div class="decision-why-text">
+                        <strong>Por qué (Why):</strong> ${inline(d.why)}
+                      </div>
+                    ` : ''}
+                    ${d.discarded ? `
+                      <div class="task-discard-callout" style="margin-top: 4px;">
+                        <strong>⚫ Alternativa descartada (PH-3):</strong> ${inline(d.discarded)}
+                      </div>
+                    ` : ''}
+                  </div>
+                </details>
+              ` : ''}
+            </div>
+          `).join("")}
+        </div>
+      ` : `
+        <div class="empty-state">
+          <p>No hay decisiones registradas aún para <strong>${esc(proj.name)}</strong>.</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+// ── TAB 5: SKILLS & OPERACIONES ──
+function renderProjectSkillsTab(proj) {
+  return `
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">05</span> Skills &amp; Operaciones sobre ${esc(proj.name)}</h2>
+      </div>
+      <p class="lead">
+        Capacidades y roles especializados para auditar, evolucionar o corregir este proyecto de forma determinista.
+      </p>
+
+      <div class="grid-2">
+        <div class="doc-card">
+          <div class="doc-card-head">
+            <span class="card-badge badge-vine">AUDITORÍA</span>
+            <span class="card-badge">project-auditor</span>
+          </div>
+          <h3>Auditar Proyecto</h3>
+          <p>Verifica los cambios y el diff del proyecto contra sus propios axiomas de proyecto y reglas de higiene.</p>
+          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard('claude -p \\'run project-auditor on ${esc(proj.name)}\\'', 'Comando copiado')">
+            📋 Copiar: claude -p 'run project-auditor on ${esc(proj.name)}'
+          </button>
+        </div>
+
+        <div class="doc-card">
+          <div class="doc-card-head">
+            <span class="card-badge badge-gold">ESTADO &amp; DERIVA</span>
+            <span class="card-badge">redefine-project</span>
+          </div>
+          <h3>Redefinir / Resincronizar</h3>
+          <p>Reescribe definition.md y state.md cuando el proyecto ha derivado o avanzado varias decisiones sin actualizar.</p>
+          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard('claude -p \\'run redefine-project on ${esc(proj.name)}\\'', 'Comando copiado')">
+            📋 Copiar: claude -p 'run redefine-project on ${esc(proj.name)}'
+          </button>
+        </div>
+
+        <div class="doc-card">
+          <div class="doc-card-head">
+            <span class="card-badge badge-grape">SESIÓN</span>
+            <span class="card-badge">open-session</span>
+          </div>
+          <h3>Abrir Sesión en Proyecto</h3>
+          <p>Fija el frente activo en este proyecto, prepara el plan numérico en vuelo y abre el ciclo de trabajo.</p>
+          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard('claude -p \\'open-session on ${esc(proj.name)}\\'', 'Comando copiado')">
+            📋 Copiar: claude -p 'open-session on ${esc(proj.name)}'
+          </button>
+        </div>
+
+        <div class="doc-card">
+          <div class="doc-card-head">
+            <span class="card-badge badge-cyan">LIMPIEZA</span>
+            <span class="card-badge">code-cleanup</span>
+          </div>
+          <h3>Limpieza Previa a Release</h3>
+          <p>Elimina comentarios arqueológicos, vocabulario privado y wikilinks antes de compartir o proponer PR.</p>
+          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard('claude -p \\'run code-cleanup on ${esc(proj.name)}\\'', 'Comando copiado')">
+            📋 Copiar: claude -p 'run code-cleanup on ${esc(proj.name)}'
+          </button>
+        </div>
+      </div>
     </div>
   `;
 }
 
 window.updateLabFilter = function(lab) {
   STATE.selectedLabFilter = lab;
+  renderView();
+};
+
+window.openProjectDetail = function(name) {
+  STATE.selectedProject = name;
+  STATE.currentView = "project-detail";
+  STATE.projectSubtab = "workflow";
+  renderView();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+window.setProjectSubtab = function(tabKey) {
+  STATE.projectSubtab = tabKey;
   renderView();
 };
 
@@ -1318,112 +2006,964 @@ window.openTaskModalForProject = function(projectName) {
   }
 };
 
-
-
 window.selectProject = function(name) {
-  STATE.selectedProject = name;
-  renderView();
+  openProjectDetail(name);
 };
 
-window.openProjectDetail = function(name) {
-  STATE.selectedProject = name;
-  STATE.currentView = "projects";
-  document.querySelectorAll(".nav-item").forEach(btn => {
-    btn.classList.toggle("active", btn.getAttribute("data-view") === "projects");
-  });
-  renderView();
-};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. COCKPIT & LIVE VIEW
-// ─────────────────────────────────────────────────────────────────────────────
-function renderCockpit(container) {
-  container.innerHTML = `
-    <div class="view-header">
-      <div class="view-title-group">
-        <h1><span>🧭</span> Operations Cockpit & Live Flight</h1>
-        <p class="view-subtitle">Supervisión en tiempo real del frente activo y el plan en vuelo</p>
+// ── TAB 6: REPOS & GIT DASHBOARD (CON GUÍA CHEATSHEET DESPLEGABLE) ──
+function renderProjectReposTab(proj) {
+  const remoteHttp = getRemoteHttpUrl(proj.remoteUrl);
+  const activeBranch = proj.gitBranch || "dev";
+
+  return `
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">06</span> Repositorios, Workspace y Control de Versiones</h2>
+        ${proj.gitBranch ? `<span class="tag-pill tag-live">🌿 Rama activa: ${esc(proj.gitBranch)}</span>` : '<span class="tag-pill tag-alive">🌿 Ramas estándar: master · ${esc(activeBranch)}</span>'}
       </div>
-    </div>
+      <p class="lead">
+        Ubicaciones soberanas de código fuente, repositorio remoto en GitHub, directorio de trabajo local y cartridge de gobernanza desacoplado en NEXUS.
+      </p>
 
-    <div class="cockpit-grid">
-      <!-- LEFT COLUMN: ACTIVE FRONT & LIVE PLAN -->
-      <div class="cockpit-column">
-        <div class="cockpit-panel">
-          <div class="panel-header">
-            <h2><span>▶</span> Frente Activo Único</h2>
-          </div>
-          ${STATE.activeFront ? `
-            <div class="next-action-hero-card" style="margin: 0;">
-              <span class="hero-icon">⚡</span>
-              <div class="hero-content">
-                <div class="hero-label">FRENTE EN VUELO</div>
-                <div class="hero-text">${inline(STATE.activeFront.name)}</div>
-                <p style="font-size: 12.5px; color: var(--text-secondary); margin-top: 6px;">
-                  <strong>Avanza cuando:</strong> ${inline(STATE.activeFront.moves_when || "—")}
-                </p>
-              </div>
+      <!-- REPOSITORIES & LOCATIONS GRID -->
+      <div class="repo-cards-grid">
+        <!-- 1. GITHUB REMOTE -->
+        <div class="repo-loc-card">
+          <div class="repo-loc-header">
+            <div class="repo-loc-title-group">
+              <span class="repo-loc-icon">🐙</span>
+              <h3 class="repo-loc-title">Repositorio Remoto</h3>
             </div>
-          ` : `
-            <div class="empty-state"><p>No hay ningún frente activo seleccionado en Schedule.</p></div>
-          `}
+            <span class="card-badge ${proj.remoteUrl ? 'badge-vine' : ''}">${proj.remoteUrl ? 'GitHub Conectado' : 'Sin Remote'}</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.5;">
+            Repositorio en GitHub sincronizado con el ciclo de vida del proyecto.
+          </p>
+
+          <div class="repo-path-box">
+            <code>${esc(proj.remoteUrl || 'No configurado en state.md')}</code>
+          </div>
+
+          ${proj.remoteUrl ? `
+            <div class="repo-actions-row">
+              <button class="btn-repo-action" onclick="copyToClipboard('${esc(proj.remoteUrl)}', 'URL de GitHub copiada', event)">
+                <span>📋 Copiar URL</span>
+              </button>
+              ${remoteHttp ? `
+                <a href="${esc(remoteHttp)}" target="_blank" rel="noopener noreferrer" class="btn-repo-action" style="color: var(--vine-deep); border-color: var(--vine-border);">
+                  <span>↗️ Abrir en GitHub</span>
+                </a>
+              ` : ''}
+              <button class="btn-repo-action" onclick="copyToClipboard('git clone ${esc(proj.remoteUrl)}', 'Comando git clone copiado', event)">
+                <span>💻 Copiar git clone</span>
+              </button>
+            </div>
+          ` : ''}
         </div>
 
-        <div class="cockpit-panel">
-          <div class="panel-header">
-            <h2><span>📋</span> Plan en Vuelo (Current_plan)</h2>
-            <span class="tag-pill tag-live">${STATE.livePlan.filter(p => !p.struck).length} pendientes</span>
+        <!-- 2. LOCAL WORKSPACE & COMMIT -->
+        <div class="repo-loc-card">
+          <div class="repo-loc-header">
+            <div class="repo-loc-title-group">
+              <span class="repo-loc-icon">💻</span>
+              <h3 class="repo-loc-title">Workspace Local (Directorio de Código)</h3>
+            </div>
+            ${proj.gitBranch ? `<span class="tag-pill tag-purple" style="font-weight: 700;">${esc(proj.gitBranch)}</span>` : '<span class="card-badge">Local</span>'}
           </div>
 
-          ${STATE.livePlan.length ? `
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              ${STATE.livePlan.map(item => `
-                <div class="plan-item-row ${item.struck ? 'completed' : ''}">
-                  <span class="plan-idx">${item.index}</span>
-                  ${expandable(item.text, "plan-text")}
-                  ${item.destination ? `
-                    <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'tag-discarded' : 'dest-resolved'}">
-                      ${esc(item.destination)}
-                    </span>
-                  ` : `<span class="dest-tag dest-inflight">en curso</span>`}
-                </div>
-              `).join("")}
+          <p style="font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.5;">
+            Árbol de trabajo en la máquina local donde se ejecutan los scripts, tests y builds.
+          </p>
+
+          <div class="repo-path-box">
+            <code>${esc(proj.codeRepo || '~/Documents/' + proj.name)}</code>
+          </div>
+
+          ${proj.gitCommit ? `
+            <div class="repo-commit-box">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span class="tag-pill tag-purple" style="font-weight: 800; font-family: var(--font-mono);">${esc(proj.gitCommit)}</span>
+                <strong style="font-size: 13px; color: var(--ink);">${inline(proj.gitCommitMsg || 'Commit activo')}</strong>
+              </div>
+              ${proj.gitCommitDate ? `<span style="font-size: 11.5px; color: var(--ink-muted); margin-top: 4px; display: block;">📅 Fecha del commit: ${esc(proj.gitCommitDate)}</span>` : ''}
             </div>
-          ` : `
-            <div class="empty-state">
-              <div class="empty-icon">⚡</div>
-              <h3>Plan despejado</h3>
-              <p>Current_plan está limpio y listo para recibir el siguiente bloque de tareas.</p>
+          ` : ''}
+
+          <div class="repo-actions-row">
+            <button class="btn-repo-action" onclick="copyToClipboard('${esc(proj.codeRepo)}', 'Ruta del workspace copiada', event)">
+              <span>📋 Copiar Ruta</span>
+            </button>
+            <button class="btn-repo-action" onclick="copyToClipboard('cd ${esc(proj.codeRepo)}', 'Comando cd copiado', event)">
+              <span>💻 Copiar cd</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. NEXUS CARTRIDGE -->
+        <div class="repo-loc-card">
+          <div class="repo-loc-header">
+            <div class="repo-loc-title-group">
+              <span class="repo-loc-icon">🏛️</span>
+              <h3 class="repo-loc-title">Cartridge de Gobernanza (NEXUS)</h3>
             </div>
-          `}
+            <span class="card-badge badge-gold">Desacoplado</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.5;">
+            Estructura de metadatos, estado vivo, definición arquitectónica y log append-only de decisiones (PH-5).
+          </p>
+
+          <div class="repo-path-box">
+            <code>${esc(proj.name)}/nexus/ (state.md · Decision_Log.md · definition.md)</code>
+          </div>
+
+          <div class="repo-actions-row">
+            <button class="btn-repo-action" onclick="copyToClipboard('${esc(proj.name)}/nexus/state.md', 'Ruta state.md copiada', event)">
+              <span>🎯 Copiar state.md</span>
+            </button>
+            <button class="btn-repo-action" onclick="copyToClipboard('${esc(proj.name)}/nexus/Decision_Log.md', 'Ruta Decision_Log.md copiada', event)">
+              <span>📜 Copiar Decision_Log.md</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: SCHEDULE QUEUE & SYSTEM METRICS -->
-      <div class="cockpit-column">
-        <div class="cockpit-panel">
-          <div class="panel-header">
-            <h2><span>🧭</span> Frentes en Cola (Schedule Compass)</h2>
-            <span class="tag-pill">${visibleFronts().length} frentes${STATE.frontFilterProj ? ` · ${esc(STATE.frontFilterProj)}` : ""}</span>
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            ${visibleFronts().length ? visibleFronts().map(f => `
-              <div class="plan-item-row ${f.active ? 'active-flight' : ''}" style="${f.active ? 'border-color: var(--accent-cyan); background: var(--accent-cyan-bg);' : ''}">
-                <span class="plan-idx" style="${f.active ? 'color: var(--accent-cyan); font-weight: 700;' : ''}">
-                  ${f.active ? '▶' : esc(f.marker || '#')}
-                </span>
-                <div style="flex: 1;">
-                  <strong style="color: var(--text-primary); font-size: 13.5px;">${inline(f.name)}</strong>
-                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${expandable(f.moves_when || '')}</p>
-                </div>
-                ${f.project ? `<span class="tag-pill tag-project">${esc(f.project)}</span>` : ''}
+      <!-- GUÍA OPERATIVA & CHEATSHEET GITHUB (DESPLEGABLE) -->
+      <div style="margin-top: 28px;">
+        <div class="section-head" style="cursor: default; margin-bottom: 8px;">
+          <h3><span>📖</span> Guía Operativa de Comandos Git &amp; GitHub (master ⇄ ${esc(activeBranch)})</h3>
+          <span class="card-badge badge-vine">CheatSheet Integrada</span>
+        </div>
+        <p class="lead" style="font-size: 13px; margin-bottom: 16px;">
+          Comandos esenciales de la chuleta de <code>GitHub Workflow Guide</code> contextualizados para <strong>${esc(proj.name)}</strong> con copiado rápido en 1 clic.
+        </p>
+
+        <div class="git-guide-container">
+          <!-- SECCIÓN 1: FLUJO DIARIO EN RAMA ACTIVA -->
+          <details class="git-guide-accordion" open>
+            <summary>
+              <div class="accordion-title">
+                <span>🌿</span>
+                <span>1. Flujo Diario de Trabajo en Rama Activa (<code>${esc(activeBranch)}</code>)</span>
               </div>
-            `).join("") : `<div class="empty-state">Ningún frente en ${esc(STATE.frontFilterProj)}.</div>`}
-          </div>
+              <span class="accordion-chevron">▼</span>
+            </summary>
+            <div class="git-guide-content">
+              <div class="git-cmd-box" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git switch ${esc(activeBranch)} && git pull origin ${esc(activeBranch)}', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">1. Cambiar a rama de trabajo y actualizar</span>
+                  <code class="git-cmd-code">cd ${esc(proj.codeRepo)} && git switch ${esc(activeBranch)} && git pull origin ${esc(activeBranch)}</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git status -s', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">2. Revisar cambios en el árbol de trabajo</span>
+                  <code class="git-cmd-code">git status -s</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git add -A && git commit -m \'feat(${esc(proj.name)}): avance en sub-bloque activo\'', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">3. Preparar commit estructurado</span>
+                  <code class="git-cmd-code">git add -A && git commit -m "feat(${esc(proj.name)}): avance en sub-bloque activo"</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git push origin ${esc(activeBranch)}', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">4. Subir cambios a la rama de trabajo</span>
+                  <code class="git-cmd-code">git push origin ${esc(activeBranch)}</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+            </div>
+          </details>
+
+          <!-- SECCIÓN 2: MERGE SEGURO HACIA MASTER -->
+          <details class="git-guide-accordion">
+            <summary>
+              <div class="accordion-title">
+                <span>🔀</span>
+                <span>2. Integración y Merge Seguro de <code>${esc(activeBranch)}</code> hacia <code>master</code></span>
+              </div>
+              <span class="accordion-chevron">▼</span>
+            </summary>
+            <div class="git-guide-content">
+              <div class="git-cmd-box" onclick="copyToClipboard('git switch master && git pull origin master', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">1. Cambiar a master y sincronizar con remoto</span>
+                  <code class="git-cmd-code">git switch master && git pull origin master</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git merge --no-ff ${esc(activeBranch)} -m \'merge: integrate ${esc(activeBranch)} branch updates into master\'', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">2. Merge explícito sin fast-forward (burbuja de commit)</span>
+                  <code class="git-cmd-code">git merge --no-ff ${esc(activeBranch)} -m "merge: integrate ${esc(activeBranch)} branch updates into master"</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git push origin master && git switch ${esc(activeBranch)}', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">3. Pushear master limpio y volver a la rama de trabajo</span>
+                  <code class="git-cmd-code">git push origin master && git switch ${esc(activeBranch)}</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+            </div>
+          </details>
+
+          <!-- SECCIÓN 3: INICIALIZAR NUEVO REPO & PRIMER COMMIT -->
+          <details class="git-guide-accordion">
+            <summary>
+              <div class="accordion-title">
+                <span>🚀</span>
+                <span>3. Inicialización de un Nuevo Repositorio &amp; Primer Commit</span>
+              </div>
+              <span class="accordion-chevron">▼</span>
+            </summary>
+            <div class="git-guide-content">
+              <div class="git-cmd-box" onclick="copyToClipboard('git init && git branch -M main', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">1. Inicializar repositorio y fijar rama principal</span>
+                  <code class="git-cmd-code">git init && git branch -M main</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git add .gitignore && git commit -m \'chore: initial gitignore\'', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">2. Commitear .gitignore antes que cualquier archivo ⭐</span>
+                  <code class="git-cmd-code">git add .gitignore && git commit -m "chore: initial gitignore"</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git count-objects -vH', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">3. Comprobar peso del repositorio antes de subir</span>
+                  <code class="git-cmd-code">git count-objects -vH</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git remote add origin ${esc(proj.remoteUrl || 'git@github.com:organization/' + proj.name + '.git')} && git push -u origin main', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">4. Vincular remoto en GitHub y subir upstream</span>
+                  <code class="git-cmd-code">git remote add origin ${esc(proj.remoteUrl || 'git@github.com:organization/' + proj.name + '.git')} && git push -u origin main</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+            </div>
+          </details>
+
+          <!-- SECCIÓN 4: WORKTREES & AISLAMIENTO DE AGENTES -->
+          <details class="git-guide-accordion">
+            <summary>
+              <div class="accordion-title">
+                <span>🌳</span>
+                <span>4. Gestión de Worktrees (Aislamiento de Agentes)</span>
+              </div>
+              <span class="accordion-chevron">▼</span>
+            </summary>
+            <div class="git-guide-content">
+              <div class="git-cmd-box" onclick="copyToClipboard('git worktree list', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">1. Listar worktrees activos</span>
+                  <code class="git-cmd-code">git worktree list</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git worktree add .claude/worktrees/task-1 -b task/${esc(proj.name)}-1', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">2. Crear worktree aislado para tarea</span>
+                  <code class="git-cmd-code">git worktree add .claude/worktrees/task-1 -b task/${esc(proj.name)}-1</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git worktree remove .claude/worktrees/task-1 && git worktree prune', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">3. Eliminar worktree y podar referencias</span>
+                  <code class="git-cmd-code">git worktree remove .claude/worktrees/task-1 && git worktree prune</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+            </div>
+          </details>
+
+          <!-- SECCIÓN 5: CUENTAS SSH MULTI-USUARIO -->
+          <details class="git-guide-accordion">
+            <summary>
+              <div class="accordion-title">
+                <span>🔑</span>
+                <span>5. Diagnóstico de Cuentas SSH / GitHub en la Máquina</span>
+              </div>
+              <span class="accordion-chevron">▼</span>
+            </summary>
+            <div class="git-guide-content">
+              <div class="git-cmd-box" onclick="copyToClipboard('ssh -T git@github.com', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">1. Comprobar qué cuenta responde en GitHub</span>
+                  <code class="git-cmd-code">ssh -T git@github.com</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('git clone git@github-work:${esc(proj.name)}.git', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">2. Clonar usando alias SSH personal (~/.ssh/config)</span>
+                  <code class="git-cmd-code">git clone git@github-work:${esc(proj.name)}.git</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+            </div>
+          </details>
+
+          <!-- SECCIÓN 6: HOOKS & GATES -->
+          <details class="git-guide-accordion">
+            <summary>
+              <div class="accordion-title">
+                <span>🛠️</span>
+                <span>6. Resolución de Bloqueos en Commits (Linters &amp; Gate)</span>
+              </div>
+              <span class="accordion-chevron">▼</span>
+            </summary>
+            <div class="git-guide-content">
+              <div class="git-cmd-box" onclick="copyToClipboard('ruff check --fix .', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">1. Autocorregir formato y linting con ruff</span>
+                  <code class="git-cmd-code">ruff check --fix .</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('pre-commit run --all-files', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">2. Probar hooks de pre-commit manualmente sin commit</span>
+                  <code class="git-cmd-code">pre-commit run --all-files</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+
+              <div class="git-cmd-box" onclick="copyToClipboard('tools/gate.sh', 'Comando copiado', event)">
+                <div class="git-cmd-left">
+                  <span class="git-cmd-label">3. Ejecutar gate de integridad de MLabs</span>
+                  <code class="git-cmd-code">tools/gate.sh</code>
+                </div>
+                <span class="git-cmd-copy-hint">Copiar 📋</span>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
     </div>
   `;
+}
+
+
+function getProjectIcon(name) {
+  if (!name) return "📦";
+  const n = name.toLowerCase();
+  if (n.includes("doc") || n.includes("md") || n.includes("format") || n.includes("paper")) return "📖";
+  if (n.includes("bio") || n.includes("gene") || n.includes("omics") || n.includes("viz") || n.includes("catalogue") || n.includes("plant")) return "🔬";
+  if (n.includes("folio") || n.includes("web") || n.includes("site") || n.includes("app")) return "💼";
+  if (n.includes("face") || n.includes("system") || n.includes("cockpit") || n.includes("matrix")) return "⚙️";
+  if (n.includes("trade") || n.includes("finance") || n.includes("stock") || n.includes("market")) return "📈";
+  if (n.includes("drop") || n.includes("file") || n.includes("cloud") || n.includes("sync")) return "💧";
+  return "📦";
+}
+
+// ── TAB 7: GUÍA DE USO & README VISUAL ──
+function renderProjectGuideTab(proj) {
+  const hasReadme = proj.readmeContent && proj.readmeContent.trim().length > 0;
+  const rawDoc = hasReadme ? proj.readmeContent : (proj.definition || "Sin guía de uso disponible para este proyecto.");
+
+  // Quickstart command heuristics based on project type
+  let quickInstallCmd = `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && npm install`;
+  let quickRunCmd = `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && npm run dev`;
+  let quickTestCmd = `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && npm test`;
+
+  const isPython = (proj.readmeContent && (proj.readmeContent.includes("python") || proj.readmeContent.includes(".venv") || proj.readmeContent.includes("pip install"))) || (proj.definition && proj.definition.toLowerCase().includes("python"));
+  if (isPython) {
+    quickInstallCmd = `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && source .venv/bin/activate && pip install -e .`;
+    quickRunCmd = `python main.py`;
+    quickTestCmd = `pytest`;
+  }
+
+  return `
+    <div class="doc-section">
+      <div class="section-head" style="cursor: default;">
+        <h2><span class="num">07</span> Guía de Uso, Quickstart &amp; Documentación Visual</h2>
+        <span class="tag-pill tag-live">📖 Visual README</span>
+      </div>
+      <p class="lead">
+        Documentación interactiva, instrucciones de instalación, ejemplos de ejecución y guía de usuario representada de forma visual y accesible.
+      </p>
+
+      <!-- HERO BANNER -->
+      <div class="proj-guide-hero">
+        <div class="guide-hero-top">
+          <div class="guide-hero-title-group">
+            <div class="guide-hero-icon">${getProjectIcon(proj.name)}</div>
+            <div>
+              <h3 class="guide-hero-title">${esc(proj.name)}</h3>
+              <div style="font-size: 12px; color: var(--gold, #d8b26a); font-family: var(--font-mono); margin-top: 2px;">
+                ${proj.readmePath ? esc(proj.readmePath.split('/').slice(-2).join('/')) : 'Documentación Integrada'}
+              </div>
+            </div>
+          </div>
+          <div class="guide-hero-badges">
+            <span class="card-badge badge-vine">Gobernanza MLabs</span>
+            <span class="tag-pill tag-purple">${esc(proj.currentPhase || 'Producción')}</span>
+          </div>
+        </div>
+
+        <p class="guide-hero-desc">
+          ${inline(proj.definition || 'Módulo y solución soberana de software diseñada bajo los principios y arquitectura de MLabs.')}
+        </p>
+      </div>
+
+      <!-- QUICKSTART 3-STEP SEQUENCE -->
+      <div class="quickstart-steps-container">
+        <div class="quickstart-step-card">
+          <div class="step-card-header">
+            <span class="step-num-badge">1</span>
+            <h4 class="step-card-title">Instalación / Entorno</h4>
+          </div>
+          <p style="font-size: 12px; color: var(--ink-soft); margin: 0;">Preparar dependencias y entorno de ejecución local.</p>
+          <div class="repo-path-box" onclick="copyToClipboard('${quickInstallCmd}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
+            <code>${quickInstallCmd}</code>
+          </div>
+        </div>
+
+        <div class="quickstart-step-card">
+          <div class="step-card-header">
+            <span class="step-num-badge">2</span>
+            <h4 class="step-card-title">Ejecución / Dev Server</h4>
+          </div>
+          <p style="font-size: 12px; color: var(--ink-soft); margin: 0;">Lanzar el servicio, servidor o pipeline en desarrollo.</p>
+          <div class="repo-path-box" onclick="copyToClipboard('${quickRunCmd}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
+            <code>${quickRunCmd}</code>
+          </div>
+        </div>
+
+        <div class="quickstart-step-card">
+          <div class="step-card-header">
+            <span class="step-num-badge">3</span>
+            <h4 class="step-card-title">Tests &amp; Verificación</h4>
+          </div>
+          <p style="font-size: 12px; color: var(--ink-soft); margin: 0;">Comprobar integridad antes de commitear cambios.</p>
+          <div class="repo-path-box" onclick="copyToClipboard('${quickTestCmd}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
+            <code>${quickTestCmd}</code>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISUAL README / DOCUMENTATION BODY -->
+      <div class="readme-rendered-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 20px;">
+          <h3 style="margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+            <span>📄</span> <span>Contenido de la Guía &amp; README</span>
+          </h3>
+          <button class="btn-repo-action" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(rawDoc)}'), 'Documento completo copiado', event)">
+            <span>📋 Copiar Markdown Completo</span>
+          </button>
+        </div>
+
+        <div class="readme-markdown-body">
+          ${renderMarkdownBody(rawDoc)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Markdown parser helper for README body
+function renderMarkdownBody(text) {
+  if (!text) return "<p>Sin contenido.</p>";
+
+  const lines = text.split("\n");
+  let html = "";
+  let inCode = false;
+  let codeBuffer = [];
+  let inTable = false;
+  let tableBuffer = [];
+  let inList = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Code blocks
+    if (line.trim().startsWith("```")) {
+      if (inCode) {
+        html += `<pre><code>${esc(codeBuffer.join("\n"))}</code></pre>`;
+        codeBuffer = [];
+        inCode = false;
+      } else {
+        if (inList) { html += "</ul>"; inList = false; }
+        inCode = true;
+      }
+      continue;
+    }
+    if (inCode) {
+      codeBuffer.push(line);
+      continue;
+    }
+
+    // Tables
+    if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+      if (!inTable) {
+        if (inList) { html += "</ul>"; inList = false; }
+        inTable = true;
+        tableBuffer = [];
+      }
+      tableBuffer.push(line);
+      continue;
+    } else if (inTable) {
+      html += renderMarkdownTable(tableBuffer);
+      tableBuffer = [];
+      inTable = false;
+    }
+
+    // Headings
+    if (line.startsWith("# ")) {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<h2>${inline(line.slice(2))}</h2>`;
+    } else if (line.startsWith("## ")) {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<h3>${inline(line.slice(3))}</h3>`;
+    } else if (line.startsWith("### ")) {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<h4>${inline(line.slice(4))}</h4>`;
+    } else if (line.startsWith("> ")) {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<blockquote>${inline(line.slice(2))}</blockquote>`;
+    } else if (line.trim().startsWith("- ") || line.trim().startsWith("* ")) {
+      if (!inList) { html += "<ul>"; inList = true; }
+      html += `<li>${inline(line.trim().slice(2))}</li>`;
+    } else if (line.trim().length === 0) {
+      if (inList) { html += "</ul>"; inList = false; }
+    } else {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<p>${inline(line)}</p>`;
+    }
+  }
+
+  if (inCode) html += `<pre><code>${esc(codeBuffer.join("\n"))}</code></pre>`;
+  if (inTable) html += renderMarkdownTable(tableBuffer);
+  if (inList) html += "</ul>";
+
+  return html;
+}
+
+function renderMarkdownTable(lines) {
+  if (!lines || lines.length < 2) return "";
+  const headerParts = lines[0].split("|").slice(1, -1).map(p => p.trim());
+  let rows = [];
+  for (let i = 2; i < lines.length; i++) {
+    const cols = lines[i].split("|").slice(1, -1).map(p => p.trim());
+    if (cols.length > 0) rows.push(cols);
+  }
+
+  return `
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>${headerParts.map(h => `<th>${inline(h)}</th>`).join("")}</tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `<tr>${r.map(c => `<td>${inline(c)}</td>`).join("")}</tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. COCKPIT & LIVE VIEW
+// ─────────────────────────────────────────────────────────────────────────────
+window.selectCockpitFront = function(frontId) {
+  STATE.cockpitSelectedFrontId = frontId;
+  renderView();
+};
+
+window.setCockpitFilter = function(proj) {
+  STATE.cockpitFilterProj = proj;
+  renderView();
+};
+
+
+function autoScrollPlanContainer(smooth = true) {
+  requestAnimationFrame(() => {
+    const container = document.querySelector(".plan-items-container");
+    if (!container) return;
+
+    const completedItems = container.querySelectorAll(".plan-item-row.completed");
+    if (completedItems.length > 0) {
+      const lastCompleted = completedItems[completedItems.length - 1];
+      const targetTop = lastCompleted.offsetTop;
+      if (smooth) {
+        container.scrollTo({
+          top: Math.max(0, targetTop - 4),
+          behavior: "smooth"
+        });
+      } else {
+        container.scrollTop = Math.max(0, targetTop - 4);
+      }
+    } else {
+      container.scrollTop = 0;
+    }
+  });
+}
+
+function renderCockpit(container) {
+  const allProjects = Array.from(new Set(STATE.fronts.map(f => f.project).filter(Boolean))).sort();
+  const filterProj = STATE.cockpitFilterProj || "ALL";
+  
+  const filteredFronts = filterProj === "ALL" 
+    ? STATE.fronts 
+    : STATE.fronts.filter(f => f.project && f.project.toLowerCase() === filterProj.toLowerCase());
+
+  // Determine selected front
+  let selectedFront = null;
+  if (STATE.cockpitSelectedFrontId) {
+    selectedFront = STATE.fronts.find(f => f.id === STATE.cockpitSelectedFrontId || f.name === STATE.cockpitSelectedFrontId);
+  }
+  if (!selectedFront) {
+    selectedFront = STATE.activeFront || filteredFronts[0] || STATE.fronts[0] || null;
+  }
+
+  // Check if selected front is the active flight
+  const isActiveFlight = Boolean(selectedFront && (selectedFront.active || (STATE.activeFront && selectedFront.id === STATE.activeFront.id)));
+  
+  // Check if there is a persistent plan for this front
+  const persistentPlan = STATE.plans.find(p => 
+    (p.task && selectedFront?.name && selectedFront.name.includes(p.task)) ||
+    (selectedFront?.project && p.project === selectedFront.project) ||
+    (p.sub_block && selectedFront?.name && selectedFront.name.includes(p.sub_block))
+  );
+
+  // Live plan stats
+  const totalLive = STATE.livePlan.length;
+  const completedLive = STATE.livePlan.filter(p => p.struck).length;
+  const pendingLive = totalLive - completedLive;
+  const livePct = totalLive ? Math.round((completedLive / totalLive) * 100) : 0;
+
+  // Active front stats
+  const activeCount = STATE.fronts.filter(f => f.active).length;
+  const pausedCount = STATE.fronts.filter(f => f.marker === "⏸").length;
+  const queueCount = STATE.fronts.length - activeCount - pausedCount;
+
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>🧭</span> Operations Cockpit & Live Flight</h1>
+        <p class="view-subtitle">Supervisión en tiempo real de la brújula de frentes (COMPASS) y planes en vuelo (PLAN.md)</p>
+      </div>
+      <div class="header-stats-bar">
+        <span class="spec-pill active-pill" onclick="selectCockpitFront('${STATE.activeFront?.id || ''}')" style="cursor: pointer;" title="Ir al Frente Activo">
+          <strong>⚡ En Vuelo:</strong> ${activeCount} (▶)
+        </span>
+        <span class="spec-pill" style="border-color: var(--gold-border); color: #8a6418; background: var(--gold-bg);">
+          <strong>⏸ En Pausa:</strong> ${pausedCount}
+        </span>
+        <span class="spec-pill">
+          <strong>⏳ En Cola:</strong> ${queueCount}
+        </span>
+      </div>
+    </div>
+
+    <div class="cockpit-grid">
+      <!-- LEFT COLUMN: SCHEDULE COMPASS / FRENTES EN COLA -->
+      <div class="cockpit-column-left">
+        <div class="cockpit-panel schedule-queue-panel">
+          <div class="panel-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h2><span>🎯</span> Frentes en Cola (COMPASS)</h2>
+              <span class="tag-pill tag-live">${filteredFronts.length}</span>
+            </div>
+          </div>
+
+          <!-- Project Filter Chips -->
+          <div class="cockpit-filter-chips">
+            <button class="chip-filter ${filterProj === 'ALL' ? 'active' : ''}" onclick="setCockpitFilter('ALL')">
+              Todos (${STATE.fronts.length})
+            </button>
+            ${allProjects.map(proj => {
+              const count = STATE.fronts.filter(f => f.project === proj).length;
+              return `
+                <button class="chip-filter ${filterProj.toLowerCase() === proj.toLowerCase() ? 'active' : ''}" onclick="setCockpitFilter('${esc(proj)}')">
+                  ${esc(proj)} (${count})
+                </button>
+              `;
+            }).join("")}
+          </div>
+
+          <!-- Fronts List -->
+          <div class="cockpit-fronts-list">
+            ${filteredFronts.length ? filteredFronts.map((f) => {
+              const isSelected = selectedFront && (selectedFront.id === f.id || (selectedFront.name === f.name && selectedFront.line === f.line));
+              const isAct = Boolean(f.active);
+              const isPaused = f.marker === "⏸";
+              const isOrdinal = f.marker && /^\d+$/.test(f.marker);
+
+              let markerBadge = "";
+              if (isAct) {
+                markerBadge = `<span class="front-marker-badge marker-active" title="Frente Activo Único">▶</span>`;
+              } else if (isPaused) {
+                markerBadge = `<span class="front-marker-badge marker-paused" title="Frente en Pausa">⏸</span>`;
+              } else if (isOrdinal) {
+                markerBadge = `<span class="front-marker-badge marker-ordinal" title="Prioridad en Cola">${esc(f.marker)}</span>`;
+              } else {
+                markerBadge = `<span class="front-marker-badge marker-subtle">·</span>`;
+              }
+
+              return `
+                <div class="cockpit-front-card ${isSelected ? 'selected' : ''} ${isAct ? 'is-active-flight' : ''} ${isPaused ? 'is-paused-front' : ''}"
+                     onclick="selectCockpitFront('${esc(f.id || f.name)}')">
+                  <div class="front-card-top">
+                    ${markerBadge}
+                    <div class="front-card-title-group">
+                      <strong class="front-card-title">${inline(f.name)}</strong>
+                      ${f.project ? `<span class="tag-pill tag-project">${esc(f.project)}</span>` : ''}
+                    </div>
+                  </div>
+
+                  ${(f.moves_when || f.waits_on) ? `
+                    <div class="front-card-condition">
+                      <span class="condition-icon">${isPaused ? '⏸' : '⏳'}</span>
+                      <span class="condition-text">${expandable(f.moves_when || f.waits_on || '')}</span>
+                    </div>
+                  ` : ''}
+
+                  <div class="front-card-footer">
+                    <span class="front-status-indicator">
+                      ${isAct ? '<span class="status-dot pulse-dot"></span> Plan en vuelo activo' : 
+                        isPaused ? '<span class="status-dot paused-dot"></span> Frente en pausa' : 
+                        '<span class="status-dot queue-dot"></span> En espera de turno'}
+                    </span>
+                    <span class="select-arrow">${isSelected ? '●' : '→'}</span>
+                  </div>
+                </div>
+              `;
+            }).join("") : `
+              <div class="empty-state">
+                <p>No hay frentes registrados para el filtro <strong>${esc(filterProj)}</strong>.</p>
+              </div>
+            `}
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: DETAILED PLAN VIEW -->
+      <div class="cockpit-column-right">
+        ${selectedFront ? `
+          <div class="cockpit-panel plan-detail-panel">
+            <!-- FRONT HERO HEADER -->
+            <div class="plan-detail-hero ${isActiveFlight ? 'hero-active-flight' : selectedFront.marker === '⏸' ? 'hero-paused-flight' : 'hero-queue-flight'}">
+              <div class="plan-hero-top-row">
+                <div class="hero-status-badges">
+                  ${isActiveFlight ? `
+                    <span class="tag-pill tag-live-glow"><span class="pulse-dot"></span> ▶ FRENTE ACTIVO EN VUELO</span>
+                  ` : selectedFront.marker === "⏸" ? `
+                    <span class="tag-pill tag-paused-gold">⏸ FRENTE EN PAUSA</span>
+                  ` : `
+                    <span class="tag-pill tag-queue-purple">⏳ EN COLA ${selectedFront.marker ? `#${selectedFront.marker}` : ''}</span>
+                  `}
+                  ${selectedFront.project ? `<span class="tag-pill tag-project-hero">${esc(selectedFront.project)}</span>` : ''}
+                </div>
+                ${selectedFront.described_in ? `
+                  <button class="btn-copy-ref" onclick="copyToClipboard('${esc(selectedFront.described_in)}', 'Ubicación copiada', event)">
+                    <span>📁 Copiar ubicación</span>
+                  </button>
+                ` : ''}
+              </div>
+
+              <h2 class="plan-hero-title">${inline(selectedFront.name)}</h2>
+
+              ${(selectedFront.moves_when || selectedFront.waits_on) ? `
+                <div class="hero-condition-banner">
+                  <span class="condition-banner-label">AVANZA CUANDO:</span>
+                  <span class="condition-banner-val">${inline(selectedFront.moves_when || selectedFront.waits_on || "—")}</span>
+                </div>
+              ` : ''}
+
+              ${selectedFront.described_in ? `
+                <div class="hero-location-row">
+                  <span class="loc-label">Definido en:</span>
+                  <code>${esc(selectedFront.described_in)}</code>
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- PLAN BODY / CONTENT -->
+            ${isActiveFlight ? `
+              <!-- ACTIVE LIVE FLIGHT (PLAN.md) -->
+              <div class="live-plan-section">
+                <div class="section-title-row">
+                  <div class="section-title-left">
+                    <h3><span>📋</span> Plan de Vuelo Activo (PLAN.md)</h3>
+                    ${STATE.livePlanMeta?.task ? `<span class="tag-pill tag-live">${esc(STATE.livePlanMeta.task)}</span>` : ''}
+                  </div>
+                  <div class="section-stats-pills">
+                    <span class="mini-stat-pill done-pill">✓ ${completedLive} resueltos</span>
+                    <span class="mini-stat-pill inflight-pill">⚡ ${pendingLive} pendientes</span>
+                  </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="plan-progress-wrapper">
+                  <div class="plan-progress-bar">
+                    <div class="plan-progress-fill" style="width: ${livePct}%;"></div>
+                  </div>
+                  <span class="plan-progress-pct">${livePct}%</span>
+                </div>
+
+                <!-- Order Why Card (if present) -->
+                ${STATE.livePlanMeta?.order_why ? `
+                  <div class="order-why-card">
+                    <div class="order-why-header">
+                      <span class="order-why-icon">🧠</span>
+                      <strong>Razón de la secuencia (Order Why)</strong>
+                      <span class="order-why-badge">PH-3 / AX-11</span>
+                    </div>
+                    <div class="order-why-body">
+                      ${inline(STATE.livePlanMeta.order_why)}
+                    </div>
+                  </div>
+                ` : ''}
+
+                <!-- Plan Items List -->
+                <div class="plan-items-container">
+                  ${STATE.livePlan.length ? STATE.livePlan.map(item => `
+                    <div class="plan-item-row ${item.struck ? 'completed' : 'in-progress'}">
+                      <div class="plan-idx-circle ${item.struck ? 'idx-done' : 'idx-active'}">
+                        ${item.struck ? '✓' : item.index}
+                      </div>
+                      <div class="plan-text-content">
+                        ${expandable(item.text, "plan-text")}
+                      </div>
+                      ${item.destination ? `
+                        <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'dest-discarded' : 'dest-resolved'}">
+                          ${esc(item.destination)}
+                        </span>
+                      ` : `<span class="dest-tag dest-inflight"><span class="dot-spin"></span> en curso</span>`}
+                    </div>
+                  `).join("") : `
+                    <div class="empty-state">
+                      <div class="empty-icon">⚡</div>
+                      <h3>Plan despejado</h3>
+                      <p>PLAN.md está listo para recibir el siguiente sub-bloque de trabajo.</p>
+                    </div>
+                  `}
+                </div>
+
+                <div class="live-sync-notice">
+                  <span>⚡ Sincronización en tiempo real activa (<code>/api/stamp</code> cada 2.0s). Edita <code>PLAN.md</code> o invoca la skill <code>current-plan</code> para actualizar instantáneamente.</span>
+                </div>
+              </div>
+            ` : persistentPlan ? `
+              <!-- PERSISTENT HISTORICAL / PAUSED PLAN -->
+              <div class="persistent-plan-section">
+                <div class="section-title-row">
+                  <div class="section-title-left">
+                    <h3><span>📜</span> Plan Registrado (${esc(persistentPlan.id)})</h3>
+                    <span class="tag-pill ${persistentPlan.status === 'active' ? 'tag-live' : persistentPlan.status === 'paused' ? 'tag-paused-gold' : 'tag-done'}">
+                      ${esc(persistentPlan.status.toUpperCase())}
+                    </span>
+                  </div>
+                  <div class="section-stats-pills">
+                    ${persistentPlan.date ? `<span class="mini-stat-pill">📅 ${esc(persistentPlan.date)}</span>` : ''}
+                    ${persistentPlan.closed_on ? `<span class="mini-stat-pill done-pill">🔒 Cerrado: ${esc(persistentPlan.closed_on)}</span>` : ''}
+                  </div>
+                </div>
+
+                ${persistentPlan.order_why ? `
+                  <div class="order-why-card">
+                    <div class="order-why-header">
+                      <span class="order-why-icon">🧠</span>
+                      <strong>Razón de la secuencia (Order Why)</strong>
+                    </div>
+                    <div class="order-why-body">
+                      ${inline(persistentPlan.order_why)}
+                    </div>
+                  </div>
+                ` : ''}
+
+                <div class="plan-items-container">
+                  ${persistentPlan.items.length ? persistentPlan.items.map(item => `
+                    <div class="plan-item-row ${item.status === 'done' ? 'completed' : ''}">
+                      <div class="plan-idx-circle ${item.status === 'done' ? 'idx-done' : 'idx-active'}">
+                        ${item.status === 'done' ? '✓' : item.index}
+                      </div>
+                      <div class="plan-text-content">
+                        ${expandable(item.text, "plan-text")}
+                      </div>
+                      ${item.destination ? `
+                        <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'dest-discarded' : 'dest-resolved'}">
+                          ${esc(item.destination)}
+                        </span>
+                      ` : `<span class="dest-tag dest-inflight">en curso</span>`}
+                    </div>
+                  `).join("") : `<div class="empty-state"><p>No hay subtareas registradas en este plan.</p></div>`}
+                </div>
+              </div>
+            ` : selectedFront.marker === "⏸" ? `
+              <!-- PAUSED FRONT EXPLANATION -->
+              <div class="front-state-card paused-state-card">
+                <div class="state-card-icon">⏸</div>
+                <h3>Frente Congelado / En Pausa</h3>
+                <p class="state-card-desc">
+                  Este frente está pausado intencionalmente para no competir por foco con el frente activo único (▶).
+                </p>
+                <div class="state-detail-box">
+                  <strong>Motivo de pausa / Reanudación:</strong>
+                  <p>${inline(selectedFront.moves_when || "Requiere confirmación antes de reanudar.")}</p>
+                </div>
+                <div class="state-guidance-box">
+                  <span>💡 Para reanudar este frente, selecciona el frente en <code>COMPASS.md</code> y abre su plan con la skill <code>current-plan</code>.</span>
+                </div>
+              </div>
+            ` : `
+              <!-- QUEUED FRONT WAITING -->
+              <div class="front-state-card queued-state-card">
+                <div class="state-card-icon">🎯</div>
+                <h3>Frente en Cola de Espera</h3>
+                <p class="state-card-desc">
+                  Este frente está programado en la brújula COMPASS. No tiene un plan activo instanciado todavía.
+                </p>
+                <div class="state-detail-box">
+                  <strong>Condición de avance:</strong>
+                  <p>${inline(selectedFront.moves_when || selectedFront.waits_on || "Secuenciado en el orden de trabajo.")}</p>
+                </div>
+                <div class="state-guidance-box">
+                  <span>💡 Cuando este frente pase a ser el activo (▶), se generará su plan de vuelo mediante la skill <code>current-plan</code>.</span>
+                </div>
+              </div>
+            `}
+          </div>
+        ` : `
+          <div class="empty-state">
+            <div class="empty-icon">🧭</div>
+            <h3>Selecciona un Frente</h3>
+            <p>Elige un frente de la columna izquierda para inspeccionar su plan y estado detallado.</p>
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+  // Auto-scroll plan container to the last completed item
+  autoScrollPlanContainer(true);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1606,7 +3146,7 @@ function renderInbox(container) {
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(t.id)}</span>
                 <span class="tag-pill">${esc(t.status)}</span>
-                <h3 class="ticket-title" style="${isDone ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${inline(t.title)}</h3>
+                <h3 class="ticket-title" style="${isDone ? 'opacity: 0.88;' : ''}">${inline(t.title)}</h3>
               </div>
               <span class="tag-pill tag-project">${esc(t.project)}</span>
             </div>
@@ -1801,7 +3341,7 @@ function renderDecisions(container) {
     <!-- DECISIONS LIST -->
     <div class="tickets-list">
       ${filtered.length ? filtered.map(d => `
-        <div class="ticket-card ${d.isSuperseded ? 'discarded' : ''}">
+        <div class="ticket-card decision-card ${d.isSuperseded ? 'discarded' : ''}">
           <div class="ticket-top">
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
@@ -1823,23 +3363,41 @@ function renderDecisions(container) {
             ${renderDate(d.date, d.date_inferred)}
           </div>
 
-          <h3 class="ticket-title" style="margin-top: 4px; font-size: 15.5px;">${inline(d.title)}</h3>
+          <h3 class="ticket-title" style="margin-top: 4px; font-size: 15px;">${inline(d.title)}</h3>
           
-          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-top: 2px;">
-            <strong>Por qué:</strong> ${inline(d.why)}
-          </p>
+          ${(d.why || d.discarded) ? `
+            <details class="decision-details">
+              <summary>
+                <span class="toggle-icon">▶</span>
+                <span>Ver razonamiento (Why)${d.discarded ? ' y descartados' : ''}</span>
+              </summary>
+              <div class="decision-body-content">
+                ${d.why ? `
+                  <div class="decision-why-text">
+                    <strong>Por qué (Why):</strong> ${inline(d.why)}
+                  </div>
+                ` : ''}
 
-          ${d.discarded ? `
-            <div class="discarded-box">
-              <strong>Alternativa descartada:</strong> ${inline(d.discarded)}
+                ${d.discarded ? `
+                  <div class="discarded-box" style="margin-top: 4px;">
+                    <strong>Alternativa descartada:</strong> ${inline(d.discarded)}
+                  </div>
+                ` : ''}
+
+                <div class="ticket-meta" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line);">
+                  ${renderOrigin(d.origin, d.origin_inferred)}
+                  ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
+                  ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
+                </div>
+              </div>
+            </details>
+          ` : `
+            <div class="ticket-meta" style="margin-top: 4px;">
+              ${renderOrigin(d.origin, d.origin_inferred)}
+              ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
+              ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
             </div>
-          ` : ''}
-
-          <div class="ticket-meta" style="margin-top: 4px;">
-            ${renderOrigin(d.origin, d.origin_inferred)}
-            ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
-            ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
-          </div>
+          `}
         </div>
       `).join("") : `
         <div class="empty-state">

@@ -8,6 +8,17 @@
 # ── the structural allowlist — the public repo is exactly this ──
 !/.gitignore
 !/README.md
+
+# The signature layer (AX-1, amended 2026-08-20). These two files are the ONLY
+# place in the tracked set permitted to carry the author's name, and the denylist's
+# `## SIGNATURE` section is what permits it — by path AND by term, so every other
+# private word still blocks inside them exactly as it does anywhere else.
+# ⚠️ These two `!` lines and the files themselves belong in the SAME commit: an
+# allowlist line with nothing tracked behind it fails the gate's check 3, which is
+# the check that catches scaffolding. `git add -A` does both in one step.
+!/LICENSE
+!/NOTICE
+
 !/AGENTS.md
 !/CLAUDE.md
 !/PHILOSOPHY.md

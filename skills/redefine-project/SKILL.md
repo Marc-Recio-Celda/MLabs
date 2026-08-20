@@ -22,6 +22,80 @@ between `rnd` and `audit`, one floor down (`AX-4`).
 *what is true instead*. The first is evidence; the second is a decision, and decisions are the
 operator's with an agent holding the pen.
 
+## ⚠️ The block authority — the line is *can it break a citation*, not *who is typing*
+
+**Established by the operator, 2026-08-19**, after a restructure left four of one project's closed
+blocks without a row on its board and the cockpit rendered that project as if it began mid-series.
+
+| Act | Who may |
+|---|---|
+| **Add a sub-block** to an existing block | **anyone.** The board is meant to grow while work happens |
+| **Mark a sub-block or a block done**, or move its status | **anyone.** This is what makes the web show progress, and gating it would make the board stale to protect it from being wrong |
+| Correct a sub-block's text, a date, `Last updated`, `Next action` | **anyone** |
+| **Add a new block** | **anyone**, when the work genuinely opened one — and it is named in the round's report |
+| ⛔ **Overwrite, rename, renumber, merge or delete a block** | **only this skill**, invoked by the operator |
+
+**Why the line falls there and not somewhere tidier.** Adding is recoverable by deleting; deleting
+is recoverable only from git, and only by someone who knows to look. **The asymmetry is the whole
+rule.** A block is the address a decision cites six months later — a mature project's log will cite its
+blocks by number across dozens of entries; an id that stops resolving turns every citation into a
+dangling pointer, and nothing in a markdown file complains.
+
+⚠️ **Loosened and made precise, 2026-08-20** *(the operator)*: *"quizá la solución sea no hacer esta
+regla tan estricta, ya que trabajando en un proyecto también pueden aparecer tareas que se alarguen
+y amplíen mucho. Hacerlo todo más moldeable no me parece mal mientras haya un mínimo control."*
+**He is right, and the rule was already less strict than its own heading and its own check** — the
+table above has always let anyone add a block, while the check below demanded the block set not
+change **in either direction**. Prose and command disagreeing, again, and the command was the
+stricter of the two.
+
+**So the axis is stated properly: not *who is typing*, but *can this act break a citation*.**
+
+| | Can a `Bn` reference stop resolving? | |
+|---|---|---|
+| add a block · add a sub-block · mark done · edit text | **no** — nothing that existed lost its address | **free, and reported** |
+| rename · renumber · merge · delete | **yes, and silently** | **`redefine-project`, invoked by the operator** |
+
+**That is the minimum control, and it is one line of `diff`.** A board that cannot grow while the
+work grows is a board people stop updating — which costs more than the renumbering it was
+protecting against, because a stale board is wrong everywhere at once and a dangling id is wrong in
+one place.
+
+**A restructure may fold and may add. It may not leave a block that existed without an address**
+(`PH-3`). Folding is legitimate and often right — `B0`–`B8` becoming one closed parent is a real
+improvement in a board that has to stay readable — but the fold is written down: **the old id, the
+new id, and what absorbed it.** ⚠️ **This rule was written from evidence, not from taste:** in one
+instance three projects were already doing exactly this in their iteration-history sections and
+**none had been told to**, while a fourth was not and lost four closed blocks. The practice lived in
+three files and in no rule — which is a practice surviving by luck.
+
+⚠️ **This skill is not a licence to redefine on the way past.** It is invoked by the operator, for
+that project, and the removal of a block is one of the changes step 5's decision must carry.
+
+### The check
+
+```bash
+# The set of block ids in a state file. Blocks are `### `<ID>` · …` headings.
+blocks() { grep -oE '^### `[A-Z]{1,3}[0-9]+`' "$1" | tr -d '#` ' | sort; }
+
+# ⚠️ ONE-DIRECTIONAL, and this is the 2026-08-20 correction. The old form demanded the
+#    whole diff be empty, which failed on a legitimately ADDED block — it forbade the
+#    growth the table above has always allowed. Losses block; additions are reported.
+git show HEAD:"$STATE" > /tmp/before.md
+D=$(diff <(blocks /tmp/before.md) <(blocks "$STATE"))
+
+echo "$D" | grep '^<' # ⛔ MUST BE EMPTY — an id that existed no longer has an address
+echo "$D" | grep '^>' # ✅ fine, and NAMED IN THE REPORT — a block opened while working
+```
+
+⚠️ **The addition side is printed, never silent.** *Free* means nobody has to ask; it does not mean
+nobody has to say. A block that appears with no line in the round's report is how a board acquires
+structure nobody decided — the failure at the other end from the one this rule was written for.
+
+⚠️ **Test it against a planted removal before trusting a clean run** (`MLabs:AX-7`), and **plant
+against the format**: delete a heading whose id also appears in a sub-block row, so a naive pattern
+still finds the string and reports no change.
+
 ## When it is invoked
 
 | Symptom | What it usually means |
@@ -55,7 +129,9 @@ them is what makes redefinition feel like rewriting history:
 | **Both were right at different times** | the project genuinely changed purpose | a new iteration, with the old definition kept as the record of the first |
 
 **4. Rewrite the standing files, and only those.** `definition.md` and `state.md` are Standing — they
-describe the present and are rewritten to stay true. `architecture.md` may gain an axiom or retire
+describe the present and are rewritten to stay true. ⚠️ **Rewritten is not re-created.** Every block
+id that existed before the rewrite exists after it, or appears in the fold table of the decision
+step 5 writes — see *The block authority* above for what happens otherwise. `architecture.md` may gain an axiom or retire
 one (which fires the saturation review). **`Decision_Log.md` is a Record and is append-only: the
 redefinition is a new `Dn`, never an edit.**
 
@@ -90,6 +166,7 @@ State these before rewriting anything, then run them:
 | 3 | The new `definition.md` quotes what the old one said where it changed |
 | 4 | `state.md` answers *would this still be true if work stopped today?* on every line |
 | 5 | Every compass row and queue entry the redefinition invalidated has left with a destination |
+| **5b** | **Every block id present before the rewrite is present after it, or named in the fold table of the new `Dn`.** Run the `blocks()` diff above; a non-empty result that the decision does not explain is a failed redefinition, not a stylistic choice |
 | 6 | The project's own `architecture.md` still holds — or an axiom was retired **explicitly**, with the saturation review that entails |
 
 ## Dismissal

@@ -31,7 +31,7 @@ One plan record, holding:
 | **The sub-block** it belongs to | a plan with no sub-block is a to-do list |
 | **The items**, in the order they will be done | |
 | **`order_why`** — why *that* order | the field most likely to be skipped and the one that pays. It is what a reader six months on has instead of the conversation |
-| **status** | `active`, or `paused` if another plan is already active |
+| **status** | `active` · `paused` if another plan took the `▶`, or if this is a **recurring** sub-block between passes · `closed` when its sub-block is done for good |
 
 ## The order, and why the order is the point
 
@@ -46,6 +46,16 @@ That cause is what tells the next reader whether the order still holds when some
 Several may exist — starting one before another finishes is real and allowed. **What is not
 allowed is losing the count:** opening a plan while another is `active` **pauses that one and says
 so**. Two active plans are two active sub-blocks, and then the `▶` is not one.
+
+⚠️ **Pausing is what makes switching safe, and it is not a courtesy state.** A plan deleted on a
+switch takes its order, its reasons and its unrouted items with it; a plan that is `paused` is
+**held and visible**, and resuming it costs reading rather than reconstructing.
+
+⚠️ **A recurring sub-block pauses instead of closing** (`FLOW.md` rule 5). A triage of a queue that
+keeps filling can never verify as *empty* — its verification is a state **at the moment of the
+close**, and at that moment the plan closes into its record **and the sub-block returns to
+`paused`**, ready for the next arrival. **A maintenance loop written as a closing sub-block is a
+sub-block that will look abandoned every time it is correct.**
 
 The single active front is a forcing function, not tidiness: a list of parallel priorities never
 contradicts reality, so it never gets corrected.

@@ -252,14 +252,24 @@ def parse_compass(path, text):
         row = header_of(lines, i)
         if cells[0] in ("▶", "⏸", "?") or re.fullmatch(r"\d+", cells[0]):
             g = dict(zip(row, cells)) if row and len(row) == len(cells) else {}
+            fname = clean(g.get("Front", cells[1] if len(cells) > 1 else ""))
+            desc_in = clean(g.get("Where it is described", cells[2] if len(cells) > 2 else ""))
+            moves_w = clean(g.get("Moves when", cells[3] if len(cells) > 3 else None))
+
+            row_proj = project
+            if not row_proj:
+                pm = re.search(r"/(?:[^/]+/)?([^/]+)/nexus", desc_in)
+                if pm:
+                    row_proj = pm.group(1)
+                elif re.search(r"\b([a-zA-Z0-9_\-]+):[A-Z0-9]", desc_in):
+                    row_proj = re.search(r"\b([a-zA-Z0-9_\-]+):[A-Z0-9]", desc_in).group(1)
+
             ents.append({"kind": "front", "line": i + 1, "marker": cells[0],
                          "active": cells[0] == "▶",
-                         "name": clean(g.get("Front", cells[1] if len(cells) > 1 else "")),
-                         "described_in": clean(g.get("Where it is described",
-                                                     cells[2] if len(cells) > 2 else "")),
-                         "moves_when": clean(g.get("Moves when",
-                                                   cells[3] if len(cells) > 3 else None)),
-                         "project": project})
+                         "name": fname,
+                         "described_in": desc_in,
+                         "moves_when": moves_w,
+                         "project": row_proj})
             if row and len(row) != len(cells):
                 probs.append(Problem(path, i + 1,
                                      f"a compass row with {len(cells)} cells against a "
@@ -278,12 +288,46 @@ def parse_compass(path, text):
 
 
 def parse_plan(path, text):
-    """Live plan items. A struck line without a destination is a failed close."""
+    """Live plan items and metadata. A struck line without a destination is a failed close."""
     ents, probs, lines = [], [], text.splitlines()
     # The plan holds one task, so its items inherit that task's project from the header.
     hp = re.search(r"\*\*project:\*\*\s*`?([\w-]+)`?", text)
     plan_project = hp.group(1) if hp else None
-    DEST = r"(✅ resolved|→ *`?TASKS[^`]*`?|→ *integrated|→ *`?MAILBOX[^`]*`?|→ *park|⚫)"
+
+    # A plan names what it is working on. It was `**Task:**` and a `**Compass row:**`;
+    # since the plan model landed it is `**Plan:**` + `**Sub-block:**` + `**Front:**`.
+    # Both are read, because records written under the old header are not rewritten.
+    task_match = (re.search(r"\*\*Task:\*\*\s*`?([^·\n]+)`?", text)
+                  or re.search(r"\*\*Sub-block:\*\*\s*`?([^·\n]+)`?", text))
+    compass_match = (re.search(r"\*\*Compass row:\*\*\s*([^\n·]+)", text)
+                     or re.search(r"\*\*Front:\*\*\s*([^\n·]+)", text))
+    plan_id_match = re.search(r"\*\*Plan:\*\*\s*`?([\w-]+)`?", text)
+    status_match = re.search(r"\*\*Status:\*\*\s*`?(active|paused|closed)`?", text)
+    opened_match = re.search(r"\*\*Opened:\*\*\s*([^\n·]+)", text)
+    order_why_match = re.search(r"## The order, and why this order\s*\n\n(.*?)(?=\n##|\Z)", text, re.DOTALL)
+    order_why_text = clean(order_why_match.group(1)) if order_why_match else ""
+
+    ents.append({
+        "kind": "live-plan-meta",
+        "title": clean(task_match.group(1)) if task_match else "Plan en vuelo",
+        "task": clean(task_match.group(1)) if task_match else None,
+        "project": plan_project,
+        "compass_row": clean(compass_match.group(1)) if compass_match else None,
+        "opened": clean(opened_match.group(1)) if opened_match else None,
+        "order_why": order_why_text[:1000] if order_why_text else "",
+        "plan_id": plan_id_match.group(1) if plan_id_match else None,
+        "status": status_match.group(1) if status_match else "active"
+    })
+
+    # The outcome vocabulary, and it is TWO vocabularies because two are on disk.
+    # `SCHEMA.md`, `FLOW.md` and `current-plan/SKILL.md` all declare `done · mailbox ·
+    # ideas · discarded`; this pattern knew only the older `✅ resolved · → integrated ·
+    # → park · ⚫`. A plan written to the declared contract therefore had every closed
+    # item reported as *a failed close* — the mirror of a pattern that cannot match, and
+    # just as useless: a check that fires when it should not is a check nobody reads.
+    # Both forms are accepted; the schema's is canonical and the older one is history.
+    DEST = (r"(✅ *`?resolved`?|✅ *`?done`?|→ *`?TASKS[^`]*`?|→ *integrated"
+            r"|→ *`?MAILBOX[^`]*`?|→ *`?IDEAS[^`]*`?|→ *park|⚫|`?discarded`?)")
     for i, line in enumerate(lines):
         m = re.match(r"^(?P<n>\d+)\.\s+(?P<text>.+)$", line)
         if not m:
@@ -298,7 +342,7 @@ def parse_plan(path, text):
         ents.append({"kind": "plan-item", "line": i + 1, "index": int(m.group("n")),
                      "project": plan_project,
                      "struck": struck, "destination": clean(dest.group(0)) if dest else None,
-                     "text": clean(re.sub(r"~~", "", body))[:200]})
+                     "text": clean(re.sub(r"~~", "", body))[:300]})
         if struck and not dest:
             probs.append(Problem(path, i + 1,
                                  "a struck plan item with no destination — a failed close", body))
@@ -306,26 +350,294 @@ def parse_plan(path, text):
 
 
 def parse_standing(path, text, project_pattern=None):
-    """A project's state. Its fields live in a blockquote of `**Field:** value`."""
+    """A project's state. Reads its header fields, definition, phase, and ramified blocks."""
     lines = text.splitlines()
-    # Start after the title, not at line 0: `kv_block` stops at the first heading, and
-    # line 0 IS a heading — so reading from 0 returned an empty field set for every
-    # state file, and the report blamed six files for the parser's own bug.
     first = next((i for i, l in enumerate(lines) if l.startswith("# ")), -1)
     fields = kv_block(lines, first + 1)
     title = lines[first][2:].strip() if first >= 0 else path.stem
-    # The project is the folder, not a field — requiring it to be repeated inside
-    # would be a second place for one fact to be wrong. But WHICH folder is an
-    # instance fact, so the adapter hands over the pattern and the engine only
-    # applies it. This function held a hard-coded instance path until 2026-08-18,
-    # caught by AX-1's structural grep the same hour the axiom was written.
+
     project = None
     if project_pattern:
         m = re.search(project_pattern, str(path).replace("\\", "/"))
         if m:
             project = (m.groupdict().get("project") or (m.group(1) if m.groups() else None))
-    ent = {"kind": "project-state", "line": 1, "title": clean(title),
-           "project": project, **fields}
+
+    # 1. Extract Phase Summary from blockquote
+    phase_summary = ""
+    for line in lines[:20]:
+        line_s = line.strip()
+        if line_s.startswith(">") and any(k.lower() in line_s.lower() for k in ["phase", "iteration", "mvp", "pre-phase", "paused", "built"]):
+            cleaned = line_s.lstrip("> *").strip()
+            parts = [p.strip().replace("**", "").replace("`", "") for p in cleaned.split("·")]
+            # Filter out pure Last updated parts or resume points
+            descriptive_parts = [p for p in parts if not p.lower().startswith("last updated") and not p.lower().startswith("resume point") and not p.lower().startswith("this file")]
+            if descriptive_parts:
+                phase_summary = " · ".join(descriptive_parts[:2])
+                break
+
+    # 2. Extract Project Definition ("## 1. What it is")
+    definition = ""
+    in_what = False
+    what_lines = []
+    for line in lines:
+        if re.match(r"^##\s+\d*\.?\s*What\b", line, re.I):
+            in_what = True
+            continue
+        elif in_what and (line.startswith("## ") or line.startswith("---") or line.startswith("|") or line.startswith("```")):
+            break
+        elif in_what:
+            l_strip = line.strip()
+            if l_strip and not l_strip.startswith(">"):
+                what_lines.append(l_strip)
+            elif what_lines and not l_strip:
+                break
+
+    # Fallback to definition.md if state.md has no What section
+    if not what_lines:
+        def_file = path.parent / "definition.md"
+        if def_file.exists():
+            try:
+                def_text = def_file.read_text(encoding="utf-8")
+                in_def_what = False
+                for dline in def_text.splitlines():
+                    if re.match(r"^##\s+\d*\.?\s*What\b", dline, re.I):
+                        in_def_what = True
+                        continue
+                    elif in_def_what and (dline.startswith("## ") or dline.startswith("---") or dline.startswith("|")):
+                        break
+                    elif in_def_what:
+                        dl_strip = dline.strip()
+                        if dl_strip and not dl_strip.startswith(">"):
+                            what_lines.append(dl_strip)
+                        elif what_lines and not dl_strip:
+                            break
+            except Exception:
+                pass
+
+    if what_lines:
+        definition = " ".join(what_lines).replace("**", "").replace("`", "")
+
+    # 3. Extract Ramified Blocks & Subblocks Hierarchy
+    board_blocks = []
+    current_block = None
+    in_board_section = False
+
+    for line in lines:
+        # Detect start of board or progress sections
+        if re.search(r"^##\s+\d*\.?\s*(The board|Progress by Block|Roadmap|Blocks)\b", line, re.I):
+            in_board_section = True
+            current_block = None
+            continue
+        # Stop board extraction if we hit a different level-2 section like "Active risks", "Iteration history", etc.
+        elif in_board_section and re.match(r"^##\s+\d*\.?\s*(Active risks|Cross-project|Iteration history|Do not re-investigate|Sources|Topology|Evidence|Where it stands|Notes|Appendix)", line, re.I):
+            in_board_section = False
+            current_block = None
+            break
+
+        if not in_board_section:
+            continue
+
+        # Format A: ### `Xn` · Block Title
+        m_head = re.match(r"^###\s+[`\*]*([A-Z0-9\._-]+)[`\*]*\s*[·–-]\s*(.+)", line)
+        if m_head:
+            b_id = m_head.group(1).strip()
+            # Only valid block ids like A1, B3, S1, TR1, P2, etc.
+            if re.match(r"^[A-Z]{1,3}[0-9]+$", b_id):
+                b_title = m_head.group(2).strip()
+                current_block = {
+                    "id": b_id,
+                    "title": b_title.replace("**", "").replace("`", ""),
+                    "status": "active" if any(sym in b_title for sym in ["🔨", "▶", "⛔"]) else ("completed" if "✅" in b_title else "pending"),
+                    "summary": b_title.replace("**", "").replace("`", ""),
+                    "subblocks": []
+                }
+                board_blocks.append(current_block)
+                continue
+
+        if current_block and line.startswith("|") and not line.startswith("|---") and not line.startswith("| #") and not line.startswith("| |") and not line.startswith("| Kind"):
+            parts = [p.strip() for p in line.split("|")[1:-1]]
+            if len(parts) >= 3 and not parts[0].startswith("---"):
+                sub_id_m = re.search(r"([A-Z0-9\._-]+)", parts[0])
+                if sub_id_m:
+                    sub_id = sub_id_m.group(1)
+                    # Validate subblock pattern e.g. A1.1, B8.2, S1.3, TR1.2
+                    if re.match(r"^[A-Z]{1,3}[0-9]+(\.[0-9]+)?$", sub_id):
+                        kind = parts[1] if len(parts) > 1 else ""
+                        what = parts[2] if len(parts) > 2 else ""
+                        status_str = parts[-1] if len(parts) >= 4 else ""
+                        current_block["subblocks"].append({
+                            "id": sub_id,
+                            "kind": kind,
+                            "title": what.replace("**", "").replace("`", ""),
+                            "desc": what.replace("**", "").replace("`", ""),
+                            "status": "completed" if "✅" in status_str else ("active" if any(s in status_str for s in ["🔨", "▶", "🔴", "open"]) else "pending")
+                        })
+
+    # Format B: "Progress by Block" Table
+    if not board_blocks:
+        in_prog = False
+        for line in lines:
+            if "Progress by Block" in line:
+                in_prog = True
+                continue
+            elif in_prog and (line.startswith("## ") or line.startswith("---")):
+                in_prog = False
+            elif in_prog and line.startswith("|") and not line.startswith("|---") and not line.startswith("| Block"):
+                parts = [p.strip() for p in line.split("|")[1:-1]]
+                if len(parts) >= 3 and not parts[0].startswith("---"):
+                    b_id_m = re.search(r"\b([A-Z0-9\._-]+)\b", parts[0])
+                    if b_id_m and re.match(r"^[A-Z]{1,3}[0-9]+$", b_id_m.group(1)):
+                        b_id = b_id_m.group(1)
+                        b_name = parts[0].replace(b_id, "").replace("**", "").replace("`", "").strip()
+                        status_raw = parts[1]
+                        what = parts[2].replace("**", "").replace("`", "")
+                        board_blocks.append({
+                            "id": b_id,
+                            "title": b_name or what,
+                            "status": "completed" if "✅" in status_raw else ("active" if any(s in status_raw for s in ["🔨", "▶"]) else "pending"),
+                            "summary": what,
+                            "subblocks": []
+                        })
+
+        # Match subblocks sections like "## 6. B8 — Sub-Blocks"
+        for b in board_blocks:
+            b_id_str = b["id"]
+            sub_sec_name = b_id_str + " — Sub-Blocks"
+            in_sub = False
+            for line in lines:
+                if sub_sec_name in line or (b_id_str in line and "Sub-Blocks" in line):
+                    in_sub = True
+                    continue
+                elif in_sub and (line.startswith("## ") or line.startswith("---")):
+                    in_sub = False
+                elif in_sub and line.startswith("|") and not line.startswith("|---") and not line.startswith("| #") and not line.startswith("| Sub-block"):
+                    parts = [p.strip() for p in line.split("|")[1:-1]]
+                    if len(parts) >= 3 and not parts[0].startswith("---"):
+                        sub_id_m = re.search(r"([A-Z0-9\._-]+)", parts[0])
+                        if sub_id_m:
+                            sub_id = sub_id_m.group(1)
+                            if re.match(r"^[A-Z]{1,3}[0-9]+(\.[0-9]+)?$", sub_id):
+                                sub_title = parts[1] if len(parts) > 1 else ""
+                                sub_closes = parts[2] if len(parts) > 2 else ""
+                                sub_status = parts[3] if len(parts) > 3 else (parts[-1] if len(parts) >= 3 else "")
+                                b["subblocks"].append({
+                                    "id": sub_id,
+                                    "title": sub_title.replace("**", "").replace("`", ""),
+                                    "desc": sub_closes.replace("**", "").replace("`", ""),
+                                    "status": "completed" if "✅" in sub_status else ("active" if any(s in sub_status for s in ["🔨", "▶"]) else "pending")
+                                })
+
+    # 4. Extract Code Repo and Remote URL from metadata tables
+    code_repo = ""
+    remote_url = ""
+    for line in lines:
+        if re.search(r"\|\s*\*{0,2}Remote\*{0,2}\s*\|", line, re.I):
+            parts = [p.strip() for p in line.split("|")[1:-1]]
+            if len(parts) >= 2:
+                remote_url = parts[1].replace("`", "").split("—")[0].strip()
+        elif re.search(r"\|\s*\*{0,2}Code repo\*{0,2}\s*\|", line, re.I):
+            parts = [p.strip() for p in line.split("|")[1:-1]]
+            if len(parts) >= 2:
+                code_repo = parts[1].replace("`", "").split("—")[0].strip()
+
+    # Fallback to definition.md if not in state.md
+    if (not code_repo or not remote_url) and (path.parent / "definition.md").exists():
+        try:
+            def_text = (path.parent / "definition.md").read_text(encoding="utf-8")
+            for line in def_text.splitlines():
+                if not remote_url and re.search(r"\|\s*\*{0,2}Remote\*{0,2}\s*\|", line, re.I):
+                    parts = [p.strip() for p in line.split("|")[1:-1]]
+                    if len(parts) >= 2:
+                        remote_url = parts[1].replace("`", "").split("—")[0].strip()
+                elif not code_repo and re.search(r"\|\s*\*{0,2}Code repo\*{0,2}\s*\|", line, re.I):
+                    parts = [p.strip() for p in line.split("|")[1:-1]]
+                    if len(parts) >= 2:
+                        code_repo = parts[1].replace("`", "").split("—")[0].strip()
+        except Exception:
+            pass
+
+    if not code_repo:
+        try:
+            code_repo = str(path.parent.parent.resolve())
+        except Exception:
+            code_repo = f"~/Documents/{project}"
+
+    # Extract Git metadata (branch, latest commit) if repo exists
+    git_info = {}
+    if code_repo:
+        try:
+            import subprocess
+            repo_dir = Path(os.path.expanduser(code_repo)).resolve()
+            if not repo_dir.exists() and (path.parent.parent / project).exists():
+                repo_dir = path.parent.parent / project
+            if (repo_dir / ".git").exists() or repo_dir.is_dir():
+                branch = subprocess.check_output(
+                    ["git", "-C", str(repo_dir), "branch", "--show-current"],
+                    text=True, stderr=subprocess.DEVNULL, timeout=0.5
+                ).strip()
+                commit_out = subprocess.check_output(
+                    ["git", "-C", str(repo_dir), "log", "-1", "--format=%h	%s	%cd", "--date=short"],
+                    text=True, stderr=subprocess.DEVNULL, timeout=0.5
+                ).strip().split("	")
+                if len(commit_out) >= 3:
+                    git_info = {
+                        "git_branch": branch or "main",
+                        "git_commit": commit_out[0],
+                        "git_commit_msg": commit_out[1],
+                        "git_commit_date": commit_out[2]
+                    }
+                elif len(commit_out) == 1 and commit_out[0]:
+                    git_info = {
+                        "git_branch": branch or "main",
+                        "git_commit": commit_out[0]
+                    }
+        except Exception:
+            pass
+
+    # Look for README.md or guide.md for Visual Usage Guide
+    readme_content = ""
+    readme_path = ""
+    possible_readmes = [
+        path.parent / "guide.md",
+        path.parent / "usage.md",
+        path.parent / "README.md",
+        path.parent.parent / "README.md",
+    ]
+    if code_repo:
+        try:
+            r_dir = Path(os.path.expanduser(code_repo)).resolve()
+            possible_readmes.insert(0, r_dir / "README.md")
+        except Exception:
+            pass
+
+    for rp in possible_readmes:
+        if rp.exists() and rp.is_file():
+            try:
+                readme_content = rp.read_text(encoding="utf-8")
+                readme_path = str(rp)
+                break
+            except Exception:
+                pass
+
+    ent = {
+        "kind": "project-state",
+        "line": 1,
+        "title": clean(title),
+        "project": project,
+        "definition": definition,
+        "phase_summary": phase_summary,
+        "code_repo": code_repo,
+        "remote_url": remote_url,
+        "git_branch": git_info.get("git_branch", ""),
+        "git_commit": git_info.get("git_commit", ""),
+        "git_commit_msg": git_info.get("git_commit_msg", ""),
+        "git_commit_date": git_info.get("git_commit_date", ""),
+        "readme_content": readme_content,
+        "readme_path": readme_path,
+        "blocks": board_blocks,
+        **fields
+    }
+
     probs = []
     for req in ("last_updated", "next_action"):
         if req not in fields:
@@ -418,7 +730,7 @@ def parse_adapter(adapter_path):
         sroot = (root / src["root"]).resolve() if src.get("root") else root
         paths = ([sroot / src["path"]] if src.get("path")
                  else sorted(sroot.glob(src.get("glob", ""))))
-        if not paths:
+        if not paths and not src.get("optional"):
             problems.append(Problem(src.get("path") or src.get("glob"), 0,
                                     f"source {src['label']!r} resolved to no file"))
         # A glob reports nothing when ONE of its containers is empty — so the source

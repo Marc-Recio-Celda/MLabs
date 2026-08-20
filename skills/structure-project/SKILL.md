@@ -62,6 +62,19 @@ method half plus the repository's local half, never typed, with a check that fai
   the cartridge; observations about that repository go to its owners, not into this instance's
   queues.
 
+**6b. Add the project's name to the instance's denylist, and prove the gate fires on it.**
+A new cartridge introduces a new **private identifier**, and the depersonalisation gate greps a
+fixed list of words: a name nobody adds is a name the gate cannot see, and it returns clean on a
+real leak. ⚠️ **This step did not exist until 2026-08-19, and its absence is exactly how a newly
+opened project and a newly introduced grouping folder both reached one instance's tree with no
+entry** — created the same week, invisible to a gate that was otherwise working, and proven so
+against planted leaks while a control fired.
+
+**Adding the word is not the step. Proving the pattern matches the name as spelled is.** A term can
+sit on the list for weeks and still fail to match the directory it names: a `\b` boundary does not
+exist between a letter and a digit, so a name ending in a version number escapes a bare word match. Run the instance's `denylist_coverage` check — **empty is the
+only passing result** — and plant the new name into a tracked file to watch the gate block it.
+
 **7. Register the project in the compass.** One row, edges not nodes: the compass points at where
 the work is described and describes none of it (`METHOD.md` §2). A new cartridge does not take the
 `▶` by arriving — exactly one active front exists across every project, and moving it is the
@@ -81,8 +94,12 @@ it mechanically, and is worth running even when one agent wrote the cartridge in
 
 ## The placement test — which department a rule belongs to
 
-Three departments, **different scope, identical force**; none overrides another, and an agent
-working in the project loads all three (`METHOD.md` §6).
+Three departments, **different scope, identical force**; none overrides another. ⚠️ **What an
+agent loads is decided by the task, not by the tier** (`METHOD.md` §6, corrected 2026-08-19): a
+defined task loads the binding, `METHOD` §2/§7, the role file and **the departments it is about to
+touch**; designing, auditing or **placing a rule** loads all three whole, because there the
+contradiction between levels is the work. Placement is the second case, so **run this test with all
+three open.**
 
 | Department | Lives in | Passes if |
 |---|---|---|
@@ -111,6 +128,7 @@ trusting a clean run (`MLabs:AX-7`).
 | 6 | The compass holds exactly one `▶` across every project, and a row naming this one |
 | 7 | Every new queue or park entry carries `project:` — entry count and `project:` count match |
 | 8 | The agent contract sits at the code repository root **iff** the operator owns it; otherwise in the cartridge and nowhere else |
+| **9** | **The denylist coverage check returns empty**, and the new name, planted into a tracked file, makes the release gate fire. A name added and never tested is a name that may still be invisible |
 
 An unrunnable check is reported as unrun, never as passed (`MLabs:AX-22`).
 

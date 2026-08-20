@@ -1,6 +1,9 @@
 # PHILOSOPHY — what this company optimises for
 
-> **Version:** 1.1.0
+> **Version:** 1.2.0 — `PH-7` added 2026-08-20 (the operator). ⚠️ **It has zero axioms behind it
+> today**, which by this file's own standard makes it *a value with no teeth*. That is deliberate
+> and declared rather than discovered: the clause is opened first so the axioms are written against
+> it instead of being reverse-engineered from a dashboard that already exists.
 
 > **Level 1 of three.** *Philosophy* (this file) says what the company is for and what it
 > refuses. *Axioms* (`AXIOMS.md`) are the rules that follow and may never be violated.
@@ -10,6 +13,21 @@
 >
 > **This file breaks ties.** When two axioms both apply and disagree, it decides. When a
 > proposal satisfies every axiom and still feels wrong, this is where the objection lives.
+>
+> ⚠️ **A change here fires a review, and until 2026-08-20 it fired nothing.** `AXIOMS.md` has said
+> from the start that *"a change here fires the review over every axiom in every department"*; this
+> file, the tier that breaks every tie, had **a bar and no trigger** — *"a change here needs a case,
+> not a vote"* says how hard it is to add, and nothing says what runs afterwards. So `PH-7` was
+> opened, and the review that ran two days later checked whether it had axioms and **never asked
+> whether it belonged** (found by the operator, not by the auditor). **The tier with the most
+> leverage had the least review.** A change here now fires `company-auditor`'s `A5` — *does this
+> clause belong at this level* — alongside the axiom review `AXIOMS.md` already triggers.
+>
+> ⚠️ **And it is the one tier where a contradiction has no arbiter.** `AXIOMS.md` resolves a clash
+> between departments — *the narrower one loses* — and this file resolves a clash between axioms.
+> **Nothing resolves a clash between two clauses here.** That is not an oversight to fix with a
+> seventh rule; it is why the bar for entry is height rather than procedure, and why `A5` asks about
+> overlap before it asks about anything else.
 >
 > **It changes rarely, only by the operator, and explicitly — but it is not frozen.** Working on
 > the system is exactly what reveals that a clause has stopped being true, so a clause protected
@@ -59,6 +77,30 @@ on every change; separation is paid once, when the boundary is drawn. Boundaries
 Everything is recorded; almost nothing is loaded. One active front at a time. The full record
 and the working set are different artefacts, and the cost that matters is not storage but what
 must be held in mind to do the next thing.
+
+## PH-7 · What is not measured cannot be improved — and cannot be proved
+
+Two purposes, and **every metric declares which one it serves**: to **steer**, meaning a decision
+changes when it moves; or to **prove**, meaning it is evidence for someone who has no reason to
+believe us. A number that serves neither is a dashboard, and a dashboard is accumulation wearing a
+chart. Four consequences, each of which was paid for before it was written:
+
+- **A metric carries its denominator.** *57 findings accepted* is a number; *57 of 64* is a
+  measurement. Without the denominator there is nothing to be worse than.
+- **A metric must be able to move in the bad direction**, and the run where it does is the reason
+  it exists. One that can only rise is a scoreboard — and it hides the failure it was built to
+  catch, because a check can hold its accuracy perfectly while its coverage collapses.
+- **The unflattering counts are part of the metric, not an appendix.** What was rejected, what was
+  withdrawn, what was never confirmed. A record with no failures in it is not a strong record; it
+  is an unaudited one, and the first reader who notices stops believing the rest.
+- **Measured from the record, never recalled.** A figure reconstructed after the fact measures
+  memory. This is `PH-3` doing its work: the metric is only available later if the datum was
+  written at the time.
+
+**And this clause retires metrics as readily as it adds them.** The review that asks *what are we
+not measuring* asks in the same breath *which of these has never changed a decision* — because a
+measurement nobody acts on still costs attention every time it is produced, which is the failure
+`PH-6` names and the dead-role rule below repeats.
 
 ---
 

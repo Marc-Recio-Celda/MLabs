@@ -22,7 +22,7 @@ empties, a record someone edited, a plan that quietly became a backlog.
 | **Record** | Append-only. Never edited, never deleted, grows forever. The receipt | Editing it destroys the only copy of what was true then |
 | **Queue** | Filled by one side, drained by the other; an item leaves when it is done (AX-15). **Not a stack and not first-in-first-out** — the order is the operator's to set and reset at any time; what a queue guarantees is that nothing leaves without a destination, never that things leave in the order they arrived | A queue that only grows stops saying what is left |
 | **Compass** | Tiny, rewritten in place, **one active front**. Read at every open, updated at every close | A compass with eight priorities never contradicts reality, so it is never corrected |
-| **Live plan** | **Rewritten continuously while the work happens; emptied when it closes** | A live plan that survives its task has become a backlog |
+| **Live plan** | **Rewritten continuously while the work happens; CLOSED when the work closes — never emptied** (`FLOW.md` rule 3, 2026-08-19). It becomes a plan record and stays readable; deleting it drops the order, the reason for that order, and the items discarded with their reasons, which live nowhere else | A live plan that survives its task has become a backlog. ⚠️ And one that is *deleted* takes `PH-3` with it in exactly the case `PH-3` was written for |
 | **Park** | No date, no commitment, no obligation to revisit | A park with dates is a task list nobody agreed to |
 | **Standing** | Rewritten in place; always states what is true *now* or what must hold. Never appended to, never emptied | A standing document that grows by accretion has become a record nobody can trust as current |
 
@@ -44,10 +44,10 @@ all **Standing**: each is rewritten to stay true, and none is ever a place thing
   active front, here is what it waits on, here is what is queued behind it — *shall we?* An
   opening with no intent is not an absence of instruction; it is an instruction to orient.
 
-Either way `Schedule.md` names one active front `▶` and points at where that work is described;
+Either way `COMPASS.md` names one active front `▶` and points at where that work is described;
 it describes none of it.
 
-**Open the live plan on that front.** `Current_plan.md` is rewritten to hold *this task and
+**Open the live plan on that front.** `PLAN.md` is rewritten to hold *this task and
 nothing else*: the concrete items, in the order they will be done, and the reasoning for that
 order. It is not a summary written afterwards — it is written *while* deciding, which is what
 makes it worth anything.
@@ -99,8 +99,21 @@ at the close"* is the same failure with a delay.
    the plan is the only record of how the task thought, and emptying it first leaves the
    auditor reading a blank file while believing it read the reasoning. **The audit precedes
    the erasure, always.** The operator can also call it on any close, for any reason.
-4. **Then the plan is emptied** — and only then.
-5. **Print what was touched** — one line per file, no pasted diffs. The table is not the review;
+4. **Then the plan is closed** — and only then. ⚠️ **Closed, not emptied** (`FLOW.md` rule 3,
+   declared the winner 2026-08-19). Deleting it drops the two things that live nowhere else: **the
+   order and why that order**, and **the items discarded with their reason** — `PH-3` in exactly
+   the case it was written for. Closing costs nothing visually: a closed plan leaves the working
+   view the same way a deleted one would, and it becomes what a sub-block's row expands into —
+   not *that* it finished, but *how* it went. Four files said *empty* against two that said
+   *close*, with no winner declared; this line is the winner.
+5. **Print what was touched — derived from the close, never written from memory**
+   *(operator, 2026-08-19)*. One line per file, no pasted diffs. ⚠️ **A session report is not a Record and must
+   not be written like one**: one claimed *"axioms AX-28 to AX-30 added"* against a file that held
+   `AX-1`…`AX-31` with all three predating that session — no damage, and **a false line read as
+   evidence**. What comes out of the diff goes here; **what does not is narrative and goes to the
+   ledger, which is a Record and where a claim can be checked against the round it describes.**
+   *A report nobody contrasts against the tree is the same failure class as a check that cannot
+   fail.* The table is not the review;
    it is the index that says where to look, and it is what makes an unasked-for change visible
    at a glance.
 6. Then the compass moves.
@@ -209,8 +222,8 @@ lapse.
 
 | File | Kind | Holds |
 |---|---|---|
-| `Schedule.md` | Compass | one `▶`, edges not nodes, every project |
-| `Current_plan.md` | Live plan | the task in flight, and only it |
+| `COMPASS.md` | Compass | one `▶`, edges not nodes, every project |
+| `PLAN.md` | Live plan | the task in flight, and only it |
 | `MAILBOX.md` | Queue | agent → operator, every project |
 | `TASKS.md` | Queue | operator → agent, every project |
 | `IDEAS.md` | Park | undecided, every project |
@@ -293,6 +306,35 @@ own — and **each project gets its own dedicated auditor**, hired under the sam
 dismissal criterion. That repetition is the claim to reproducibility: adopting this is not
 copying one company's rules, it is instantiating a pattern that knows how to instantiate itself.
 
+### Rule · skill · role — three things, and only one of them fires by itself
+
+**Named 2026-08-20** *(the operator)*: *"prácticamente no hay skills que se lancen automáticamente
+por el consumo de tokens, así que los roles son un tipo de skill que puede ser solicitado pero no se
+lanza automático."* ⚠️ **This is a discovery, not a new taxonomy** — the repository already
+implements all three and had never said so, which is why *should this be a skill or a rule* had to
+be re-argued every time it came up.
+
+| | Loads | Costs | Accountable |
+|---|---|---|---|
+| **Rule** | always — it lives in a document already open | **every turn**, which is why `AX-4` makes a rule earn its place against being a tool | no |
+| **Skill** | when invoked | its **description**, continuously; its body only when it fires | no |
+| **Role** | when invoked, **never automatically** | the same as a skill | **yes** — a log and a criterion that can fire it |
+
+**A role is a skill plus two things: a log and a dismissal criterion** (`AX-11`). That is the whole
+difference and it is already visible on disk — `logs/` holds one file per role and none for any
+other skill. **Accountability, not capability, is what makes something a role.**
+
+⚠️ **Nothing auto-fires, and that is a measured decision rather than an omission.** The automatic
+audit trigger was retired after five firings in one session cost more context than the work they
+audited. So *what fires* is only the mechanical checks — the gate, the pre-commit hook, the close —
+and **everything else is requested.** A design that quietly assumes a role will notice something is
+assuming a trigger that was deliberately removed.
+
+⚠️ **The consequence for where a check goes.** If it must fire while the work happens, it is a
+**rule** and belongs in a document that is already loaded — never in a new skill, because a skill
+that has to be remembered is not a check. If it can wait to be asked for, it is a **skill**; if it
+also needs to answer for its own record, it is a **role**.
+
 ## 6. How the repositories connect
 
 ```
@@ -300,7 +342,7 @@ MLabs/                      the constitution — public, released, no state
 ├── PHILOSOPHY · AXIOMS · METHOD · AGENTS · skills/
 │
 ├── NEXUS/                  the operations centre — private, and the hub
-│   ├── AGENTS.md           the binding: pins an MLabs release; declares ledger and denylist
+│   ├── AGENTS.md           the binding: names the MLabs it runs; declares ledger and denylist
 │   ├── AXIOMS.md           the instance's own axioms — what MLabs cannot know
 │   ├── <live set>          compass · live plan · mailbox · tasks · ideas — every project
 │   ├── <records>           method log · agent ledger · work log
@@ -315,9 +357,24 @@ NEXUS. NEXUS names MLabs, once, in its binding. MLabs names nothing. An agent dr
 repository can walk *up* the chain to the rules and *across* to the work, and never has to guess.
 
 **Three departments of axioms — different scope, identical force.** None outranks another; each
-binds absolutely inside its own jurisdiction, and an agent working here loads every department
-that covers it. **They are reviewed together** whenever any of them changes, because a rule can
-only contradict a rule it shares a reader with.
+binds absolutely inside its own jurisdiction. **They are reviewed together** whenever any of them
+changes, because a rule can only contradict a rule it shares a reader with.
+
+> ⚠️ **What an agent loads is decided by the task, not by the tier — `AGENTS.md` §2 wins**
+> *(operator, 2026-08-19)*. Measured that day: company **43.6 KB / 21 axioms** + instance **13.7 KB / 17
+> axioms** + a project's own **4.2–26.7 KB** is **60–82 KB before a single work file opens**, against
+> the **31 KB** §2 prescribes for a defined task (the binding + `METHOD` §2/§7). *Loads all three*
+> was **2–2.7× the budget the rule itself sets**, and it rises with every project.
+>
+> | Doing | Loads |
+> |---|---|
+> | **A defined task** | the binding · `METHOD` §2/§7 · the role file · **the departments it is about to touch** |
+> | **Designing, auditing, or placing a rule** | **all three departments, whole** — there the contradiction *between* levels is the work, and reading one is reading none |
+>
+> **The force is unchanged.** All three bind absolutely inside their jurisdiction; what changed is
+> that *binding* and *loaded into context right now* stopped being the same sentence. An axiom you
+> did not read still binds you — that is what makes it an axiom rather than a reminder.
+
 
 | Department | Lives in | Passes if |
 |---|---|---|
@@ -355,8 +412,8 @@ into a file nobody edits, with a check that fails on drift.
 | Something interesting with no commitment | `IDEAS.md` — one line while fresh; expand only if it survives a second reading |
 | Committed, sequenced, but not started | `TASKS.md`, with `blocked_by:` naming what must land first. The sequence is a graph over the tasks, never a second document |
 | Anything going into a queue or a park | The central file for that kind, **with `project:` filled in** |
-| What you are doing right now | `Current_plan.md` |
-| What comes next across all projects | `Schedule.md`, one `▶` |
+| What you are doing right now | `PLAN.md` |
+| What comes next across all projects | `COMPASS.md`, one `▶` |
 | A rule that binds any instance | Propose it as an axiom |
 | A rule that binds all your work but no stranger's | The instance's own `AXIOMS.md` |
 | A rule that binds one project | That project's `architecture.md` |

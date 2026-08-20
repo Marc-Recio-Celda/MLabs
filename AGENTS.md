@@ -105,7 +105,13 @@ still will.
 
 | Role | What it is | Fires | Defined in |
 |---|---|---|---|
-| **Company auditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip. **Checks decisions; does not propose** | **one event** — a close that changed a structural file. See `skills/company-auditor/`, the single source | `skills/company-auditor/` |
+| **Company auditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip. Scope is **the public structure** — what would bind an instance that is not this one. **Checks decisions; does not propose** | **one event** — a close that changed a company-structural file | `skills/company-auditor/` |
+| **Instance auditor** | The operations centre's own health. Different failures, not a smaller scope: an instance fails by its **checks going quietly vacuous** — a glob that stops matching, an invariant run from the wrong root, a permission table that lost its paths | **one event** — a close that changed the instance's structure or the declared shape of its live set. **Hired and first fired at round 7, 2026-08-19**, with `N` and `K` not yet fixed — which `AX-11` requires, so that round counts toward neither | `skills/instance-auditor/` |
+
+> ⚠️ **The three auditors share one contract, and it lives in `skills/audit/`** — the brief, the
+> output shape, the ledger entry, the log row, the tally, what an auditor does not do. Each role
+> file states **only** its scope, its trigger and its own checks. Until 2026-08-19 the company and
+> instance roles were one file twice, each declaring itself the single source (`CA-054`, `CA-064`).
 
 **Every employee is a skill file. What makes one a *role* is the shape of its description.**
 
@@ -133,7 +139,7 @@ against §6 when the operator turns it on for real work.
 
 | Role | Status | What it is |
 |---|---|---|
-| **Auditor** | ✅ written · `skills/project-auditor/` | the company auditor's shape scoped to one project. **Hired per project**, each with its own criterion |
+| **Project auditor** | ✅ written · `skills/project-auditor/` | the same contract scoped to one project's cartridge, plus four checks only it runs. **Hired per project**, each with its own criterion. **No firing has produced a row yet** |
 | **Gatherer** | ✅ written · `skills/gather/` | collects and cites; **its value is burning someone else's context** |
 | **Dispatcher** | ✅ written · `skills/dispatch/` | hands work to the executor entitled to claim the answer |
 | Bookkeeper | ⏸ not written | logs, decisions, staleness. ⚠️ **Probably not a role**: staleness is decidable by comparison, which makes it a script (AX-13). What is left is writing entries, which every skill already does at its own close |
@@ -147,7 +153,7 @@ is lost* — a rule at round close, not an agent, because its context is the who
 
 | Invariant | The check |
 |---|---|
-| **No personal information in what git tracks.** No person's name, no employer, no project name, no path inside NEXUS. Naming NEXUS itself is vocabulary (§2), not a leak | the release gate greps the instance's denylist over `git ls-files` output — what is *tracked*, since the working tree legitimately holds the private children — and it returns nothing. ⚠️ Test the grep against a planted leak before trusting it: a pattern that cannot match returns clean on a leak |
+| **No personal information in what git tracks.** No person's name, no employer, no project name, no path inside NEXUS. Naming NEXUS itself is vocabulary (§2), not a leak | the release gate greps the instance's denylist over `git ls-files` output — what is *tracked*, since the working tree legitimately holds the private children — and it returns nothing. ⚠️ Test the grep against a planted leak before trusting it, and **plant against the format**: a pattern that cannot match returns clean on a leak, and a term ending in a version number escapes a bare `\b` word match even when it is on the list. ⚠️ **This check binds the tracked working TREE and cannot see the HISTORY** — `git ls-files` does not read a commit, so a name removed from a file is still in the commit that removed it. **Declared rather than pretended** (2026-08-19): the guarantee is *nothing private ships in a checkout of the release*, not *nothing private was ever written*. Every commit already carries the author's name and email, so a history scrub would not depersonalise it either |
 | **The tracked set is exactly the allowlist** — nothing more, and nothing named that does not exist | `git ls-files` compared against `.gitignore`'s `!` lines at every release cut. A **surplus** file is a leak, investigated before anything else happens; a `!` line with **no tracked file behind it** is empty scaffolding, and the line goes |
 | **`git clean` is never run at this root.** The untracked here is everything the operator owns | none — prevention only. Deletion has no cleanup pass, which is exactly why this is a rule and not a tool (AX-4) |
 | **The axioms are append-only.** Entries are never rewritten; later entries supersede | `git diff <last-tag>..HEAD -- AXIOMS.md \| grep -c '^-[^-]'` returns **0** — nothing removed, nothing altered, only appended |
@@ -183,7 +189,7 @@ instance's ledger, and both live in the instance's hiring record, out of the rol
 
 ## 7. Gates
 
-- **A task closes** → **only if a structural file changed**, the company auditor is invoked, once, over everything the task touched — after the destinations are read back and **before** the live plan is emptied (`METHOD.md` §2). **A close that touched only the live set, the logs, notes, code or content does not fire it.** The two lists — structural, and expressly not structural — are stated in full in `skills/company-auditor/`, which is the single source; this line is the gate, not the definition. The operator invokes it by name whenever they judge it worth the round.
+- **A task closes** → **only if a structural file changed**, **the auditor for the department that changed** is invoked — company, instance or project, one of them and not two; `skills/audit/` is what routes — once, over everything the task touched — after the destinations are read back and **before** the live plan is emptied (`METHOD.md` §2). **A close that touched only the live set, the logs, notes, code or content does not fire it.** The two lists — structural, and expressly not structural — are stated in full in each role file, which is the single source for its own department; this line is the gate, not the definition. The operator invokes it by name whenever they judge it worth the round.
 - **Every close** → every open thread is enumerated with its destination, and *written* is
   claimed only after reading the file back from disk. A thread with no destination is a failure
   of the close, not an omission.

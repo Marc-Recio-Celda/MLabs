@@ -61,7 +61,7 @@
 
 | ID        | Status | Axiom                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Serves      | Origin                                                                         |
 | --------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------ |
-| **AX-1**  | 🟢     | **Structure separates from state, and what is public carries no personal data.** The methodology — hierarchy, roles, skills, templates — is one artefact, public by release and depersonalised by construction. **Everything an operator actually works on — knowledge, projects, logs, decisions, work in flight — lives in NEXUS, the operations centre**: one private artefact per instance, a sibling of the structure, which the public one never contains. NEXUS is where the company lives and practically all work enters it; the structure only says how. **The direction of reference is one-way, and precisely bounded:** the structure names NEXUS's role and its conventional root — that is vocabulary — and names nothing inside it, no project, no person, no path below that root. NEXUS names the structure once, in its binding, and pins the release it runs. A boundary that depends on remembering to exclude something is not a boundary — the default is exclusion, so a forgotten thing fails private.                                | PH-5 · PH-3 | operator — `NEXUS:M-108` · `M-109`                                             |
+| **AX-1**  | 🟢     | **Structure separates from state, and what is public carries no personal data.** The methodology — hierarchy, roles, skills, templates — is one artefact, public by release and depersonalised by construction. **Everything an operator actually works on — knowledge, projects, logs, decisions, work in flight — lives in NEXUS, the operations centre**: one private artefact per instance, a sibling of the structure, which the public one never contains. NEXUS is where the company lives and practically all work enters it; the structure only says how. **The direction of reference is one-way, and precisely bounded:** the structure names NEXUS's role and its conventional root — that is vocabulary — and names nothing inside it, no project, no person, no path below that root. NEXUS names the structure once, in its binding. ⚫ **The clause *"and pins the release it runs"* was retired 2026-08-19** — see the note below the table. A boundary that depends on remembering to exclude something is not a boundary — the default is exclusion, so a forgotten thing fails private. ⚠️ **And the depersonalisation half binds the *tracked working tree*, not the history**: the gate greps `git ls-files`, which by construction cannot see a commit. ✍️ **A declared signature is not a leak.** What this axiom forbids is personal data that travels *because someone forgot*; an authorship claim travels *because someone decided*, and a body of work that cannot sign itself cannot be published as anyone's. **The carve-out is by path and by term, never by file** — see the note below the table.                                | PH-5 · PH-3 | operator — `NEXUS:M-108` · `M-109`                                             |
 | **AX-2**  | 🟢     | **Decision logs are append-only**, and therefore references name things rather than numbering them where a renumbering could not be corrected. **They are written in a parseable shape from the first entry, because they are the source of a generated database** — decisions, agent interventions, deliveries, the abbreviation dictionary, and the citations of AX-7 all become tables, queried rather than read: *has this been decided before?* and *what did we discard, and why?* stop being a re-read and become a query. Two consequences that cost nothing now and are unaffordable later: **the markdown stays the source and the database is a regenerated view** that is never hand-edited (AX-20), and **the field contract lives in the file's own header**, so format and parser cannot drift apart. Retro-fitting a shape onto eighty entries is the migration this avoids.                                                                                                                                                                   | PH-3 · PH-4 | inherited — `NEXUS:M-87` · `M-93`                                              |
 | **AX-3**  | ⚫      | **Absorbed into AX-24.** Naming who decided is one of the decision-time-only fields AX-24 already mandates; the vocabulary — a person, `joint`, `inherited`, `agent` — is that field's schema, not a separate rule.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | —           | retired by the saturation review                                               |
 | **AX-4**  | 🟢     | **A rule only earns its place if it must fire while the work happens; if a cleanup pass over the finished artefact could apply it, it is a tool.** Rules are paid on every turn; tools are paid once. **The test that decides it: does the information still exist at cleanup time?** A pass can fix what is in the artefact; it cannot recover what was only in the author's head. What is in the head stays a rule; what is in the artefact becomes a tool.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | PH-6        | inherited — `NEXUS:M-101` · `M-107`                                            |
@@ -93,6 +93,58 @@
 | **AX-30** | 🟢     | **Every repository's agent contract is generated, never hand-written.** The method half is authored once, the repository-specific half lives beside its own repository, and a script concatenates them into a file nobody edits, with a check that fails on drift. **No repository is exempt, including the one that authors the method half** — a hand-written contract is the first place two repositories quietly stop agreeing, and the exemption granted to the authoring repo is the one every later exemption cites.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | PH-5 · PH-4 | inherited — `NEXUS:M-73` · split from AX-21 by the saturation review           |
 | **AX-31** | 🟢     | **A reference carries its scope the moment it leaves the file that minted it.** An identifier or a path stays bare inside its own file and is anchored to its repository the instant it is cited elsewhere — added at writing time, because the author can resolve the ambiguity then and no later sweep can (AX-4).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | PH-4        | inherited — `NEXUS:M-89` · `M-102` · split from AX-23 by the saturation review |
 
+> ⚫ **`AX-1`'s pin clause, retired 2026-08-19 — and this is a demotion, not a deletion.**
+> *"and pins the release it runs"* had been contradicted in practice since `M-114`: this instance
+> **co-develops** MLabs rather than consuming it, so the two repositories move in the same round and
+> a pin is what a consumer holds. The axiom was 🟢 while the only instance in existence was knowingly
+> outside it — **an axiom that can be politely ignored is a decision wearing the wrong hat.**
+>
+> **The operator's reason, and it is the one that decides it:** *"de momento creo que es mejor retirar y que
+> siempre esté actualizado para detectar mejor los errores."* A pin hides drift until the next bump;
+> the head surfaces it the round it happens, which is what a system that audits itself wants.
+>
+> ⏳ **Its expiry is written, because a rule retired with no return condition comes back as a
+> surprise:** *"en un futuro si distribuyo, recuperar quizá sea buena práctica."* **The clause
+> returns the day MLabs has a consumer that is not its co-developer** — and it returns as the
+> consumer half only, because a co-developer will still track the head.
+>
+> ⚠️ **What replaces it is not nothing.** A release cut must record **the commit it was cut
+> against**, since `M-114` removed the version field that used to answer the question. Without that
+> line the retirement trades a rule for a gap.
+>
+> ⚠️ **This is an axiom-department change, so the saturation review is owed** (`skills/audit/` →
+> `company-auditor`). It reads every axiom in every department together, which is the only reading
+> that can see whether `AX-1` is now doing less than its `Serves` column claims.
+
+
+> ✍️ **The signature carve-out, added 2026-08-20 — and it is a widening, so it is written narrow.**
+> The operator's decision is that MLabs and NEXUS are published **as his**: *"si lo abro al público,
+> colar alguna especie de marca de agua que me identifique … no es una preocupación monetaria, es de
+> hacerme nombre en la industria."* That makes an authorship claim a deliberate act, and `AX-1` as
+> written called it a leak — **the axiom was forbidding the one piece of personal data the project
+> now wants to carry.**
+>
+> **The distinction is not *what* the datum is, it is *why it is there*.** A leak is personal data
+> that arrived because someone forgot: the operator's name used as attribution inside a rule, a
+> project's name used as an example, a path that resolves on exactly one machine. A signature is
+> personal data that arrived because someone decided, in a file that exists for no other purpose.
+>
+> ⚠️ **So the exception is scoped twice, and a file-level exemption would have been wrong.** By
+> **path**: only `LICENSE` and `NOTICE`. By **term**: only what the denylist's `## SIGNATURE`
+> section enumerates. Every other denylisted term is a leak *inside those two files exactly as it is
+> anywhere else* — a signature names its author and nothing about the work: no project, no instance,
+> no collaborator, no address. **Had the carve-out been "skip these files", `NOTICE` would have
+> become the one place where the gate does not look**, which is the shape every real leak eventually
+> finds.
+>
+> ⚠️ **And it is loud.** Each permitted signature line is printed on every gate run beside the
+> `gate:allow` debt, for the same reason: *a permission you cannot see is the same hole as an
+> exemption you cannot see.*
+>
+> ⚠️ **This is an axiom-department change** — the saturation review already owed from the pin
+> retirement now covers two amendments to the same axiom in two days, which is itself the signal
+> `AX-1` is under load and worth reading whole.
+
 ---
 
 ## Coverage — which clause each axiom serves
@@ -112,10 +164,18 @@ implements is how a system ends up protecting what is merely salient.**
 | **PH-4** | Zero black boxes | **11** | AX-2 · AX-6 · AX-7 · AX-12 · AX-13 · AX-14 · AX-18 · AX-22 · AX-24 · AX-30 · AX-31 |
 | **PH-5** | Modular work | **4** | AX-1 · AX-19 · AX-20 · AX-30 |
 | **PH-6** | Attention is scarce | **8** | AX-4 · AX-8 · AX-11 · AX-16 · AX-17 · AX-21 · AX-25 · AX-29 |
+| **PH-7** | Measured and provable ⚠️ | **0** | — |
 
 ⚠️ **The long horizon is the thinnest clause the company names first.** It is the standing first
 item for the promotion review's *upward* direction. An unbalanced set that says so is honest; one
 that hides it protects what is merely salient.
+
+⚠️ **`PH-7` is at zero and was opened at zero, on purpose (2026-08-20).** `PHILOSOPHY.md`'s own
+standard calls a clause with no axiom behind it *a value with no teeth*, and that is exactly what
+this row says. It is written down rather than left to be found because **the alternative is
+reverse-engineering axioms out of whatever gets measured first** — the clause is opened ahead of
+the rules so the rules are written against it. It is the standing first item for the *downward*
+direction until it is not zero.
 
 _Opened 2026-08-17. **28 in force**, 3 retired, 31 identifiers issued. **Next ID: AX-32.** From the
 first commit onward this file is append-only._

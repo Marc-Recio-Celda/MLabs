@@ -42,17 +42,103 @@ else
 fi
 [ ${#FILES[@]} -gt 0 ] || { echo "  gate: nothing to check."; exit 0; }
 
-PATTERN=$(grep -v '^#' "$DENYLIST" | grep -v '^[[:space:]]*$' | paste -sd'|')
-[ -n "$PATTERN" ] || { echo "  gate: the denylist is empty — that is not a pass."; exit 2; }
+# The denylist has two severities and this gate reads BOTH, differently.
+#   ## HARD — a veto. Any hit fails the gate.
+#   ## SOFT — project names that are also ordinary words. Reported, never blocking:
+#            listing them as HARD makes the gate fire on every legitimate use of the
+#            word, and a gate that cries wolf is switched off whole.
+#   ## SIGNATURE — the declared authorship claim. See below; it is a WIDENING, so it
+#            is read more carefully than the other two.
+# A file with no section headings is read entirely as HARD, which is what every
+# denylist written before 2026-08-19 is.
+terms()   { sed -n "/^## $1/,/^## /p" "$DENYLIST" | grep -v '^#' | grep -v '^[[:space:]]*$'; }
+section() { terms "$1" | paste -sd'|'; }
+if grep -q '^## HARD' "$DENYLIST"; then
+  HARD=$(section HARD); SOFT=$(section SOFT)
+else
+  HARD=$(grep -v '^#' "$DENYLIST" | grep -v '^[[:space:]]*$' | paste -sd'|'); SOFT=""
+fi
+PATTERN="$HARD"
+[ -n "$PATTERN" ] || { echo "  gate: the denylist has no HARD terms — that is not a pass."; exit 2; }
+
+# `[0-9]*` before the closing boundary: a term ending in a version number escapes a
+# bare \b match, so a name on the list could still be invisible. Proven 2026-08-19.
+HARD_RE="\\b(${PATTERN})[0-9]*\\b"
+
+# ── the signature carve-out (MLabs:AX-1, amended 2026-08-20) ──────────────────────
+# A leak is personal data that travels because someone forgot. A signature travels
+# because someone decided. The axiom now permits the second, and this is where the
+# permission is *implemented* — which means implemented NARROWLY, because a widening
+# written loosely is how a gate acquires the one place it does not look.
+#
+# Scoped twice, and both scopes must hold:
+#   by PATH — only the files the `# files:` line names, matched exactly, not by glob.
+#   by TERM — only the terms under `## SIGNATURE`. Every OTHER hard term still blocks
+#             inside those files, exactly as it does anywhere else. A signature names
+#             its author; it never names a project, an instance, or a collaborator.
+# A SIGNATURE section with no `# files:` line is a permission with no scope, and this
+# refuses to run rather than guess — the same stance as a missing denylist.
+SIG=$(section SIGNATURE)        # joined with | — for the regex
+SIG_LIST=$(terms SIGNATURE)     # one per line   — for the set subtraction below
+SIG_FILES=$(sed -n '/^## SIGNATURE/,/^## /p' "$DENYLIST" | sed -n 's/^#[[:space:]]*files:[[:space:]]*//p')
+NONSIG="$PATTERN"
+declare -a SIGF=() OTHERF=()
+if [ -n "$SIG" ]; then
+  if [ -z "$SIG_FILES" ]; then
+    echo "  gate: the denylist has a SIGNATURE section and no '# files:' line."
+    echo "        A permission with no scope is a hole. Refusing to run."
+    exit 2
+  fi
+  NONSIG=$(terms HARD | grep -vxF "$SIG_LIST" | paste -sd'|')
+  for f in "${FILES[@]}"; do
+    keep=0; for s in $SIG_FILES; do [ "$f" = "$s" ] && { keep=1; break; }; done
+    if [ $keep -eq 1 ]; then SIGF+=("$f"); else OTHERF+=("$f"); fi
+  done
+else
+  OTHERF=("${FILES[@]}")
+fi
 
 fail=0
 
 # 1 · Personal data in what is public. The founding axiom.
-if hits=$(grep -rHniE "\b(${PATTERN})\b" -- "${FILES[@]}" 2>/dev/null); then  # gate:allow the gate must name what it forbids
+hits=""
+[ ${#OTHERF[@]} -gt 0 ] && hits=$(grep -rHniE "$HARD_RE" -- "${OTHERF[@]}" 2>/dev/null)  # gate:allow the gate must name what it forbids
+if [ ${#SIGF[@]} -gt 0 ] && [ -n "$NONSIG" ]; then
+  extra=$(grep -rHniE "\\b(${NONSIG})[0-9]*\\b" -- "${SIGF[@]}" 2>/dev/null)
+  [ -n "$extra" ] && hits=$(printf '%s\n%s' "$hits" "$extra" | grep -v '^$')
+fi
+if [ -n "$hits" ]; then
   echo "  ✗ personal data in files that would be published:"
   echo "$hits" | awk -F: '{print "      " $1 ":" $2}' | sort -u | head -20
   echo "$hits" | wc -l | xargs printf "      (%s hits)\n"
   fail=1
+fi
+
+# 1a · The signature itself — permitted, and printed on EVERY run. A permission you
+#      cannot see is the same hole as an exemption you cannot see, so this is loud by
+#      design and its silence is information too: if these lines stop appearing, the
+#      watermark has been removed from the tracked set.
+if [ ${#SIGF[@]} -gt 0 ]; then
+  if declared=$(grep -rHniE "\\b(${SIG})[0-9]*\\b" -- "${SIGF[@]}" 2>/dev/null); then
+    echo "  ✍️ $(echo "$declared" | wc -l | tr -d ' ') declared signature line(s) — permitted by AX-1, scoped to:"
+    echo "$declared" | awk -F: '{print "      " $1 ":" $2}' | sort -u | head -10
+  else
+    echo "  ✗ the signature files are tracked and carry no signature — the watermark is gone."
+    echo "      $(echo $SIG_FILES) exist and are tracked, the denylist declares a SIGNATURE"
+    echo "      section, and no line in them matches it. That is not a repo without a"
+    echo "      watermark; it is a repo that HAD one. Restore it, or remove the SIGNATURE"
+    echo "      section — deciding to stop signing is fine, forgetting is what this catches."
+    fail=1
+  fi
+fi
+
+# 1b · SOFT terms — reported, never blocking. A hit here is a word that is both a
+#      project name and an ordinary English word; the operator rules on it.
+if [ -n "$SOFT" ]; then
+  if soft=$(grep -rHniE "\\b(${SOFT})[0-9]*\\b" -- "${FILES[@]}" 2>/dev/null); then
+    echo "  ! soft terms present — reported, not blocking. Read them:"
+    echo "$soft" | awk -F: '{print "      " $1 ":" $2}' | sort -u | head -10
+  fi
 fi
 
 # 2 · Paths BELOW an instance's root, inside the public structure. The denylist cannot
@@ -114,8 +200,9 @@ if [ $fail -eq 0 ]; then
   echo "  ✓ gate clean over ${#FILES[@]} files (${MODE})"
 else
   echo
-  echo "  The gate blocked this. Nothing is wrong with wanting the change —"
-  echo "  what is wrong is the data travelling with it. Move the instance's names"
-  echo "  and paths into its adapter or its own repository, then run this again."
+  echo "  The gate blocked this. Nothing is wrong with wanting the change — what is"
+  echo "  wrong is either the data travelling with it or the attribution missing from"
+  echo "  it. Move the instance's names and paths into its adapter or its own"
+  echo "  repository, restore anything the ✗ lines say went missing, and run it again."
 fi
 exit $fail
