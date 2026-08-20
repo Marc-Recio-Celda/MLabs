@@ -69,8 +69,8 @@ silently missing a path is indistinguishable from a round that did not touch it.
 ⚠️ **Fire before the live plan closes**, not after. This is the most common way to get the close
 wrong, and it fails silently. `IA-005` is the same failure from the other side: a round fired with
 the *previous* round's plan still in place, so the audit read reasoning that belonged to another
-task. ⚠️ **Closed, not emptied** — the plan becomes `99_SYSTEM/data/plans/<id>.json` and stays
-readable, which also means a late audit can still be given the right plan by id.
+task. ⚠️ **Closed, not emptied** — the plan becomes a **closed plan record** at the path the
+instance's binding declares, and stays readable, which also means a late audit can still be given the right plan by id.
 
 ⚠️ **The fresh context above is a discipline, not yet a mechanism.** `context: fork` in a role's
 frontmatter would enforce it, and would also stop the audit's reading from displacing the working
@@ -118,7 +118,8 @@ operator's, with an agent holding the pen.
 
 1. **The operator adjudicates.** Not every finding is genuine, and the count that binds is the one
    they accept.
-2. **One row per finding** in the role's log — `99_SYSTEM/logs/<role>.md`, contract below.
+2. **One row per finding** in the role's log — one file per role, at the path the instance's
+   binding declares for employee logs. Contract below.
 3. **One ledger entry per firing** in the operations centre's `LOG_AGENTS.md`: the narrative.
 4. **Only the operator acts on a veto.** The role reports; it never rejects.
 5. **Apply what survives** — and where a finding is accepted and not fixed, say so and why. An
@@ -160,8 +161,9 @@ row carries.
 in the direction that never retires anyone: `N` counts firings that add nothing, and three unfixed
 findings re-raised score as three new ones.
 
-⚠️ **The reader, and its proof against an adversarial plant, live in `99_SYSTEM/logs/README.md`.**
-That file is the instance's; this table is the structure it implements.
+⚠️ **The reader, and its proof against an adversarial plant, live in the employee-log directory's
+own `README.md`** — instance-side, at the path the binding declares. This table is the structure it
+implements; that file is the state.
 
 ## The tally — read from the logs, not from the ledger
 
@@ -169,8 +171,12 @@ That file is the instance's; this table is the structure it implements.
 role, a `Round` column and an `Acc` column, parsed **by column name**.
 
 ```bash
-python3 99_SYSTEM/scripts/metrics.py --json   # → audits.<role>.firings · .operator_accepted
+python3 <the instance's metrics script> --json   # → audits.<role>.firings · .operator_accepted
 ```
+
+⚠️ **The literal path is the instance's and is declared in its binding, never here.** A public file
+that hard-codes a path below an operations centre is a program that runs on exactly one machine —
+which is the failure `AX-1` exists to prevent, and the release gate blocks it.
 
 ⚠️ **This is a move, and it is what makes the numbers reproducible.** The tally used to grep
 `LOG_AGENTS.md`, where **all three roles publish**, so from the moment there were two roles one

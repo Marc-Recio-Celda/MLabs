@@ -23,9 +23,26 @@ mkdir -p "$(dirname "$HOOK")"
 cat > "$HOOK" <<EOF
 #!/usr/bin/env bash
 # Installed by tools/install-hooks.sh. Checks what the commit is about to contain.
-exec "$ROOT/tools/gate.sh" --denylist "$DENYLIST" --staged
+#
+# ⚠️ Invoked through \`bash\` rather than by exec-ing the file. The gate's execute bit is
+# not part of the gate: anything that writes the file without preserving mode — a sync,
+# a container bridge, an unzip, a checkout from a filesystem with no mode bits — leaves
+# a correct script that cannot be run, and every commit then dies with "Permission
+# denied" naming the gate instead of anything wrong with the commit. That happened on
+# 2026-08-20 and cost a working session. Reading a file needs no mode bit, so this form
+# cannot fail that way.
+bash "$ROOT/tools/gate.sh" --denylist "$DENYLIST" --staged
 EOF
 chmod +x "$HOOK"
+
+# ⚠️ And repair the mode where git can keep it. `git update-index --chmod=+x` writes the
+# bit into the INDEX, so it survives every checkout and every copy from then on. The hook
+# change above stops a lost mode from breaking commits; this stops the file being wrong.
+if [ -f "$ROOT/tools/gate.sh" ] && [ ! -x "$ROOT/tools/gate.sh" ]; then
+  chmod +x "$ROOT/tools/gate.sh"
+  git -C "$ROOT" update-index --chmod=+x tools/gate.sh 2>/dev/null || true
+  echo "  ! tools/gate.sh was not executable — fixed, and the mode recorded in the index."
+fi
 
 echo "  ✓ pre-commit hook installed at .git/hooks/pre-commit"
 echo "    denylist: $DENYLIST"

@@ -547,7 +547,13 @@ function ingestModel(model) {
       codeRepo,
       remoteUrl,
       file: pState ? pState.file : "",
-      lab: pState?.lab || (pState ? getProjectLab(pState) : "MProjects"),
+      // The fallback is the generic one `getProjectLab` already uses. Until 2026-08-19 it
+      // was the literal name of a grouping folder from one operations centre, hard-coded
+      // into the public engine — exactly the `interface:AX-1` breach this project exists to
+      // avoid. It was invisible to the release gate because that word was not on the
+      // instance's denylist; adding the word found this on the very first run, which is the
+      // argument for deriving that list from disk rather than remembering it.
+      lab: pState?.lab || (pState ? getProjectLab(pState) : "Workspaces"),
       workflow
     };
   });
@@ -1195,7 +1201,7 @@ function renderWorkflowDetail(type) {
             <div class="wf-node">
               <span class="wf-node-step">1</span>
               <div class="wf-node-title">Orientar (Compass)</div>
-              <p class="wf-node-desc">Lee Schedule.md y mailbox.md. Fija el único frente activo (▶).</p>
+              <p class="wf-node-desc">Lee COMPASS.md y mailbox.md. Fija el único frente activo (▶).</p>
               <button class="wf-node-btn" onclick="openSkillInCatalog('open-session')">⚡ open-session</button>
             </div>
             <div class="wf-arrow">→</div>
@@ -2148,7 +2154,7 @@ function renderCockpit(container) {
 
             <!-- PLAN BODY / CONTENT -->
             ${isActiveFlight ? `
-              <!-- ACTIVE LIVE FLIGHT (Current_plan.md) -->
+              <!-- ACTIVE LIVE FLIGHT (PLAN.md) -->
               <div class="live-plan-section">
                 <div class="section-title-row">
                   <div class="section-title-left">
@@ -2209,7 +2215,7 @@ function renderCockpit(container) {
                 </div>
 
                 <div class="live-sync-notice">
-                  <span>⚡ Sincronización en tiempo real activa (<code>/api/stamp</code> cada 2.0s). Edita <code>Current_plan.md</code> o invoca la skill <code>current-plan</code> para actualizar instantáneamente.</span>
+                  <span>⚡ Sincronización en tiempo real activa (<code>/api/stamp</code> cada 2.0s). Edita <code>PLAN.md</code> o invoca la skill <code>current-plan</code> para actualizar instantáneamente.</span>
                 </div>
               </div>
             ` : persistentPlan ? `
@@ -2271,7 +2277,7 @@ function renderCockpit(container) {
                   <p>${inline(selectedFront.moves_when || "Requiere confirmación antes de reanudar.")}</p>
                 </div>
                 <div class="state-guidance-box">
-                  <span>💡 Para reanudar este frente, selecciona el frente en <code>Schedule.md</code> y abre su plan con la skill <code>current-plan</code>.</span>
+                  <span>💡 Para reanudar este frente, selecciona el frente en <code>COMPASS.md</code> y abre su plan con la skill <code>current-plan</code>.</span>
                 </div>
               </div>
             ` : `

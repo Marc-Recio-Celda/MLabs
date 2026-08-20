@@ -36,10 +36,10 @@ instance's own checks and looking at what the live set actually contains.** That
 
 | In | Out |
 |---|---|
-| `99_SYSTEM/AXIOMS.md` — the instance department | the company department, `PHILOSOPHY`, `METHOD`, the skills → `company-auditor` |
+| The instance's **own axiom department** | the company department, `PHILOSOPHY`, `METHOD`, the skills → `company-auditor` |
 | `NEXUS/AGENTS.md` and its `CLAUDE.md` pointer — the binding, both halves | one project's cartridge → `project-auditor` |
-| The live set: `Schedule` · `Current_plan` · `MAILBOX` · `TASKS` · `IDEAS` — **their shape, never their contents** | what a project decided, and whether it was right |
-| `99_SYSTEM/scripts/`, `denylist.txt`, the instance's half of the allowlist, `interface.json` | |
+| The live set: `COMPASS` · `PLAN` · `MAILBOX` · `TASKS` · `IDEAS` — **their shape, never their contents** | what a project decided, and whether it was right |
+| Its scripts, its denylist, its half of the allowlist, its interface adapter | |
 | The three logs and the employee logs — as artefacts, including its own | |
 
 ⚠️ **It reads the live set's *shape*, not its judgement.** *This queue entry is misfiled* is a
@@ -85,7 +85,8 @@ dismissal tally stops measuring anything.
 
 ## Its log
 
-`99_SYSTEM/logs/instance-auditor.md`, prefix **`IA-`**, one row per finding.
+One file, prefix **`IA-`**, one row per finding, at the path the instance's binding declares for
+employee logs.
 **The row contract is `skills/audit/`'s and this file does not restate it** (`MLabs:AX-20`).
 
 Its ledger prefix is `[instance-auditor]` **from round 8**. Its round 7 entry carries

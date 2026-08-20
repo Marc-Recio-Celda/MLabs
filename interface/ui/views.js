@@ -429,7 +429,7 @@ export const VIEWS = {
         wrap.append(el("div", "empty-state", `
           <div class="empty-icon">⚡</div>
           <h3>No tasks in flight</h3>
-          <p>Current_plan.md is clean. Ready to orient from compass.</p>
+          <p>PLAN.md is clean. Ready to orient from compass.</p>
         `));
         return wrap;
       }

@@ -49,10 +49,10 @@ confusion this role exists to catch, seen from inside.
 |---|---|
 | The three levels | `PHILOSOPHY.md` · any `AXIOMS.md`, in any department · any project's `architecture.md` |
 | The method and the bindings | `METHOD.md` · any `AGENTS.md` and its `CLAUDE.md` pointer · `PURPOSE.md` |
-| What executes | any `skills/*/SKILL.md` · anything under `tools/` |
+| What executes | any `skills/*/SKILL.md` · anything under `tools/` · **anything under `interface/`** |
 | What guards the boundary | the allowlist (`.gitignore`) · the denylist · the router |
 
-**Not structural — and this half is the whole point:** the live set (`Schedule` · `Current_plan` ·
+**Not structural — and this half is the whole point:** the live set (`COMPASS` · `PLAN` ·
 `MAILBOX` · `TASKS` · `IDEAS`) · the three logs · notes in the knowledge domains · code, data and
 content.
 
@@ -62,10 +62,21 @@ those counted, the condition would be true at **every** close, and a condition t
 is a firing wearing a trigger's clothes. The first version read *"a structural file changed **or a
 decision was logged**"*, which is that mistake twice: the decision log is written by the same close.
 
-⚠️ **`interface/` is not on the list and that is under review.** It is now the largest executable
-thing MLabs ships, public, and the round that wrote it planted a real `AX-1` leak inside — caught by
-the project's own grep, not by any company check. **Either the engine belongs on that list or the
-list says why code under `interface/` is exempt.** Filed; not decided here.
+⚠️ **`interface/` was added to that list 2026-08-19 by the operator, and the measurement is why.** It is
+**232 KB and 5,104 lines across six tracked public files**, against `tools/` at three shell scripts
+totalling 9.3 KB and `skills/` at zero lines of code — **the list named the small half.** The round
+that wrote the engine planted a real `AX-1` leak inside it — a hard-coded path below an operations
+centre's root — caught by
+the project's own structural grep and by **no company check at all**, and this role correctly did
+not fire.
+
+**The cost, and why it is smaller than it looks:** a bigger trigger list means the audit is owed
+more often, which is what was too expensive in August. But the trigger stopped being automatic on
+2026-08-18 — **owed is not fired.** Adding `interface/` costs one line in a close report saying the
+audit is due; it does not cost a firing unless the operator wants one. **If that stops being true —
+if the list starts firing rounds nobody asked for — this paragraph is the evidence to narrow it to
+`model/` and `server.py`**, which is the option that was rejected today for being less defensible:
+an `AX-1` leak lives in a view just as happily as in the engine.
 
 **What it reads:** the artefacts the task touched, **and that task's live plan** — where the
 reasoning was written while it happened, which is how this role sees *how* the round thought without
@@ -157,7 +168,8 @@ not a promotion-review output. Its verdict line is counted separately: `**Review
 
 ## Its log
 
-`99_SYSTEM/logs/company-auditor.md`, prefix **`CA-`**, one row per finding.
+One file, prefix **`CA-`**, one row per finding, at the path the instance's binding declares for
+employee logs.
 **The row contract is `skills/audit/`'s and this file does not restate it** (`MLabs:AX-20`).
 
 Its ledger prefix is `[company-auditor]` **from round 8**; rounds 1–7 carry `[superauditor]` and are

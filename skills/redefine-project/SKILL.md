@@ -24,8 +24,8 @@ operator's with an agent holding the pen.
 
 ## ⚠️ The block authority — this skill is the only writer that may remove one
 
-**Established by Marc, 2026-08-19**, after a restructure left four of `Portfolio`'s closed blocks
-without a row on its board and the cockpit rendered the project as if it began at `B3`.
+**Established by the operator, 2026-08-19**, after a restructure left four of one project's closed
+blocks without a row on its board and the cockpit rendered that project as if it began mid-series.
 
 | Act | Who may |
 |---|---|
@@ -37,16 +37,17 @@ without a row on its board and the cockpit rendered the project as if it began a
 
 **Why the line falls there and not somewhere tidier.** Adding is recoverable by deleting; deleting
 is recoverable only from git, and only by someone who knows to look. **The asymmetry is the whole
-rule.** A block is the address a decision cites six months later (`autocatalogue`'s `D1`–`D33` cite
-`B0`–`B9` by number); an id that stops resolving turns every citation to it into a dangling
-pointer, and nothing in a markdown file complains.
+rule.** A block is the address a decision cites six months later — a mature project's log will cite its
+blocks by number across dozens of entries; an id that stops resolving turns every citation into a
+dangling pointer, and nothing in a markdown file complains.
 
 **A restructure may fold and may add. It may not leave a block that existed without an address**
 (`PH-3`). Folding is legitimate and often right — `B0`–`B8` becoming one closed parent is a real
 improvement in a board that has to stay readable — but the fold is written down: **the old id, the
-new id, and what absorbed it.** `autocatalogue` §11, `aynimd` §6 and `plantaeviz2` §9 each already
-do this and **none of them was told to**; the practice lived in three files and in no rule, which
-is a practice surviving by luck.
+new id, and what absorbed it.** ⚠️ **This rule was written from evidence, not from taste:** in one
+instance three projects were already doing exactly this in their iteration-history sections and
+**none had been told to**, while a fourth was not and lost four closed blocks. The practice lived in
+three files and in no rule — which is a practice surviving by luck.
 
 ⚠️ **This skill is not a licence to redefine on the way past.** It is invoked by the operator, for
 that project, and the removal of a block is one of the changes step 5's decision must carry.
@@ -100,7 +101,7 @@ them is what makes redefinition feel like rewriting history:
 **4. Rewrite the standing files, and only those.** `definition.md` and `state.md` are Standing — they
 describe the present and are rewritten to stay true. ⚠️ **Rewritten is not re-created.** Every block
 id that existed before the rewrite exists after it, or appears in the fold table of the decision
-step 5 writes — see *The block authority* above, and `Portfolio` for what happens otherwise. `architecture.md` may gain an axiom or retire
+step 5 writes — see *The block authority* above for what happens otherwise. `architecture.md` may gain an axiom or retire
 one (which fires the saturation review). **`Decision_Log.md` is a Record and is append-only: the
 redefinition is a new `Dn`, never an edit.**
 

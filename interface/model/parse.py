@@ -294,8 +294,15 @@ def parse_plan(path, text):
     hp = re.search(r"\*\*project:\*\*\s*`?([\w-]+)`?", text)
     plan_project = hp.group(1) if hp else None
 
-    task_match = re.search(r"\*\*Task:\*\*\s*`?([^·\n]+)`?", text)
-    compass_match = re.search(r"\*\*Compass row:\*\*\s*([^\n·]+)", text)
+    # A plan names what it is working on. It was `**Task:**` and a `**Compass row:**`;
+    # since the plan model landed it is `**Plan:**` + `**Sub-block:**` + `**Front:**`.
+    # Both are read, because records written under the old header are not rewritten.
+    task_match = (re.search(r"\*\*Task:\*\*\s*`?([^·\n]+)`?", text)
+                  or re.search(r"\*\*Sub-block:\*\*\s*`?([^·\n]+)`?", text))
+    compass_match = (re.search(r"\*\*Compass row:\*\*\s*([^\n·]+)", text)
+                     or re.search(r"\*\*Front:\*\*\s*([^\n·]+)", text))
+    plan_id_match = re.search(r"\*\*Plan:\*\*\s*`?([\w-]+)`?", text)
+    status_match = re.search(r"\*\*Status:\*\*\s*`?(active|paused|closed)`?", text)
     opened_match = re.search(r"\*\*Opened:\*\*\s*([^\n·]+)", text)
     order_why_match = re.search(r"## The order, and why this order\s*\n\n(.*?)(?=\n##|\Z)", text, re.DOTALL)
     order_why_text = clean(order_why_match.group(1)) if order_why_match else ""
@@ -308,10 +315,19 @@ def parse_plan(path, text):
         "compass_row": clean(compass_match.group(1)) if compass_match else None,
         "opened": clean(opened_match.group(1)) if opened_match else None,
         "order_why": order_why_text[:1000] if order_why_text else "",
-        "status": "active"
+        "plan_id": plan_id_match.group(1) if plan_id_match else None,
+        "status": status_match.group(1) if status_match else "active"
     })
 
-    DEST = r"(✅ resolved|→ *`?TASKS[^`]*`?|→ *integrated|→ *`?MAILBOX[^`]*`?|→ *park|⚫)"
+    # The outcome vocabulary, and it is TWO vocabularies because two are on disk.
+    # `SCHEMA.md`, `FLOW.md` and `current-plan/SKILL.md` all declare `done · mailbox ·
+    # ideas · discarded`; this pattern knew only the older `✅ resolved · → integrated ·
+    # → park · ⚫`. A plan written to the declared contract therefore had every closed
+    # item reported as *a failed close* — the mirror of a pattern that cannot match, and
+    # just as useless: a check that fires when it should not is a check nobody reads.
+    # Both forms are accepted; the schema's is canonical and the older one is history.
+    DEST = (r"(✅ *`?resolved`?|✅ *`?done`?|→ *`?TASKS[^`]*`?|→ *integrated"
+            r"|→ *`?MAILBOX[^`]*`?|→ *`?IDEAS[^`]*`?|→ *park|⚫|`?discarded`?)")
     for i, line in enumerate(lines):
         m = re.match(r"^(?P<n>\d+)\.\s+(?P<text>.+)$", line)
         if not m:

@@ -75,7 +75,8 @@ only the operator acts on a veto. It does not propose. It does not edit files an
 
 ## Its log
 
-**Every employee-skill keeps a log**, one row per finding, at `99_SYSTEM/logs/`.
+**Every employee-skill keeps a log**, one row per finding, at the path the instance's binding
+declares for employee logs.
 ⚠️ **The row contract is defined once, in `skills/audit/`, and that file wins** — this one
 deliberately does not restate it, because three auditors sharing a restated table is three files to
 touch when one field changes (`MLabs:AX-20`).
