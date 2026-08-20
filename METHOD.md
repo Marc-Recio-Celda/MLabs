@@ -306,6 +306,35 @@ own — and **each project gets its own dedicated auditor**, hired under the sam
 dismissal criterion. That repetition is the claim to reproducibility: adopting this is not
 copying one company's rules, it is instantiating a pattern that knows how to instantiate itself.
 
+### Rule · skill · role — three things, and only one of them fires by itself
+
+**Named 2026-08-20** *(the operator)*: *"prácticamente no hay skills que se lancen automáticamente
+por el consumo de tokens, así que los roles son un tipo de skill que puede ser solicitado pero no se
+lanza automático."* ⚠️ **This is a discovery, not a new taxonomy** — the repository already
+implements all three and had never said so, which is why *should this be a skill or a rule* had to
+be re-argued every time it came up.
+
+| | Loads | Costs | Accountable |
+|---|---|---|---|
+| **Rule** | always — it lives in a document already open | **every turn**, which is why `AX-4` makes a rule earn its place against being a tool | no |
+| **Skill** | when invoked | its **description**, continuously; its body only when it fires | no |
+| **Role** | when invoked, **never automatically** | the same as a skill | **yes** — a log and a criterion that can fire it |
+
+**A role is a skill plus two things: a log and a dismissal criterion** (`AX-11`). That is the whole
+difference and it is already visible on disk — `logs/` holds one file per role and none for any
+other skill. **Accountability, not capability, is what makes something a role.**
+
+⚠️ **Nothing auto-fires, and that is a measured decision rather than an omission.** The automatic
+audit trigger was retired after five firings in one session cost more context than the work they
+audited. So *what fires* is only the mechanical checks — the gate, the pre-commit hook, the close —
+and **everything else is requested.** A design that quietly assumes a role will notice something is
+assuming a trigger that was deliberately removed.
+
+⚠️ **The consequence for where a check goes.** If it must fire while the work happens, it is a
+**rule** and belongs in a document that is already loaded — never in a new skill, because a skill
+that has to be remembered is not a check. If it can wait to be asked for, it is a **skill**; if it
+also needs to answer for its own record, it is a **role**.
+
 ## 6. How the repositories connect
 
 ```

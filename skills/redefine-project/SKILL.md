@@ -22,7 +22,7 @@ between `rnd` and `audit`, one floor down (`AX-4`).
 *what is true instead*. The first is evidence; the second is a decision, and decisions are the
 operator's with an agent holding the pen.
 
-## ⚠️ The block authority — this skill is the only writer that may remove one
+## ⚠️ The block authority — the line is *can it break a citation*, not *who is typing*
 
 **Established by the operator, 2026-08-19**, after a restructure left four of one project's closed
 blocks without a row on its board and the cockpit rendered that project as if it began mid-series.
@@ -41,6 +41,26 @@ rule.** A block is the address a decision cites six months later — a mature pr
 blocks by number across dozens of entries; an id that stops resolving turns every citation into a
 dangling pointer, and nothing in a markdown file complains.
 
+⚠️ **Loosened and made precise, 2026-08-20** *(the operator)*: *"quizá la solución sea no hacer esta
+regla tan estricta, ya que trabajando en un proyecto también pueden aparecer tareas que se alarguen
+y amplíen mucho. Hacerlo todo más moldeable no me parece mal mientras haya un mínimo control."*
+**He is right, and the rule was already less strict than its own heading and its own check** — the
+table above has always let anyone add a block, while the check below demanded the block set not
+change **in either direction**. Prose and command disagreeing, again, and the command was the
+stricter of the two.
+
+**So the axis is stated properly: not *who is typing*, but *can this act break a citation*.**
+
+| | Can a `Bn` reference stop resolving? | |
+|---|---|---|
+| add a block · add a sub-block · mark done · edit text | **no** — nothing that existed lost its address | **free, and reported** |
+| rename · renumber · merge · delete | **yes, and silently** | **`redefine-project`, invoked by the operator** |
+
+**That is the minimum control, and it is one line of `diff`.** A board that cannot grow while the
+work grows is a board people stop updating — which costs more than the renumbering it was
+protecting against, because a stale board is wrong everywhere at once and a dangling id is wrong in
+one place.
+
 **A restructure may fold and may add. It may not leave a block that existed without an address**
 (`PH-3`). Folding is legitimate and often right — `B0`–`B8` becoming one closed parent is a real
 improvement in a board that has to stay readable — but the fold is written down: **the old id, the
@@ -58,9 +78,19 @@ that project, and the removal of a block is one of the changes step 5's decision
 # The set of block ids in a state file. Blocks are `### `<ID>` · …` headings.
 blocks() { grep -oE '^### `[A-Z]{1,3}[0-9]+`' "$1" | tr -d '#` ' | sort; }
 
-# For any close that was NOT a redefine-project invocation, this must be empty:
-diff <(git show HEAD:"$STATE" > /tmp/before.md && blocks /tmp/before.md) <(blocks "$STATE")
+# ⚠️ ONE-DIRECTIONAL, and this is the 2026-08-20 correction. The old form demanded the
+#    whole diff be empty, which failed on a legitimately ADDED block — it forbade the
+#    growth the table above has always allowed. Losses block; additions are reported.
+git show HEAD:"$STATE" > /tmp/before.md
+D=$(diff <(blocks /tmp/before.md) <(blocks "$STATE"))
+
+echo "$D" | grep '^<' # ⛔ MUST BE EMPTY — an id that existed no longer has an address
+echo "$D" | grep '^>' # ✅ fine, and NAMED IN THE REPORT — a block opened while working
 ```
+
+⚠️ **The addition side is printed, never silent.** *Free* means nobody has to ask; it does not mean
+nobody has to say. A block that appears with no line in the round's report is how a board acquires
+structure nobody decided — the failure at the other end from the one this rule was written for.
 
 ⚠️ **Test it against a planted removal before trusting a clean run** (`MLabs:AX-7`), and **plant
 against the format**: delete a heading whose id also appears in a sub-block row, so a naive pattern
