@@ -94,8 +94,9 @@ once, the mailbox is triaged.
 ## Closing
 
 The full close applies (`METHOD.md` §2): read every destination back from disk, **and if the run
-changed a structural file, fire the audit over the artefacts and the still-full live plan**, then
-empty it.
+changed a structural file, dispatch the auditor for the department that changed, over the artefacts
+and the still-open live plan**, then **close** it — `status: closed` into `data/plans/`, never
+deleted (`FLOW.md` rule 3).
 
 ⚠️ **An autonomous run is where the audit is most valuable — and it still only fires on the same
 condition as any other close.** Nobody watched the work, so **name it in the report either way**:

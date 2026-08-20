@@ -69,12 +69,14 @@ The order is the point, and getting it wrong silently disables the company's own
 3. **Invoke the company auditor *only if a structural file changed*** — over the artefacts **and the
    live plan, which is still full.** Most closes do not qualify; skipping it then is correct, not
    a shortcut (`skills/company-auditor/` holds both lists).
-4. **Only now empty the plan.**
+4. **Only now close the plan** — `status: closed`, written to `data/plans/<id>.json`, **never
+   deleted** (`FLOW.md` rule 3, the declared winner). This file then takes the next sub-block's.
 5. Print what was touched: one line per file, no pasted diffs.
 6. Move the compass.
 
 ⚠️ **Step 3 before step 4, always.** The live plan is the only record of how the task thought;
-emptying it first leaves the audit reading a blank file while believing it read the reasoning.
+closing it first leaves the audit reading a file that no longer describes this round while
+believing it read the reasoning.
 
 ⚠️ **Strike lines through; do not delete them.** The plan is read by the audit and, when the
 operator asks for a mid-task check, by that too — a deleted line is a step nobody can see was

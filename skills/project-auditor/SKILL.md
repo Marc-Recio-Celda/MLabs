@@ -3,7 +3,7 @@ name: project-auditor
 description: Audits a closed task against one project's axioms and reports findings with evidence, or an account of what it checked and found nothing. **Invoked by the operator, never on its own** — the natural moment is when an active front closes, not when a task does. Runs with fresh context and reads only from disk.
 ---
 
-> **Version:** MLabs 1.0.0
+> **Version:** MLabs 1.1.0
 
 # project-auditor
 
@@ -75,10 +75,13 @@ only the operator acts on a veto. It does not propose. It does not edit files an
 
 ## Its log
 
-**Every employee-skill keeps a log**, one row per finding, instance-side at the path the binding
-declares. ⚠️ **The row contract is defined once, in `skills/company-auditor/`, and that file wins** —
-this one deliberately does not restate it, because three auditors sharing a restated table is three
-files to touch when one field changes (`MLabs:AX-20`).
+**Every employee-skill keeps a log**, one row per finding, at `99_SYSTEM/logs/`.
+⚠️ **The row contract is defined once, in `skills/audit/`, and that file wins** — this one
+deliberately does not restate it, because three auditors sharing a restated table is three files to
+touch when one field changes (`MLabs:AX-20`).
+
+⚠️ **It said *"at the path the binding declares"* until 2026-08-19, and the binding declared no such
+path** (`CA-053`) — a pointer to a rule that did not exist, in all three role files at once.
 
 What is this role's own: the ID prefix is **`PA-<project>-`**, and the log is **per project**, so a
 finding repeated across two projects is two findings — the same defect in two places genuinely is.

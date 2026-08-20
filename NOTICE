@@ -1,0 +1,45 @@
+MLabs — a methodology for running a one-person company with AI agents.
+
+Copyright 2026 Marc Recio Celda
+
+This product includes methodology, skills, governance documents and software
+authored by Marc Recio Celda — https://github.com/Marc-Recio-Celda
+
+Origin identifier:  mlabs-origin:gh-191778369
+
+  A stable, verifiable pointer to the author, resolvable without this file at
+  https://api.github.com/user/191778369 . It is written in this form so that the
+  attribution can travel inside artefacts that must not carry a personal name —
+  see AXIOMS.md, AX-1.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+--------------------------------------------------------------------------------
+ATTRIBUTION — what the License asks of anyone who redistributes this.
+
+The permission is deliberately wide. Use MLabs, change it, run a business on it,
+keep your changes private, ship it inside something closed. None of that needs
+anyone's approval and none of it is discouraged.
+
+Two conditions carry the attribution, and they are the whole of what is asked:
+
+  Section 4(c)  A derivative work retains every copyright, patent, trademark and
+                attribution notice present in the source it was derived from.
+
+  Section 4(d)  A redistribution includes a readable copy of the attribution
+                notices in this NOTICE file.
+
+Both apply to a part as they do to the whole — one skill, the release gate, the
+axiom set, or the interface engine.
+
+TRADEMARKS. Section 6 grants no rights in the names "MLabs" or "NEXUS", which
+identify the origin of this work rather than describing it.

@@ -3,11 +3,24 @@ name: audit
 description: Dispatches an auditor over a closed task — company, instance or project, whichever department the work touched — or runs the saturation or promotion review. **Invoked by the operator, never automatic.** The natural moment is when an active front closes; use it also after a long stretch of work, or whenever you want a reading you did not ask for.
 ---
 
+> **Version:** MLabs 1.1.0
+
 # audit
 
 This skill **dispatches** an auditor; it does not perform the audit.
 
-⚠️ **There are three now, one per department, and picking the right one is this skill's job:**
+> ⚠️ **It is also the declared winner for everything the three auditors share** (`MLabs:AX-20`) —
+> the brief, the output shape, the ledger entry, the log row, the dismissal mechanics.
+> **A role file states its scope, its trigger and its own checks, and cites this one for the rest.**
+>
+> **Why the contract lives here and not inside one of the roles.** It lived in `company-auditor`
+> until 2026-08-19, and `instance-auditor` did not cite it — it **restated the whole file**, so both
+> carried the sentence *"this file is where the row contract is defined; every other auditor cites
+> it rather than restating it"* and each declared itself the winner (`CA-054`, `CA-064`, `IA-006`).
+> The departments differ in **scope and not in force**, so no role is senior enough to own another's
+> contract. The dispatcher is nobody's peer, and it already held half of this material.
+
+## Which one to dispatch
 
 | Department the task touched | Dispatch | Its definition, which is the single source |
 |---|---|---|
@@ -15,65 +28,183 @@ This skill **dispatches** an auditor; it does not perform the audit.
 | The operations centre — its own axiom department, its binding, the shape of its live set | **instance-auditor** | `skills/instance-auditor/` |
 | One project's cartridge — its architecture, its contract, its own tooling | **project-auditor** | `skills/project-auditor/` |
 
+⚠️ **There is no `roles/` directory.** This file said *"the role's definition is
+`roles/superauditor.md` and it is the single source"* until 2026-08-19 — a path `MLabs:AGENTS.md`
+forbids and `git ls-files` cannot find — and then restated that role's triggers in the wording
+`M-115` had retired. **The dispatcher sent the role to a path that did not exist and briefed it
+from a rule no longer in force.**
+
 **Two auditors on one close is the expensive one doing work it was not hired for.** If a task
-genuinely spans two departments, dispatch the higher one and say the lower was not run — an unrun
-check is reported as unrun, never as passed.
+genuinely spans two departments, dispatch the higher one and **say the lower was not run** — an
+unrun check is reported as unrun, never as passed (`MLabs:AX-22`).
 
 ⚠️ **Nothing here fires by itself.** The automatic trigger was retired 2026-08-18: five firings in
-one session cost more context than the work they audited. What is below describes how to brief one
-when you choose to.
+one session cost more context than the work they audited. **The cost, named because it is real:**
+these roles existed as events precisely so they would *never be convenient to skip*, and they are
+now convenient to skip. The compensation the operator chose is an interface that makes the state
+visible enough that skipping is a decision rather than a drift. **If findings start arriving only
+from the operator noticing things, that trade failed and this line is the evidence to reopen it.**
 
-## How to dispatch it
+## The brief — fresh context, every time
 
-**Fresh context, every time.** The audit runs as a subagent that has not seen the conversation
-and must not: it reads from disk, and the live plan is how it sees the round's *reasoning*
-without reading a transcript.
+The audit runs as a subagent that **has not seen the conversation and must not**: it reads from
+disk, and the live plan is how it sees the round's *reasoning* without reading a transcript
+(`METHOD.md` §3).
 
-The brief is: the role file's checklist, the paths the task touched, and the live plan. **Nothing
-else.**
+**The brief is three things and nothing else:** the role file's checklist · the paths the task
+touched · that task's live plan.
 
-⚠️ **The brief never contains the dismissal thresholds.** An auditor that knows it is retired for
-agreeing has an incentive to manufacture findings, which destroys the measurement it exists to
-produce. The numbers live in the operations centre's hiring record.
+⚠️ **The brief never contains the dismissal thresholds — nor names the file that holds them.**
+An auditor that knows it is retired for agreeing has an incentive to manufacture findings, which
+destroys the measurement it exists to produce. `instance-auditor`'s first firing was briefed with
+`COMPANY.md` as its hiring record and **read `K` and `N` before it could know what the line was**,
+and said so (`IA-007`). Point the brief at the checklist, never at the record.
 
-⚠️ **Fire before the live plan is emptied**, not after. This is the most common way to get the
-close wrong, and it fails silently — the audit reads a blank file and reports nothing.
+⚠️ **And if the task itself touched the hiring record, that path is withheld from the brief and the
+report says which path was withheld.** There is no file an auditor can never be pointed at — the
+brief is *the paths the task touched*, and any file can be touched. So the rule is on the
+dispatcher, not on the filing cabinet: **withhold, and declare the withholding**, because a brief
+silently missing a path is indistinguishable from a round that did not touch it.
+
+⚠️ **Fire before the live plan closes**, not after. This is the most common way to get the close
+wrong, and it fails silently. `IA-005` is the same failure from the other side: a round fired with
+the *previous* round's plan still in place, so the audit read reasoning that belonged to another
+task. ⚠️ **Closed, not emptied** — the plan becomes `99_SYSTEM/data/plans/<id>.json` and stays
+readable, which also means a late audit can still be given the right plan by id.
+
+⚠️ **The fresh context above is a discipline, not yet a mechanism.** `context: fork` in a role's
+frontmatter would enforce it, and would also stop the audit's reading from displacing the working
+conversation's. It is **not set**, for one reason: a forked skill defaults to running in the
+background, and these roles must finish **before** the plan closes. Setting `context: fork`
+therefore requires `background: false` alongside it, and that pair has a minimum tool version.
+**Verify the version, then set both or neither** — setting only the first inverts the close order
+silently, which is the failure two paragraphs up.
+
+## How an auditor answers — the shape, for all three
+
+Findings, or the list of what was checked and found nothing — **silence is not available**
+(`MLabs:AX-6`). An auditor that may stay silent drifts toward silence, because silence is always
+safe and never looks wrong; the account of what was checked is what keeps it honest.
+
+A finding **cites a file and line, or a command and its output**. Anything requiring execution the
+role cannot perform is flagged as unrun, never claimed.
+
+```
+Checked: <the role's own check ids>
+Finding — <one line>
+  Evidence: <file:line, or command + output>
+  Cost if ignored: <one line>
+Or: Nothing. <checks run> against <files read>; <one line per veto on why it did not fire>.
+```
+
+**No idea slot.** A role paid for findings is not invited to invent: a reserved slot gets filled
+every firing, and then ideas start arriving dressed as findings, because findings are what the tally
+counts. **A sentence is something you may say; a slot is something you must fill** — one plain
+sentence outside the report is fine, unformatted, never counted and never expected. Lateral work
+belongs to `skills/rnd/`.
+
+## What an auditor does not do
+
+It does not reject — only the operator acts on a veto. It does not read the transcript. It does not
+edit files and it does not commit. **It does not propose**: a suggestion is not a finding, and if a
+tally ever counts one as the other, the role has stopped being what it is for.
+
+**And it does not redefine what it audits.** A role paid to find faults must not be invited to fix
+them by redesign, or it starts finding exactly the problems its redesign resolves. The auditor says
+*this is not true any more*; deciding *what is true instead* is `skills/redefine-project/` and the
+operator's, with an agent holding the pen.
 
 ## What comes back, and what to do with it
 
-Findings with evidence, **or an account of what was checked and found nothing.** Silence is not
-available (`AX-6`). If the report is neither shape, the dispatch was wrong, not the role.
-
-Then:
-
-1. **The operator adjudicates.** Not every finding is genuine, and the count that binds is the
-   one they accept.
-2. **Write one ledger entry** in the operations centre, carrying the fixed verdict line — that
-   line is what the dismissal tally greps, and the tally is tested against a planted entry before
-   it is trusted (`AX-7`).
-3. **Only the operator acts on a veto.** The role reports; it never rejects, never edits, never
-   commits.
-4. **Apply what survives** — and where a finding is accepted and not fixed, say so and why. An
+1. **The operator adjudicates.** Not every finding is genuine, and the count that binds is the one
+   they accept.
+2. **One row per finding** in the role's log — `99_SYSTEM/logs/<role>.md`, contract below.
+3. **One ledger entry per firing** in the operations centre's `LOG_AGENTS.md`: the narrative.
+4. **Only the operator acts on a veto.** The role reports; it never rejects.
+5. **Apply what survives** — and where a finding is accepted and not fixed, say so and why. An
    accepted finding with no visible outcome is the audit quietly becoming decoration.
 
-## Running the saturation review
+### The ledger entry
 
-Fires the moment any axiom department changes, and reads all of them together — because a rule
-can only contradict a rule it shares a reader with, and **a set saturates one entry at a time,
-so the only moment the interaction is visible is when something changes.**
+```markdown
+### [<role>] — round <N> · <scope> · (<role>, <date>)
 
-**Demotion is the expected outcome, not a failure.** An axiom that turns out narrower, softer or
-already implied becomes an ordinary logged decision. The set is meant to shrink under this review
-as readily as it grows, and a review that only ever adds is not doing its job.
+**Verdict:** <N> findings
+<the report>
+```
+
+⚠️ **`[superauditor]` is the historical prefix and is never renamed.** Rounds 1–7 fired under it,
+when one role held company **and** instance scope, and six rounds of history carry it. Renaming
+would make every past firing invisible to any command that greps it, which is the one thing a ledger
+exists to prevent. **Per-role prefixes apply from round 8 forward.** The same holds for the `Origin`
+column in the axiom departments — append-only records of who found what, not labels to keep current.
+
+### The log row — defined here, cited by all three
+
+**Every employee-skill keeps a log**, one row per **finding**, not per firing: the firing is the
+`Round` column, so counting rows gives findings and counting distinct rounds gives firings, **both
+from the same table**. State is the instance's; this file says only that the log exists and what a
+row carries.
+
+| Field | Contract |
+|---|---|
+| `ID` | `<prefix><nnn>`, never recycled, never renumbered |
+| `Round` · `Date` | the firing, and the day |
+| `Acc` | `y` accepted · `n` rejected · `—` **not yet adjudicated**. `K` counts `y` and nothing else |
+| `Status` | `fixed-same-round` · `fixed-later` · `open` · `accepted-not-fixed` · `withdrawn` |
+| **`Repeat of`** | **the earlier ID this recurs, or `—`. The field the log exists for.** It may cite **another role's prefix** — a finding one auditor raises and another re-raises is still a repeat |
+| `Finding` · `Where` | one line each; the reasoning stays in the ledger |
+
+⚠️ **Read your own log before reporting.** A finding you raised before and that is still `open` is
+**a repeat, not a new finding** — say so and cite the ID. Without that the dismissal rule miscounts
+in the direction that never retires anyone: `N` counts firings that add nothing, and three unfixed
+findings re-raised score as three new ones.
+
+⚠️ **The reader, and its proof against an adversarial plant, live in `99_SYSTEM/logs/README.md`.**
+That file is the instance's; this table is the structure it implements.
+
+## The tally — read from the logs, not from the ledger
+
+**`AGENTS.md` §6 needs `N` and `K` countable per role, and the logs already are**: one file per
+role, a `Round` column and an `Acc` column, parsed **by column name**.
+
+```bash
+python3 99_SYSTEM/scripts/metrics.py --json   # → audits.<role>.firings · .operator_accepted
+```
+
+⚠️ **This is a move, and it is what makes the numbers reproducible.** The tally used to grep
+`LOG_AGENTS.md`, where **all three roles publish**, so from the moment there were two roles one
+command counted them together and nothing separated them (`IA-006`). The ledger keeps the narrative;
+the log keeps the data. `COMPANY.md` §3 already says *Firings — computed, `metrics.py`* in one cell
+and *the tally lives in `LOG_AGENTS.md`* in another; **this settles it in favour of the first.**
+
+⚠️ **Rounds 1–7 belong to both scopes and count toward neither role's dismissal.** One role held
+both jurisdictions; splitting that history retroactively would be inventing a measurement.
+**The per-role clocks start at round 8**, and saying so is the honest form of the alternative.
+
+⚠️ **Test the tally against a planted row before trusting it** (`MLabs:AX-7`), and **plant against
+the format, not merely into it** — a plant written in the file's own style reproduces the file's own
+blind spot, which is how five consecutive counting defects survived a rule written to catch them.
 
 ## Verification, as a prediction
 
 Before dispatching, state what you expect: *this round touched N files and I expect findings on
-dimensions X and Y.* A report that lands entirely outside the prediction is worth more than one
-that confirms it — and a report that confirms every time is what the dismissal criterion exists
-to detect.
+dimensions X and Y.* A report that lands entirely outside the prediction is worth more than one that
+confirms it — and a report that confirms every time is what the dismissal criterion exists to detect.
+
+## Dismissal
+
+⚠️ **This skill has one because its `description:` names an event**, and `MLabs:AGENTS.md` §5
+requires every event-triggered skill to state its criterion. It was one of twelve of fourteen skills
+without one.
+
+**Retired if, after ten dispatches, the operator is picking the role by hand anyway.** That would
+mean the routing table is a lookup a person performs faster than a skill, and the shared contract
+under it belongs in `AGENTS.md` rather than behind a door nobody opens. **The tally is dispatches
+against corrections**: a wrong department chosen and then reversed is what this table prevents, and
+zero of those over ten dispatches is the evidence to close it.
 
 ## What this skill does not do
 
-It does not audit — it dispatches. It does not propose ideas; the role has no idea slot, and a
-suggestion is not a finding. It does not decide what the findings mean.
+It does not audit — it dispatches. It does not propose ideas. It does not decide what the findings
+mean. It does not fix what they name.
