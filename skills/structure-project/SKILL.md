@@ -72,8 +72,21 @@ against planted leaks while a control fired.
 
 **Adding the word is not the step. Proving the pattern matches the name as spelled is.** A term can
 sit on the list for weeks and still fail to match the directory it names: a `\b` boundary does not
-exist between a letter and a digit, so a name ending in a version number escapes a bare word match. Run the instance's `denylist_coverage` check — **empty is the
-only passing result** — and plant the new name into a tracked file to watch the gate block it.
+exist between a letter and a digit, so a name ending in a version number escapes a bare word match.
+
+```bash
+# `bash <script>`, never `./<script>` — the execute bit is not part of the check, and a
+# sync or a checkout that drops it turns a working script into "Permission denied".
+bash tools/denylist-coverage.sh --denylist <the instance's> --projects <its projects root>
+```
+
+**Empty is the only passing result**, and exit 2 means the check did not run — which is not a pass.
+Then plant the new name into a tracked file and watch `tools/gate.sh` block it. ⚠️ **The two are not
+the same test and neither substitutes for the other:** coverage asks whether the gate *can* see the
+name, the plant asks whether it *does*. ⚠️ **Until 2026-08-20 this step named a check that existed
+only as a shell function inside a comment in the denylist**, so it could be read and not run — and
+on its first real run it found an uncovered name. **A step naming an unrunnable check is the defect
+class this company has now found nine times.**
 
 **7. Register the project in the compass.** One row, edges not nodes: the compass points at where
 the work is described and describes none of it (`METHOD.md` §2). A new cartridge does not take the

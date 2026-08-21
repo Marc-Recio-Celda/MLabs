@@ -141,6 +141,34 @@ if [ -n "$SOFT" ]; then
   fi
 fi
 
+# 1c · An address, which the term list above CANNOT see. A denied term glued to more
+#      letters has no word boundary after it, so an address built from the operator's
+#      own name passes every check above — while being the single most identifying
+#      string a public repository can carry. Proven 2026-08-20 against a plant, with
+#      check 1 reporting clean on the same file.
+#
+#      Dropping the boundary from check 1 was the obvious fix and is the wrong one: a
+#      three-letter name would then fire on every ordinary English word containing it,
+#      and a gate that cries wolf is switched off whole inside a week. So the address is
+#      EXTRACTED FIRST and the terms matched as SUBSTRINGS inside it — safe precisely
+#      because the context is already narrow. `git@github.com` carries no listed term
+#      and is not a hit; that is the test this must keep passing, and it is why the
+#      extraction cannot be widened to "any string with an @ in it".
+#
+#      ⚠️ NO SIGNATURE CARVE-OUT HERE, and the denylist says why in its own words: no
+#      email, no address, no employer — a signature says who made this, never how to
+#      reach them. So this blocks inside the signature files exactly as it does anywhere.
+if addr=$(grep -rHnoE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' -- "${FILES[@]}" 2>/dev/null); then
+  bad=$(echo "$addr" | awk -F: -v re="$PATTERN" '
+    { m = $0; sub(/^[^:]*:[0-9]*:/, "", m)
+      if (tolower(m) ~ re) print "      " $1 ":" $2 " — " m }' | sort -u)
+  if [ -n "$bad" ]; then
+    echo "  ✗ an address carrying a denied term — invisible to check 1, blocked here:"
+    echo "$bad" | head -10
+    fail=1
+  fi
+fi
+
 # 2 · Paths BELOW an instance's root, inside the public structure. The denylist cannot
 #     catch these: the operations centre's name is deliberately absent from it, being
 #     vocabulary and not a person.
@@ -154,7 +182,18 @@ fi
 #     gets switched off whole the first time it blocks something legitimate, so a line
 #     may carry `gate:allow <reason>` — and every one is printed on every run. An
 #     exemption you can list is a debt; an exemption you cannot see is a hole.
-if hits=$(grep -rHnE '(^|[^A-Za-z_])(99_SYSTEM|98_PROJECTS|0[1-8]_[A-Z][a-zA-Z]*/)' -- "${FILES[@]}" 2>/dev/null); then  # gate:allow a pattern must contain what it matches
+#
+#     ⚠️ THE PATTERN WAS BLIND AND RETURNED CLEAN ON A REAL LEAK (2026-08-20). It ended
+#     in a slash it REQUIRED and used a class that cannot cross an underscore, so a
+#     numbered *folder* matched and a numbered *index file* beside it did not — and the
+#     numbering below 01 was outside the range entirely. `create-note` published six such
+#     filenames for a day and this check reported clean: the NINTH occurrence of *a
+#     published check that cannot match*, and the second where the pattern was on the
+#     page and simply could not fire. Now: two digits, an underscore, then a LETTER — so
+#     a named numbered root matches at any depth while the bare numbered placeholder,
+#     which ends at the underscore, still passes. That is the distinction the paragraph
+#     above always claimed to draw and did not.
+if hits=$(grep -rHnE '(^|[^A-Za-z_0-9])(99_SYSTEM|98_PROJECTS|0[0-9]_[A-Za-z][A-Za-z0-9_&.-]*)' -- "${FILES[@]}" 2>/dev/null); then  # gate:allow a pattern must contain what it matches
   real=$(echo "$hits" | grep -v 'gate:allow')
   allowed=$(echo "$hits" | grep 'gate:allow')
   if [ -n "$real" ]; then

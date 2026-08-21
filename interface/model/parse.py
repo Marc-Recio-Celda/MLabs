@@ -20,6 +20,7 @@ Standard library only.
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -594,30 +595,123 @@ def parse_standing(path, text, project_pattern=None):
         except Exception:
             pass
 
-    # Look for README.md or guide.md for Visual Usage Guide
+    # Look for README.md, guide.md, HOW-TO-USE.md, or definition.md for Visual Usage Guide
     readme_content = ""
     readme_path = ""
+    readme_type = "readme"
+
     possible_readmes = [
-        path.parent / "guide.md",
-        path.parent / "usage.md",
-        path.parent / "README.md",
-        path.parent.parent / "README.md",
+        (path.parent / "guide.md", "guide"),
+        (path.parent / "usage.md", "guide"),
+        (path.parent / "README.md", "readme"),
+        (path.parent.parent / "README.md", "readme"),
+        (path.parent.parent / "HOW-TO-USE.md", "how-to-use"),
     ]
     if code_repo:
         try:
             r_dir = Path(os.path.expanduser(code_repo)).resolve()
-            possible_readmes.insert(0, r_dir / "README.md")
+            possible_readmes.insert(0, (r_dir / "README.md", "readme"))
+            possible_readmes.insert(1, (r_dir / "guide.md", "guide"))
         except Exception:
             pass
 
-    for rp in possible_readmes:
+    for rp, rtype in possible_readmes:
         if rp.exists() and rp.is_file():
             try:
                 readme_content = rp.read_text(encoding="utf-8")
                 readme_path = str(rp)
+                readme_type = rtype
                 break
             except Exception:
                 pass
+
+    # Extract full definition & architecture contents
+    definition_content = ""
+    def_file = path.parent / "definition.md"
+    if def_file.exists() and def_file.is_file():
+        try:
+            definition_content = def_file.read_text(encoding="utf-8")
+        except Exception:
+            pass
+
+    # Fallback to definition if no dedicated README was found
+    if not readme_content and definition_content:
+        readme_content = definition_content
+        readme_path = str(def_file)
+        readme_type = "definition"
+
+    architecture_content = ""
+    arch_file = path.parent / "architecture.md"
+    if arch_file.exists() and arch_file.is_file():
+        try:
+            architecture_content = arch_file.read_text(encoding="utf-8")
+        except Exception:
+            pass
+
+    # Extract any sub-guides under Guides/
+    extra_guides = {}
+    guides_dir = path.parent / "Guides"
+    if guides_dir.exists() and guides_dir.is_dir():
+        for gf in sorted(guides_dir.glob("*.md")):
+            try:
+                extra_guides[gf.stem] = gf.read_text(encoding="utf-8")
+            except Exception:
+                pass
+
+    # Tech stack detection & tailored quickstart commands based on keywords
+    tech_stack = "Python / Modular Pipeline"
+    target_repo = code_repo or f"~/Documents/{project or 'project'}"
+    quick_install = f"cd {target_repo} && python3 -m venv .venv && source .venv/bin/activate && pip install -e ."
+    quick_run = "python main.py"
+    quick_test = "pytest tests/"
+
+    all_text = f"{readme_content} {definition} {architecture_content}".lower()
+
+    if "astro" in all_text or "static site" in all_text:
+        tech_stack = "Astro / HTML5 / CSS3 / TypeScript"
+        quick_install = f"cd {target_repo} && npm install"
+        quick_run = "npm run dev"
+        quick_test = "npm run build && npm run preview"
+    elif "react" in all_text or "vite" in all_text or "sqlite (225" in all_text:
+        tech_stack = "React / Vite / TypeScript / FastAPI"
+        quick_install = f"cd {target_repo} && npm install && (cd backend && pip install -r requirements.txt)"
+        quick_run = "npm run dev"
+        quick_test = "npm test && pytest backend/"
+    elif "server.py" in all_text or "cockpit" in all_text or "operations centre" in all_text:
+        tech_stack = "Vanilla JS / Modern CSS / Python Engine"
+        quick_install = f"cd {target_repo} && ./tools/install-hooks.sh"
+        quick_run = "python3 interface/server.py --port 8776"
+        quick_test = "tools/gate.sh"
+    elif "docling" in all_text or "pix2tex" in all_text or "latex-ocr" in all_text:
+        tech_stack = "Python (Docling / PyMuPDF / Pix2Tex / LaTeX-OCR)"
+        quick_install = f"cd {target_repo} && python3 -m venv .venv && source .venv/bin/activate && pip install -e ."
+        quick_run = "python -m cli convert input_folder/ --output out/"
+        quick_test = "pytest tests/ -v"
+    elif "grapedia" in all_text or "litellm" in all_text or "navarro-payá" in all_text:
+        tech_stack = "Python (LiteLLM / Pydantic / PyMuPDF / GRAPEDIA)"
+        quick_install = f"cd {target_repo} && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
+        quick_run = "python -m pipeline.main --paper paper.pdf"
+        quick_test = "pytest tests/"
+    elif "reinforcement learning" in all_text or "gymnasium" in all_text or "irrigation" in all_text:
+        tech_stack = "Python (Reinforcement Learning / Gymnasium / InfluxDB)"
+        quick_install = f"cd {target_repo} && python3 -m venv .venv && source .venv/bin/activate && pip install -e ."
+        quick_run = "python -m sim.main"
+        quick_test = "pytest tests/"
+    elif "xauusd" in all_text or "backtrader" in all_text or "regime detection" in all_text:
+        tech_stack = "Python (Pandas / Backtrader / MetaTrader 5)"
+        quick_install = f"cd {target_repo} && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
+        quick_run = "python -m backtest.main --strategy gold_regime"
+        quick_test = "pytest tests/"
+    elif "transcriptomics" in all_text or "scanpy" in all_text or "deseq2" in all_text:
+        tech_stack = "Python / R (BioConductor / Scanpy / Nextflow)"
+        quick_install = f"cd {target_repo} && python3 -m venv .venv && source .venv/bin/activate && pip install -e ."
+        quick_run = "python -m pipeline.main --config config.yaml"
+        quick_test = "pytest tests/"
+    elif "how-to-use" in str(readme_path).lower() or "[project]" in all_text:
+        tech_stack = "MLabs Cartridge Specification / Markdown"
+        quick_install = "cp -r template/ <target_directory>"
+        quick_run = "python3 -m skills.structure_project"
+        quick_test = "tools/gate.sh"
 
     ent = {
         "kind": "project-state",
@@ -634,6 +728,14 @@ def parse_standing(path, text, project_pattern=None):
         "git_commit_date": git_info.get("git_commit_date", ""),
         "readme_content": readme_content,
         "readme_path": readme_path,
+        "readme_type": readme_type,
+        "definition_content": definition_content,
+        "architecture_content": architecture_content,
+        "extra_guides": extra_guides,
+        "tech_stack": tech_stack,
+        "quick_install": quick_install,
+        "quick_run": quick_run,
+        "quick_test": quick_test,
         "blocks": board_blocks,
         **fields
     }
