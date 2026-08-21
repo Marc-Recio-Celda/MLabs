@@ -639,14 +639,156 @@ function updateHUD() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VIEW ROUTER & RENDERERS
+// VIEW ROUTER & PERSISTENCE (URL HASH + LOCAL STORAGE)
 // ─────────────────────────────────────────────────────────────────────────────
+
+function syncUrlHash() {
+  if (!STATE.loaded) return;
+  let hash = "";
+  const view = STATE.currentView || "overview";
+
+  if (view === "project-detail") {
+    const proj = encodeURIComponent(STATE.selectedProject || "");
+    const tab = encodeURIComponent(STATE.projectSubtab || "workflow");
+    hash = `#/project/${proj}/${tab}`;
+    const activeDoc = STATE.guideActiveDoc && STATE.selectedProject ? STATE.guideActiveDoc[STATE.selectedProject] : null;
+    if (tab === "guide" && activeDoc) {
+      hash += `?doc=${encodeURIComponent(activeDoc)}`;
+    }
+  } else if (view === "cockpit") {
+    hash = `#/cockpit`;
+    const params = [];
+    if (STATE.cockpitSelectedFrontId) {
+      params.push(`front=${encodeURIComponent(STATE.cockpitSelectedFrontId)}`);
+    }
+    if (STATE.cockpitFilterProj && STATE.cockpitFilterProj !== "ALL") {
+      params.push(`filter=${encodeURIComponent(STATE.cockpitFilterProj)}`);
+    }
+    if (params.length) {
+      hash += `?${params.join("&")}`;
+    }
+  } else if (view === "cheatsheet") {
+    hash = `#/cheatsheet`;
+    if (STATE.activeCsTab && STATE.activeCsTab !== "session") {
+      hash += `?tab=${encodeURIComponent(STATE.activeCsTab)}`;
+    }
+  } else if (view === "skills") {
+    hash = `#/skills`;
+    if (STATE.skillFilterType && STATE.skillFilterType !== "ALL") {
+      hash += `?filter=${encodeURIComponent(STATE.skillFilterType)}`;
+    }
+  } else if (view === "decisions") {
+    hash = `#/decisions`;
+    if (STATE.decFilterProj) {
+      hash += `?project=${encodeURIComponent(STATE.decFilterProj)}`;
+    }
+  } else if (view === "inbox") {
+    hash = `#/inbox`;
+    if (STATE.selectedTaskFilter && STATE.selectedTaskFilter !== "ALL") {
+      hash += `?filter=${encodeURIComponent(STATE.selectedTaskFilter)}`;
+    }
+  } else {
+    hash = `#/${view}`;
+  }
+
+  if (window.location.hash !== hash) {
+    history.replaceState(null, "", hash);
+  }
+  try {
+    localStorage.setItem("nexus_last_route", hash);
+  } catch (e) {}
+}
+
+function restoreRouteFromUrl() {
+  let hash = window.location.hash;
+  if (!hash || hash === "#" || hash === "#/") {
+    try {
+      const saved = localStorage.getItem("nexus_last_route");
+      if (saved && saved.startsWith("#/")) {
+        hash = saved;
+      }
+    } catch (e) {}
+  }
+  if (!hash || hash === "#" || hash === "#/") {
+    hash = "#/overview";
+  }
+
+  const [pathPart, queryPart] = hash.replace(/^#\/?/, "").split("?");
+  const segments = pathPart.split("/").filter(Boolean);
+  const params = new URLSearchParams(queryPart || "");
+
+  const mainView = segments[0] || "overview";
+
+  if (mainView === "project" || mainView === "project-detail") {
+    STATE.currentView = "project-detail";
+    if (segments[1]) {
+      STATE.selectedProject = decodeURIComponent(segments[1]);
+    }
+    if (segments[2]) {
+      STATE.projectSubtab = decodeURIComponent(segments[2]);
+    }
+    if (params.has("doc") && STATE.selectedProject) {
+      STATE.guideActiveDoc = STATE.guideActiveDoc || {};
+      STATE.guideActiveDoc[STATE.selectedProject] = decodeURIComponent(params.get("doc"));
+    }
+  } else if (mainView === "cockpit") {
+    STATE.currentView = "cockpit";
+    if (params.has("front")) {
+      STATE.cockpitSelectedFrontId = decodeURIComponent(params.get("front"));
+    }
+    if (params.has("filter")) {
+      STATE.cockpitFilterProj = decodeURIComponent(params.get("filter"));
+    }
+  } else if (mainView === "cheatsheet") {
+    STATE.currentView = "cheatsheet";
+    if (params.has("tab")) {
+      STATE.activeCsTab = decodeURIComponent(params.get("tab"));
+    }
+  } else if (mainView === "skills") {
+    STATE.currentView = "skills";
+    if (params.has("filter")) {
+      STATE.skillFilterType = decodeURIComponent(params.get("filter"));
+    }
+  } else if (mainView === "decisions") {
+    STATE.currentView = "decisions";
+    if (params.has("project")) {
+      STATE.decFilterProj = decodeURIComponent(params.get("project"));
+    }
+  } else if (mainView === "inbox") {
+    STATE.currentView = "inbox";
+    if (params.has("filter")) {
+      STATE.selectedTaskFilter = decodeURIComponent(params.get("filter"));
+    }
+  } else if (["overview", "projects", "ideas"].includes(mainView)) {
+    STATE.currentView = mainView;
+  }
+
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.classList.toggle("active", btn.getAttribute("data-view") === STATE.currentView);
+  });
+}
+
+window.addEventListener("hashchange", () => {
+  if (STATE.loaded) {
+    restoreRouteFromUrl();
+    renderView();
+  }
+});
+
+window.addEventListener("popstate", () => {
+  if (STATE.loaded) {
+    restoreRouteFromUrl();
+    renderView();
+  }
+});
+
 window.navigateTo = function(viewName) {
   STATE.currentView = viewName;
   document.querySelectorAll(".nav-item").forEach(btn => {
     btn.classList.toggle("active", btn.getAttribute("data-view") === viewName);
   });
   renderView();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 
@@ -726,6 +868,8 @@ function renderView() {
     case "skills": renderSkills(main); break;
     default: renderOverview(main); break;
   }
+
+  syncUrlHash();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1294,14 +1438,7 @@ window.openSkillInCatalog = function(skillName) {
   }, 100);
 };
 
-window.navigateTo = function(viewName) {
-  STATE.currentView = viewName;
-  document.querySelectorAll(".nav-item").forEach(btn => {
-    btn.classList.toggle("active", btn.getAttribute("data-view") === viewName);
-  });
-  renderView();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-};
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. PROJECTS HUB & SOVEREIGN PROJECT DEDICATED WEBS
@@ -2815,6 +2952,7 @@ async function loadModel() {
     const modelData = await res.json();
     STATE.error = null;
     ingestModel(modelData);
+    restoreRouteFromUrl();
     renderView();
   } catch (err) {
     STATE.error = `No se pudo conectar con el servidor: ${err.message}`;
