@@ -17,10 +17,9 @@ already knows which one it will take.
 
 ## Why it is its own door
 
-It lived inside `open-session` until 2026-08-19, and moved because **the trigger moved**. Planning
-used to happen once, when a session opened. Under the block flow it is a discrete act repeated
-once per sub-block — several times in a session, or not at all. A step whose trigger has changed
-needs its own name, or it keeps firing on the old one.
+**Planning is a discrete act repeated once per sub-block** — several times in a session, or not at
+all — so it has its own trigger and therefore its own name. ⚠️ **A step whose trigger has changed
+needs a new name, or it keeps firing on the old one.**
 
 ## What it produces
 
@@ -97,3 +96,12 @@ Retired if, after five plans, the `order_why` field is being filled with restate
 order rather than reasons for it. That would mean the field is theatre and the skill is a form to
 fill in — and a form nobody means is worse than no form, because it looks like the thing it
 replaced.
+
+---
+
+## Notes — loaded by a review, not by a plan
+
+### Where it came from
+
+It lived inside `open-session` until 2026-08-19 and moved because **the trigger moved**: planning
+used to happen once, when a session opened, and under the block flow it happens once per sub-block.

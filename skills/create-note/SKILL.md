@@ -23,12 +23,10 @@ are 🔴: the write is authorised per change (`NEXUS:AX-3`) and the commit messa
 2. **The domain index that row names**, and nothing from any other domain.
 3. **The Router's bridge table for the pair**, when the note crosses domains.
 
-⚠️ **No filename appears above, and that is the fix rather than the style.** This skill spelled the
-Router's path and five domain indexes until 2026-08-20, which is one machine's shape published in a
-generic method (`MLabs:AX-1`) — and **the gate's own path check could not see it**, because its
-pattern required a `/` and could not cross an underscore. Ninth occurrence of *a published check that
-cannot match*. **The Router is reached through the binding; every index is reached through the
-Router.** This skill knows the two hops and neither path.
+⚠️ **No filename appears above, and that is the rule rather than the style.** A skill that spells
+the vault's own files runs on exactly one machine and publishes that machine's shape (`MLabs:AX-1`).
+**The Router is reached through the binding; every index is reached through the Router.** This skill
+knows the two hops and neither path.
 
 Anything opened beyond that is declared, and the declaration is logged as a defect in the Router
 (`MLabs:AX-21`). A domain with no index takes no notes until it has one (`NEXUS:AX-8`) — say so
@@ -162,3 +160,14 @@ that could not be run is reported as not run, never as passed.
 - **Touching the Router** beyond its bridge row and counter, or any index outside the domain.
 - **Opening a domain**, committing for the operator, breaking the code policy, or leaving a note
   unsynchronised.
+
+---
+
+## Notes — loaded by a review, not by a note
+
+### Why no filename appears in *Read first*
+
+This skill spelled the Router's path and five domain indexes until 2026-08-20 — one machine's shape
+published in a generic method — and **the gate's own path check could not see it**, because its
+pattern required a trailing slash and could not cross an underscore. **Ninth occurrence of *a
+published check that cannot match*, and the first found by the operator rather than by a role.**

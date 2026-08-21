@@ -47,10 +47,8 @@ is declared and logged as a defect in the index** — never as licence to read l
 
 ## 4. Work the loop
 
-**Planning moved out on 2026-08-19 and lives in `skills/current-plan/`.** It used to be here
-because planning happened once, when a session opened; under the block flow it is a discrete act
-repeated once per sub-block. **That file wins on everything about how a plan is written** — this
-section is the routing, not the rules.
+**Planning lives in `skills/current-plan/`, and that file wins on everything about how a plan is
+written** — this section is the routing, not the rules.
 
 Invoke it when a sub-block is reached. Then work the list: every item leaves with an outcome from
 the closed vocabulary (`METHOD.md` §2), items that spawn items are written down immediately, and
@@ -88,3 +86,12 @@ worth it, and the default is none.
 It does not decide what to work on — the compass does. It does not hold rules; it points at
 them. It does not commit on the operator's behalf, and it never empties a queue it filled
 (`AX-15`).
+
+---
+
+## Notes — loaded by a review, not by a session
+
+### Why planning is not in this file
+
+It was, until 2026-08-19. It moved because **the trigger moved**: planning happened once, when a
+session opened, and under the block flow it is a discrete act repeated once per sub-block.
