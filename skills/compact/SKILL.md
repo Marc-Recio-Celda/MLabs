@@ -125,9 +125,12 @@ artefact asserts.***
 - **For code: byte-identical build output** where the language allows it — identical bundle hash,
   identical compiled artefact. That is the proof that only comments moved. Otherwise the test suite
   passing unchanged.
-- **For prose: the operative layer shrinks and the notes layer grows by less.** If total bytes fall
-  by more than the notes gained, **something was deleted rather than relocated** — that is the
-  failure this check exists to catch, and it is countable.
+- **For prose: no assertion is lost, and that is what is counted — not bytes.** Compression removes
+  redundancy, so a net byte fall is expected and proves nothing either way. The countable test is
+  **every identifier cited before is still cited** (`AX-n`, `PH-n`, finding ids, paths) and **every
+  bolded rule still appears**. ⚠️ **Run it: the first pass on `skills/audit/` dropped `AX-1`** — the
+  citation that said *why* the path rule matters — while the byte arithmetic looked healthy. **A
+  byte count cannot see a lost claim.**
 - **Run it a second time: it returns nothing.** A pass that still finds hits either missed them or
   created them.
 

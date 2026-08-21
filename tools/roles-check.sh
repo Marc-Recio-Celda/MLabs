@@ -60,6 +60,27 @@ fi
 no_log=$(comm -23 <(echo "$declared") <(echo "$logged"))
 no_crit=$(comm -13 <(echo "$declared") <(echo "$logged"))
 
+# ⚠️ A NEAR MISS IS NOT AN ABSENCE, and reporting it as one sends the operator a
+# governance gap that is really a typo. `rnd` carried its criterion under
+# `## Its own dismissal` — three words from what this greps — and was reported as
+# having none, on the day this script was written. Absence is the operator's problem;
+# a near miss is the file's, and only one of them is worth their attention.
+near=""
+for r in $no_crit; do
+  f="$SKILLS/$r/SKILL.md"
+  [ -f "$f" ] || continue
+  h=$(grep -iE '^#+ .*dismissal' "$f" | head -1)
+  [ -n "$h" ] && near="$near$r|$h
+"
+done
+if [ -n "$near" ]; then
+  echo "  ! a heading that ALMOST matches — a near miss, not a missing criterion:"
+  echo "$near" | grep -v '^$' | while IFS='|' read -r r h; do
+    printf '      %-18s has %s — the check greps `## Dismissal`\n' "$r" "$h"
+  done
+  no_crit=$(for r in $no_crit; do echo "$near" | grep -q "^$r|" || echo "$r"; done)
+fi
+
 fail=0
 if [ -n "$no_log" ]; then
   echo "  ✗ a dismissal criterion with no log — hired on paper, accountable nowhere:"

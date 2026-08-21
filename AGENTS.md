@@ -240,7 +240,15 @@ returned **6 of 19 skills**, because one word carried three meanings: a role's f
 skill's retirement condition, and — in one case that said so in its own text — a section added to
 satisfy this very grep. **The vocabulary was split in the same act**: `## Dismissal` ends a ROLE and
 requires a log; `## Retirement` ends a SKILL and requires neither. Counting headings made a
-mostly-correct system read as 68 % non-compliant and buried the two real gaps.
+mostly-correct system read as 68 % non-compliant and buried the gaps underneath.
+
+⚠️ **Two gaps were then reported and only one was real.** `project-auditor` had a criterion and no
+log — genuine, and closed by **creating the log empty, at hiring**, since absence is not a state a
+check can read. **`rnd` was reported as having no criterion and had one all along**, three words from
+the heading the check greps (`## Its own dismissal`). **The check now names a near miss instead of
+reporting an absence** — different findings, and only one of them is the operator's. Eleventh
+occurrence of *a published check that cannot match*, and the first where the check was written, run
+and believed on the same day.
 
 ### §5 · this file breaks `AX-30`
 

@@ -334,8 +334,9 @@ difference. **Accountability, not capability, is what makes something a role.**
 ⚠️ **This said *"and it is already visible on disk"* until 2026-08-21, and it was not.** Measured:
 `## Dismissal` appears in **6 of 19** skills, two of which are not roles (`current-plan`,
 `redefine-project`) and one of which is a dispatcher (`audit`); `logs/` holds **two** auditor files,
-not the three its own README claims. **Two real asymmetries, both live:** a role with a criterion and
-no log, and a role with a log and no criterion. **A definition that claims to be observable is a
+not the three its own README claims. **Two asymmetries were reported and only one was real:** a role with a criterion and
+no log — genuine — and a role with a log and *apparently* no criterion, which had one three words
+from the heading the check greps. **A definition that claims to be observable is a
 check**, and this one was never run — which is the class this method has now found ten times.
 
 ⚠️ **And the reason it could not be run was one word doing three jobs.** `## Dismissal` meant a
