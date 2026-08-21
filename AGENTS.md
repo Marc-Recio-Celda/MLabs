@@ -183,7 +183,7 @@ and both live in the instance's hiring record, out of the role's own sight.
 | **1 — done** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md`, this file, `METHOD.md`, the company auditor | cold start: an agent given only this repo explains the company and **can operate its rules**, tally included |
 | 2 | the split executes: generic halves of the founding instance's method layer move in; §5's checks get wired to run without a human; first tagged release + licence | cold start repeats; the instance still runs; **the checks run themselves** |
 | **3 — now** | the operating skills, plus `create-note` — the one door to a knowledge base | each carries its verification as a prediction; the loop runs end to end without the operator narrating it |
-| 4 | `code-cleanup` and the collaborative-repo pass — the cleanup skills, and the templates the standards ship as | each skill's own prediction |
+| 4 | `compact` and the collaborative-repo pass — the maintenance skills, and the templates the standards ship as | each skill's own prediction |
 | **✅ done, out of order** | **`build-nexus`** — creates an operations centre from nothing and walks its owner to a first task. Was listed last because it encodes the shape of an instance; **the shape stopped moving, so it moved** | a stranger, given only this repo and the skill, ends with a working instance and a first task in flight |
 | later | roles beyond those hired, strictly by §6 | each role's own criterion |
 
