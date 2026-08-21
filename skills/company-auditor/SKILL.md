@@ -103,6 +103,7 @@ The list is fixed and finite, because the honesty rule makes the role state what
 | A2 | **Context cost** — what does this cost to load, and what does it displace? A rule is paid every turn; a skill is paid once |
 | A3 | **Rule-vs-tool** (`AX-4`) — must this fire while the work happens, or could a pass fix the artefact afterwards? |
 | A5 | **Arrival at level 1** — fires only when `PHILOSOPHY.md` gained or lost a clause. Three questions, in this order: **what does it forbid that was not already forbidden** — a clause that forbids nothing new is a summary, and the overlap is found by reading it against every axiom, not against the other clauses; **does it arbitrate** — a clause that decides nothing when two axioms disagree is an axiom wearing the wrong tier; **does it clash with a clause here** — and note that ⚠️ **nothing in this system resolves that clash**, because this file is the last court and has no court above it. ⚠️ **Added 2026-08-20, after `PH-7` was opened and the saturation review checked its coverage without ever asking whether it belonged.** The gap was found by the operator |
+| A6 | **The reader's cost — and it is the check `AX-29` never had.** ⚠️ **Measured 2026-08-21: no auditor check in any of the three roles names `AX-29` at all**, so the tier with the most detailed rule about document economy had nobody reading for it. Fires on **every structural file the round read**, `.md` and the docstring of every `.py` alike. Three measurements, all countable, none a matter of taste: **(1) bytes now against bytes at the last release tag** — `git show <tag>:<file> | wc -c`; a structural file that only ever grows is being written for its authors. **(2) the archaeology lines**, whose subject is the document's own history rather than the reader's task — seed the grep with `until 20`, `Corrected 20`, `Added 20`, `used to`, `was written`, `still reads` — each surviving **only** if it names *a trap a reader can still fall into*, which is `AX-29`'s one permitted past tense. **(3) `AX-29`'s two tests on every surviving line**: *if the reader ignored it, would the work come out wrong* and *could they have worked it out from the repository*. Only yes-then-no stays. ⚠️ **The output is a list of lines to cut WITH THEIR DESTINATION**, never *trim this file*: a line cut with nowhere to go is the loss `PH-3` forbids, and the home is `LOG_METHOD` or the decision log (`AX-24`). ⚠️ **A round that reports growth and names nothing to cut has measured, not audited.** |
 | A4 | **Alignment** — which philosophy clause does this serve, and does the axiom it leans on still implement that clause? Report drift **in both directions**: a clause with no axiom behind it, and an axiom serving no clause |
 
 > **Portability is not on this list.** It is **derived**, not independent: where origins are
@@ -141,6 +142,40 @@ Of every axiom, including the untouched ones:
 | **Load-bearing?** | If this were deleted, what would go wrong that nothing else catches? *"It is true"* is not an answer — most true things are not axioms |
 | **Distinct?** | Which other axiom is nearest, and is the gap worth the reader's attention? Two axioms one reader cannot tell apart are one axiom and a tax |
 | **In force?** | Does it bind, or does it advise? An axiom that can be politely ignored is a decision wearing the wrong hat. ⚠️ **And a check that passes over zero lines is vacuous, not verified** |
+
+⚠️ **A file this role reads whole and clears gets its version stamp moved to the current release,
+in the same act.** `AX-20` says the stamp names the rule set a document was written against, and
+**nothing else in this method moves it** — `release-cut` checks that stamps agree and has no step
+that makes them agree, so the check could only ever report a list. **This is the act that was
+missing.** ⚠️ **And it is bounded by *read whole*:** editing a row is not reviewing a file, so a
+stamp left behind by an edit stays behind. A stamp bumped without a full read is worse than a stale
+one — it reports a review that did not happen.
+
+### Why `A6` exists, and the mechanism is the useful half
+
+**The reason noise accumulates is not carelessness — it is that the file being edited is where the
+evidence is cheapest to write, and the log is another file.** `AX-29` already says both halves are
+written **in the same act**: the trap in the document, the reasoning in the log. What has been
+happening is **one half** — the reasoning going into the document because the author is already
+there, and the log never opened.
+
+**So the instruction is not *write less*. It is *write the other half*, and `A6` catches the half
+that went missing.**
+
+⚠️ **The evidence is this repository, on one day.** 2026-08-21, nine structural files:
+
+| | Before | After | |
+|---|---|---|---|
+| `.gitignore` | 2,238 | 4,060 | **+81 %** — four lines deleted, forty of explanation added |
+| `AGENTS.md` | 18,458 | 21,532 | +17 % |
+| `structure-project` | 9,132 | 11,749 | +29 % |
+| **nine files** | **99,891** | **114,761** | **+15 % in one day** |
+
+**Every one of those edits was a real fix and the growth is still a defect** — which is exactly the
+case this check exists for, because a round that only catches careless writing will never catch this
+one. ⚠️ **The author of that growth was an agent obeying `AX-6`** — *a claim cites its evidence* —
+and citing it in the wrong file. **`AX-6` and `AX-29` pull against each other, and `AX-24` is where
+the tension resolves.** An auditor that does not know that will read the noise as compliance.
 
 **Demotion is the expected outcome, not a failure.** An axiom that turns out narrower, softer or
 already-implied **becomes a decision** and moves to the log. The set is meant to shrink under this

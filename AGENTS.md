@@ -3,77 +3,66 @@
 > **Version:** 1.0.0
 
 > The orchestration file: which roles exist, what each does, when each fires, and the rule that
-> governs hiring and firing. Every line here must pass two tests: *if an agent ignored it, would
+> governs hiring and firing. **Every line here passes two tests** — *if an agent ignored it, would
 > the work come out wrong?* and *could it have worked this out by reading the repo?* Only
-> yes-to-the-first, no-to-the-second stays.
+> yes-then-no stays; everything else is in `## Notes` at the foot, which a review loads and routine
+> work does not (`AX-29`).
 
 ---
 
 ## 1. What this repo is to an agent
 
 MLabs is the **structure**, and it is the workspace root: this repo tracks only the structural
-allowlist in `.gitignore`, while every child folder — **NEXUS** and each project — is **its own
-repository, untracked here, forever**. Rules travel with this repo; state never does. If NEXUS
-is not present, you are editing methodology and nothing else is in scope — and nothing personal
-may enter what git tracks (§5).
+allowlist in `.gitignore`, while every child folder — **the operations centre** and each project —
+is **its own repository, untracked here, forever**. Rules travel with this repo; state never does.
+If the operations centre is not present, you are editing methodology and nothing else is in scope.
 
-**Start here, in this order.** `PHILOSOPHY.md` — what this company optimises for, and what
-breaks every tie → `AXIOMS.md` — the rules that follow, already settled and not re-litigated →
-this file, for who does what and when → **`METHOD.md` — how work actually flows, which is the
-one you will use every day** → the role file for whatever you are about to act as or invoke →
-**and then NEXUS, which is where the work is** (§2). The first three are read once and rarely
-again; `METHOD.md` is the shape of a working day; NEXUS is entered for almost everything.
+**Start here, in this order.** `PHILOSOPHY.md` — what this company optimises for, and what breaks
+every tie → `AXIOMS.md` — the rules that follow, already settled and not re-litigated → this file,
+for who does what and when → **`METHOD.md` — how work actually flows, which is the one you will use
+every day** → the role file for whatever you are about to act as or invoke → **and then the
+operations centre, which is where the work is** (§2).
 
-⚠️ **Read what the work needs, not all of it** (AX-21, applied to this file). Designing or
-auditing loads all three levels. **Executing a defined task loads NEXUS's binding, the role file,
-and `METHOD.md` §2 and §7** — the loop and the routing table, because the close is not optional
-and its destination vocabulary lives there. The axioms are what the close is *checked against*,
-not what the work is done through; loading all five documents for a defined task displaces the
-work itself.
+⚠️ **Read what the work needs, not all of it** (`AX-21`). **Designing or auditing loads all three
+levels. Executing a defined task loads the binding, the role file, and `METHOD.md` §2 and §7** — the
+loop and the routing table, because the close is not optional and its destination vocabulary lives
+there. **The axioms are what the close is *checked against*, not what the work is done through**, and
+loading all five documents for a defined task displaces the work itself.
 
-**Three levels, and nothing is allowed to blur them.** *Philosophy* — six clauses, changed
-almost never, only by the operator. *Axioms* — the rules that implement them, never violated,
-each naming the clause it serves. *Decisions* — concrete, with author, date and reasoning,
-living in NEXUS and never here. **The same three levels repeat one floor down inside a
-project**, with its own auditor, its own axioms and its own log: that is what makes the shape
-reproducible rather than bespoke.
+**Three levels, and nothing is allowed to blur them.** *Philosophy* — seven clauses, changed almost
+never, only by the operator. *Axioms* — the rules that implement them, never violated, each naming
+the clause it serves. *Decisions* — concrete, with author, date and reasoning, living instance-side
+and never here. **The same three levels repeat one floor down inside a project**, with its own
+auditor, its own axioms and its own log.
 
-## 2. NEXUS — the operations centre
+## 2. The operations centre
 
-**Every MLabs instance has exactly one, and it is where the company actually lives.** The
-knowledge, the projects, the decisions with their authors and dates, the work in flight, the
-ledger, the task list, the inbox, the plan — all of it is in NEXUS. It is **private**, it is a
-sibling folder in this workspace, and it is **never tracked here**.
+**Every MLabs instance has exactly one, and it is where the company actually lives** — the
+knowledge, the projects, the decisions, the work in flight, the ledger, the task list, the inbox,
+the plan. It is **private**, a sibling folder in this workspace, and **never tracked here**.
 
-> **MLabs is the constitution. NEXUS is the country.**
+> **MLabs is the constitution. The operations centre is the country.**
 
-The practical consequence, which this file understated until it was corrected: **almost nothing
-real happens without entering NEXUS.** This repo tells you *how* to work; NEXUS is *where* the
-work and its entire record are. An agent that has read only MLabs knows every rule and nothing
-that has ever happened — it cannot say what is being built, what was decided last week, what is
-blocked, or what it is supposed to do next. It knows the law of a country it has not visited.
+**Almost nothing real happens without entering it.** This repo tells you *how* to work; the centre
+is *where* the work and its entire record are. An agent that has read only MLabs knows every rule
+and nothing that has ever happened. So the reading order is **learn the rules once, then go where
+the work is** — and only *how much* of it loads is variable: its binding always, its contents by the
+routing index and never wholesale (`AX-21`).
 
-So the reading order below is not "MLabs, then optionally NEXUS". It is: **learn the rules once,
-then go where the work is.** What stays true is only *how much* of NEXUS gets loaded — its
-binding always, its contents by the routing index and never wholesale (AX-21).
+**Its name is company vocabulary, not a private name.** MLabs names the role and its conventional
+root and names nothing inside it: no project, no person, no path below that root. A stranger
+instantiating their own company creates their own, the same way they create their own `main` branch.
 
-**NEXUS is company vocabulary, not a private name.** MLabs names the role and its conventional
-root, and names nothing inside it: no project, no person, no path below the root. That is the
-invariant the depersonalisation check enforces, and naming the operations centre does not
-weaken it — a stranger instantiating their own company creates their own NEXUS, the same way
-they create their own `main` branch.
-
-**The binding, declared NEXUS-side.** NEXUS's own `AGENTS.md` declares: **the MLabs release it
-pins** · **where its ledger lives** (the append-only log the company auditor writes to and the
-dismissal tally greps) · and **where its denylist lives** for §5's depersonalisation check. The
-denylist is a list of names and project words — personal data by definition — so it lives in
-NEXUS, never here.
+**The binding, declared instance-side.** Its own `AGENTS.md` declares **where its ledger lives** —
+the append-only log the company auditor writes to and the dismissal tally greps — and **where its
+denylist lives** for §5's depersonalisation check. The denylist is a list of names and project words,
+personal data by definition, so it lives there and never here.
 
 ## 3. The hierarchy — two lists, not one
 
-Authority and attention run in opposite directions, on purpose: **vetoes are verifiable at the
-end, design pressures cannot be retrofitted** — so the order of attention is the inverse of the
-order of authority. Both lists sit *below* `PHILOSOPHY.md`, which decides when they tie.
+Authority and attention run in opposite directions, on purpose: **vetoes are verifiable at the end,
+design pressures cannot be retrofitted** — so the order of attention is the inverse of the order of
+authority. Both lists sit *below* `PHILOSOPHY.md`, which decides when they tie.
 
 **While designing** — in this order, because a pressure skipped here cannot be retrofitted:
 
@@ -85,7 +74,7 @@ order of authority. Both lists sit *below* `PHILOSOPHY.md`, which decides when t
 | **3** | **Operator load** | The manual step it adds — is it a *decision* or *transcription*? Transcription is always debt; review is not |
 | **3** | **Portability** | Given only the artefacts, does a new agent, tool, model, machine — or the operator in six months — reach productive? |
 | **4** | **Migration cost** | How many existing artefacts must be touched, and who consumes the new thing? |
-| **5** | **Coupling** | If this changes, what else must be opened? Split by owner first, rate of change second (PH-5) |
+| **5** | **Coupling** | If this changes, what else must be opened? Split by owner first, rate of change second (`PH-5`) |
 
 **At close — the vetoes.** Mechanical, cheap, verifiable after the fact, and they reject:
 
@@ -95,118 +84,95 @@ order of authority. Both lists sit *below* `PHILOSOPHY.md`, which decides when t
 | **2** | **Single source** | If this fact changes, how many files must be touched? |
 | **3** | **Real return** | What concrete work does this unblock, and for whom? |
 
-Ties among vetoes are broken by purpose. The conversation attends to the first list while
+Ties among vetoes are broken by purpose. **The conversation attends to the first list while
 designing; the company auditor re-runs both at close, because at close it is the only one that
-still will.
+still will.**
 
 ## 4. Roles
 
+**A role is a skill plus a log plus a dismissal criterion** (`METHOD.md` §5, `AX-11`). The three
+auditors share one contract in `skills/audit/`; each role file states **only** its scope, its
+trigger and its own checks.
+
 **Hired — active:**
 
-| Role | What it is | Fires | Defined in |
+| Role | Scope | Fires | Defined in |
 |---|---|---|---|
-| **Company auditor** | The company's long-term health: re-checks, at close, what salience made the conversation skip. Scope is **the public structure** — what would bind an instance that is not this one. **Checks decisions; does not propose** | **one event** — a close that changed a company-structural file | `skills/company-auditor/` |
-| **Instance auditor** | The operations centre's own health. Different failures, not a smaller scope: an instance fails by its **checks going quietly vacuous** — a glob that stops matching, an invariant run from the wrong root, a permission table that lost its paths | **one event** — a close that changed the instance's structure or the declared shape of its live set. **Hired and first fired at round 7, 2026-08-19**, with `N` and `K` not yet fixed — which `AX-11` requires, so that round counts toward neither | `skills/instance-auditor/` |
+| **Company auditor** | **the public structure** — what would bind an instance that is not this one. **Checks decisions; does not propose** | a close that changed a company-structural file | `skills/company-auditor/` |
+| **Instance auditor** | the operations centre's own health. **Different failures, not a smaller scope**: an instance fails by its checks going quietly vacuous — a glob that stops matching, an invariant run from the wrong root, a permission table that lost its paths | a close that changed the instance's structure or the declared shape of its live set | `skills/instance-auditor/` |
+| **Project auditor** | one project's cartridge, plus four checks only it runs. **Hired per project**, each with its own criterion | a close in that project | `skills/project-auditor/` |
+| **R&D** | lateral work on the axioms — **kept out of the audit because a role paid for findings must not be invited to invent** | request | `skills/rnd/` |
 
-> ⚠️ **The three auditors share one contract, and it lives in `skills/audit/`** — the brief, the
-> output shape, the ledger entry, the log row, the tally, what an auditor does not do. Each role
-> file states **only** its scope, its trigger and its own checks. Until 2026-08-19 the company and
-> instance roles were one file twice, each declaring itself the single source (`CA-054`, `CA-064`).
-
-**Every employee is a skill file. What makes one a *role* is the shape of its description.**
+**What makes a skill a role is the shape of its description**, and it decides when it fires:
 
 | | Its description names | Fires because |
 |---|---|---|
-| **Role** | **an event** — *"when a task closes"*, *"when an axiom set changes"* | something happened. It must never be convenient to skip |
+| **Role** | **an event** — *"when a task closes"* | something happened. It must never be convenient to skip |
 | **Capability** | **a request** — *"when the operator wants X"* | someone asked |
-| **Locked** | either, plus `disable-model-invocation: true` | only the operator calls it, by name. **The cost: its description leaves context entirely**, so the model no longer knows the skill exists — lock only what the model should never reach for, never a door it is supposed to route through |
-
-There is no `roles/` directory: a second home for the same employee is a second place to change
-one fact. What a role additionally needs — its dismissal criterion, its thresholds, its standing
-— is **governance, not procedure**, and lives in the operations centre's hiring record, out of
-the role's own sight.
+| **Locked** | either, plus `disable-model-invocation: true` | only the operator calls it, by name. ⚠️ **Its description leaves context entirely**, so the model no longer knows it exists — lock only what the model should never reach for |
 
 ⚠️ **An event named in prose is a best-effort trigger, not a hook.** A description saying *when a
-task closes* fires when the model notices the task closed. That is the same independence gap the
-audit's own record declares, and wiring a real hook is what closes it.
+task closes* fires when the model notices the task closed; wiring a real hook is what closes that
+gap.
 
-**Written, not hired: R&D** (`skills/rnd/`) — lateral work on the axioms, kept separate from the
-audit because a role paid for findings must not be invited to invent, and left request-triggered
-because it would otherwise fire on rounds with nothing to reconsider.
+**There is no `roles/` directory** — a second home for the same employee is a second place to change
+one fact. **A role's thresholds and standing are governance, not procedure**, and live in the
+operations centre's hiring record, out of the role's own sight.
 
-**Written and available.** A skill existing is not a hire: an event-triggered one only counts
-against §6 when the operator turns it on for real work.
+**Written and available — a skill existing is not a hire.** `gather` (collects and cites; its value
+is burning someone else's context) · `dispatch` (hands work to the executor entitled to claim the
+answer). **Bookkeeper and analyst are proposed and not written** — the four-role architecture is
+open in the instance's mailbox, deferred to the audits.
 
-| Role | Status | What it is |
-|---|---|---|
-| **Project auditor** | ✅ written · `skills/project-auditor/` | the same contract scoped to one project's cartridge, plus four checks only it runs. **Hired per project**, each with its own criterion. **No firing has produced a row yet** |
-| **Gatherer** | ✅ written · `skills/gather/` | collects and cites; **its value is burning someone else's context** |
-| **Dispatcher** | ✅ written · `skills/dispatch/` | hands work to the executor entitled to claim the answer |
-| Bookkeeper | ⏸ not written | logs, decisions, staleness. ⚠️ **Probably not a role**: staleness is decidable by comparison, which makes it a script (AX-13). What is left is writing entries, which every skill already does at its own close |
-| Analyst | ⏸ not written | **a script until reading the numbers needs judgement.** Three of the five health metrics are computable today and none is computed; build the numbers, then decide whether reading them needs a hire |
-
-Two things in the org chart are deliberately **not** roles: the **reasoner** (operator +
-assistant — the conversation itself, which cannot be isolated) and the **distributor** (*nothing
-is lost* — a rule at round close, not an agent, because its context is the whole conversation).
+Two things in the org chart are deliberately **not** roles: the **reasoner** (operator + assistant —
+the conversation itself, which cannot be isolated) and the **distributor** (*nothing is lost* — a
+rule at round close, not an agent, because its context is the whole conversation).
 
 ## 5. Invariants — each carries its check
 
 | Invariant | The check |
 |---|---|
-| **No personal information in what git tracks.** No person's name, no employer, no project name, no path inside NEXUS. Naming NEXUS itself is vocabulary (§2), not a leak | the release gate greps the instance's denylist over `git ls-files` output — what is *tracked*, since the working tree legitimately holds the private children — and it returns nothing. ⚠️ Test the grep against a planted leak before trusting it, and **plant against the format**: a pattern that cannot match returns clean on a leak, and a term ending in a version number escapes a bare `\b` word match even when it is on the list. ⚠️ **This check binds the tracked working TREE and cannot see the HISTORY** — `git ls-files` does not read a commit, so a name removed from a file is still in the commit that removed it. **Declared rather than pretended** (2026-08-19): the guarantee is *nothing private ships in a checkout of the release*, not *nothing private was ever written*. Every commit already carries the author's name and email, so a history scrub would not depersonalise it either |
-| **The tracked set is exactly the allowlist** — nothing more, and nothing named that does not exist | `git ls-files` compared against `.gitignore`'s `!` lines at every release cut. A **surplus** file is a leak, investigated before anything else happens; a `!` line with **no tracked file behind it** is empty scaffolding, and the line goes |
-| **`git clean` is never run at this root.** The untracked here is everything the operator owns | none — prevention only. Deletion has no cleanup pass, which is exactly why this is a rule and not a tool (AX-4) |
-| **The axioms are append-only.** Entries are never rewritten; later entries supersede | `git diff <last-tag>..HEAD -- AXIOMS.md \| grep -c '^-[^-]'` returns **0** — nothing removed, nothing altered, only appended |
-| **Every structural change carries an axiom or a logged decision.** A change to the hierarchy, the roles or these invariants with nothing behind it is reverted | `git diff <last-tag>..HEAD --stat` against the same range's `AXIOMS.md` additions, on release cut |
-| **Every queue and park entry carries `project:`** — a name or `cross`. The field the filter depends on is the field nothing else can infer | `interface/model/parse.py --adapter <the instance's>` reports **`with project: n/n`** per kind, and **`Nothing unplaceable.`** ⚠️ **The check here was three greps until 2026-08-21 and it could not pass on any of the three files it governed** — `^- ` is bullet-per-entry and none of them is: two use `###` headings and the park declares its project **by section**. Measured, it read `19 vs 5 · 0 vs 9 · 3 vs 12` while all three files were in fact fully routed, so it fired a false positive at every release cut and named no real gap. **The parser already implements the inheritance rule `GRAMMAR.md` states** — own header, else section — which is why it is the check and a grep cannot be. On its first run it found the one genuine defect the greps never could: an entry matching neither shape, invisible to the queue |
-| **Every axiom sits in exactly one tier** (company · instance · project) | at each cut, a company axiom that names a toolchain, a project or a person belongs one tier down; an instance rule copied into more than one project file is a duplicate with no winner (AX-20) |
-| **Every axiom names the clause it serves, and every clause has at least one axiom** | the coverage table at the foot of `AXIOMS.md`, regenerated at each cut; a clause at zero is a stated priority nothing implements |
-| **Every ROLE states its dismissal criterion, and every role keeps a log** — the two together are what make it a role (`METHOD.md` §5, `AX-11`) | `tools/roles-check.sh --skills skills --logs <the instance's logs dir>` — the two sets must be **the same set**: skills carrying `## Dismissal`, and files in the instance's `logs/`. Both directions are reported separately, because *a criterion with no log* and *a log with no criterion* are different problems. ⚠️ **This bound *event-triggered skills* until 2026-08-21 and measured the wrong set.** `## Dismissal` returned **6 of 19 skills**, because one word carried three meanings: a role's firing criterion, a skill's retirement condition, and — in one case that said so in its own text — a section added to satisfy this very grep. **The vocabulary was split in the same act**: `## Dismissal` ends a ROLE and requires a log; `## Retirement` ends a SKILL and requires neither. Counting headings made a mostly-correct system read as 68 % non-compliant and buried the two real gaps: **`project-auditor` had a criterion and no log** — closed 2026-08-21 by creating the log **empty, at hiring**, since absence is not a state a check can read; **`rnd` has a log and no criterion**, which stands open because a dismissal threshold is a hiring decision and is not written by the party being measured. ⚠️ The thresholds themselves live in the instance's hiring record, out of the skill's own sight |
-| **Never push to `master` without explicit operator permission.** All working sessions, development and automated runs stay strictly on working branches (e.g. active development or task branches). Merging or pushing to `master` is a release gate event requiring explicit human approval | verification that no agent workflow targets `origin master` automatically |
+| **No personal information in what git tracks.** No person's name, no employer, no project name, no path inside the operations centre. Naming the centre itself is vocabulary (§2) | `tools/gate.sh` — greps the instance's denylist over `git ls-files`, and returns nothing. ⚠️ **Test it against a planted leak, and plant against the *format*** |
+| **The tracked set is exactly the allowlist** — nothing more, and nothing named that does not exist | `tools/gate.sh` check 3, both directions. A **surplus** file is a leak; a `!` line with **no tracked file behind it** is empty scaffolding, and the line goes |
+| **`git clean` is never run at this root.** The untracked here is everything the operator owns | none — prevention only (`AX-4`) |
+| **The axioms are append-only.** Entries are never rewritten; later entries supersede | `git diff <last-tag>..HEAD -- AXIOMS.md \| grep -c '^-[^-]'` returns **0** |
+| **Every structural change carries an axiom or a logged decision** | `git diff <last-tag>..HEAD --stat` against the same range's `AXIOMS.md` additions, at the cut |
+| **Every queue and park entry carries `project:`** — a name or `cross` | `interface/model/parse.py --adapter <the instance's>` reports **`with project: n/n`** per kind and **`Nothing unplaceable.`** |
+| **Every axiom sits in exactly one tier** (company · instance · project) | a company axiom naming a toolchain, a project or a person belongs one tier down; an instance rule copied into more than one project file is a duplicate with no winner (`AX-20`) |
+| **Every axiom names the clause it serves, and every clause has at least one axiom** | the coverage table at the foot of each department, **regenerated and compared**, never transcribed. ⚠️ `PH-7` is at zero in both |
+| **Every role states its dismissal criterion and keeps a log** — the two together are what make it a role | `tools/roles-check.sh --skills skills --logs <the instance's logs dir>`. **The two sets must be the same set**, and each direction is reported separately: *a criterion with no log* and *a log with no criterion* are different problems |
+| **Every artefact stamps the rule-set version it was written against** (`AX-33`) | `skills/release-cut/`. ⚠️ **The stamp moves only when a file is read whole and cleared** — bumping it to make the check pass destroys what it measures |
+| **Never push to `master` without explicit operator permission** | no agent workflow targets `origin master` automatically |
 
 ⚠️ **Every check here reads `git ls-files` or a diff, never the working tree** — the tree at this
-root legitimately holds the instance and every project, which are none of this repo's business.
-A check that walks the tree (`find`, a bare `grep -r`) is wrong by construction here, and the
-founding round shipped one before catching it.
+root legitimately holds the instance and every project, which are none of this repo's business. A
+check that walks the tree (`find`, a bare `grep -r`) is wrong by construction here.
 
-⚠️ **AND EVERY CHECK STATES THE ROOT IT RUNS FROM.** This is the sibling of *a pattern that cannot
-match returns clean*, and it is not a smaller problem: **the same correct check, run from the wrong
-checkout or the wrong root, also returns clean.** It happened twice in one session — the allowlist
-check run from a checkout where `interface/` does not exist, and the denylist gate run from the
-operations centre, where every hit is legitimate. **Both looked like passes.** `git ls-files` is
-relative to `cwd`, so the rule above does not prevent this; it is what makes it possible.
-
-**A check that cannot state its root has not been run.** The three implementations here already obey
-it and are the pattern to copy: `tools/gate.sh` does `cd "$(git rev-parse --show-toplevel)"` and
-**exits 2 — could not run, which is not a pass** — if that fails; the denylist's own command refuses
-unless `AXIOMS.md` and `METHOD.md` are both present; `tools/denylist-coverage.sh` takes its roots as
-arguments and **refuses to guess one**. ⚠️ **Exit 0, exit 1 and exit 2 are three different answers**,
-and collapsing the third into the first is how a check becomes decoration.
-
-⚠️ **This file violates AX-30 today and the debt is declared rather than hidden.** AX-30 says an
-agent contract is generated from a method half and a repository half, with a check that fails on
-drift, and that no repository is exempt — including this one. This file is hand-written; the
-generator is stage 2's work. Recorded here because an axiom broken silently by its own repo is
-the precedent every later exemption will cite.
-
-⚠️ **Until the first release these run by hand at each cut — that is a hope, not a guarantee**
-(AX-7). Wiring them into something that runs without a human — CI, a release script, a hook —
-is part of stage 2's gate, not an option.
+⚠️ **And every check states the root it runs from.** *The same correct check, run from the wrong
+checkout or the wrong root, returns clean* — the sibling of *a pattern that cannot match*, and not a
+smaller problem. **A check that cannot state its root has not been run**, and **exit 0, exit 1 and
+exit 2 are three different answers**; collapsing *could not run* into *passed* is how a check becomes
+decoration. The three implementations here are the pattern to copy.
 
 ## 6. Hiring and firing
 
-**The rule is AX-11; it is not restated here.** What this file adds is the shape the numbers
-take: each role sets its own **N** — consecutive firings adding nothing, after which it is
-retired — and **K** — genuine findings, after which the *next* role may be hired, one, not
-several. Both are fixed before the role's first firing, both are countable by a command over the
-instance's ledger, and both live in the instance's hiring record, out of the role's own sight.
+**The rule is `AX-11`; it is not restated here.** What this file adds is the shape the numbers take:
+each role sets its own **N** — consecutive firings adding nothing, after which it is retired — and
+**K** — genuine findings, after which the *next* role may be hired, one, not several. **Both are
+fixed before the role's first firing**, both are countable by a command over the instance's ledger,
+and both live in the instance's hiring record, out of the role's own sight.
 
 ## 7. Gates
 
-- **A task closes** → **only if a structural file changed**, **the auditor for the department that changed** is invoked — company, instance or project, one of them and not two; `skills/audit/` is what routes — once, over everything the task touched — after the destinations are read back and **before** the live plan is emptied (`METHOD.md` §2). **A close that touched only the live set, the logs, notes, code or content does not fire it.** The two lists — structural, and expressly not structural — are stated in full in each role file, which is the single source for its own department; this line is the gate, not the definition. The operator invokes it by name whenever they judge it worth the round.
-- **Every close** → every open thread is enumerated with its destination, and *written* is
-  claimed only after reading the file back from disk. A thread with no destination is a failure
-  of the close, not an omission.
+- **A task closes** → if a structural file changed, **the auditor for the department that changed**
+  is invoked — one of them, not two; `skills/audit/` routes — once, over everything the task
+  touched, **after** the destinations are read back and **before** the live plan is closed
+  (`METHOD.md` §2). **A close that touched only the live set, the logs, notes, code or content does
+  not fire it.** Each role file states its own two lists — structural, and expressly not
+  structural. The operator may invoke it on any close.
+- **Every close** → every open thread is enumerated with its destination, and *written* is claimed
+  only after reading the file back from disk. **A thread with no destination is a failure of the
+  close, not an omission.**
 - **A release is cut** → all §5 checks run, the cold-start test runs, the version is tagged.
   Instances upgrade by choice, never by drift.
 
@@ -214,9 +180,75 @@ instance's ledger, and both live in the instance's hiring record, out of the rol
 
 | Stage | Content | Gate |
 |---|---|---|
-| **1 — now** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md`, this file, `METHOD.md`, the company auditor | cold start: an agent given only this repo explains the company and **can operate its rules**, tally included. The passing run is recorded in the instance's ledger |
-| 2 | the split executes: generic halves of the founding instance's method layer move in; §5's checks get wired to run without a human; first tagged release + license | cold start repeats; the instance still runs; the checks run themselves |
-| **3 — now** | the operating skills: `open-session` · `triage` · `audit` · `rnd` · `learn` · `correct-exercise` · `structure-project`, plus `create-note` in the instance, which is the one door to its knowledge base | each carries its verification as a prediction; the loop runs end to end without the operator narrating it |
-| 4 | `code-cleanup` and `collaborative-repo` — the two cleanup skills, and the templates the standards ship as | each skill's own prediction |
-| last | **`nexus-builder`** — the skill that creates a new NEXUS from nothing and walks its owner into working in it. **Deliberately last**: it encodes the shape of an instance, so building it before the shape stops moving means building it twice | a stranger, given only this repo and the skill, ends with a working NEXUS and a first task in flight |
-| later | roles beyond the company auditor, strictly by §6 | each role's own criterion |
+| **1 — done** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md`, this file, `METHOD.md`, the company auditor | cold start: an agent given only this repo explains the company and **can operate its rules**, tally included |
+| 2 | the split executes: generic halves of the founding instance's method layer move in; §5's checks get wired to run without a human; first tagged release + licence | cold start repeats; the instance still runs; **the checks run themselves** |
+| **3 — now** | the operating skills, plus `create-note` — the one door to a knowledge base | each carries its verification as a prediction; the loop runs end to end without the operator narrating it |
+| 4 | `code-cleanup` and the collaborative-repo pass — the cleanup skills, and the templates the standards ship as | each skill's own prediction |
+| **✅ done, out of order** | **`build-nexus`** — creates an operations centre from nothing and walks its owner to a first task. Was listed last because it encodes the shape of an instance; **the shape stopped moving, so it moved** | a stranger, given only this repo and the skill, ends with a working instance and a first task in flight |
+| later | roles beyond those hired, strictly by §6 | each role's own criterion |
+
+---
+
+## Notes — loaded by a review, not by routine work
+
+### §2 · the binding
+
+⚠️ **It declared *"the MLabs release it pins"* until 2026-08-21 and that clause was retired on
+2026-08-19** (`AX-1`'s note): this instance **co-develops** MLabs rather than consuming it, so a pin
+is what a consumer holds. **The binding was still being asked for a field the axioms had removed** —
+found by compressing this file, not by a check. What replaces it: a release cut records the commit
+it was cut against.
+
+### §4 · the auditors' shared contract
+
+Until 2026-08-19 the company and instance roles were **one file twice**, each declaring itself the
+single source (`CA-054`, `CA-064`). `skills/audit/` is now the one contract and each role file
+carries only what is its own.
+
+**`instance-auditor` was hired and first fired at round 7, 2026-08-19 with `N` and `K` not yet
+fixed**, which `AX-11` requires — so that round counts toward neither. **`project-auditor` has fired
+zero times** because no project has been the front; its log exists, empty, since 2026-08-21, because
+**absence is not a state a check can read.**
+
+### §5 · the depersonalisation check
+
+⚠️ **It binds the tracked working TREE and cannot see the HISTORY.** `git ls-files` does not read a
+commit, so a name removed from a file is still in the commit that removed it. **Declared rather than
+pretended**: the guarantee is *nothing private ships in a checkout of the release*, not *nothing
+private was ever written*. Every commit already carries the author's name and email, so a history
+scrub would not depersonalise it either.
+
+**Two blind spots found on 2026-08-20, both while the check reported clean:** a term ending in a
+version number escaped a bare `\b` word match even while on the list; and a denied term glued to
+more letters — an address — has no word boundary at all, so it passed the term check entirely. Both
+are now implemented in `tools/gate.sh`.
+
+### §5 · the `project:` invariant
+
+⚠️ **The check was three greps until 2026-08-21 and could not pass on any of the three files it
+governed.** `^- ` is bullet-per-entry and none of them is: two use `###` headings and the park
+declares its project **by section**. Measured, it read `19 vs 5 · 0 vs 9 · 3 vs 12` while all three
+files were fully routed — **a false positive at every release cut, naming no real gap.** The parser
+implements the *own header, else section* inheritance a grep has no way to express, and on its first
+run found the one genuine defect the greps never could: an entry matching neither shape, invisible
+to the queue.
+
+### §5 · the role invariant
+
+⚠️ **It bound *event-triggered skills* until 2026-08-21 and measured the wrong set.** `## Dismissal`
+returned **6 of 19 skills**, because one word carried three meanings: a role's firing criterion, a
+skill's retirement condition, and — in one case that said so in its own text — a section added to
+satisfy this very grep. **The vocabulary was split in the same act**: `## Dismissal` ends a ROLE and
+requires a log; `## Retirement` ends a SKILL and requires neither. Counting headings made a
+mostly-correct system read as 68 % non-compliant and buried the two real gaps.
+
+### §5 · this file breaks `AX-30`
+
+**`AX-30` says an agent contract is generated from a method half and a repository half, with a check
+that fails on drift, and that no repository is exempt — including this one.** This file is
+hand-written; the generator is stage 2's work. **Recorded here because an axiom broken silently by
+its own repo is the precedent every later exemption will cite.**
+
+⚠️ **And until the first release, §5's checks run by hand at each cut — that is a hope, not a
+guarantee** (`AX-7`). Wiring them into CI, a release script or a hook is part of stage 2's gate, not
+an option.

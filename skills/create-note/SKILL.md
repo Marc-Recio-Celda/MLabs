@@ -3,6 +3,8 @@ name: create-note
 description: Writes and edits every note in the instance's knowledge vault and nothing else does; fires when the operator asks for a new note or a change to an existing one, hands over a course syllabus to ingest, asks for a sub-domain's scaffolding, or wants something learned from their own working experience turned into vault theory.
 ---
 
+> **Version:** MLabs 1.1.0
+
 # create-note
 
 ## When it fires
@@ -37,7 +39,7 @@ and stop.
 ### Phase 1 — Attachment (a syllabus; a single named note skips to Phase 3)
 
 1. Read the syllabus whole and list its knowledge blocks.
-2. Classify each against the index and the Backbone: **already covered** → one line to
+2. Classify each against the domain index: **already covered** → one line to
    the instance mailbox for the audit, never rewritten here · **extends** a sub-domain → new
    note · **new coherent body** → propose a sub-domain, a domain only for a whole field.
 3. Output `block → domain/sub-domain → extend | create | exists`. **Gate: the operator approves.**
