@@ -351,55 +351,27 @@ function ingestModel(model) {
   STATE.livePlanMeta = entities.find(e => e.kind === "live-plan-meta") || null;
 
   // Persistent Plans (from data/plans/*.json)
-  STATE.plans = entities.filter(e => e.kind === "plan").map(e => {
-    const rawItems = Array.isArray(e.items) ? e.items : [];
-    const mappedItems = rawItems.map((it, idx) => {
-      const isDone = it.outcome === "done" || it.status === "done" || it.status === "closed" || Boolean(it.struck);
-      const isDiscarded = it.outcome === "discarded" || /discarded|⚫/.test(it.destination || "");
-      const isRouted = it.outcome === "mailbox" || it.outcome === "tasks" || it.outcome === "ideas" || /mailbox|tasks|ideas|→/.test(it.destination || "");
-      
-      let destBadge = it.destination || it.outcome || (it.note ? it.note : "");
-      if (isDone && !destBadge) destBadge = "done";
-
-      return {
-        index: it.n || it.index || idx + 1,
-        text: it.text || it.title || "",
-        status: isDone ? "done" : (isDiscarded ? "discarded" : (isRouted ? "routed" : "open")),
-        isCompleted: isDone,
-        destination: destBadge,
-        note: it.note || "",
-        completed_at: it.completed_at || it.date || null
-      };
-    });
-
-    const totalCount = mappedItems.length;
-    const completedCount = mappedItems.filter(i => i.isCompleted).length;
-    const progressPct = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
-
-    // Detect if plan is paused or closed
-    const isPaused = e.status === "paused" || (e.closing_note && e.closing_note.toLowerCase().includes("pauses rather than closes"));
-
-    return {
-      id: e._record_id || e.id || "",
-      project: e.project || "nexus",
-      title: e.title || e.task || "",
-      task: e.task || "",
-      block: e.block || "",
-      sub_block: e.sub_block || "",
-      status: isPaused ? "paused" : (e.status || "closed"),
-      date: e.date || "",
-      closed_on: e.closed_on || e.closed_date || null,
-      author: e.author || e.origin || "Operator",
-      order_why: e.order_why || "",
-      would_reorder_if: e.would_reorder_if || "",
-      closing_note: e.closing_note || "",
-      stops_declared: e.stops_declared || [],
-      items: mappedItems,
-      totalCount: totalCount,
-      completedCount: completedCount,
-      progressPct: progressPct
-    };
-  });
+  STATE.plans = entities.filter(e => e.kind === "plan").map(e => ({
+    id: e._record_id || e.id || "",
+    project: e.project || "nexus",
+    title: e.title || e.task || "",
+    task: e.task || e.title || "",
+    block: e.block || "",
+    sub_block: e.sub_block || "",
+    status: e.status || "closed",
+    date: e.date || "",
+    closed_on: e.closed_on || e.closed_date || null,
+    author: e.author || e.origin || "Operator",
+    order_why: e.order_why || "",
+    closing_note: e.closing_note || "",
+    items: Array.isArray(e.items) ? e.items.map((it, idx) => ({
+      index: it.n || it.index || idx + 1,
+      text: it.text || "",
+      status: (it.outcome === "done" || it.status === "done" || it.status === "closed" || Boolean(it.struck)) ? "done" : "open",
+      destination: it.destination || it.outcome || (it.note ? it.note : (it.struck ? "✅ resolved" : "")),
+      completed_at: it.completed_at || it.date || null
+    })) : []
+  }));
 
   // Decisions (all decision and method-decision records)
   const rawDecisions = entities.filter(e => e.kind === "decision" || e.kind === "method-decision");
@@ -2896,16 +2868,16 @@ function renderCheatSheet(container) {
   `;
 }
 
+// Helper to find persistent plan associated with a compass front
 function findPlanForFront(front) {
   if (!front || !STATE.plans || !STATE.plans.length) return null;
-
   const fName = (front.name || "").toLowerCase();
   const fDesc = (front.described_in || "").toLowerCase();
   const fMoves = (front.moves_when || "").toLowerCase();
   const fWaits = (front.waits_on || "").toLowerCase();
   const fText = `${fName} ${fDesc} ${fMoves} ${fWaits}`.toLowerCase();
 
-  // 1. Exact plan ID match in text (e.g. nexus-p2 in moves_when)
+  // 1. Exact plan ID in text (e.g. nexus-p2 in moves_when)
   for (const p of STATE.plans) {
     const pId = (p.id || "").toLowerCase();
     if (pId && (fMoves.includes(pId) || fDesc.includes(pId) || fName.includes(pId) || fWaits.includes(pId))) {
@@ -2913,7 +2885,7 @@ function findPlanForFront(front) {
     }
   }
 
-  // 2. Exact sub-block match (e.g. X1.7 or X7.2)
+  // 2. Exact sub-block (e.g. X1.7 or X7.2)
   for (const p of STATE.plans) {
     const pSub = (p.sub_block || "").toLowerCase();
     if (pSub && pSub.length >= 2 && new RegExp(`\\b${pSub}\\b`, "i").test(fText)) {
@@ -2921,7 +2893,7 @@ function findPlanForFront(front) {
     }
   }
 
-  // 3. Exact board block match in described_in (e.g. board X1)
+  // 3. Exact board block in described_in (e.g. board X1)
   for (const p of STATE.plans) {
     const pBlock = (p.block || "").toLowerCase();
     if (pBlock && pBlock.length >= 2 && new RegExp(`\\bboard\\s+${pBlock}\\b`, "i").test(fDesc)) {
@@ -2929,7 +2901,7 @@ function findPlanForFront(front) {
     }
   }
 
-  // 4. Key title phrase match
+  // 4. Title phrase match
   for (const p of STATE.plans) {
     const pTitle = (p.title || "").toLowerCase().split(" - ")[0].split(" — ")[0].trim();
     if (pTitle.length >= 5 && fName.includes(pTitle)) {
@@ -2939,17 +2911,6 @@ function findPlanForFront(front) {
 
   return null;
 }
-
-window.selectCockpitFront = function(frontId) {
-  STATE.cockpitSelectedFrontId = frontId;
-  STATE.cockpitSelectedPlanId = null;
-  renderView();
-};
-
-window.selectCockpitPlan = function(planId) {
-  STATE.cockpitSelectedPlanId = planId;
-  renderView();
-};
 
 function renderCockpit(container) {
   const allProjects = Array.from(new Set(STATE.fronts.map(f => f.project).filter(Boolean))).sort();
@@ -2971,14 +2932,8 @@ function renderCockpit(container) {
   // Check if selected front is the active flight
   const isActiveFlight = Boolean(selectedFront && (selectedFront.active || (STATE.activeFront && selectedFront.id === STATE.activeFront.id)));
   
-  // Explicitly selected plan vs automatic matched plan
-  let activeDisplayPlan = null;
-  if (STATE.cockpitSelectedPlanId) {
-    activeDisplayPlan = STATE.plans.find(p => p.id === STATE.cockpitSelectedPlanId);
-  }
-  if (!activeDisplayPlan && !isActiveFlight && selectedFront) {
-    activeDisplayPlan = findPlanForFront(selectedFront);
-  }
+  // Check if there is a persistent plan for this front
+  const persistentPlan = !isActiveFlight ? findPlanForFront(selectedFront) : null;
 
   // Live plan stats
   const totalLive = STATE.livePlan.length;
@@ -2994,8 +2949,8 @@ function renderCockpit(container) {
   container.innerHTML = `
     <div class="view-header">
       <div class="view-title-group">
-        <h1><span>🧭</span> Operations Cockpit &amp; Live Flight</h1>
-        <p class="view-subtitle">Supervisión en tiempo real de la brújula de frentes (COMPASS), planes en vuelo (PLAN.md) y planes pausados/cerrados</p>
+        <h1><span>🧭</span> Operations Cockpit & Live Flight</h1>
+        <p class="view-subtitle">Supervisión en tiempo real de la brújula de frentes (COMPASS) y planes en vuelo (PLAN.md)</p>
       </div>
       <div class="header-stats-bar">
         <span class="spec-pill active-pill" onclick="selectCockpitFront('${STATE.activeFront?.id || ''}')" style="cursor: pointer;" title="Ir al Frente Activo">
@@ -3043,7 +2998,6 @@ function renderCockpit(container) {
               const isAct = Boolean(f.active);
               const isPaused = f.marker === "⏸";
               const isOrdinal = f.marker && /^\d+$/.test(f.marker);
-              const matchedP = findPlanForFront(f);
 
               let markerBadge = "";
               if (isAct) {
@@ -3064,22 +3018,24 @@ function renderCockpit(container) {
                     <div class="front-card-title-group">
                       <strong class="front-card-title">${inline(f.name)}</strong>
                       ${f.project ? `<span class="tag-pill tag-project">${esc(f.project)}</span>` : ''}
-                      ${matchedP ? `<span class="tag-pill tag-purple" style="font-size: 10.5px; padding: 1px 6px;" title="Plan disponible: ${esc(matchedP.id)}">📋 ${esc(matchedP.id)}</span>` : ''}
                     </div>
                   </div>
 
                   ${(f.moves_when || f.waits_on) ? `
-                    <div class="front-condition-row">
-                      <span class="cond-icon">${isAct ? '⚡' : isPaused ? '⏸' : '⏳'}</span>
-                      <span class="cond-text">${inline(f.moves_when || f.waits_on || "—")}</span>
+                    <div class="front-card-condition">
+                      <span class="condition-icon">${isPaused ? '⏸' : '⏳'}</span>
+                      <span class="condition-text">${expandable(f.moves_when || f.waits_on || '')}</span>
                     </div>
                   ` : ''}
 
-                  ${f.described_in ? `
-                    <div class="front-meta-footer">
-                      <span class="front-location-hint">📍 ${esc(f.described_in)}</span>
-                    </div>
-                  ` : ''}
+                  <div class="front-card-footer">
+                    <span class="front-status-indicator">
+                      ${isAct ? '<span class="status-dot pulse-dot"></span> Plan en vuelo activo' : 
+                        isPaused ? '<span class="status-dot paused-dot"></span> Frente en pausa' : 
+                        '<span class="status-dot queue-dot"></span> En espera de turno'}
+                    </span>
+                    <span class="select-arrow">${isSelected ? '●' : '→'}</span>
+                  </div>
                 </div>
               `;
             }).join("") : `
@@ -3093,55 +3049,38 @@ function renderCockpit(container) {
 
       <!-- RIGHT COLUMN: DETAILED PLAN VIEW -->
       <div class="cockpit-column-right">
-        <!-- PLAN SELECTOR / HISTORY TABS BAR -->
-        <div class="cockpit-panel" style="padding: 12px 18px; margin-bottom: 0;">
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span style="font-size: 11.5px; font-weight: 800; color: var(--ink-muted); text-transform: uppercase;">Planes:</span>
-              <button class="chip-filter ${isActiveFlight && !STATE.cockpitSelectedPlanId ? 'active' : ''}" 
-                      onclick="selectCockpitFront('${STATE.activeFront?.id || ''}')">
-                <span>▶ En Vuelo (PLAN.md)</span>
-              </button>
-              ${STATE.plans.map(p => `
-                <button class="chip-filter ${activeDisplayPlan?.id === p.id && (!isActiveFlight || STATE.cockpitSelectedPlanId) ? 'active' : ''}"
-                        onclick="selectCockpitPlan('${esc(p.id)}')">
-                  <span>${p.status === 'paused' ? '⏸' : '📜'} ${esc(p.id)}</span>
-                  <span style="opacity: 0.8; font-size: 10px;">(${p.completedCount}/${p.totalCount})</span>
-                </button>
-              `).join('')}
-            </div>
-            <span style="font-size: 11px; color: var(--ink-muted); font-family: var(--font-mono);">
-              ${activeDisplayPlan ? esc(activeDisplayPlan.id) : 'PLAN.md (live)'}
-            </span>
-          </div>
-        </div>
-
-        ${(isActiveFlight && !STATE.cockpitSelectedPlanId) ? `
-          <!-- ACTIVE LIVE FLIGHT (PLAN.md) -->
+        ${selectedFront ? `
           <div class="cockpit-panel plan-detail-panel">
-            <div class="plan-detail-hero hero-active-flight">
+            <!-- FRONT HERO HEADER -->
+            <div class="plan-detail-hero ${isActiveFlight ? 'hero-active-flight' : selectedFront.marker === '⏸' ? 'hero-paused-flight' : 'hero-queue-flight'}">
               <div class="plan-hero-top-row">
                 <div class="hero-status-badges">
-                  <span class="tag-pill tag-live-glow"><span class="pulse-dot"></span> ▶ FRENTE ACTIVO EN VUELO</span>
-                  ${selectedFront?.project ? `<span class="tag-pill tag-project-hero">${esc(selectedFront.project)}</span>` : ''}
+                  ${isActiveFlight ? `
+                    <span class="tag-pill tag-live-glow"><span class="pulse-dot"></span> ▶ FRENTE ACTIVO EN VUELO</span>
+                  ` : selectedFront.marker === "⏸" ? `
+                    <span class="tag-pill tag-paused-gold">⏸ FRENTE EN PAUSA</span>
+                  ` : `
+                    <span class="tag-pill tag-queue-purple">⏳ EN COLA ${selectedFront.marker ? `#${selectedFront.marker}` : ''}</span>
+                  `}
+                  ${selectedFront.project ? `<span class="tag-pill tag-project-hero">${esc(selectedFront.project)}</span>` : ''}
                 </div>
-                ${selectedFront?.described_in ? `
+                ${selectedFront.described_in ? `
                   <button class="btn-copy-ref" onclick="copyToClipboard('${esc(selectedFront.described_in)}', 'Ubicación copiada', event)">
                     <span>📁 Copiar ubicación</span>
                   </button>
                 ` : ''}
               </div>
 
-              <h2 class="plan-hero-title">${inline(selectedFront?.name || "Plan de Vuelo Activo")}</h2>
+              <h2 class="plan-hero-title">${inline(selectedFront.name)}</h2>
 
-              ${(selectedFront?.moves_when || selectedFront?.waits_on) ? `
+              ${(selectedFront.moves_when || selectedFront.waits_on) ? `
                 <div class="hero-condition-banner">
                   <span class="condition-banner-label">AVANZA CUANDO:</span>
                   <span class="condition-banner-val">${inline(selectedFront.moves_when || selectedFront.waits_on || "—")}</span>
                 </div>
               ` : ''}
 
-              ${selectedFront?.described_in ? `
+              ${selectedFront.described_in ? `
                 <div class="hero-location-row">
                   <span class="loc-label">Definido en:</span>
                   <code>${esc(selectedFront.described_in)}</code>
@@ -3149,200 +3088,151 @@ function renderCockpit(container) {
               ` : ''}
             </div>
 
-            <div class="live-plan-section">
-              <div class="section-title-row">
-                <div class="section-title-left">
-                  <h3><span>📋</span> Subtareas del Plan Activo (PLAN.md)</h3>
-                  ${STATE.livePlanMeta?.task ? `<span class="tag-pill tag-live">${esc(STATE.livePlanMeta.task)}</span>` : ''}
-                </div>
-                <div class="section-stats-pills">
-                  <span class="mini-stat-pill done-pill">✓ ${completedLive} resueltos</span>
-                  <span class="mini-stat-pill inflight-pill">⚡ ${pendingLive} pendientes</span>
-                </div>
-              </div>
-
-              <!-- Progress Bar -->
-              <div class="plan-progress-wrapper">
-                <div class="plan-progress-bar">
-                  <div class="plan-progress-fill" style="width: ${livePct}%;"></div>
-                </div>
-                <span class="plan-progress-pct">${livePct}%</span>
-              </div>
-
-              <!-- Order Why Card (if present) -->
-              ${STATE.livePlanMeta?.order_why ? `
-                <div class="order-why-card">
-                  <div class="order-why-header">
-                    <span class="order-why-icon">🧠</span>
-                    <strong>Razón de la secuencia (Order Why)</strong>
-                    <span class="order-why-badge">PH-3 / AX-11</span>
+            <!-- PLAN BODY / CONTENT -->
+            ${isActiveFlight ? `
+              <!-- ACTIVE LIVE FLIGHT (PLAN.md) -->
+              <div class="live-plan-section">
+                <div class="section-title-row">
+                  <div class="section-title-left">
+                    <h3><span>📋</span> Plan de Vuelo Activo (PLAN.md)</h3>
+                    ${STATE.livePlanMeta?.task ? `<span class="tag-pill tag-live">${esc(STATE.livePlanMeta.task)}</span>` : ''}
                   </div>
-                  <div class="order-why-body">
-                    ${inline(STATE.livePlanMeta.order_why)}
+                  <div class="section-stats-pills">
+                    <span class="mini-stat-pill done-pill">✓ ${completedLive} resueltos</span>
+                    <span class="mini-stat-pill inflight-pill">⚡ ${pendingLive} pendientes</span>
                   </div>
                 </div>
-              ` : ''}
 
-              <!-- Plan Items List -->
-              <div class="plan-items-container">
-                ${STATE.livePlan.length ? STATE.livePlan.map(item => `
-                  <div class="plan-item-row ${item.struck ? 'completed' : 'in-progress'}">
-                    <div class="plan-idx-circle ${item.struck ? 'idx-done' : 'idx-active'}">
-                      ${item.struck ? '✓' : item.index}
+                <!-- Progress Bar -->
+                <div class="plan-progress-wrapper">
+                  <div class="plan-progress-bar">
+                    <div class="plan-progress-fill" style="width: ${livePct}%;"></div>
+                  </div>
+                  <span class="plan-progress-pct">${livePct}%</span>
+                </div>
+
+                <!-- Order Why Card (if present) -->
+                ${STATE.livePlanMeta?.order_why ? `
+                  <div class="order-why-card">
+                    <div class="order-why-header">
+                      <span class="order-why-icon">🧠</span>
+                      <strong>Razón de la secuencia (Order Why)</strong>
+                      <span class="order-why-badge">PH-3 / AX-11</span>
                     </div>
-                    <div class="plan-text-content">
-                      ${expandable(item.text, "plan-text")}
+                    <div class="order-why-body">
+                      ${inline(STATE.livePlanMeta.order_why)}
                     </div>
-                    ${item.destination ? `
-                      <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'dest-discarded' : 'dest-resolved'}">
-                        ${esc(item.destination)}
-                      </span>
-                    ` : `<span class="dest-tag dest-inflight"><span class="dot-spin"></span> en curso</span>`}
                   </div>
-                `).join("") : `
-                  <div class="empty-state">
-                    <div class="empty-icon">⚡</div>
-                    <h3>Plan despejado</h3>
-                    <p>PLAN.md está listo para recibir el siguiente sub-bloque de trabajo.</p>
-                  </div>
-                `}
-              </div>
-
-              <div class="live-sync-notice">
-                <span>⚡ Sincronización en tiempo real activa (<code>/api/stamp</code> cada 2.0s). Edita <code>PLAN.md</code> o invoca la skill <code>current-plan</code> para actualizar instantáneamente.</span>
-              </div>
-            </div>
-          </div>
-        ` : activeDisplayPlan ? `
-          <!-- PERSISTENT / PAUSED / HISTORICAL PLAN -->
-          <div class="cockpit-panel plan-detail-panel">
-            <div class="plan-detail-hero ${activeDisplayPlan.status === 'paused' ? 'hero-paused-flight' : 'hero-queue-flight'}">
-              <div class="plan-hero-top-row">
-                <div class="hero-status-badges">
-                  <span class="tag-pill ${activeDisplayPlan.status === 'paused' ? 'tag-paused-gold' : 'tag-done'}">
-                    ${activeDisplayPlan.status === 'paused' ? '⏸ PLAN EN PAUSA' : '🔒 PLAN REGISTRADO / CERRADO'}
-                  </span>
-                  <span class="tag-pill tag-purple">${esc(activeDisplayPlan.id)}</span>
-                  ${activeDisplayPlan.project ? `<span class="tag-pill tag-project-hero">${esc(activeDisplayPlan.project)}</span>` : ''}
-                </div>
-                ${activeDisplayPlan.sub_block ? `
-                  <span class="tag-pill tag-subtle">Bloque: ${esc(activeDisplayPlan.sub_block)}</span>
                 ` : ''}
-              </div>
 
-              <h2 class="plan-hero-title">${inline(activeDisplayPlan.title || activeDisplayPlan.task || activeDisplayPlan.id)}</h2>
-
-              <div class="hero-location-row" style="margin-top: 8px;">
-                <span class="loc-label">Archivo de origen:</span>
-                <code>data/plans/${esc(activeDisplayPlan.id)}.json</code>
-              </div>
-            </div>
-
-            <div class="persistent-plan-section">
-              <div class="section-title-row">
-                <div class="section-title-left">
-                  <h3><span>📜</span> Subtareas del Plan (${esc(activeDisplayPlan.id)})</h3>
-                  <span class="tag-pill ${activeDisplayPlan.status === 'paused' ? 'tag-paused-gold' : 'tag-done'}">
-                    ${esc(activeDisplayPlan.status.toUpperCase())}
-                  </span>
-                </div>
-                <div class="section-stats-pills">
-                  <span class="mini-stat-pill done-pill">✓ ${activeDisplayPlan.completedCount} de ${activeDisplayPlan.totalCount} resueltos</span>
-                  ${activeDisplayPlan.date ? `<span class="mini-stat-pill">📅 ${esc(activeDisplayPlan.date)}</span>` : ''}
-                  ${activeDisplayPlan.closed_on ? `<span class="mini-stat-pill done-pill">🔒 ${esc(activeDisplayPlan.closed_on)}</span>` : ''}
-                </div>
-              </div>
-
-              <!-- Progress Bar -->
-              <div class="plan-progress-wrapper">
-                <div class="plan-progress-bar">
-                  <div class="plan-progress-fill" style="width: ${activeDisplayPlan.progressPct}%;"></div>
-                </div>
-                <span class="plan-progress-pct">${activeDisplayPlan.progressPct}%</span>
-              </div>
-
-              <!-- Order Why Card (if present) -->
-              ${activeDisplayPlan.order_why ? `
-                <div class="order-why-card">
-                  <div class="order-why-header">
-                    <span class="order-why-icon">🧠</span>
-                    <strong>Razón de la secuencia (Order Why)</strong>
-                  </div>
-                  <div class="order-why-body">
-                    ${inline(activeDisplayPlan.order_why)}
-                  </div>
-                </div>
-              ` : ''}
-
-              <!-- Closing / Pause Note Card (if present) -->
-              ${activeDisplayPlan.closing_note ? `
-                <div class="order-why-card" style="border-left-color: ${activeDisplayPlan.status === 'paused' ? 'var(--gold)' : 'var(--vine)'}; background: ${activeDisplayPlan.status === 'paused' ? 'var(--gold-bg)' : 'var(--vine-bg)'};">
-                  <div class="order-why-header">
-                    <span class="order-why-icon">${activeDisplayPlan.status === 'paused' ? '⏸' : '🔒'}</span>
-                    <strong>${activeDisplayPlan.status === 'paused' ? 'Nota de Pausa / Estado' : 'Nota de Cierre'}</strong>
-                  </div>
-                  <div class="order-why-body">
-                    ${inline(activeDisplayPlan.closing_note)}
-                  </div>
-                </div>
-              ` : ''}
-
-              <!-- Plan Items List -->
-              <div class="plan-items-container">
-                ${activeDisplayPlan.items.length ? activeDisplayPlan.items.map(item => `
-                  <div class="plan-item-row ${item.isCompleted ? 'completed' : ''}">
-                    <div class="plan-idx-circle ${item.isCompleted ? 'idx-done' : 'idx-active'}">
-                      ${item.isCompleted ? '✓' : item.index}
+                <!-- Plan Items List -->
+                <div class="plan-items-container">
+                  ${STATE.livePlan.length ? STATE.livePlan.map(item => `
+                    <div class="plan-item-row ${item.struck ? 'completed' : 'in-progress'}">
+                      <div class="plan-idx-circle ${item.struck ? 'idx-done' : 'idx-active'}">
+                        ${item.struck ? '✓' : item.index}
+                      </div>
+                      <div class="plan-text-content">
+                        ${expandable(item.text, "plan-text")}
+                      </div>
+                      ${item.destination ? `
+                        <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'dest-discarded' : 'dest-resolved'}">
+                          ${esc(item.destination)}
+                        </span>
+                      ` : `<span class="dest-tag dest-inflight"><span class="dot-spin"></span> en curso</span>`}
                     </div>
-                    <div class="plan-text-content">
-                      ${expandable(item.text, "plan-text")}
-                      ${item.note ? `<div style="font-size: 11px; color: var(--ink-muted); margin-top: 3px; font-family: var(--font-mono);">↳ ${esc(item.note)}</div>` : ''}
+                  `).join("") : `
+                    <div class="empty-state">
+                      <div class="empty-icon">⚡</div>
+                      <h3>Plan despejado</h3>
+                      <p>PLAN.md está listo para recibir el siguiente sub-bloque de trabajo.</p>
                     </div>
-                    ${item.destination ? `
-                      <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'dest-discarded' : item.isCompleted ? 'dest-resolved' : 'dest-inflight'}">
-                        ${esc(item.destination)}
-                      </span>
-                    ` : `<span class="dest-tag dest-inflight">en curso</span>`}
+                  `}
+                </div>
+
+                <div class="live-sync-notice">
+                  <span>⚡ Sincronización en tiempo real activa (<code>/api/stamp</code> cada 2.0s). Edita <code>PLAN.md</code> o invoca la skill <code>current-plan</code> para actualizar instantáneamente.</span>
+                </div>
+              </div>
+            ` : persistentPlan ? `
+              <!-- PERSISTENT HISTORICAL / PAUSED PLAN -->
+              <div class="persistent-plan-section">
+                <div class="section-title-row">
+                  <div class="section-title-left">
+                    <h3><span>📜</span> Plan Registrado (${esc(persistentPlan.id)})</h3>
+                    <span class="tag-pill ${persistentPlan.status === 'active' ? 'tag-live' : persistentPlan.status === 'paused' ? 'tag-paused-gold' : 'tag-done'}">
+                      ${esc(persistentPlan.status.toUpperCase())}
+                    </span>
                   </div>
-                `).join("") : `<div class="empty-state"><p>No hay subtareas registradas en este plan.</p></div>`}
+                  <div class="section-stats-pills">
+                    ${persistentPlan.date ? `<span class="mini-stat-pill">📅 ${esc(persistentPlan.date)}</span>` : ''}
+                    ${persistentPlan.closed_on ? `<span class="mini-stat-pill done-pill">🔒 Cerrado: ${esc(persistentPlan.closed_on)}</span>` : ''}
+                  </div>
+                </div>
+
+                ${persistentPlan.order_why ? `
+                  <div class="order-why-card">
+                    <div class="order-why-header">
+                      <span class="order-why-icon">🧠</span>
+                      <strong>Razón de la secuencia (Order Why)</strong>
+                    </div>
+                    <div class="order-why-body">
+                      ${inline(persistentPlan.order_why)}
+                    </div>
+                  </div>
+                ` : ''}
+
+                <div class="plan-items-container">
+                  ${persistentPlan.items.length ? persistentPlan.items.map(item => `
+                    <div class="plan-item-row ${item.status === 'done' ? 'completed' : ''}">
+                      <div class="plan-idx-circle ${item.status === 'done' ? 'idx-done' : 'idx-active'}">
+                        ${item.status === 'done' ? '✓' : item.index}
+                      </div>
+                      <div class="plan-text-content">
+                        ${expandable(item.text, "plan-text")}
+                      </div>
+                      ${item.destination ? `
+                        <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'dest-discarded' : 'dest-resolved'}">
+                          ${esc(item.destination)}
+                        </span>
+                      ` : `<span class="dest-tag dest-inflight">en curso</span>`}
+                    </div>
+                  `).join("") : `<div class="empty-state"><p>No hay subtareas registradas en este plan.</p></div>`}
+                </div>
               </div>
-            </div>
-          </div>
-        ` : (selectedFront && selectedFront.marker === "⏸") ? `
-          <!-- PAUSED FRONT EXPLANATION (IF NO PLAN ATTACHED) -->
-          <div class="cockpit-panel plan-detail-panel">
-            <div class="front-state-card paused-state-card">
-              <div class="state-card-icon">⏸</div>
-              <h3>Frente Congelado / En Pausa</h3>
-              <p class="state-card-desc">
-                Este frente está pausado intencionalmente para no competir por foco con el frente activo único (▶).
-              </p>
-              <div class="state-detail-box">
-                <strong>Motivo de pausa / Reanudación:</strong>
-                <p>${inline(selectedFront.moves_when || "Requiere confirmación antes de reanudar.")}</p>
+            ` : selectedFront.marker === "⏸" ? `
+              <!-- PAUSED FRONT EXPLANATION -->
+              <div class="front-state-card paused-state-card">
+                <div class="state-card-icon">⏸</div>
+                <h3>Frente Congelado / En Pausa</h3>
+                <p class="state-card-desc">
+                  Este frente está pausado intencionalmente para no competir por foco con el frente activo único (▶).
+                </p>
+                <div class="state-detail-box">
+                  <strong>Motivo de pausa / Reanudación:</strong>
+                  <p>${inline(selectedFront.moves_when || "Requiere confirmación antes de reanudar.")}</p>
+                </div>
+                <div class="state-guidance-box">
+                  <span>💡 Para reanudar este frente, selecciona el frente en <code>COMPASS.md</code> y abre su plan con la skill <code>current-plan</code>.</span>
+                </div>
               </div>
-              <div class="state-guidance-box">
-                <span>💡 Para reanudar este frente, selecciona el frente en <code>COMPASS.md</code> y abre su plan con la skill <code>current-plan</code>.</span>
+            ` : `
+              <!-- QUEUED FRONT WAITING -->
+              <div class="front-state-card queued-state-card">
+                <div class="state-card-icon">🎯</div>
+                <h3>Frente en Cola de Espera</h3>
+                <p class="state-card-desc">
+                  Este frente está programado en la brújula COMPASS. No tiene un plan activo instanciado todavía.
+                </p>
+                <div class="state-detail-box">
+                  <strong>Condición de avance:</strong>
+                  <p>${inline(selectedFront.moves_when || selectedFront.waits_on || "Secuenciado en el orden de trabajo.")}</p>
+                </div>
+                <div class="state-guidance-box">
+                  <span>💡 Cuando este frente pase a ser el activo (▶), se generará su plan de vuelo mediante la skill <code>current-plan</code>.</span>
+                </div>
               </div>
-            </div>
-          </div>
-        ` : selectedFront ? `
-          <!-- QUEUED FRONT WAITING -->
-          <div class="cockpit-panel plan-detail-panel">
-            <div class="front-state-card queued-state-card">
-              <div class="state-card-icon">🎯</div>
-              <h3>Frente en Cola de Espera</h3>
-              <p class="state-card-desc">
-                Este frente está programado en la brújula COMPASS. No tiene un plan activo instanciado todavía.
-              </p>
-              <div class="state-detail-box">
-                <strong>Condición de avance:</strong>
-                <p>${inline(selectedFront.moves_when || selectedFront.waits_on || "Secuenciado en el orden de trabajo.")}</p>
-              </div>
-              <div class="state-guidance-box">
-                <span>💡 Cuando este frente pase a ser el activo (▶), se generará su plan de vuelo mediante la skill <code>current-plan</code>.</span>
-              </div>
-            </div>
+            `}
           </div>
         ` : `
           <div class="empty-state">
@@ -3354,7 +3244,10 @@ function renderCockpit(container) {
       </div>
     </div>
   `;
+  // Auto-scroll plan container to the last completed item
+  autoScrollPlanContainer(true);
 }
+
 function renderDecisions(container) {
   const allProjects = [...new Set(STATE.decisions.map(d => d.project).filter(Boolean))].sort();
   const frozenCount = STATE.decisions.filter(d => d.frozen).length;
