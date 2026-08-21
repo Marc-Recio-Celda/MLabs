@@ -122,6 +122,18 @@ department together** — company, instance, project — not the entry that chan
 arithmetic: a set saturates one entry at a time, and no single addition ever looks like the one that
 broke it. **The only moment the interaction is visible is the moment something changes.**
 
+**First, enumerate the corpus — as a command's output, never as a recollection.** ⚠️ **Two
+consecutive firings declared themselves *partial* for want of this**, and *"~92 axioms across six
+departments"* was a number no command could reproduce: the prescribed counting pattern returned
+**0 on six of the ten project files**, which predate the table format and carry `## AX-n` headings.
+**A review whose scope is decided by whoever runs it has no scope**, and a count that is silently
+short is worse than one that errors.
+
+The instance's metrics script now reports every tier, **both formats, and a third answer** — it
+labels a file it read and did not recognise as `unrecognised` with its size, rather than inventing a
+diagnosis of *pre-table*. Read that output, and **name in the report any department it could not
+count.** A firing that cannot say how many axioms it read is partial and must say so.
+
 Of every axiom, including the untouched ones:
 
 | | |

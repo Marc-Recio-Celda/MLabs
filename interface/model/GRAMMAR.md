@@ -18,6 +18,19 @@ instance, and it is why every table here is keyed by its header row.
 that drops what it does not understand turns a lossless record into a lossy one without saying so —
 which is the one thing this whole system exists to prevent.
 
+> ⚠️ **And this parser broke that rule in four places for two days.** The board's id grammar was
+> spelled out four separate times, every copy allowed only digits after the dot, and a sub-block
+> with a letter suffix therefore matched nothing and vanished — with `Nothing unplaceable.` printed
+> underneath. One live row was being lost from a real project board when it was measured on
+> 2026-08-20. **Fixed by putting the grammar in one place and giving each site a report.**
+>
+> ⚠️ **Reporting was the easy half.** The first attempt reported *nineteen* rows from neighbouring
+> tables and one correct heading in a real file — and **a check that cries wolf gets deleted**, which
+> would have left this rule with no implementation at all. So the parser now distinguishes an entry
+> that **tried to be an id and failed** (letters then a digit; a heading with its separator) from
+> text that was never an id. **The line between *unplaceable* and *not an entry* is part of the rule,
+> not an implementation detail** — without it, obeying rule 2 makes the output unreadable.
+
 ## Inheritance — a fact is written once
 
 | Entity | Gets its project from |

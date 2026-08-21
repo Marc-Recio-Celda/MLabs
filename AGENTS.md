@@ -158,7 +158,7 @@ is lost* — a rule at round close, not an agent, because its context is the who
 | **`git clean` is never run at this root.** The untracked here is everything the operator owns | none — prevention only. Deletion has no cleanup pass, which is exactly why this is a rule and not a tool (AX-4) |
 | **The axioms are append-only.** Entries are never rewritten; later entries supersede | `git diff <last-tag>..HEAD -- AXIOMS.md \| grep -c '^-[^-]'` returns **0** — nothing removed, nothing altered, only appended |
 | **Every structural change carries an axiom or a logged decision.** A change to the hierarchy, the roles or these invariants with nothing behind it is reverted | `git diff <last-tag>..HEAD --stat` against the same range's `AXIOMS.md` additions, on release cut |
-| **Every queue and park entry carries `project:`** — a name or `cross`. The field the filter depends on is the field nothing else can infer | `grep -c '^- ' <file>` against `grep -c 'project:' <file>` on each central queue: the two must match, and a mismatch names the unrouted entries |
+| **Every queue and park entry carries `project:`** — a name or `cross`. The field the filter depends on is the field nothing else can infer | `interface/model/parse.py --adapter <the instance's>` reports **`with project: n/n`** per kind, and **`Nothing unplaceable.`** ⚠️ **The check here was three greps until 2026-08-21 and it could not pass on any of the three files it governed** — `^- ` is bullet-per-entry and none of them is: two use `###` headings and the park declares its project **by section**. Measured, it read `19 vs 5 · 0 vs 9 · 3 vs 12` while all three files were in fact fully routed, so it fired a false positive at every release cut and named no real gap. **The parser already implements the inheritance rule `GRAMMAR.md` states** — own header, else section — which is why it is the check and a grep cannot be. On its first run it found the one genuine defect the greps never could: an entry matching neither shape, invisible to the queue |
 | **Every axiom sits in exactly one tier** (company · instance · project) | at each cut, a company axiom that names a toolchain, a project or a person belongs one tier down; an instance rule copied into more than one project file is a duplicate with no winner (AX-20) |
 | **Every axiom names the clause it serves, and every clause has at least one axiom** | the coverage table at the foot of `AXIOMS.md`, regenerated at each cut; a clause at zero is a stated priority nothing implements |
 | **Every event-triggered skill states its dismissal criterion** | grep for `## Dismissal` in `skills/*/SKILL.md` — the *pattern and tally contract*; the chosen thresholds live in the instance's hiring record, out of that skill's own sight |
@@ -168,6 +168,20 @@ is lost* — a rule at round close, not an agent, because its context is the who
 root legitimately holds the instance and every project, which are none of this repo's business.
 A check that walks the tree (`find`, a bare `grep -r`) is wrong by construction here, and the
 founding round shipped one before catching it.
+
+⚠️ **AND EVERY CHECK STATES THE ROOT IT RUNS FROM.** This is the sibling of *a pattern that cannot
+match returns clean*, and it is not a smaller problem: **the same correct check, run from the wrong
+checkout or the wrong root, also returns clean.** It happened twice in one session — the allowlist
+check run from a checkout where `interface/` does not exist, and the denylist gate run from the
+operations centre, where every hit is legitimate. **Both looked like passes.** `git ls-files` is
+relative to `cwd`, so the rule above does not prevent this; it is what makes it possible.
+
+**A check that cannot state its root has not been run.** The three implementations here already obey
+it and are the pattern to copy: `tools/gate.sh` does `cd "$(git rev-parse --show-toplevel)"` and
+**exits 2 — could not run, which is not a pass** — if that fails; the denylist's own command refuses
+unless `AXIOMS.md` and `METHOD.md` are both present; `tools/denylist-coverage.sh` takes its roots as
+arguments and **refuses to guess one**. ⚠️ **Exit 0, exit 1 and exit 2 are three different answers**,
+and collapsing the third into the first is how a check becomes decoration.
 
 ⚠️ **This file violates AX-30 today and the debt is declared rather than hidden.** AX-30 says an
 agent contract is generated from a method half and a repository half, with a check that fails on

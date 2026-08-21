@@ -28,6 +28,26 @@ from pathlib import Path
 KINDS = ("compass", "plan", "queue", "park", "record", "standing", "skills", "records")
 
 
+# The board's id grammar, in ONE place. ⚠️ It was spelled out FOUR times and all four
+# copies said `(\.[0-9]+)?`, so a sub-block with a letter suffix matched nothing and was
+# DROPPED WITH NO REPORT — in the parser whose own GRAMMAR.md rule 2 says nothing may be
+# skipped. Reported 2026-08-19; a live instance of it (`B3.m`) measured 2026-08-20.
+BLOCK_ID    = re.compile(r"^[A-Z]{1,3}[0-9]+$")
+SUBBLOCK_ID = re.compile(r"^[A-Z]{1,3}[0-9]+(\.[0-9A-Za-z]+)?$")
+# The first cell's LEADING token, anchored. Anchored because the previous form searched
+# anywhere in the cell and would take a capital from the middle of a sentence.
+HEAD_TOKEN  = re.compile(r"[`*\s]*([A-Za-z0-9._-]+)")
+# ⚠️ And the line between *unplaceable* and *not an id at all*: a token TRYING to be an id
+# — letters then a digit. Without it the first version of this fix reported 19 rows from
+# neighbouring tables (`| Edge | Here | There |`), and a check that cries wolf gets deleted.
+ID_LIKE     = re.compile(r"^[A-Za-z]{1,3}[0-9]")
+# ⚠️ And the line between a heading that FAILED to be a block and one that never tried:
+# the separator. `### `B3` · Title` is a block heading with a broken id and is reported;
+# `### B3's Metrics Are Three, Not One` is prose that merely starts with an id-shaped word
+# and is not. Without this the fix reported a real, correct heading in a real project file.
+HEADING_SHAPE = re.compile(r"^###\s+[`*]*([A-Za-z0-9._-]+)[`*]*\s*[·–-]")
+
+
 class Problem(dict):
     def __init__(self, path, line, why, text=""):
         super().__init__(path=str(path), line=line, why=why, text=text.strip()[:120])
@@ -353,6 +373,7 @@ def parse_plan(path, text):
 def parse_standing(path, text, project_pattern=None):
     """A project's state. Reads its header fields, definition, phase, and ramified blocks."""
     lines = text.splitlines()
+    probs = []   # nothing is dropped — GRAMMAR.md rule 2, which this function broke in four places
     first = next((i for i, l in enumerate(lines) if l.startswith("# ")), -1)
     fields = kv_block(lines, first + 1)
     title = lines[first][2:].strip() if first >= 0 else path.stem
@@ -423,7 +444,7 @@ def parse_standing(path, text, project_pattern=None):
     current_block = None
     in_board_section = False
 
-    for line in lines:
+    for i, line in enumerate(lines):
         # Detect start of board or progress sections
         if re.search(r"^##\s+\d*\.?\s*(The board|Progress by Block|Roadmap|Blocks)\b", line, re.I):
             in_board_section = True
@@ -443,7 +464,7 @@ def parse_standing(path, text, project_pattern=None):
         if m_head:
             b_id = m_head.group(1).strip()
             # Only valid block ids like A1, B3, S1, TR1, P2, etc.
-            if re.match(r"^[A-Z]{1,3}[0-9]+$", b_id):
+            if BLOCK_ID.match(b_id):
                 b_title = m_head.group(2).strip()
                 current_block = {
                     "id": b_id,
@@ -454,15 +475,30 @@ def parse_standing(path, text, project_pattern=None):
                 }
                 board_blocks.append(current_block)
                 continue
+            elif ID_LIKE.match(b_id):
+                probs.append(Problem(path, i + 1, f"a board block id the grammar cannot place: {b_id!r}", line))
+                current_block = None   # and DETACH: never let this heading's rows join the block above
+                continue
+
+        # ⚠️ A `###` heading the pattern above could not read AT ALL still ends the previous
+        # block. Without this, its rows kept appending to the block above it — which is worse
+        # than dropping them: a row that belongs nowhere was being shown under a real id, and
+        # nothing said so. Reported only when the heading is TRYING to be an id.
+        if line.startswith("### "):
+            tried = HEADING_SHAPE.match(line)
+            if tried and ID_LIKE.match(tried.group(1)):
+                probs.append(Problem(path, i + 1, f"a board heading the grammar cannot read: {tried.group(1)!r}", line))
+            current_block = None
+            continue
 
         if current_block and line.startswith("|") and not line.startswith("|---") and not line.startswith("| #") and not line.startswith("| |") and not line.startswith("| Kind"):
             parts = [p.strip() for p in line.split("|")[1:-1]]
             if len(parts) >= 3 and not parts[0].startswith("---"):
-                sub_id_m = re.search(r"([A-Z0-9\._-]+)", parts[0])
+                sub_id_m = HEAD_TOKEN.match(parts[0])
                 if sub_id_m:
                     sub_id = sub_id_m.group(1)
                     # Validate subblock pattern e.g. A1.1, B8.2, S1.3, TR1.2
-                    if re.match(r"^[A-Z]{1,3}[0-9]+(\.[0-9]+)?$", sub_id):
+                    if SUBBLOCK_ID.match(sub_id):
                         kind = parts[1] if len(parts) > 1 else ""
                         what = parts[2] if len(parts) > 2 else ""
                         status_str = parts[-1] if len(parts) >= 4 else ""
@@ -473,11 +509,13 @@ def parse_standing(path, text, project_pattern=None):
                             "desc": what.replace("**", "").replace("`", ""),
                             "status": "completed" if "✅" in status_str else ("active" if any(s in status_str for s in ["🔨", "▶", "🔴", "open"]) else "pending")
                         })
+                    elif ID_LIKE.match(sub_id):
+                        probs.append(Problem(path, i + 1, f"a sub-block id the grammar cannot place: {sub_id!r}", line))
 
     # Format B: "Progress by Block" Table
     if not board_blocks:
         in_prog = False
-        for line in lines:
+        for i, line in enumerate(lines):
             if "Progress by Block" in line:
                 in_prog = True
                 continue
@@ -486,8 +524,8 @@ def parse_standing(path, text, project_pattern=None):
             elif in_prog and line.startswith("|") and not line.startswith("|---") and not line.startswith("| Block"):
                 parts = [p.strip() for p in line.split("|")[1:-1]]
                 if len(parts) >= 3 and not parts[0].startswith("---"):
-                    b_id_m = re.search(r"\b([A-Z0-9\._-]+)\b", parts[0])
-                    if b_id_m and re.match(r"^[A-Z]{1,3}[0-9]+$", b_id_m.group(1)):
+                    b_id_m = HEAD_TOKEN.match(parts[0])
+                    if b_id_m and BLOCK_ID.match(b_id_m.group(1)):
                         b_id = b_id_m.group(1)
                         b_name = parts[0].replace(b_id, "").replace("**", "").replace("`", "").strip()
                         status_raw = parts[1]
@@ -499,13 +537,15 @@ def parse_standing(path, text, project_pattern=None):
                             "summary": what,
                             "subblocks": []
                         })
+                    elif ID_LIKE.match(b_id_m.group(1)):
+                        probs.append(Problem(path, i + 1, f"a board block id the grammar cannot place: {b_id_m.group(1)!r}", line))
 
         # Match subblocks sections like "## 6. B8 — Sub-Blocks"
         for b in board_blocks:
             b_id_str = b["id"]
             sub_sec_name = b_id_str + " — Sub-Blocks"
             in_sub = False
-            for line in lines:
+            for i, line in enumerate(lines):
                 if sub_sec_name in line or (b_id_str in line and "Sub-Blocks" in line):
                     in_sub = True
                     continue
@@ -514,10 +554,10 @@ def parse_standing(path, text, project_pattern=None):
                 elif in_sub and line.startswith("|") and not line.startswith("|---") and not line.startswith("| #") and not line.startswith("| Sub-block"):
                     parts = [p.strip() for p in line.split("|")[1:-1]]
                     if len(parts) >= 3 and not parts[0].startswith("---"):
-                        sub_id_m = re.search(r"([A-Z0-9\._-]+)", parts[0])
+                        sub_id_m = HEAD_TOKEN.match(parts[0])
                         if sub_id_m:
                             sub_id = sub_id_m.group(1)
-                            if re.match(r"^[A-Z]{1,3}[0-9]+(\.[0-9]+)?$", sub_id):
+                            if SUBBLOCK_ID.match(sub_id):
                                 sub_title = parts[1] if len(parts) > 1 else ""
                                 sub_closes = parts[2] if len(parts) > 2 else ""
                                 sub_status = parts[3] if len(parts) > 3 else (parts[-1] if len(parts) >= 3 else "")
@@ -527,6 +567,8 @@ def parse_standing(path, text, project_pattern=None):
                                     "desc": sub_closes.replace("**", "").replace("`", ""),
                                     "status": "completed" if "✅" in sub_status else ("active" if any(s in sub_status for s in ["🔨", "▶"]) else "pending")
                                 })
+                            elif ID_LIKE.match(sub_id):
+                                probs.append(Problem(path, i + 1, f"a sub-block id the grammar cannot place: {sub_id!r}", line))
 
     # 4. Extract Code Repo and Remote URL from metadata tables
     code_repo = ""
@@ -740,7 +782,8 @@ def parse_standing(path, text, project_pattern=None):
         **fields
     }
 
-    probs = []
+    # ⚠️ `probs` is initialised at the TOP of this function since 2026-08-20 — the board
+    # extraction reports into it, and a reset here would discard exactly those findings.
     for req in ("last_updated", "next_action"):
         if req not in fields:
             probs.append(Problem(path, 1, f"a project state with no `{req.replace('_',' ')}` field"))
