@@ -169,7 +169,7 @@ State these before rewriting anything, then run them:
 | **5b** | **Every block id present before the rewrite is present after it, or named in the fold table of the new `Dn`.** Run the `blocks()` diff above; a non-empty result that the decision does not explain is a failed redefinition, not a stylistic choice |
 | 6 | The project's own `architecture.md` still holds — or an axiom was retired **explicitly**, with the saturation review that entails |
 
-## Dismissal
+## Retirement
 
 ⚠️ **Its own criterion, fixed before the first invocation** (`AX-11`), and it is unusual because the
 success condition is the skill being needed *less*:

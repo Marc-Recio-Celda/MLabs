@@ -91,6 +91,16 @@ at the close"* is the same failure with a delay.
 1. Every line struck, every residue routed to a destination.
 2. **Read each destination back from disk.** *Written* is verified, never remembered (AX-9);
    the interval between "I wrote that" and "that is on disk" is where work is lost.
+
+1b. **Update the `state.md` of every project the task touched** — before reading anything back, and
+   **by rule rather than by habit.** ⚠️ **Inserted 2026-08-21 after the same finding recurred three
+   times** (`CA-010` → `CA-019` → `CA-049`), the third *during the round that diagnosed the second*,
+   hours after someone wrote *"until a close touches it by rule, this finding will recur."* **Three
+   data points is not a habit problem; it is a missing step**, and neither these six nor the
+   binding's §6 mentioned it. Numbered `1b` rather than renumbering, so every reference to steps
+   2–6 elsewhere still resolves. **The test is the file's own: would this still be true if work
+   stopped today?** If the answer changed during the task and the file did not, the close is not
+   done.
 3. **Then the audit fires — but only if a structural file changed** (`skills/company-auditor/`
    holds the list, and the list of what is *not* structural is the load-bearing half). Most
    closes do not qualify and should not: the close writes the live set and the logs by
@@ -245,8 +255,6 @@ first view is the live task list and not a nice-to-have.
 
 ### What a project cartridge still holds
 
-| File | Kind | Holds |
-|---|---|---|
 **Four files, and two more only when they have content.**
 
 | File | Kind | Holds |
@@ -321,8 +329,34 @@ be re-argued every time it came up.
 | **Role** | when invoked, **never automatically** | the same as a skill | **yes** — a log and a criterion that can fire it |
 
 **A role is a skill plus two things: a log and a dismissal criterion** (`AX-11`). That is the whole
-difference and it is already visible on disk — `logs/` holds one file per role and none for any
-other skill. **Accountability, not capability, is what makes something a role.**
+difference. **Accountability, not capability, is what makes something a role.**
+
+⚠️ **This said *"and it is already visible on disk"* until 2026-08-21, and it was not.** Measured:
+`## Dismissal` appears in **6 of 19** skills, two of which are not roles (`current-plan`,
+`redefine-project`) and one of which is a dispatcher (`audit`); `logs/` holds **two** auditor files,
+not the three its own README claims. **Two real asymmetries, both live:** a role with a criterion and
+no log, and a role with a log and no criterion. **A definition that claims to be observable is a
+check**, and this one was never run — which is the class this method has now found ten times.
+
+⚠️ **And the reason it could not be run was one word doing three jobs.** `## Dismissal` meant a
+role's firing criterion, a skill's retirement condition, and — in `audit`, which said so plainly —
+a section written to satisfy the grep that counted the heading. **Two words now, and the difference
+is the log:**
+
+| Heading | Ends | Needs a log | Needs a hiring decision |
+|---|---|---|---|
+| `## Dismissal` | a **role** | yes — **created at hiring, empty, with its contract** | yes — the threshold is fixed before the first firing (`AX-11`) |
+| `## Retirement` | a **skill** | no | no — it is retired when the repository can do without it |
+
+**Checked by `MLabs:tools/roles-check.sh`**, which compares the two sets and reports each direction
+separately: *a criterion with no log* and *a log with no criterion* are different problems and the
+fix is different. ⚠️ **The log is created by the act of hiring, not by the first
+firing** *(the operator, 2026-08-21)*. **An empty log is a state; a missing file is a guess** — a
+file that is not there is indistinguishable from one deleted, mis-pathed, or that a brief never
+reached, and this system has already produced four false findings by reading an absence as a fact.
+**And an empty log that keeps ageing is evidence**: a role hired and never fired is a standing cost
+with no return (`AX-32`). ⚠️ **It only works because the words were separated first** — attach a third
+meaning to either heading and it stops measuring anything.
 
 ⚠️ **Nothing auto-fires, and that is a measured decision rather than an omission.** The automatic
 audit trigger was retired after five firings in one session cost more context than the work they

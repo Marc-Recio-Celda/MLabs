@@ -204,11 +204,13 @@ Before dispatching, state what you expect: *this round touched N files and I exp
 dimensions X and Y.* A report that lands entirely outside the prediction is worth more than one that
 confirms it — and a report that confirms every time is what the dismissal criterion exists to detect.
 
-## Dismissal
+## Retirement
 
-⚠️ **This skill has one because its `description:` names an event**, and `MLabs:AGENTS.md` §5
-requires every event-triggered skill to state its criterion. It was one of twelve of fourteen skills
-without one.
+⚠️ **Renamed from `## Dismissal` on 2026-08-21, and the rename is the finding.** This section was
+written to satisfy a §5 invariant that counted the *heading* across every skill — so one word carried
+three different meanings and the check could not tell them apart. **A dismissal ends a role and needs
+a log (`AX-11`); a retirement ends a skill and needs neither.** This is the second: `audit`
+dispatches, it is not hired, and nothing about it belongs in an employee log.
 
 **Retired if, after ten dispatches, the operator is picking the role by hand anyway.** That would
 mean the routing table is a lookup a person performs faster than a skill, and the shared contract

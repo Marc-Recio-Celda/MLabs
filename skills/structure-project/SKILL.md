@@ -1,6 +1,6 @@
 ---
 name: structure-project
-description: Creates a project's cartridge under the method — definition, project-scoped axioms, decision log, state, sequenced plan, agent contract and compass row — when a new project starts or when work already underway is brought under the method for the first time.
+description: Creates a project's cartridge under the method — definition, state, decision log, agent log, and its own axioms once it has one — plus the agent contract where the repository is owned, and a compass row; when a new project starts or when work already underway is brought under the method for the first time.
 ---
 
 > **Version:** MLabs 1.1.0
@@ -17,16 +17,24 @@ literal root is the instance's, declared in its binding.
 
 **1. Copy the template.** The cartridge is copied, never typed (`MLabs:AX-26`). Copy the project
 template whole, then substitute every placeholder — the project's name, its path, its own `AX-n`
-series — in one pass. A placeholder that survives the copy is a defect, not a to-do. Six files,
-and no others:
+series — in one pass. A placeholder that survives the copy is a defect, not a to-do.
+
+**Four files, and two more only when they have content** — `MLabs:METHOD.md` §2, verbatim:
 
 | File | Kind | Holds |
 |---|---|---|
 | `definition.md` | Standing | what this project is, and explicitly what it is not |
-| `architecture.md` | Standing | this project's own axioms |
-| `state.md` | Standing | the present |
-| `Decision_Log.md` | Record | `Dn`, with what was discarded |
-| `LOG_AGENTS.md` | Record | what each agent did in this project |
+| `state.md` | Standing | the present tense: would this still be true if work stopped today? |
+| `Decision_Log.md` | Record | `Dn` with author, date, reasoning, and what was discarded |
+| `LOG_AGENTS.md` | Record | what each agent did **in this project** |
+| `architecture.md` | Standing | the project's own axioms — **created when the first one exists**, never as an empty table |
+| `skills/` | — | procedures that only make sense here — **created when the first one exists** |
+
+⚠️ **This said *"Six files, and no others"* over a table of five until 2026-08-21, while `METHOD.md`
+said four-plus-two — three different counts of the same thing, in the skill that exists to make the
+count reproducible.** `METHOD.md` wins by tier, and the two conditional rows are why: this file's own
+step 3 already says `architecture.md` *"opens with at least one rule or it is not opened at all"*, so
+listing it as unconditional contradicted the next paragraph as well as the method.
 
 **2. Fill `definition.md`.** Measurable objective · context · deliverables and their format ·
 success criteria · constraints · data available. **Then, in its own section, what this project is
@@ -44,11 +52,22 @@ file's own header (`MLabs:AX-2`); every entry carries author, date, reasoning an
 discarded** (`MLabs:AX-24`). The first entry is the one that created the project: why it exists,
 and what shape was rejected for it.
 
+**5. Open `state.md` and `Decision_Log.md` as live documents.** Both state their present
 (`MLabs:AX-17`) and neither carries a changelog (`MLabs:AX-29`).
 
 - `state.md` — the test is *would this still be true if work stopped today?* Current position,
-  what it waits on, the active risks with the fallback agreed for each.
-  is the third drawer; an unordered list of pending items is not one.
+  what it waits on, the active risks with the fallback agreed for each. ⚠️ **And `next action` is
+  a required field, not a courtesy** — a state file without one is a project whose next move lives
+  in somebody's head. `interface/model/parse.py` reads it and reports its absence by name.
+- ⚠️ **No sequenced-plan file, and this is where one used to be proposed.** `AX-17`'s third drawer
+  **is a field, not a document**: committed-but-not-started work is a task in the central list
+  carrying `blocked_by:`, and the sequence is the graph those edges describe. An unordered list of
+  pending items is not a third drawer.
+
+⚠️ **This step lost its heading and half its text at some point before 2026-08-18** and sat as a
+dangling clause mid-file — reported by the audit, and **reconstructed here rather than recovered**:
+the surviving fragments are the two `AX-` citations and the two half-sentences above, and this
+paragraph says so because a reconstruction presented as the original is the loss `PH-3` forbids.
 
 **6. Place the agent contract — only in a repository the operator owns.** It is generated from the
 method half plus the repository's local half, never typed, with a check that fails on drift

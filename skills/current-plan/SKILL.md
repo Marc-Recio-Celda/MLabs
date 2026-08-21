@@ -91,7 +91,7 @@ the sub-block's row in the projects hub expands into: not *that* it finished, bu
 | 4 | Every closed item carries an outcome; none carries a bare tick |
 | 5 | Nothing was deleted — closed plans are still addressable by id |
 
-## Dismissal
+## Retirement
 
 Retired if, after five plans, the `order_why` field is being filled with restatements of the
 order rather than reasons for it. That would mean the field is theatre and the skill is a form to
