@@ -1,9 +1,6 @@
 # PHILOSOPHY — what this company optimises for
 
-> **Version:** 1.2.0 — `PH-7` added 2026-08-20 (the operator). ⚠️ **It has zero axioms behind it
-> today**, which by this file's own standard makes it *a value with no teeth*. That is deliberate
-> and declared rather than discovered: the clause is opened first so the axioms are written against
-> it instead of being reverse-engineered from a dashboard that already exists.
+> **Version:** 1.2.0
 
 > **Level 1 of three.** *Philosophy* (this file) says what the company is for and what it
 > refuses. *Axioms* (`AXIOMS.md`) are the rules that follow and may never be violated.
@@ -14,14 +11,9 @@
 > **This file breaks ties.** When two axioms both apply and disagree, it decides. When a
 > proposal satisfies every axiom and still feels wrong, this is where the objection lives.
 >
-> ⚠️ **A change here fires a review, and until 2026-08-20 it fired nothing.** `AXIOMS.md` has said
-> from the start that *"a change here fires the review over every axiom in every department"*; this
-> file, the tier that breaks every tie, had **a bar and no trigger** — *"a change here needs a case,
-> not a vote"* says how hard it is to add, and nothing says what runs afterwards. So `PH-7` was
-> opened, and the review that ran two days later checked whether it had axioms and **never asked
-> whether it belonged** (found by the operator, not by the auditor). **The tier with the most
-> leverage had the least review.** A change here now fires `company-auditor`'s `A5` — *does this
-> clause belong at this level* — alongside the axiom review `AXIOMS.md` already triggers.
+> **A change here fires two reviews:** `company-auditor`'s `A5` — *does this clause belong at
+> this level* — and the review over every axiom in every department that `AXIOMS.md` already
+> triggers.
 >
 > ⚠️ **And it is the one tier where a contradiction has no arbiter.** `AXIOMS.md` resolves a clash
 > between departments — *the narrower one loses* — and this file resolves a clash between axioms.
@@ -117,13 +109,46 @@ measurement nobody acts on still costs attention every time it is produced, whic
 
 ## How the levels are used
 
-**The superauditor** checks the axioms are not violated **and reports when a clause here has
-drifted from the axioms that serve it** — in either direction: a clause with no axiom behind it
-is a value with no teeth, and an axiom serving no clause is a rule with no mandate. It also
-carries the R&D clause, so it may propose an improvement to an axiom, or flag that a clause
-*here* has stopped being true. **It may never amend this file** — the flag goes to the operator
-and nowhere else, and dies there if the operator does not take it up.
+**The auditors** check the axioms are not violated **and report when a clause here has drifted
+from the axioms that serve it** — in either direction: a clause with no axiom behind it is a value
+with no teeth, and an axiom serving no clause is a rule with no mandate. **Lateral work is
+`skills/rnd/`'s**, not theirs: an auditor that may propose starts finding the problems its proposal
+solves. **No role may amend this file** — the flag goes to the operator and nowhere else, and dies
+there if the operator does not take it up.
 
 **The coverage is counted, not assumed.** A stated priority that no rule implements is exactly
 how a system ends up protecting the wrong things — and it is measurable, so it is measured. See
 the coverage table at the foot of `AXIOMS.md`.
+
+---
+
+## Notes — loaded by a review, not by routine work
+
+### The tier with the most leverage had the least review
+
+⚠️ **A change here fired nothing until 2026-08-20.** `AXIOMS.md` had said from the start that *"a
+change here fires the review over every axiom in every department"*; this file, the tier that
+breaks every tie, had **a bar and no trigger** — *"a change here needs a case, not a vote"* says
+how hard it is to add, and nothing said what runs afterwards. **So `PH-7` was opened, and the review
+that ran two days later checked whether it had axioms and never asked whether it belonged** — found
+by the operator, not by the auditor. `A5` exists because of that gap.
+
+### `PH-7` was opened with zero axioms behind it, deliberately
+
+Added 2026-08-20 by the operator. The zero coverage was **declared rather than discovered**: the
+clause was opened first so the axioms would be written against it instead of being
+reverse-engineered from a dashboard that already existed.
+
+⚠️ **`company-auditor` round 9 ruled that the zero was a symptom, not the finding**: the clause
+**does not arbitrate** — no pair of axioms disagrees in a way `PH-7` settles — and one of its four
+consequences, *measured from the record, never recalled*, is already forbidden by `AX-22`. The
+operator's ruling, 2026-09-01: **keep the clause, write one or two axioms behind it.**
+
+### `superauditor`, and why the name is gone from this file
+
+Until 2026-09-01 this file described *"the superauditor"* in the present tense as the role that
+runs — **a role retired 2026-08-19**, when the jurisdiction split into `company-auditor` and
+`instance-auditor` sharing one contract. Every other tracked mention marked it historical; this one
+did not, **in the first file a cold start reads** (`CA-093`). The same paragraph also gave the role
+the R&D clause, which had already moved to `skills/rnd/` for the conflict-of-interest reason now
+stated in its place.

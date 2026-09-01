@@ -22,9 +22,12 @@
 > `AX-1` at 256. What a model applies from a 250-word cell is its first sentence; the rest was paid
 > on every load and read almost never.)*
 >
-> **Append-only. Identifiers are never reused or renumbered.** A retired axiom keeps its number and
-> becomes ⚫ naming what absorbed it or where it went. **The gap is information.**
-> **Status:** 🟢 in force · 🟡 proposed · ⚫ retired.
+> ⛔ **A retired axiom leaves this file entirely, and the log records where it went.** Its number is
+> never reused, so **the gap in the numbering is the trace** — the only trace this file keeps.
+> ⚠️ **A tombstone row is loaded on every read to say nothing binds**, and this file is read
+> constantly; the log is read when someone asks what happened, which is the only time the answer
+> matters. **Identifiers are never reused or renumbered.**
+> **Status:** 🟢 in force · 🟡 proposed. **There is no third value.**
 > **Anchoring:** a bare `AX-n` here is unambiguous; the moment it leaves this repo it carries its
 > anchor (`AX-31`).
 >
@@ -40,14 +43,11 @@
 |---|---|---|---|---|
 | **AX-1** | 🟢 | **Structure is public and depersonalised; state is private.** The method ships as one artefact; everything an operator works on lives in their operations centre, and the method may name that centre and its conventional root — never anything inside it. | PH-5 · PH-3 | `tools/gate.sh` |
 | **AX-2** | 🟢 | **Decision logs are append-only and parseable from their first entry**, with the field contract in the file's own header. Retro-fitting a shape onto eighty entries is the migration this avoids. | PH-3 · PH-4 | `interface/model/parse.py` |
-| **AX-3** | ⚫ | **Absorbed into `AX-24`.** Naming who decided is one of the decision-time-only fields it already mandates. | — | — |
 | **AX-4** | 🟢 | **A rule earns its place only if it must fire while the work happens; if a pass over the finished artefact could apply it, it is a tool.** The test is whether the information still exists at cleanup time — what is in the artefact becomes a tool, what is only in the author's head stays a rule. | PH-6 | `—` |
-| **AX-5** | ⚫ | **Absorbed into `AX-4`.** It was a criterion for applying `AX-4`, not a rule of its own. | — | — |
 | **AX-6** | 🟢 | **A claim cites its evidence, or it is an opinion** — a file and line, a command and its output, or for a claim about the world a properly cited source. **An unnameable source is marked unsourced, and an audit that found nothing says what it checked**; silence is indistinguishable from not having looked. | PH-4 | `—` |
 | **AX-7** | 🟢 | **A check carries the guarantee that it runs.** An invariant nobody verifies and a tally nobody has tested are opinions in the shape of facts. | PH-4 | `—` |
 | **AX-8** | 🟢 | **A conduct rule without a firing event loses to the stream of requests.** Every rule of conduct names the event that fires it; `AX-4` is the counterweight, or every rule gains an event and none is salient. | PH-6 | `grep -L '^## Fires when' skills/*/SKILL.md` |
 | **AX-9** | 🟢 | **A task closes by enumerating every open thread with its destination, and *written* is read back from disk.** ⚠️ **The close is also the firing event for every reviewing role**, so an unclosed task silently disables the company's own detection. | PH-3 | `METHOD.md` §2's six steps |
-| **AX-10** | ⚫ | **Demoted to a decision.** *Owner first, rate of change second* is stated in `PH-5`, which sits above this file. | — | — |
 | **AX-11** | 🟢 | **Every role is hired with its dismissal criterion fixed before it starts, countable by a command.** | PH-6 | `tools/roles-check.sh` |
 | **AX-12** | 🟢 | **The governing document states what the system is for, and what it refuses, before any mechanism.** Purpose is what breaks ties when two rules both apply, so it is written where it is read first. | PH-4 | `—` |
 | **AX-13** | 🟢 | **Verification never shares a role with generation** — one stance per conversation, and switching means a new conversation rather than a new paragraph. **What can be decided by comparison is a script, not a role**; a role exists to triage the script's report. | PH-4 · PH-2 | `—` |
@@ -69,7 +69,6 @@
 | **AX-29** | 🟢 | **A live document states its present; its history belongs in the log, and both halves are written in the same act.** A line stays only if the work would come out wrong without it **and** the reader could not have worked it out from the repository — past tense survives only to name a trap they can still fall into. | PH-1 · PH-6 | `skills/compact/` — and `A6` for what a pass cannot decide |
 | **AX-30** | 🟢 | **Every repository's agent contract is generated, never hand-written**, with a check that fails on drift. **No repository is exempt, including the one that authors the method half.** | PH-5 · PH-4 | `—` |
 | **AX-31** | 🟢 | **A reference carries its scope the moment it leaves the file that minted it** — bare inside its own file, anchored the instant it is cited elsewhere. Added at writing time, because no later sweep can resolve the ambiguity (`AX-4`). | PH-4 | `—` |
-| **AX-32** | ⚫ | **Proposed 2026-08-20, rejected 2026-08-21.** *A role earns its next firing from its last one.* The decision it describes already has an owner — the metrics compute the cost, the analyst reads it, the operator watches. **A rule paid every turn to say what someone already does.** The measurement it arrived with survives in the metrics. | — | — |
 | **AX-33** | 🟢 | **Every artefact stamps the version of the rule set it was written against**, and the stamp moves only when the artefact is read whole and cleared. ⚠️ **Bumping it without reading is a lie that costs nothing to tell** and destroys the only drift detector this repository has at zero maintenance cost. | PH-5 | `skills/release-cut/` |
 
 ---

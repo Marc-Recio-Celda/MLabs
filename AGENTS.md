@@ -29,7 +29,7 @@ loop and the routing table, because the close is not optional and its destinatio
 there. **The axioms are what the close is *checked against*, not what the work is done through**, and
 loading all five documents for a defined task displaces the work itself.
 
-**Three levels, and nothing is allowed to blur them.** *Philosophy* — seven clauses, changed almost
+**Three levels, and nothing is allowed to blur them.** *Philosophy* — the clauses, changed almost
 never, only by the operator. *Axioms* — the rules that implement them, never violated, each naming
 the clause it serves. *Decisions* — concrete, with author, date and reasoning, living instance-side
 and never here. **The same three levels repeat one floor down inside a project**, with its own

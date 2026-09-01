@@ -50,7 +50,8 @@ $SYS/LOG_EXTERNAL.md       Record     defects found in code the operator does no
 $SYS/logs/README.md        Standing   the employee-log contract and the weights
 $SYS/logs/                 —          one Record per role, created when the role is
 $SYS/data/SCHEMA.md        Standing   the field contract for the record store
-$SYS/data/FLOW.md          Standing   block → sub-block → plan → item
+# ⚠️ FLOW.md is NOT created here — it ships with the method, at the repository root.
+# An instance that writes its own has a flow no method file describes.
 $SYS/scripts/metrics.py    —          the numbers, computed and never transcribed. ⚠️ debt: see below
 $SYS/scripts/coherence.py  —          the vault check. Ships exiting 2 — see below
 $SYS/denylist.txt          Standing   HARD · SOFT · SIGNATURE. Created EMPTY

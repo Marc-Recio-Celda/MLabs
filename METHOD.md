@@ -26,6 +26,13 @@ empties, a record someone edited, a plan that quietly became a backlog.
 | **Park** | No date, no commitment, no obligation to revisit | A park with dates is a task list nobody agreed to |
 | **Standing** | Rewritten in place; always states what is true *now* or what must hold. Never appended to, never emptied | A standing document that grows by accretion has become a record nobody can trust as current |
 
+⚠️ **Two queues at different speeds, and the fast one reports rather than files.** An instance
+that runs a fast lane beside its deliberative queue **must not let the fast one file into the
+slow one**: its entries are trivial by construction, so every doubt becomes an entry, and the
+loop has no bound. **The drainer's channel back is its drain report** — what it did, what it
+could not do, and what the entry taught — read at the next open and answered by whoever holds
+the context. *(the operator, 2026-09-01, after the first full drain.)*
+
 The three levels of governance sit above all six: philosophy, axioms, then decisions — and
 **decisions are Records.** A definition, a set of axioms, a state file and a sequenced plan are
 all **Standing**: each is rewritten to stay true, and none is ever a place things accumulate.
@@ -355,9 +362,12 @@ fix is different. ⚠️ **The log is created by the act of hiring, not by the f
 firing** *(the operator, 2026-08-21)*. **An empty log is a state; a missing file is a guess** — a
 file that is not there is indistinguishable from one deleted, mis-pathed, or that a brief never
 reached, and this system has already produced four false findings by reading an absence as a fact.
-**And an empty log that keeps ageing is evidence**: a role hired and never fired is a standing cost
-with no return (`AX-32`). ⚠️ **It only works because the words were separated first** — attach a third
-meaning to either heading and it stops measuring anything.
+⚠️ **An ageing empty log is not evidence of anything on its own** *(the operator, 2026-08-21:
+"no se ha disparado porque no estoy trabajando sobre un proyecto")* — a role whose firing event has
+not occurred is healthy, not idle. **The honest measure is firing events passed against firings
+recorded**, and a log with no firing event behind it says nothing. ⚠️ **It only works because the
+words were separated first** — attach a third meaning to either heading and it stops measuring
+anything.
 
 ⚠️ **Nothing auto-fires, and that is a measured decision rather than an omission.** The automatic
 audit trigger was retired after five firings in one session cost more context than the work they

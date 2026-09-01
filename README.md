@@ -56,13 +56,23 @@ salient rather than what matters most.
 
 | Level | File | What it holds | How often it changes |
 |---|---|---|---|
-| **1 · Philosophy** | `PHILOSOPHY.md` | Six clauses: what this company optimises for, and what it refuses. **Breaks every tie.** | Almost never, and only by the operator |
-| **2 · Axioms** | `AXIOMS.md` | 28 rules that implement the clauses and may never be violated. Each names the clause it serves, and the coverage is counted rather than assumed | Rarely. R&D proposes, the operator decides |
+| **1 · Philosophy** | `PHILOSOPHY.md` | The clauses: what this company optimises for, and what it refuses. **Breaks every tie.** | Almost never, and only by the operator |
+| **2 · Axioms** | `AXIOMS.md` | The rules that implement the clauses and may never be violated. Each names the clause it serves, and the coverage is counted rather than assumed | Rarely. R&D proposes, the operator decides |
 | **3 · Decisions** | *in NEXUS* | Concrete choices with their author, date, reasoning and what was discarded — the record, which is never held here | Constantly |
 
-Alongside them, **`METHOD.md` — how work actually flows**: the five kinds of document and the
-lifecycle each one owes, the loop from compass to live plan to routed close, and the project
-cartridge. The three levels say what is true; `METHOD.md` says what you do on Monday morning.
+⚠️ **No count appears in that table, on purpose.** Every one it used to carry went stale: the
+clauses moved, the axioms moved, the document kinds moved, and the sentence did not. **The file is
+the count** — `AXIOMS.md` carries a coverage table regenerated from its own rows.
+
+Alongside them, **`METHOD.md` — how work actually flows**: the document kinds and the lifecycle
+each one owes, the loop from compass to live plan to routed close, and the project cartridge. And
+**`FLOW.md` — the shape work moves in**: block → sub-block → plan → item, with the rules that stop
+that shape degrading. The three levels say what is true; `METHOD.md` says what you do on Monday
+morning; `FLOW.md` says what the work is shaped like while you do it.
+
+⚠️ **`FLOW.md` is the file to change if you want a different workflow.** Everything else assumes
+the shape it describes; nothing else assumes *that particular* shape. Change it there, once,
+rather than disagreeing with it in a dozen places.
 
 **The same three levels repeat one floor down inside a project**, with its own axioms, its own
 log and its own dedicated auditor. That is what makes the shape reproducible rather than

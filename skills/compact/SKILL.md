@@ -7,14 +7,12 @@ description: Crushes an artefact's text without changing what it says, and repor
 
 # compact
 
-**It makes what is there take less room; it never decides what belongs.** *(the operator,
-2026-08-21: "como cuando aplastas el contenido de la basura para que quepan más cosas — sobre sacar
-o meter cosas en la basura ya se encargan otros.")*
+**It makes what is there take less room; it never decides what belongs.** *(the operator: "como
+cuando aplastas el contenido de la basura para que quepan más cosas — sobre sacar o meter cosas en
+la basura ya se encargan otros.")*
 
 **This is the pass that exists so several rules do not have to fire on every turn** (`AX-4`: if a
-pass over the finished artefact can apply it, it is a tool, not an axiom). ⚠️ **It replaces
-`code-cleanup`, which did the same four jobs for code only** — the jobs never depended on the file
-type, and two skills would have been the same contract twice (`AX-20`).
+pass over the finished artefact can apply it, it is a tool, not an axiom).
 
 ## Fires when
 
@@ -31,74 +29,66 @@ LAST=$(git tag --list 'compact-*' | sort | tail -1)     # the last pass, or empt
 git diff --name-only "${LAST:-$(git rev-list --max-parents=0 HEAD)}"..HEAD
 ```
 
-⚠️ **No new bookkeeping file.** *(the operator: "solo se debe mantener el log de lo que ha cambiado
-desde la última limpieza, lo cual git lleva bien.")* The pass ends by tagging `compact-<YYYY-MM-DD>`,
-and that tag is the entire record of when it last ran. **If the tag is missing the pass runs over
-everything**, which is correct and says so rather than guessing a range.
+⚠️ **No new bookkeeping file.** The pass ends by tagging `compact-<YYYY-MM-DD>`, and that tag is the
+entire record of when it last ran. **If the tag is missing the pass runs over everything**, which is
+correct and says so rather than guessing a range. ⚠️ **Say which of the two happened** — a declared
+scope of *everything* and an executed scope of *the files I felt like* are not the same pass.
 
 **Records are excluded, always.** A log, a decision store, an append-only ledger is *supposed* to
 accumulate — running a growth pass over one fires on the shape that is working.
 
 ## The four jobs
 
-### 1 · Archaeology → relocate, do not delete
+### 1 · Archaeology → the log, not a note in the same file
 
 The expensive one, because it compounds: **a document carrying its own changelog becomes unreadable
 at exactly the length where it matters, and the reader who pays is the one who arrives latest and
 knows least** (`AX-29`).
 
-| Goes | Stays |
+| Goes to the log | Stays in the file |
 |---|---|
-| *"this used to be X"* · *"corrected on…"* · *"replaces the old…"* | a constraint that bites **today** |
+| *"this used to be X"* · *"corrected on…"* · *"replaces the old…"* · any date | a constraint that bites **today** |
 | an intention that never landed | **a trap someone can still fall into** |
 | a description of *what* the code or rule does | *why* it is that way |
-| a header explaining a file's evolution | a note beside the line it explains |
+| how many times something was fixed, and by whom | the shape that stops it being fixed again |
 
-**The asymmetry that decides it:** a reader reconstructs *what* from the artefact and can never
-reconstruct *why*. And the *what* comments rot fastest, because the thing moves underneath them.
+⛔ **The test that separates a trap from history: can someone still fall into it?** If what caused
+it is fixed structurally, nobody can, and it is history. If the next person writing something
+similar can, it is a trap.
 
-⚠️ **Relocate in this order and stop at the first that applies:** the file's own `## Notes` section,
-addressed by the id it belongs to · the decision log · deletion, **only if the log already holds
-it.** *A pass can strip archaeology but cannot tell whether it was ever logged*, and deleting
-unlogged history is the one loss `PH-3` forbids (`AX-23`: nothing is deleted, it is located).
+⛔ **And a trap does not stay as prose.** `AX-8`: *a rule with no firing event loses to the stream
+of requests.* A trap filed in a notes section is read by a review; the moment it bites is when
+somebody is **writing the thing**, which is not a review. **So it moves down to where it fires:**
+
+| Trap about | Goes to |
+|---|---|
+| a tool — a regex, a git behaviour, an allowlist ordering | **the comment on the line that implements it** |
+| the method | **the `Check` column of the axiom that governs it** |
+| a document's shape | **one line in that document's operative layer, undated** |
+
+⚠️ **Relocate; never delete.** *A pass can strip archaeology but cannot tell whether it was ever
+logged*, and deleting unlogged history is the one loss `PH-3` forbids (`AX-23`). **Read the log
+first; write what is missing; then strip.**
 
 ### 2 · References that no longer resolve
 
-**Every cross-reference is followed, not read.** This is the half that finds dead traces of things
-that were deleted properly and left pointers behind.
+**Every cross-reference is followed, not read.**
 
 | Class | The check |
 |---|---|
-| an identifier — `AX-n`, `PH-n`, `Dn`, `M-n`, `Tn` | the id exists, and is not ⚫ retired while cited as live |
+| an axiom id | `bash tools/axiom-refs.sh <axioms-file> <SCOPE> <files…>` — **exit 0 clean · 1 unresolved · 2 could not run, which is not a pass** |
 | a path | the file exists at that path from the declared root |
-| a wikilink `[[Note]]` | **in a code repository: wrong whatever it resolves to**, because it renders as literal brackets. **In the method repository: skipped** — here they are vocabulary being specified, not references being made |
-| a section reference `§n` | that section exists in that file |
-| a stated count | recomputed and compared, never read |
-
-⚠️ **The wikilink rule needed narrowing three times on its first run, and each time for a real
-reason.** It reported **21** hits in markdown — every one legitimate, because `create-note` writes
-wikilinks by design and this file quotes the pattern it forbids. Narrowed to code, it reported
-**10** — every one a POSIX character class, `[[:space:]]`, which a wikilink pattern cannot tell from
-`[[Note]]`. Narrowed again, **4** — bash `[[ ]]` test expressions. **The rule is: never on shell,
-never on the method repository's markdown**, and it is `.py`/`.js`/`.css`/`.html` only.
-**A check that fires on the file documenting the format is the cries-wolf failure**, and this one was
-caught before it shipped rather than after.
-
-✅ **The rest of job 2 ran clean over the public set on the same pass** — every axiom id, philosophy
-clause, declared path and `§` reference resolves — **and all four classes fired on a plant**
-(`AX-99`, `PH-9`, `skills/nope/`, `METHOD.md §77`), which is what makes the clean result mean
-something.
-
-⚠️ **`\b` does not match before `§`**, which is not a word character — a word-boundary search
-silently misses every section reference. Plant one before trusting a clean result (`AX-7`).
+| a wikilink `[[Note]]` | `.py`/`.js`/`.css`/`.html` **only**. ⚠️ **POSIX `[[:space:]]` and bash `[[ ]]` are indistinguishable from `[[Note]]` to any pattern** — and in the method repository's markdown wikilinks are the vocabulary being specified, not references being made |
+| a section reference `§n` | that section exists in that file. ⚠️ **`\b` does not match before `§`**, so a word-boundary search silently misses every one |
+| a stated count | recomputed and compared, never read. ⚠️ **A count nothing derives is a count that is already wrong** |
 
 ### 3 · Identifiers that only resolve inside the operator's own base
 
-To a reader without it, `M-42` is a **dangling pointer**: it announces that an explanation exists
-and then fails to provide it. **Rewrite it as the reason it stood for, or drop it.** Never leave the
-identifier and add a gloss — that is two dangling pointers.
+To a reader without it, a decision id is a **dangling pointer**: it announces that an explanation
+exists and then fails to provide it. **Rewrite it as the reason it stood for, or drop it.** Never
+leave the identifier and add a gloss — that is two dangling pointers.
 
-**In the public set only.** Instance-side, those ids resolve and are the point.
+**In the public set only.** Instance-side they resolve and are the point.
 
 ### 4 · Text not in the artefact's declared language
 
@@ -108,37 +98,35 @@ was worth writing.
 ## The procedure
 
 1. **Scope it** from the tag, and **say the file list before touching anything.**
-2. **Measure first:** bytes per file now, and at `LAST`. **A structural file that only ever grows is
-   being written for its authors** — that number is the finding even when no single line is.
+2. **Measure first:** operative bytes per file now, and at `LAST`. **A structural file that only
+   ever grows is being written for its authors** — that number is the finding even when no single
+   line is.
 3. **Search each class separately and report counts before changing anything.**
-4. ⚠️ **Test each pattern against a planted hit first.** A pattern that cannot match returns clean
-   on a file full of them, and clean output is indistinguishable from a clean repository (`AX-7`).
-5. **Relocate, do not only delete** — job 1's order, every time.
+4. ⚠️ **Test each pattern against a planted hit first, and plant against the format rather than
+   into it** (`AX-7`). A plant written in the file's own style reproduces the file's own blind spot;
+   a plant aimed at one half of a two-part rule proves nothing about the other half.
+5. **Read the log, write what is missing, then strip** — job 1's order, every time.
 6. **Land it as its own commit** from a clean tree, then **tag `compact-<date>`**.
 
 ## Verification, as a prediction
 
-State it before running: *this pass touches N files, relocates A archaeology blocks, fixes B dead
-references, removes C private identifiers and D non-English strings, and **changes nothing any
+State it before running: *this pass touches N files, moves A archaeology blocks to the log, fixes B
+dead references, removes C private identifiers and D non-English strings, and **changes nothing any
 artefact asserts.***
 
-- **For code: byte-identical build output** where the language allows it — identical bundle hash,
-  identical compiled artefact. That is the proof that only comments moved. Otherwise the test suite
+- **For code: byte-identical build output** where the language allows it. Otherwise the test suite
   passing unchanged.
 - **For prose: no assertion is lost, and that is what is counted — not bytes.** Compression removes
-  redundancy, so a net byte fall is expected and proves nothing either way. The countable test is
-  **every identifier cited before is still cited** (`AX-n`, `PH-n`, finding ids, paths) and **every
-  bolded rule still appears**. ⚠️ **Run it: the first pass on `skills/audit/` dropped `AX-1`** — the
-  citation that said *why* the path rule matters — while the byte arithmetic looked healthy. **A
-  byte count cannot see a lost claim.**
+  redundancy, so a net byte fall proves nothing either way. The countable test is **every identifier
+  cited before is still cited or deliberately retired, and every bolded rule still appears.**
+  ⚠️ **A byte count cannot see a lost claim.**
 - **Run it a second time: it returns nothing.** A pass that still finds hits either missed them or
   created them.
 
 ## What it does not do
 
 - **It does not decide what belongs.** Not a rule's worth, not a note's worth, not whether a
-  constraint is real. **Where a line might be load-bearing, it asks.** Deciding is the auditor's,
-  and this skill reasons about *placement* only.
+  constraint is real. **Where a line might be load-bearing, it asks.**
 - **It does not resolve a contradiction it finds.** A rule citing an abolished clause is reported,
   not fixed — the fix is a decision.
 - **It does not touch Records**, or a repository the operator does not own (`AX-19`).
@@ -146,7 +134,7 @@ artefact asserts.***
 
 ## Retirement
 
-**When the notes layer stops filling** — if three consecutive passes relocate nothing, authors are
-writing both halves in the same act as `AX-29` asks, and the pass is measuring a habit that no
-longer exists. ⚠️ **Its other end:** if job 2 keeps finding dead references that a check could have
+**When the log stops gaining from it** — if three consecutive passes move no archaeology, authors
+are writing both halves in the same act as `AX-29` asks, and the pass is measuring a habit that no
+longer exists. ⚠️ **Its other end:** if job 2 keeps finding dead references a check could have
 caught at write time, that check belongs in the gate and this skill is doing a gate's work.
