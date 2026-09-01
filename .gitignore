@@ -9,7 +9,7 @@
 !/.gitignore
 !/README.md
 
-# The signature layer (AX-1, amended 2026-08-20). These two files are the ONLY
+# The signature layer (`AX-1`). These two files are the ONLY
 # place in the tracked set permitted to carry the author's name, and the denylist's
 # `## SIGNATURE` section is what permits it — by path AND by term, so every other
 # private word still blocks inside them exactly as it does anywhere else.
@@ -29,14 +29,14 @@
 !/skills/**
 !/tools
 !/tools/**
-# The interface engine (T64). Public and generic by construction: it knows the six
+# The interface engine. Public and generic by construction: it knows the six
 # document kinds and no instance, and reaches one only through the adapter it is
 # handed at startup. The adapter itself is NOT here — it lives instance-side, which
 # is what keeps this directory cedible (`interface:AX-1`).
 !/interface
 !/interface/**
 # ⚠️ The interpreter's residue is NOT excluded here. It is excluded in the LAST block
-# of this file, and the reason is the rule this file learned on 2026-08-20: in a
+# of this file, and the reason is the rule this file learned the hard way: in a
 # default-deny allowlist **a `!` line undoes every exclude above it**, so an exclude
 # only holds if no re-include follows it.
 
@@ -60,23 +60,13 @@
 # excludes above it had just removed, so an exclude high in this file is undone by any
 # re-include below it — silently, with no error and no diff.
 #
-# Proven with `git check-ignore -v` on 2026-08-20, and it is how `__pycache__` came
-# back three times. The file carried the interface allowlist block TWICE with a set of
-# excludes after each. Three measurements:
-#     first block alone  -> ignored, its own exclude fires
-#     both blocks        -> the SECOND block's exclude fires; the first is dead, because
-#                           the second block's `!/interface/**` re-included everything
-#                           the first had excluded
-#     second block's excludes deleted -> NOT IGNORED, and check-ignore names
-#                           `!/interface/**` as the winning rule
-# So the copy that LOOKED like residue was the only one working, and tidying by deleting
-# the later lines puts the residue straight back.
+# ⛔ Verify with `git check-ignore -v`, never by reading: a duplicated allowlist block
+# makes the LATER copy's excludes the live ones, so the copy that LOOKS like residue can
+# be the only one working, and tidying it away puts the residue straight back.
 #
-# ⚠️ And the FIRST fix for that was itself wrong, which is why this block exists rather
-# than an interface-scoped one: the old bare `*.pyc` sat after every `!` line and so
-# covered `tools/` and `skills/` too. Deleting it silently made a stray `.pyc` anywhere
-# else trackable — measured, not assumed. **A narrowing that looks like a tidy-up is the
-# shape this file must never acquire**, since what it decides is what goes public.
+# ⚠️ And a narrowing that looks like a tidy-up is the shape this file must never acquire.
+# An exclude scoped to one directory leaves every other allowlisted root uncovered, and
+# what this file decides is what goes public.
 #
 # Unanchored on purpose: any depth, any allowlisted root.
 __pycache__/

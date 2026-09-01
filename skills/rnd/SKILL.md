@@ -74,18 +74,3 @@ operator needs.
 **Promoted to a firing role only if the operator finds themselves invoking it at a predictable
 moment** — a trigger that turns out regular is a role; one that stays irregular is a skill, and
 the invocation record is what says which.
-
----
-
-## Notes — loaded by a review, not by an invocation
-
-### The heading was `## Its own dismissal` until 2026-08-21
-
-⚠️ **And `tools/roles-check.sh` reported this role as *a log with no dismissal criterion* because of
-it** — the criterion was here all along, fixed in advance and citing `AX-11`, three words away from
-the heading the check greps. **The finding was reported to the operator as a governance gap without
-anyone opening the file.**
-
-**Eleventh occurrence of *a published check that cannot match*, and the first where the check was
-written, run and believed on the same day.** The check now names a near miss instead of reporting an
-absence: **absence and near-miss are different findings and only one of them is the operator's.**

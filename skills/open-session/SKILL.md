@@ -86,12 +86,3 @@ worth it, and the default is none.
 It does not decide what to work on — the compass does. It does not hold rules; it points at
 them. It does not commit on the operator's behalf, and it never empties a queue it filled
 (`AX-15`).
-
----
-
-## Notes — loaded by a review, not by a session
-
-### Why planning is not in this file
-
-It was, until 2026-08-19. It moved because **the trigger moved**: planning happened once, when a
-session opened, and under the block flow it is a discrete act repeated once per sub-block.

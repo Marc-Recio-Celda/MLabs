@@ -56,9 +56,9 @@ confusion this role exists to catch, seen from inside.**
 the condition would be true at **every** close, **and a condition that is always true is a firing
 wearing a trigger's clothes.**
 
-⚠️ **If the trigger list starts firing rounds nobody asked for, `interface/` is the line to narrow**
-— to `model/` and `server.py` — and this sentence is the evidence to do it. It was rejected once for
-being less defensible: **an `AX-1` leak lives in a view just as happily as in the engine.**
+⚠️ **`interface/` is the line someone will want to narrow** — to `model/` and `server.py` — if the
+trigger starts firing rounds nobody asked for. **Do not: an `AX-1` leak lives in a view just as
+happily as in the engine**, and the view is the larger half by an order of magnitude.
 
 **What it reads:** the artefacts the task touched, **and that task's live plan** — where the
 reasoning was written while it happened, which is how this role sees *how* the round thought without
@@ -169,55 +169,3 @@ records both in the instance's hiring record next to the tested tally commands.
 **The numbers do not appear in this file, and the role's runtime brief must not contain them, nor
 name the file that holds them** — an auditor that knows it is retired for agreeing has an incentive
 to manufacture findings, which destroys the measurement it exists to produce.
-
----
-
-## Notes — loaded by a review, not by a firing
-
-### This file used to be two files
-
-It restated the whole shared contract until 2026-08-19, and so did `instance-auditor` — **two files
-each declaring itself the winner, each carrying the sentence that forbids it** (`CA-054`, `CA-064`).
-
-### Why `interface/` is on the trigger list
-
-Added 2026-08-19 by the operator, **and the measurement is why**: `interface/` is **232 KB and 5,104
-lines across six tracked public files**, against `tools/` at three shell scripts totalling 9.3 KB and
-`skills/` at zero lines of code — **the list named the small half.** The round that wrote the engine
-planted a real `AX-1` leak inside it — a hard-coded path below an operations centre's root — caught
-by the project's own structural grep and by **no company check at all**, and this role correctly did
-not fire.
-
-**The cost is smaller than it looks:** a bigger trigger list means the audit is owed more often,
-which is what was too expensive in August — but the trigger stopped being automatic on 2026-08-18,
-so **owed is not fired.** It costs one line in a close report saying the audit is due.
-
-### Why `A5` exists
-
-Added 2026-08-20, **after `PH-7` was opened and the saturation review checked its coverage without
-ever asking whether it belonged.** The gap was found by the operator, not by this role.
-
-### Why `A6` exists, and why it is small
-
-**Noise accumulates because the file being edited is where evidence is cheapest to write, and the
-log is another file.** `AX-29` says both halves are written in the same act; what happens is one
-half. ⚠️ **`AX-6` and `AX-29` pull against each other and `AX-24` resolves it** — an auditor that
-does not know that reads the noise as compliance.
-
-**This check was four times its current size until `skills/compact/` existed** *(2026-08-21)*.
-`AX-4`: if a pass over the finished artefact can apply it, it is a tool. Measuring growth, spotting
-archaeology and following references are all that.
-
-### The corpus the review could not enumerate
-
-*"~92 axioms across six departments"* was a number no command could reproduce: the prescribed
-counting pattern returned **0 on six of the ten project files**, which predate the table format and
-carry `## AX-n` headings. **Two consecutive firings declared themselves partial for want of it.**
-⚠️ **And this file carried both the fix and the old paragraph saying it was unfixed, for one day** —
-two paragraphs contradicting each other in the file whose job is finding contradictions. Removed
-2026-08-21 by `skills/compact/`, on its first run over a role file.
-
-### The first version of the trigger
-
-It read *"a structural file changed **or a decision was logged**"* — which is the always-true mistake
-twice over, since the decision log is written by the same close.

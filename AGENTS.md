@@ -4,9 +4,9 @@
 
 > The orchestration file: which roles exist, what each does, when each fires, and the rule that
 > governs hiring and firing. **Every line here passes two tests** — *if an agent ignored it, would
-> the work come out wrong?* and *could it have worked this out by reading the repo?* Only
-> yes-then-no stays; everything else is in `## Notes` at the foot, which a review loads and routine
-> work does not (`AX-29`).
+> the work come out wrong?* and *could it have worked this out by reading the repo?* **Only
+> yes-then-no stays; there is no notes section and nothing overflows** — history is the log's
+> (`AX-29`), a trap goes to the check that catches it, and everything else is not written.
 
 ---
 
@@ -148,6 +148,14 @@ rule at round close, not an agent, because its context is the whole conversation
 root legitimately holds the instance and every project, which are none of this repo's business. A
 check that walks the tree (`find`, a bare `grep -r`) is wrong by construction here.
 
+⛔ **This file breaks `AX-30` and says so rather than hiding it.** The contract is meant to be
+generated from a method half and a repository half; this one is hand-written and the generator is
+stage 2's work. **An axiom broken silently by its own repository is the precedent every later
+exemption cites**, so the breach is declared here and carries stage 2's gate as its expiry.
+
+⚠️ **Until the first release these checks run by hand at each cut, which is a hope and not a
+guarantee** (`AX-7`). Wiring them into CI, a release script or a hook is stage 2's gate.
+
 ⚠️ **And every check states the root it runs from.** *The same correct check, run from the wrong
 checkout or the wrong root, returns clean* — the sibling of *a pattern that cannot match*, and not a
 smaller problem. **A check that cannot state its root has not been run**, and **exit 0, exit 1 and
@@ -186,77 +194,3 @@ and both live in the instance's hiring record, out of the role's own sight.
 | 4 | `compact` and the collaborative-repo pass — the maintenance skills, and the templates the standards ship as | each skill's own prediction |
 | **✅ done, out of order** | **`build-nexus`** — creates an operations centre from nothing and walks its owner to a first task. Was listed last because it encodes the shape of an instance; **the shape stopped moving, so it moved** | a stranger, given only this repo and the skill, ends with a working instance and a first task in flight |
 | later | roles beyond those hired, strictly by §6 | each role's own criterion |
-
----
-
-## Notes — loaded by a review, not by routine work
-
-### §2 · the binding
-
-⚠️ **It declared *"the MLabs release it pins"* until 2026-08-21 and that clause was retired on
-2026-08-19** (`AX-1`'s note): this instance **co-develops** MLabs rather than consuming it, so a pin
-is what a consumer holds. **The binding was still being asked for a field the axioms had removed** —
-found by compressing this file, not by a check. What replaces it: a release cut records the commit
-it was cut against.
-
-### §4 · the auditors' shared contract
-
-Until 2026-08-19 the company and instance roles were **one file twice**, each declaring itself the
-single source (`CA-054`, `CA-064`). `skills/audit/` is now the one contract and each role file
-carries only what is its own.
-
-**`instance-auditor` was hired and first fired at round 7, 2026-08-19 with `N` and `K` not yet
-fixed**, which `AX-11` requires — so that round counts toward neither. **`project-auditor` has fired
-zero times** because no project has been the front; its log exists, empty, since 2026-08-21, because
-**absence is not a state a check can read.**
-
-### §5 · the depersonalisation check
-
-⚠️ **It binds the tracked working TREE and cannot see the HISTORY.** `git ls-files` does not read a
-commit, so a name removed from a file is still in the commit that removed it. **Declared rather than
-pretended**: the guarantee is *nothing private ships in a checkout of the release*, not *nothing
-private was ever written*. Every commit already carries the author's name and email, so a history
-scrub would not depersonalise it either.
-
-**Two blind spots found on 2026-08-20, both while the check reported clean:** a term ending in a
-version number escaped a bare `\b` word match even while on the list; and a denied term glued to
-more letters — an address — has no word boundary at all, so it passed the term check entirely. Both
-are now implemented in `tools/gate.sh`.
-
-### §5 · the `project:` invariant
-
-⚠️ **The check was three greps until 2026-08-21 and could not pass on any of the three files it
-governed.** `^- ` is bullet-per-entry and none of them is: two use `###` headings and the park
-declares its project **by section**. Measured, it read `19 vs 5 · 0 vs 9 · 3 vs 12` while all three
-files were fully routed — **a false positive at every release cut, naming no real gap.** The parser
-implements the *own header, else section* inheritance a grep has no way to express, and on its first
-run found the one genuine defect the greps never could: an entry matching neither shape, invisible
-to the queue.
-
-### §5 · the role invariant
-
-⚠️ **It bound *event-triggered skills* until 2026-08-21 and measured the wrong set.** `## Dismissal`
-returned **6 of 19 skills**, because one word carried three meanings: a role's firing criterion, a
-skill's retirement condition, and — in one case that said so in its own text — a section added to
-satisfy this very grep. **The vocabulary was split in the same act**: `## Dismissal` ends a ROLE and
-requires a log; `## Retirement` ends a SKILL and requires neither. Counting headings made a
-mostly-correct system read as 68 % non-compliant and buried the gaps underneath.
-
-⚠️ **Two gaps were then reported and only one was real.** `project-auditor` had a criterion and no
-log — genuine, and closed by **creating the log empty, at hiring**, since absence is not a state a
-check can read. **`rnd` was reported as having no criterion and had one all along**, three words from
-the heading the check greps (`## Its own dismissal`). **The check now names a near miss instead of
-reporting an absence** — different findings, and only one of them is the operator's. Eleventh
-occurrence of *a published check that cannot match*, and the first where the check was written, run
-and believed on the same day.
-
-### §5 · this file breaks `AX-30`
-
-**`AX-30` says an agent contract is generated from a method half and a repository half, with a check
-that fails on drift, and that no repository is exempt — including this one.** This file is
-hand-written; the generator is stage 2's work. **Recorded here because an axiom broken silently by
-its own repo is the precedent every later exemption will cite.**
-
-⚠️ **And until the first release, §5's checks run by hand at each cut — that is a hope, not a
-guarantee** (`AX-7`). Wiring them into CI, a release script or a hook is part of stage 2's gate, not
-an option.

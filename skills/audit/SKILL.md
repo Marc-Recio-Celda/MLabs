@@ -31,7 +31,7 @@ genuinely spans two departments, dispatch the higher one and **say the lower was
 unrun check is reported as unrun, never as passed (`MLabs:AX-22`).
 
 ⚠️ **Nothing here fires by itself, and that is a trade with a reopening condition.** The automatic
-trigger was retired 2026-08-18 because five firings in one session cost more context than the work
+trigger was retired because five firings in one session cost more context than the work
 they audited. **The cost is real**: these roles existed as events precisely so they would never be
 convenient to skip, and they now are. **If findings start arriving only from the operator noticing
 things, the trade failed and this line is the evidence to reopen it.**
@@ -189,55 +189,3 @@ zero of those over ten dispatches is the evidence to close it.
 
 It does not audit — it dispatches. It does not propose ideas. It does not decide what the findings
 mean. It does not fix what they name.
-
----
-
-## Notes — loaded by a review, not by a dispatch
-
-### Why the shared contract lives here
-
-It lived in `company-auditor` until 2026-08-19, and `instance-auditor` did not cite it — it
-**restated the whole file**, so both carried the sentence *"this file is where the row contract is
-defined; every other auditor cites it rather than restating it"* and **each declared itself the
-winner** (`CA-054`, `CA-064`, `IA-006`).
-
-### The `roles/` directory that never existed
-
-This file said *"the role's definition is `roles/superauditor.md` and it is the single source"* until
-2026-08-19 — a path `AGENTS.md` forbids and `git ls-files` cannot find — and then restated that
-role's triggers in wording `M-115` had already retired. **The dispatcher sent the role to a path that did not
-exist and briefed it from a rule no longer in force.**
-
-### The thresholds prohibition
-
-`instance-auditor`'s first firing was briefed with the instance's hiring record and **read `K` and
-`N` before it could know what the line was**, and said so (`IA-007`).
-
-### Firing after the plan closed
-
-`IA-005`: a round fired with the *previous* round's plan still in place, so the audit read reasoning
-that belonged to another task.
-
-### The `Acc` split
-
-Split 2026-08-20 — a single `n` had been carrying three different events and only the first is a
-quality failure. **This file is the declared winner and was publishing the pre-split vocabulary for a
-day** (`CA-071`).
-
-### The tally moved from the ledger to the logs
-
-It used to grep the agent log, where **all three roles publish**, so from the moment there were two
-roles one command counted them together and nothing separated them (`IA-006`). **The ledger keeps
-the narrative; the log keeps the data.**
-
-### The hiring record's filename
-
-Removed 2026-08-20 (`CA-073`). Until then the paragraph forbidding the brief to name the record
-**named it three times** — so a dispatcher reading the prohibition learned the filename from the
-prohibition.
-
-### `## Retirement`, renamed from `## Dismissal`
-
-2026-08-21. One word had been carrying three meanings and the §5 check could not tell them apart.
-**A dismissal ends a role and needs a log (`AX-11`); a retirement ends a skill and needs neither.**
-`audit` dispatches, it is not hired, and nothing about it belongs in an employee log.

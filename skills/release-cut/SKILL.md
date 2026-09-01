@@ -54,7 +54,7 @@ The denylist lives in the instance, never here: a list of names is itself person
 | Every event-triggered skill | states its dismissal criterion |
 | Every skill | has a description saying **what it does and when to use it**, and no two overlap |
 | Append-only | the diff since the last tag removes no line from a decision log |
-| Version stamps | every tracked document names the release it was written against (`AX-20`). ⚠️ **Measured 2026-08-19: 11 skills at 1.1.0 against 6 at 1.0.0 and one with none. Re-measured 2026-08-21: 15 at 1.1.0, 3 at 1.0.0, and the root docs split three ways — `PHILOSOPHY` 1.2.0, `README` 1.1.0, `AGENTS`/`AXIOMS`/`METHOD` 1.0.0.** The numbers moved and **this check has still never been run at a cut.** ⚠️⚠️ **AND THE FIX IS NOT TO BUMP THEM.** `AX-20` says the stamp answers *which rule set was this written against* — so a file at 1.0.0 is **reporting that nobody has reviewed it since 1.0.0**, which is the signal the stamp exists to give. **Bumping without reading is a lie that costs nothing to tell and destroys the only drift detector this repository has at zero maintenance cost.** **A stamp moves when a file is read whole and cleared, and by nothing else** — which makes it the auditors' act, since they are the only readers who read a file whole. Editing a row is not reviewing a file: `AGENTS.md` and `METHOD.md` were edited on 2026-08-21 and correctly still read 1.0.0. **What this check reports at a cut is therefore a list, not a failure**: *these are the files no audit has cleared since version X.* |
+| Version stamps | every tracked document names the release it was written against (`AX-20`). ⚠️ **The stamps have never agreed and this check has never been run at a cut.** ⚠️⚠️ **AND THE FIX IS NOT TO BUMP THEM.** `AX-20` says the stamp answers *which rule set was this written against* — so a file at 1.0.0 is **reporting that nobody has reviewed it since 1.0.0**, which is the signal the stamp exists to give. **Bumping without reading is a lie that costs nothing to tell and destroys the only drift detector this repository has at zero maintenance cost.** **A stamp moves when a file is read whole and cleared, and by nothing else** — which makes it the auditors' act, since they are the only readers who read a file whole. Editing a row is not reviewing a file, so an edited file correctly keeps its old stamp. **What this check reports at a cut is therefore a list, not a failure**: *these are the files no audit has cleared since version X.* |
 
 ## 4 · The cold start — the one that actually tests the claim
 
@@ -71,7 +71,7 @@ the repository is not keeping.
 
 ## 5 · Tag
 
-> ⚠️ **The cut records the commit it was cut against, and that is not optional** *(2026-08-19)*.
+> ⚠️ **The cut records the commit it was cut against, and that is not optional.**
 > `AX-1`'s clause *"and pins the release it runs"* was **retired** — this instance co-develops MLabs
 > rather than consuming it, so the two repositories move in the same round and a pin is what a
 > consumer holds. **Retiring the pin removed the field that answered *which MLabs is this?***, so the

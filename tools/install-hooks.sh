@@ -29,7 +29,7 @@ cat > "$HOOK" <<EOF
 # a container bridge, an unzip, a checkout from a filesystem with no mode bits — leaves
 # a correct script that cannot be run, and every commit then dies with "Permission
 # denied" naming the gate instead of anything wrong with the commit. That happened on
-# 2026-08-20 and cost a working session. Reading a file needs no mode bit, so this form
+# once and cost a working session. Reading a file needs no mode bit, so this form
 # cannot fail that way.
 bash "$ROOT/tools/gate.sh" --denylist "$DENYLIST" --staged
 EOF

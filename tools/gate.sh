@@ -50,7 +50,7 @@ fi
 #   ## SIGNATURE — the declared authorship claim. See below; it is a WIDENING, so it
 #            is read more carefully than the other two.
 # A file with no section headings is read entirely as HARD, which is what every
-# denylist written before 2026-08-19 is.
+# denylist written before the sections existed is.
 terms()   { sed -n "/^## $1/,/^## /p" "$DENYLIST" | grep -v '^#' | grep -v '^[[:space:]]*$'; }
 section() { terms "$1" | paste -sd'|'; }
 if grep -q '^## HARD' "$DENYLIST"; then
@@ -62,10 +62,10 @@ PATTERN="$HARD"
 [ -n "$PATTERN" ] || { echo "  gate: the denylist has no HARD terms — that is not a pass."; exit 2; }
 
 # `[0-9]*` before the closing boundary: a term ending in a version number escapes a
-# bare \b match, so a name on the list could still be invisible. Proven 2026-08-19.
+# bare  match, so a name on the list could still be invisible. Proven against a plant.
 HARD_RE="\\b(${PATTERN})[0-9]*\\b"
 
-# ── the signature carve-out (MLabs:AX-1, amended 2026-08-20) ──────────────────────
+# ── the signature carve-out (`MLabs:AX-1`) ──────────────────────
 # A leak is personal data that travels because someone forgot. A signature travels
 # because someone decided. The axiom now permits the second, and this is where the
 # permission is *implemented* — which means implemented NARROWLY, because a widening
@@ -144,7 +144,7 @@ fi
 # 1c · An address, which the term list above CANNOT see. A denied term glued to more
 #      letters has no word boundary after it, so an address built from the operator's
 #      own name passes every check above — while being the single most identifying
-#      string a public repository can carry. Proven 2026-08-20 against a plant, with
+#      string a public repository can carry. Proven against a plant, with
 #      check 1 reporting clean on the same file.
 #
 #      Dropping the boundary from check 1 was the obvious fix and is the wrong one: a
@@ -183,7 +183,7 @@ fi
 #     may carry `gate:allow <reason>` — and every one is printed on every run. An
 #     exemption you can list is a debt; an exemption you cannot see is a hole.
 #
-#     ⚠️ THE PATTERN WAS BLIND AND RETURNED CLEAN ON A REAL LEAK (2026-08-20). It ended
+#     ⚠️ THE PATTERN WAS BLIND AND RETURNED CLEAN ON A REAL LEAK. It ended
 #     in a slash it REQUIRED and used a class that cannot cross an underscore, so a
 #     numbered *folder* matched and a numbered *index file* beside it did not — and the
 #     numbering below 01 was outside the range entirely. `create-note` published six such
@@ -208,7 +208,7 @@ if hits=$(grep -rHnE '(^|[^A-Za-z_0-9])(99_SYSTEM|98_PROJECTS|0[0-9]_[A-Za-z][A-
 fi
 
 # 3 · The tracked set is exactly the allowlist — BOTH directions. A surplus file is a
-#     leak; a `!` line with nothing behind it is scaffolding. Until 2026-08-19 only the
+#     leak; a `!` line with nothing behind it is scaffolding. Check BOTH directions — only the
 #     second was checked, so a private file force-added past .gitignore passed with a
 #     green tick — the one failure mode with nothing else behind it.
 while read -r f; do

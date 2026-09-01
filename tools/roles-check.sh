@@ -12,7 +12,7 @@
 #
 # Exit 0 they match · 1 they do not · 2 could not run, which is NOT a pass.
 #
-# ⚠️ WHY THIS IS NOT A GREP FOR `## Dismissal`. It was, until 2026-08-21, and it
+# ⚠️ WHY THIS IS NOT A GREP FOR `## Dismissal`. It was once, and it
 # measured the wrong set: the heading returned 6 of 19 skills, of which two were not
 # roles and one was a dispatcher. **One word carried three meanings** — a role's firing
 # criterion, a skill's retirement condition, and a section added to satisfy the grep

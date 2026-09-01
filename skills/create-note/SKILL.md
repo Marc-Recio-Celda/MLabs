@@ -160,14 +160,3 @@ that could not be run is reported as not run, never as passed.
 - **Touching the Router** beyond its bridge row and counter, or any index outside the domain.
 - **Opening a domain**, committing for the operator, breaking the code policy, or leaving a note
   unsynchronised.
-
----
-
-## Notes — loaded by a review, not by a note
-
-### Why no filename appears in *Read first*
-
-This skill spelled the Router's path and five domain indexes until 2026-08-20 — one machine's shape
-published in a generic method — and **the gate's own path check could not see it**, because its
-pattern required a trailing slash and could not cross an underscore. **Ninth occurrence of *a
-published check that cannot match*, and the first found by the operator rather than by a role.**

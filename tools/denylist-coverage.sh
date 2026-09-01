@@ -6,7 +6,7 @@
 # The release gate answers "does anything on the list appear in what is published".
 # This answers the question BEFORE that one, and it is the question a stale list gets
 # wrong: **is the list still the set of names that exist.** Two real project names were
-# missing on 2026-08-19 and the gate returned clean on both while its control fired —
+# missing, and the gate returned clean on both while its control fired —
 # so the gate worked and its vocabulary did not.
 #
 # ⚠️ It asks the RIGHT question, and the obvious wrong one is *is the name on the list*.

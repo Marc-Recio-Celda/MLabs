@@ -12,7 +12,7 @@ The working loop applied to the inbox — with **one step that may never be skip
 
 ## Read the whole pile before routing any of it
 
-**The operator's observation, 2026-08-19.** Two entries that are the same finding seen twice get worked twice if each is
+**Two entries that are the same finding seen twice get worked twice if each is
 routed on arrival — and a queue that has been sitting produces those constantly, because the same
 defect keeps surfacing from different angles.
 

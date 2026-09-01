@@ -119,36 +119,3 @@ there if the operator does not take it up.
 **The coverage is counted, not assumed.** A stated priority that no rule implements is exactly
 how a system ends up protecting the wrong things — and it is measurable, so it is measured. See
 the coverage table at the foot of `AXIOMS.md`.
-
----
-
-## Notes — loaded by a review, not by routine work
-
-### The tier with the most leverage had the least review
-
-⚠️ **A change here fired nothing until 2026-08-20.** `AXIOMS.md` had said from the start that *"a
-change here fires the review over every axiom in every department"*; this file, the tier that
-breaks every tie, had **a bar and no trigger** — *"a change here needs a case, not a vote"* says
-how hard it is to add, and nothing said what runs afterwards. **So `PH-7` was opened, and the review
-that ran two days later checked whether it had axioms and never asked whether it belonged** — found
-by the operator, not by the auditor. `A5` exists because of that gap.
-
-### `PH-7` was opened with zero axioms behind it, deliberately
-
-Added 2026-08-20 by the operator. The zero coverage was **declared rather than discovered**: the
-clause was opened first so the axioms would be written against it instead of being
-reverse-engineered from a dashboard that already existed.
-
-⚠️ **`company-auditor` round 9 ruled that the zero was a symptom, not the finding**: the clause
-**does not arbitrate** — no pair of axioms disagrees in a way `PH-7` settles — and one of its four
-consequences, *measured from the record, never recalled*, is already forbidden by `AX-22`. The
-operator's ruling, 2026-09-01: **keep the clause, write one or two axioms behind it.**
-
-### `superauditor`, and why the name is gone from this file
-
-Until 2026-09-01 this file described *"the superauditor"* in the present tense as the role that
-runs — **a role retired 2026-08-19**, when the jurisdiction split into `company-auditor` and
-`instance-auditor` sharing one contract. Every other tracked mention marked it historical; this one
-did not, **in the first file a cold start reads** (`CA-093`). The same paragraph also gave the role
-the R&D clause, which had already moved to `skills/rnd/` for the conflict-of-interest reason now
-stated in its place.

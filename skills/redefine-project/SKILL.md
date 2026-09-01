@@ -154,31 +154,3 @@ cartridges rot faster than this repairs them, and **the answer is not a better r
 something in the close is failing to keep them current, which is a different fix in a different
 place. **The tally is invocations against the interval between them:** if the intervals are not
 lengthening, this skill is treating a symptom.
-
----
-
-## Notes — loaded by a review, not by an invocation
-
-### Where the block authority came from
-
-**Established by the operator, 2026-08-19**, after a restructure left four of one project's closed
-blocks without a row on its board and **the cockpit rendered that project as if it began
-mid-series.**
-
-### Why it was loosened, and what it revealed
-
-*(the operator, 2026-08-20)*: *"quizá la solución sea no hacer esta regla tan estricta, ya que
-trabajando en un proyecto también pueden aparecer tareas que se alarguen y amplíen mucho. Hacerlo
-todo más moldeable no me parece mal mientras haya un mínimo control."*
-
-⚠️ **He was right, and the rule was already less strict than its own heading and its own check.**
-The permission table had always let anyone add a block, while the check demanded the block set not
-change **in either direction** — **prose and command disagreeing, and the command was the stricter
-of the two.** The fix was to state the axis properly: not *who is typing*, but *can this act break a
-citation*.
-
-### The fold rule was written from evidence, not taste
-
-In one instance **three projects were already folding closed blocks in their iteration-history
-sections and none had been told to**, while a fourth was not and lost four closed blocks.
-**The practice lived in three files and in no rule — a practice surviving by luck.**

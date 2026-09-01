@@ -75,7 +75,7 @@ $DOM/                       —          knowledge domains, numbered, each with 
   which compares the gate's own pattern against the names on disk. The list is the owner's; keeping
   it from going stale is the method's.
 
-- **`metrics.py` is generated here and should not be** *(debt, declared 2026-08-20 → `T110`)*. Its
+- **`metrics.py` is generated here and should not be** *(declared debt)*. Its
   logic is the six document kinds and the log contracts — both MLabs — and only its paths are this
   instance's. A builder that emits a copy per instance produces **a different measuring stick per
   operator**, which is the one thing a measurement tool must never be. It belongs in `tools/`, taking
@@ -95,5 +95,5 @@ $DOM/                       —          knowledge domains, numbered, each with 
 
 ⚠️ **The tree above is the whole answer.** A file not on it is not created — there is no second list
 of things deliberately omitted, because a list of absences grows with every layout this method has
-ever abandoned and is never once read by the builder *(the operator, 2026-08-20: "¿para qué
+ever abandoned and is never once read by the builder *(the operator: "¿para qué
 especificar lo que no crea? Simplemente di lo que crea")*.

@@ -18,11 +18,9 @@ instance, and it is why every table here is keyed by its header row.
 that drops what it does not understand turns a lossless record into a lossy one without saying so —
 which is the one thing this whole system exists to prevent.
 
-> ⚠️ **And this parser broke that rule in four places for two days.** The board's id grammar was
-> spelled out four separate times, every copy allowed only digits after the dot, and a sub-block
-> with a letter suffix therefore matched nothing and vanished — with `Nothing unplaceable.` printed
-> underneath. One live row was being lost from a real project board when it was measured on
-> 2026-08-20. **Fixed by putting the grammar in one place and giving each site a report.**
+> ⛔ **The id grammar is spelled once and every site imports it.** Four copies is how a sub-block
+> with a letter suffix matches nothing and vanishes **while `Nothing unplaceable.` prints
+> underneath** — a silent drop, which is the one failure a parser must never have.
 >
 > ⚠️ **Reporting was the easy half.** The first attempt reported *nineteen* rows from neighbouring
 > tables and one correct heading in a real file — and **a check that cries wolf gets deleted**, which
@@ -55,8 +53,8 @@ which is the one thing this whole system exists to prevent.
 **project:** `<name>`
 **Why** *(author, YYYY-MM-DD)*. …
 ```
-`status` ∈ ⬜ 🔨 ⛔ 🔴 ✅. **`project:` is required** — three tasks lacked it until 2026-08-18,
-carried over from the pre-split list and never noticed, because nothing read them.
+`status` ∈ ⬜ 🔨 ⛔ 🔴 ✅. **`project:` is required** — ⚠️ **an entry can lack it for
+months without anyone noticing, because nothing reads a field no check counts.**
 
 ### `park` — idea
 ```

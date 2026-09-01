@@ -67,20 +67,3 @@ the instance's hiring record, out of this role's sight.
 
 **A project auditor that agrees N times running is telling you the project is small enough not to
 need one** — which is a useful finding and a cheap one.
-
----
-
-## Notes — loaded by a review, not by a firing
-
-### The path that did not exist
-
-This file said *"at the path the binding declares"* until 2026-08-19 **and the binding declared no
-such path** (`CA-053`) — a pointer to a rule that did not exist, **in all three role files at
-once.**
-
-### Why the trigger stopped being automatic
-
-Retired 2026-08-18: five firings in one session cost more context than the work they audited, and a
-role whose own contract says *an auditor that fires constantly is one whose reports stop being read*
-had become that. **The full trade, and the condition that reopens it, are in `skills/audit/`** —
-stated once, because two files stating it is the duplicate `AX-20` forbids.

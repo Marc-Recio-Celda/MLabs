@@ -96,12 +96,3 @@ Retired if, after five plans, the `order_why` field is being filled with restate
 order rather than reasons for it. That would mean the field is theatre and the skill is a form to
 fill in — and a form nobody means is worse than no form, because it looks like the thing it
 replaced.
-
----
-
-## Notes — loaded by a review, not by a plan
-
-### Where it came from
-
-It lived inside `open-session` until 2026-08-19 and moved because **the trigger moved**: planning
-used to happen once, when a session opened, and under the block flow it happens once per sub-block.
