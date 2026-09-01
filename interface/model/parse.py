@@ -28,10 +28,9 @@ from pathlib import Path
 KINDS = ("compass", "plan", "queue", "park", "record", "standing", "skills", "records")
 
 
-# The board's id grammar, in ONE place. ⚠️ It was spelled out FOUR times and all four
-# copies said `(\.[0-9]+)?`, so a sub-block with a letter suffix matched nothing and was
-# DROPPED WITH NO REPORT — in the parser whose own GRAMMAR.md rule 2 says nothing may be
-# skipped. Reported 2026-08-19; a live instance of it (`B3.m`) measured 2026-08-20.
+# The board's id grammar, in ONE place. ⛔ Never copy it. A second copy diverges, and a
+# sub-block whose suffix the copy does not accept matches nothing and is DROPPED WITH NO
+# REPORT — in the parser whose own GRAMMAR.md rule 2 says nothing may be skipped.
 BLOCK_ID    = re.compile(r"^[A-Z]{1,3}[0-9]+$")
 SUBBLOCK_ID = re.compile(r"^[A-Z]{1,3}[0-9]+(\.[0-9A-Za-z]+)?$")
 # The first cell's LEADING token, anchored. Anchored because the previous form searched
@@ -178,9 +177,8 @@ def parse_queue(path, text):
             why = re.search(r"\*\*Why\*\*\s*\*?\(?(?P<author>[^,)]+),\s*"
                             r"(?P<date>\d{4}-\d{2}-\d{2})\)?", "\n".join(lines[i:i + 12]))
             f["id_raw"] = f.pop("id", None)
-            # The why is the whole point of a task — an executor that does not know the
-            # purpose cannot test the premise, and testing it is its job. It was matched
-            # for author and date and then discarded until 2026-08-18.
+            # ⛔ The why is the whole point of a task and is never discarded — an executor
+            # that does not know the purpose cannot test the premise, and testing it is its job.
             body, k = [], i + 1
             while k < len(lines) and not lines[k].startswith("### "):
                 body.append(lines[k]); k += 1
@@ -221,10 +219,9 @@ def parse_park(path, text):
             continue
         if not line.startswith("- "):
             continue
-        # The title may wrap. Join forward until the closing ** is in view, then match.
-        # Until 2026-08-18 this required both markers on one line and SKIPPED the rest
-        # in silence — one live entry was being dropped from the model while the file
-        # printed "Nothing unplaceable".
+        # ⛔ The title may wrap, so join forward until the closing ** is in view.
+        # Requiring both markers on ONE line skips every wrapped entry in silence, while
+        # the file goes on printing "Nothing unplaceable".
         joined, k = line, i
         while "**" in joined and joined.count("**") < 2 and k + 1 < len(lines):
             k += 1
@@ -266,10 +263,8 @@ def parse_compass(path, text):
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if not cells or len(cells) < 3:
             continue
-        # Read by header name, not by index. This block was positional until
-        # 2026-08-18 — in the one file whose grammar states, twice, that positional
-        # reading is what five earlier findings were spent on. One inserted column
-        # shifted every field and reported nothing.
+        # ⛔ Read by header NAME, never by index. One inserted column shifts every
+        # positional field and reports nothing — silently, with plausible output.
         row = header_of(lines, i)
         if cells[0] in ("▶", "⏸", "?") or re.fullmatch(r"\d+", cells[0]):
             g = dict(zip(row, cells)) if row and len(row) == len(cells) else {}
@@ -782,8 +777,8 @@ def parse_standing(path, text, project_pattern=None):
         **fields
     }
 
-    # ⚠️ `probs` is initialised at the TOP of this function since 2026-08-20 — the board
-    # extraction reports into it, and a reset here would discard exactly those findings.
+    # ⚠️ `probs` is initialised at the TOP of this function — the board extraction reports
+    # into it, and a reset here would discard exactly those findings.
     for req in ("last_updated", "next_action"):
         if req not in fields:
             probs.append(Problem(path, 1, f"a project state with no `{req.replace('_',' ')}` field"))
@@ -821,9 +816,9 @@ def parse_skills(path, text):
     elif (m := re.search(r"\bfires (?:when|on|once)\b[^.]*", d)):
         trigger, evidence = "event", m.group(0).strip()
     elif (m := re.search(r"\buse (?:at the close|whenever an?\b[^.]*changes)\b[^.]*", d)):
-        # A description naming a moment rather than a wish is an event, however it is
-        # phrased. `audit` read as a request until 2026-08-18 on "use at the close",
-        # which filed the audit door under things you call when you feel like it.
+        # ⛔ A description naming a MOMENT rather than a wish is an event, however it is
+        # phrased — "use at the close" is an event, and reading it as a request files the
+        # audit door under things you call when you feel like it.
         trigger, evidence = "event", m.group(0).strip()
     elif (m := re.search(r"\b(?:use|invoke) (?:when|it when|at|before|whenever|after|to)\b[^.]*", d)):
         trigger, evidence = "request", m.group(0).strip()

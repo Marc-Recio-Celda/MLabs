@@ -362,7 +362,7 @@ also needs to answer for its own record, it is a **role**.
 
 ```
 MLabs/                      the constitution — public, released, no state
-├── PHILOSOPHY · AXIOMS · METHOD · AGENTS · skills/
+├── PHILOSOPHY · AXIOMS · METHOD · FLOW · AGENTS · skills/ · tools/
 │
 ├── NEXUS/                  the operations centre — private, and the hub
 │   ├── AGENTS.md           the binding: names the MLabs it runs; declares ledger and denylist

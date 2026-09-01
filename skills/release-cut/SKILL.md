@@ -48,12 +48,12 @@ The denylist lives in the instance, never here: a list of names is itself person
 
 | Check | Passes when |
 |---|---|
-| Axiom numbering | contiguous, no duplicates, retired entries kept as ⚫ rows rather than removed |
-| Cross-references | every `AX-n` and every section reference resolves; **none points at a retired identifier** |
+| Axiom numbering | no duplicates, and **gaps are expected** — a retired axiom leaves the file and its number is never reused, so the gap is the trace and the log says where it went |
+| Cross-references | `bash tools/axiom-refs.sh <axioms> <SCOPE> <files…>` exits 0, and every `§n` resolves. **A retired axiom has no row, so citing one IS citing a missing id** — one search, not two |
 | Coverage | regenerated from the rows, never typed — and it matches |
 | Every event-triggered skill | states its dismissal criterion |
 | Every skill | has a description saying **what it does and when to use it**, and no two overlap |
-| Append-only | the diff since the last tag removes no line from a decision log |
+| Records are append-only | the diff since the last tag removes no line from **a Record** — a decision log, a ledger, an employee log. ⚠️ **Standing documents are exempt and must be**: an axiom file, a binding and a method evolve, and forcing them to only grow is what fills the central text with deprecated rows |
 | Version stamps | every tracked document names the release it was written against (`AX-20`). ⚠️ **The stamps have never agreed and this check has never been run at a cut.** ⚠️⚠️ **AND THE FIX IS NOT TO BUMP THEM.** `AX-20` says the stamp answers *which rule set was this written against* — so a file at 1.0.0 is **reporting that nobody has reviewed it since 1.0.0**, which is the signal the stamp exists to give. **Bumping without reading is a lie that costs nothing to tell and destroys the only drift detector this repository has at zero maintenance cost.** **A stamp moves when a file is read whole and cleared, and by nothing else** — which makes it the auditors' act, since they are the only readers who read a file whole. Editing a row is not reviewing a file, so an edited file correctly keeps its old stamp. **What this check reports at a cut is therefore a list, not a failure**: *these are the files no audit has cleared since version X.* |
 
 ## 4 · The cold start — the one that actually tests the claim

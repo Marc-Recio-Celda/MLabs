@@ -20,7 +20,8 @@ If the operations centre is not present, you are editing methodology and nothing
 **Start here, in this order.** `PHILOSOPHY.md` — what this company optimises for, and what breaks
 every tie → `AXIOMS.md` — the rules that follow, already settled and not re-litigated → this file,
 for who does what and when → **`METHOD.md` — how work actually flows, which is the one you will use
-every day** → the role file for whatever you are about to act as or invoke → **and then the
+every day** → **`FLOW.md` — the shape the work moves in, and the declared winner for the plan
+lifecycle** → the role file for whatever you are about to act as or invoke → **and then the
 operations centre, which is where the work is** (§2).
 
 ⚠️ **Read what the work needs, not all of it** (`AX-21`). **Designing or auditing loads all three
@@ -135,11 +136,11 @@ rule at round close, not an agent, because its context is the whole conversation
 | **No personal information in what git tracks.** No person's name, no employer, no project name, no path inside the operations centre. Naming the centre itself is vocabulary (§2) | `tools/gate.sh` — greps the instance's denylist over `git ls-files`, and returns nothing. ⚠️ **Test it against a planted leak, and plant against the *format*** |
 | **The tracked set is exactly the allowlist** — nothing more, and nothing named that does not exist | `tools/gate.sh` check 3, both directions. A **surplus** file is a leak; a `!` line with **no tracked file behind it** is empty scaffolding, and the line goes |
 | **`git clean` is never run at this root.** The untracked here is everything the operator owns | none — prevention only (`AX-4`) |
-| **The axioms are append-only.** Entries are never rewritten; later entries supersede | `git diff <last-tag>..HEAD -- AXIOMS.md \| grep -c '^-[^-]'` returns **0** |
+| **Records are append-only; Standing documents are not.** A log, a ledger and a decision store only grow. **`AXIOMS.md`, this file and `METHOD.md` are Standing and are rewritten to stay true** — what protects them is that every change is read as a diff and agreed, not that nothing may leave | `skills/release-cut/` §3 over the Records. ⚠️ **Forcing a Standing file to only grow is how its centre fills with deprecated rows** |
 | **Every structural change carries an axiom or a logged decision** | `git diff <last-tag>..HEAD --stat` against the same range's `AXIOMS.md` additions, at the cut |
 | **Every queue and park entry carries `project:`** — a name or `cross` | `interface/model/parse.py --adapter <the instance's>` reports **`with project: n/n`** per kind and **`Nothing unplaceable.`** |
 | **Every axiom sits in exactly one tier** (company · instance · project) | a company axiom naming a toolchain, a project or a person belongs one tier down; an instance rule copied into more than one project file is a duplicate with no winner (`AX-20`) |
-| **Every axiom names the clause it serves, and every clause has at least one axiom** | the coverage table at the foot of each department, **regenerated and compared**, never transcribed. ⚠️ `PH-7` is at zero in both |
+| **Every axiom names the clause it serves, and every clause has at least one axiom** | the coverage table at the foot of each department, **regenerated and compared**, never transcribed. ⚠️ **No count appears in this cell**, for the reason the cell itself gives |
 | **Every role states its dismissal criterion and keeps a log** — the two together are what make it a role | `tools/roles-check.sh --skills skills --logs <the instance's logs dir>`. **The two sets must be the same set**, and each direction is reported separately: *a criterion with no log* and *a log with no criterion* are different problems |
 | **Every artefact stamps the rule-set version it was written against** (`AX-33`) | `skills/release-cut/`. ⚠️ **The stamp moves only when a file is read whole and cleared** — bumping it to make the check pass destroys what it measures |
 | **Never push to `master` without explicit operator permission** | no agent workflow targets `origin master` automatically |

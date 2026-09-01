@@ -186,10 +186,9 @@ fi
 #     ⚠️ THE PATTERN WAS BLIND AND RETURNED CLEAN ON A REAL LEAK. It ended
 #     in a slash it REQUIRED and used a class that cannot cross an underscore, so a
 #     numbered *folder* matched and a numbered *index file* beside it did not — and the
-#     numbering below 01 was outside the range entirely. `create-note` published six such
-#     filenames for a day and this check reported clean: the NINTH occurrence of *a
-#     published check that cannot match*, and the second where the pattern was on the
-#     page and simply could not fire. Now: two digits, an underscore, then a LETTER — so
+#     numbering below 01 was outside the range entirely. A skill published six such filenames
+#     and this check reported clean — *a published check that cannot match*,
+#     with the pattern on the page and simply unable to fire. Now: two digits, an underscore, then a LETTER — so
 #     a named numbered root matches at any depth while the bare numbered placeholder,
 #     which ends at the underscore, still passes. That is the distinction the paragraph
 #     above always claimed to draw and did not.

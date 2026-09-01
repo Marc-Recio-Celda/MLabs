@@ -562,12 +562,12 @@ function ingestModel(model) {
       codeRepo,
       remoteUrl,
       file: pState ? pState.file : "",
-      // The fallback is the generic one `getProjectLab` already uses. Until 2026-08-19 it
-      // was the literal name of a grouping folder from one operations centre, hard-coded
-      // into the public engine — exactly the `interface:AX-1` breach this project exists to
-      // avoid. It was invisible to the release gate because that word was not on the
-      // instance's denylist; adding the word found this on the very first run, which is the
-      // argument for deriving that list from disk rather than remembering it.
+      // ⛔ The fallback is the generic one `getProjectLab` already uses, and must stay
+      // generic. A literal folder name from one operations centre hard-coded into the
+      // public engine is the `interface:AX-1` breach this project exists to avoid — and
+      // ⚠️ the release gate CANNOT see it unless that word is on the instance's denylist,
+      // which is why the list is derived from disk (`tools/denylist-coverage.sh`) rather
+      // than remembered.
       lab: pState?.lab || (pState ? getProjectLab(pState) : "Workspaces"),
       workflow
     };
