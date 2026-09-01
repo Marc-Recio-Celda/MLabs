@@ -56,7 +56,7 @@ knows least** (`AX-29`).
 it is fixed structurally, nobody can, and it is history. If the next person writing something
 similar can, it is a trap.
 
-⛔ **And a trap does not stay as prose.** `AX-8`: *a rule with no firing event loses to the stream
+⛔ **And a trap does not stay as prose.** `AX-4`: *a rule with no firing event loses to the stream
 of requests.* A trap filed in a notes section is read by a review; the moment it bites is when
 somebody is **writing the thing**, which is not a review. **So it moves down to where it fires:**
 

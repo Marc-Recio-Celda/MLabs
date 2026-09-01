@@ -7,7 +7,7 @@ description: Creates a project's cartridge under the method — definition, stat
 
 # structure-project
 
-**Firing event** (`MLabs:AX-8`): a new project starts, **or** a body of work already underway is
+**Firing event** (`MLabs:AX-4`): a new project starts, **or** a body of work already underway is
 brought under the method. One firing produces one cartridge and one compass row.
 
 **Where it writes:** the operations centre, at its projects root. **Path shapes only — the literal
