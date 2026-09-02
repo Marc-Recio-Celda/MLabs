@@ -43,8 +43,8 @@ disk, and the live plan is how it sees the round's *reasoning* without reading a
 **The brief is three things and nothing else:** the role file's checklist · the paths the task
 touched · that task's live plan.
 
-⚠️ **The brief never contains the dismissal thresholds, nor names the file that holds them.** An
-auditor that knows it is retired for agreeing has an incentive to manufacture findings, which
+⚠️ **The brief never contains the dismissal criterion, nor names the file that holds it.** An
+auditor that knows it is judged for agreeing has an incentive to manufacture findings, which
 destroys the measurement it exists to produce. **Point the brief at the checklist, never at the
 record.**
 
@@ -133,7 +133,7 @@ row carries.
 |---|---|
 | `ID` | `<prefix><nnn>`, never recycled, never renumbered |
 | `Round` · `Date` | the firing, and the day |
-| `Acc` | **the operator's ruling.** `y` accepted · `wrong` a false positive · `misrouted` true but another role's department · `declined` true and in scope, not acted on · `deferred` held for a named future event · `—` not yet adjudicated. **`K` counts `y`; precision counts `wrong` and nothing else** |
+| `Acc` | **the operator's ruling.** `y` accepted · `wrong` a false positive · `misrouted` true but another role's department · `declined` true and in scope, not acted on · `deferred` held for a named future event · `—` not yet adjudicated. **Value counts `y`; precision counts `wrong` and nothing else** — and they are two numbers, because a role can be right and useless |
 | `Status` | `fixed-same-round` · `fixed-later` · `open` · `accepted-not-fixed` · `withdrawn` |
 | **`Repeat of`** | **the earlier ID this recurs, or `—`. The field the log exists for.** It may cite **another role's prefix** — a finding one auditor raises and another re-raises is still a repeat |
 | `Finding` · `Where` | one line each; the reasoning stays in the ledger |
@@ -148,8 +148,9 @@ own `README.md`** — instance-side. This table is the structure it implements; 
 
 ## The tally — read from the logs, not from the ledger
 
-**`AGENTS.md` §6 needs `N` and `K` countable per role, and the logs already are**: one file per
-role, a `Round` column and an `Acc` column, parsed **by column name**.
+**The operator reads a role's log against its criterion (`AGENTS.md` §6), and the logs are shaped so
+that reading is a command rather than an impression**: one file per role, a `Round` column and an
+`Acc` column, parsed **by column name**.
 
 ```bash
 python3 <the instance's metrics script> --json   # → audits.<role>.firings · .operator_accepted

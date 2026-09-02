@@ -11,8 +11,8 @@ the transcript, and returns either findings or the list of what it checked.
 > **The shared contract is `skills/audit/`** — the brief, the output shape, the ledger entry, the
 > log row, the tally, what an auditor does not do. **This file states only what is this role's own.**
 >
-> **This file defines the role; the instance holds its hiring record** — thresholds, standing,
-> history. On structure, this file wins.
+> **This file defines the role; the instance holds its hiring record** — its criterion, its
+> standing, its history. On structure, this file wins.
 
 ## Why it is separate from the company auditor
 
@@ -72,8 +72,8 @@ Per `skills/audit/`. **`Checked:` lists the ids above — `I1 I2 I3 I4 I5 I6` �
 checked* is legible without reading the report.**
 
 ⚠️ **A finding that is already the company auditor's is a repeat, not a finding.** Cite the `CA-` id
-in `Repeat of` and say so in one line. **Two roles reporting one defect as two findings is how a
-dismissal tally stops measuring anything.**
+in `Repeat of` and say so in one line. **Two roles reporting one defect as two findings is how both
+logs stop measuring anything** — each looks productive and the pair found one thing.
 
 ## Its log
 
@@ -84,12 +84,9 @@ Its ledger prefix is `[instance-auditor]` **from round 8**; its round 7 entry ca
 
 ## Dismissal
 
-Per `AGENTS.md` §6, the operator fixes **N** and **K** **before the first firing** and records both
-in the instance's hiring record, out of this role's sight.
-
-⚠️ **Round 7 does not count toward this role's dismissal**, because neither number was fixed when it
-fired. **The clock starts when the numbers are fixed**, which is what makes them a measurement
-rather than a label.
+Per `AGENTS.md` §6, **the criterion is written before the first firing** and lives in the instance's
+hiring record, out of this role's sight. **The operator reads this role's log against it and
+decides.**
 
 **The numbers do not appear in this file, and the runtime brief must not contain them nor name the
 file that holds them.**

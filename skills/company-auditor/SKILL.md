@@ -13,8 +13,8 @@ list of what it checked.
 > log row, the tally, what an auditor does not do. **This file states only what is this role's own:
 > its scope, its trigger, its checks, and the two reviews nobody else runs.**
 >
-> **This file defines the role; the instance holds its hiring record** — thresholds, standing,
-> history. On structure, this file wins.
+> **This file defines the role; the instance holds its hiring record** — its criterion, its
+> standing, its history. On structure, this file wins.
 
 ## Why it exists
 
@@ -160,10 +160,10 @@ never renamed.
 
 ## Dismissal
 
-Per `AGENTS.md` §6: the operator fixes **N** — consecutive firings that add nothing → retired — and
-**K** — genuine findings, after which the *next* role may be hired — **before the first firing**, and
-records both in the instance's hiring record next to the tested tally commands.
+Per `AGENTS.md` §6: **the criterion is written before the first firing** and lives in the instance's
+hiring record. **The operator reads this role's log against it and decides** — nothing retires the
+role by arithmetic.
 
-**The numbers do not appear in this file, and the role's runtime brief must not contain them, nor
-name the file that holds them** — an auditor that knows it is retired for agreeing has an incentive
-to manufacture findings, which destroys the measurement it exists to produce.
+**The criterion does not appear in this file, and the role's runtime brief must not contain it, nor
+name the file that holds it** — an auditor that knows what it is judged on has an incentive to
+manufacture findings, which destroys the measurement it exists to produce.

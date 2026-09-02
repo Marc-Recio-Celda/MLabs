@@ -52,10 +52,12 @@ routing index and never wholesale (`AX-21`).
 root and names nothing inside it: no project, no person, no path below that root. A stranger
 instantiating their own company creates their own, the same way they create their own `main` branch.
 
-**The binding, declared instance-side.** Its own `AGENTS.md` declares **where its ledger lives** —
-the append-only log the company auditor writes to and the dismissal tally greps — and **where its
-denylist lives** for §5's depersonalisation check. The denylist is a list of names and project words,
-personal data by definition, so it lives there and never here.
+**The binding, declared instance-side.** The centre's own contract at its system root — `AGENTS.md`
+by default (`skills/build-nexus/layout.md`) — declares **where its ledger lives**, the append-only
+log the auditors write to, and **where its denylist lives** for §5's depersonalisation check. The
+denylist is a list of names and project words, personal data by definition, so it lives there and
+never here. ⚠️ **An instance built before that default carries another name**, so an arriving agent
+lists the system root rather than assuming one.
 
 ## 3. The hierarchy — two lists, not one
 
@@ -73,7 +75,7 @@ authority. Both lists sit *below* `PHILOSOPHY.md`, which decides when they tie.
 | **3** | **Operator load** | The manual step it adds — is it a *decision* or *transcription*? Transcription is always debt; review is not |
 | **3** | **Portability** | Given only the artefacts, does a new agent, tool, model, machine — or the operator in six months — reach productive? |
 | **4** | **Migration cost** | How many existing artefacts must be touched, and who consumes the new thing? |
-| **5** | **Coupling** | If this changes, what else must be opened? Split by owner first, rate of change second (`PH-5`) |
+| **5** | **Coupling** | If this changes, what else must be opened? Split by owner first, rate of change second (`PH-1`) |
 
 **At close — the vetoes.** Mechanical, cheap, verifiable after the fact, and they reject:
 
@@ -115,7 +117,7 @@ task closes* fires when the model notices the task closed; wiring a real hook is
 gap.
 
 **There is no `roles/` directory** — a second home for the same employee is a second place to change
-one fact. **A role's thresholds and standing are governance, not procedure**, and live in the
+one fact. **A role's criterion and standing are governance, not procedure**, and live in the
 operations centre's hiring record, out of the role's own sight.
 
 **Written and available — a skill existing is not a hire.** `gather` (collects and cites; its value
@@ -141,7 +143,7 @@ rule at round close, not an agent, because its context is the whole conversation
 | **Every axiom names the clause it serves, and every clause has at least one axiom** | the coverage table at the foot of each department, **regenerated and compared**, never transcribed. ⚠️ **No count appears in this cell**, for the reason the cell itself gives |
 | **Every role states its dismissal criterion and keeps a log** — the two together are what make it a role | `tools/roles-check.sh --skills skills --logs <the instance's logs dir>`. **The two sets must be the same set**, and each direction is reported separately: *a criterion with no log* and *a log with no criterion* are different problems |
 | **A rule that changes is followed to every artefact citing it** (`AX-33`) | `grep -rln '<the id>' $(git ls-files)` gives the dependency list, and `tools/axiom-refs.sh` proves none of them points at a row that no longer exists. ⚠️ **The artefact that breaks loudly is not the risk** — it is the one that still runs and is now wrong |
-| **Never push to `master` without explicit operator permission** | no agent workflow targets `origin master` automatically |
+| **Never push to the stable branch without explicit operator permission** | the binding names the working branch as **a literal value**, and no agent workflow targets the stable one automatically. ⚠️ **A rule whose subject is a phrase cannot be checked; one whose subject is a value can** |
 
 ⚠️ **Every check here reads `git ls-files` or a diff, never the working tree** — the tree at this
 root legitimately holds the instance and every project, which are none of this repo's business. A
@@ -186,9 +188,9 @@ The criterion lives in the instance's hiring record, out of the role's own sight
 
 | Stage | Content | Gate |
 |---|---|---|
-| **1 — done** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md`, this file, `METHOD.md`, the company auditor | cold start: an agent given only this repo explains the company and **can operate its rules**, tally included |
-| 2 | the split executes: generic halves of the founding instance's method layer move in; §5's checks get wired to run without a human; first tagged release + licence | cold start repeats; the instance still runs; **the checks run themselves** |
-| **3 — now** | the operating skills, plus `create-note` — the one door to a knowledge base | each carries its verification as a prediction; the loop runs end to end without the operator narrating it |
-| 4 | `compact` and the collaborative-repo pass — the maintenance skills, and the templates the standards ship as | each skill's own prediction |
+| **1 — done** | skeleton: `PHILOSOPHY.md`, `AXIOMS.md`, this file, `METHOD.md`, the company auditor | cold start: an agent given only this repo explains the company and **can operate its rules** |
+| **2 — half done** | ✅ the split executed and the generic halves moved in · ✅ licence and first tagged release · ⬜ **§5's checks still need a human at every cut**, which is the half that decides the stage | **the checks run themselves.** Until then §5 is a documented procedure, and `AX-7` says what that is worth |
+| **3 — written** | the operating skills, plus `create-note` — the one door to a knowledge base | each carries its verification as a prediction. ⚠️ **The end-to-end gate has never been run as a test** — the loop has run in practice, which is a different claim |
+| **4 — now** | ✅ `compact`, run over the whole tracked set · ⬜ the collaborative-repo pass · ⬜ **the templates the standards ship as** — `AX-26` asks for them and nothing in the tracked set is one | each skill's own prediction |
 | **✅ done, out of order** | **`build-nexus`** — creates an operations centre from nothing and walks its owner to a first task. Was listed last because it encodes the shape of an instance; **the shape stopped moving, so it moved** | a stranger, given only this repo and the skill, ends with a working instance and a first task in flight |
 | later | roles beyond those hired, strictly by §6 | each role's own criterion |

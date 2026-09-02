@@ -60,8 +60,8 @@ defect in two places genuinely is.**
 
 ## Dismissal
 
-Per `AGENTS.md` §6, the operator fixes **N** and **K** before its first firing and records both in
-the instance's hiring record, out of this role's sight.
+Per `AGENTS.md` §6, **the criterion is written before its first firing** and lives in the instance's
+hiring record, out of this role's sight. **The operator reads the log against it and decides.**
 
-**A project auditor that agrees N times running is telling you the project is small enough not to
-need one** — which is a useful finding and a cheap one.
+**A project auditor that keeps agreeing is telling you the project is small enough not to need one**
+— which is a useful finding and a cheap one, and it is read rather than triggered.

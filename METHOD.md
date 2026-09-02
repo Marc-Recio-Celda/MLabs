@@ -199,16 +199,16 @@ choose work one project at a time.** Deciding what comes next means looking at e
 once and filtering; reading what happened means opening one project and following it down. Put
 each artefact where its actual use is.
 
-**This does not violate modularity — it is what PH-5 asks for.** Owner first, rate of change
+**This does not violate modularity — it is what PH-1 asks for.** Owner first, rate of change
 second. The owner of every planning artefact is the same person; a queue per project is a split
-**by topic**, which PH-5 rules out in as many words. The `project:` field is the rate-of-change
-slicing *inside* the file, which is where PH-5 puts it.
+**by topic**, which PH-1 rules out in as many words. The `project:` field is the rate-of-change
+slicing *inside* the file, which is where PH-1 puts it.
 
 **What it buys, and the cost it pays.** One schema per kind instead of one per kind per project:
 the generated database (AX-2) gets one table for tasks, not eleven, and the interface **filters**
 instead of aggregating — a filter over one table is trivial where an aggregation over eleven
 drifting files is a project of its own. Cross-project items get a home for the first time.
-Startup reads one set (PH-6).
+Startup reads one set (PH-5).
 
 ⚠️ **The cost is real and it is paid immediately: one long file is harder to read than eleven
 short ones — until something filters it.** Centralising without the filter is the worse half of
@@ -331,7 +331,7 @@ them measures none. **Two words, and the difference is the log:**
 
 | Heading | Ends | Needs a log | Needs a hiring decision |
 |---|---|---|---|
-| `## Dismissal` | a **role** | yes — **created at hiring, empty, with its contract** | yes — the threshold is fixed before the first firing (`AX-11`) |
+| `## Dismissal` | a **role** | yes — **created at hiring, empty, with its contract** | yes — the criterion is written before the first firing (`AX-11`), and the operator judges against it |
 | `## Retirement` | a **skill** | no | no — it is retired when the repository can do without it |
 
 **Checked by `MLabs:tools/roles-check.sh`**, which compares the two sets and reports each direction

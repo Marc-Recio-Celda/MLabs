@@ -931,7 +931,7 @@ function renderOverview(container) {
             <div class="gov-principles-grid">
               <div class="gov-principle-card">
                 <div class="gov-principle-card-head">
-                  <span class="principle-badge">PH-1</span>
+                  <span class="principle-badge">PH-0</span>
                   <h4 class="principle-title">El horizonte largo es la premisa</h4>
                 </div>
                 <p class="principle-desc">Todo se construye para lo siguiente, no solo para hoy. Diseña para 3× a 10× el volumen actual. Lo que se aprende una vez no se vuelve a aprender desde cero.</p>
@@ -979,7 +979,7 @@ function renderOverview(container) {
 
               <div class="gov-principle-card">
                 <div class="gov-principle-card-head">
-                  <span class="principle-badge">PH-5</span>
+                  <span class="principle-badge">PH-1</span>
                   <h4 class="principle-title">El trabajo es modular</h4>
                 </div>
                 <p class="principle-desc">Cada pieza es dueña de su propio ciclo de vida y versión. El acoplamiento se paga en cada cambio; la separación una sola vez. Fronteras por <strong>propietario primero</strong>.</p>
@@ -991,7 +991,7 @@ function renderOverview(container) {
 
               <div class="gov-principle-card">
                 <div class="gov-principle-card-head">
-                  <span class="principle-badge">PH-6</span>
+                  <span class="principle-badge">PH-5</span>
                   <h4 class="principle-title">La atención es el recurso escaso</h4>
                 </div>
                 <p class="principle-desc">Todo se registra; casi nada se carga en memoria a la vez. <strong>Un único frente activo (▶)</strong>. El coste crítico no es el disco, sino lo que hay que retener en la cabeza.</p>
@@ -1251,7 +1251,7 @@ function renderWorkflowDetail(type) {
           </div>
 
           <div class="callout tip" style="margin-top: 14px; padding: 10px 14px;">
-            <strong>Regla clave:</strong> Estructurar primero para crear sobre una base modular clara; auditar coherencia y wikilinks antes de dar por cerrado (PH-1, PH-4).
+            <strong>Regla clave:</strong> Estructurar primero para crear sobre una base modular clara; auditar coherencia y wikilinks antes de dar por cerrado (PH-0, PH-4).
           </div>
         </div>
       `;
@@ -1297,7 +1297,7 @@ function renderWorkflowDetail(type) {
           </div>
 
           <div class="callout tip" style="margin-top: 14px; padding: 10px 14px;">
-            <strong>Regla clave:</strong> Cada proyecto es un repositorio soberano; jamás se acoplan por temática (PH-5).
+            <strong>Regla clave:</strong> Cada proyecto es un repositorio soberano; jamás se acoplan por temática (PH-1).
           </div>
         </div>
       `;
@@ -2252,7 +2252,7 @@ function renderProjectReposTab(proj) {
           </div>
 
           <p style="font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.5;">
-            Estructura de metadatos, estado vivo, definición arquitectónica y log append-only de decisiones (PH-5).
+            Estructura de metadatos, estado vivo, definición arquitectónica y log append-only de decisiones (PH-1).
           </p>
 
           <div class="repo-path-box">
