@@ -239,7 +239,7 @@ an agent that has to guess has already failed the cold start.
 
 ### What this was designed for, and where it breaks first
 
-Required by AX-27(b), and answered rather than deferred. **Designed for ~10 projects and ~50
+**Answered rather than deferred**, because a design that has not named its breaking point was designed for today. **Designed for ~10 projects and ~50
 open items across all queues.** The first thing to become manual is **triage**, and it breaks
 earlier than the rest: at roughly **25–30 open entries** a single triage stops fitting behind
 one active front, and the five-item audit cap turns it into six firings inside one front that

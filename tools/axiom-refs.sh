@@ -3,7 +3,7 @@
 #
 #   bash tools/axiom-refs.sh <axioms-file> <SCOPE> [files...]
 #
-# ⚠️ This replaced a two-clause check on 2026-09-01. While retired axioms stayed in the
+# ⚠️ This replaced a two-clause check. While retired axioms stayed in the
 # file as tombstones, "the id exists" and "the id is not retired" were separate searches
 # and one plant proved only one of them. Retirement now removes the row, so a citation of
 # a retired axiom IS a citation of a missing id: one search, one plant, no blind half.
@@ -29,6 +29,12 @@ live=$(grep -oE "^\|[[:space:]]*\*\*AX-[0-9]+\*\*[[:space:]]*\|[[:space:]]*(🟢
 hits=0
 for f in "$@"; do
   [ -f "$f" ] || continue
+  # ⚠️ The test directory is exempt, and the exemption is the point: a plant is a
+  # citation of something that does not exist, written on purpose. Every fixture in
+  # tools/tests/ would be reported here, and a check that fires on the files proving
+  # it works is one that gets switched off. **One directory, stated, auditable** —
+  # the same shape as the gate's declared exemptions.
+  case "$f" in tools/tests/*|*/tools/tests/*) continue ;; esac
   [ "$f" = "$AX" ] && continue
   # strip fenced code blocks, keep line numbers
   awk '/^```/{inb=!inb; print ""; next} inb{print ""; next} {print}' "$f" \
