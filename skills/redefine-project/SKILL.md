@@ -3,8 +3,6 @@ name: redefine-project
 description: Brings a project's definition, plan and state back in line with what the work has actually become, when its cartridge has drifted from reality. Use when a project's blocks no longer describe the work, when its state is several decisions behind, when the next action names something already done, or when opening a project and not recognising it. Invoked by the operator; never fires on its own. Rewrites the definition and the state, appends a decision, and never touches another project.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # redefine-project
 
 **`structure-project` opens a cartridge. This closes the gap that opens afterwards.** A project is

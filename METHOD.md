@@ -1,7 +1,5 @@
 # METHOD — how work actually flows
 
-> **Version:** 1.0.0
-
 > **The fourth document, and the only one you use every day.** `PHILOSOPHY.md` says what this
 > company optimises for; `AXIOMS.md` what may never be violated; **this file says how work
 > actually moves**; and NEXUS holds what happened. The first two are read once and rarely
@@ -418,9 +416,10 @@ the company file makes that file unusable by anyone else. **When in doubt it goe
 promoting later costs one restatement; demoting later means a public file is wrong for however
 long nobody notices.
 
-**Every `AGENTS.md` in the chain is generated, never hand-written** (AX-30): the method half
-comes from MLabs, the local half lives beside its own repository, and a script concatenates them
-into a file nobody edits, with a check that fails on drift.
+**Every `AGENTS.md` in the chain holds only its own half** (AX-30): what is true of that repository
+is written there, and everything the method says is reached by reference — the contract names where
+MLabs lives, once, and cites it thereafter. **A method rule pasted into a contract is a copy nothing
+regenerates** (AX-20), and it is read as current for as long as nobody compares the two.
 
 ## 7. Routing table — "I have X, where does it go?"
 

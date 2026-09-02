@@ -1,7 +1,5 @@
 # FLOW — the shape work takes, and the rules that keep it honest
 
-> **Version:** MLabs 1.1.0
-
 > **Standing.** `METHOD.md` says how work moves; this says **what shape it moves in** — the
 > nesting, and the rules that stop it degrading. The fields each record carries are the
 > instance's, declared in its schema.

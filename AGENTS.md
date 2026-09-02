@@ -1,7 +1,5 @@
 # AGENTS.md — how this company runs
 
-> **Version:** 1.0.0
-
 > The orchestration file: which roles exist, what each does, when each fires, and the rule that
 > governs hiring and firing. **Every line here passes two tests** — *if an agent ignored it, would
 > the work come out wrong?* and *could it have worked this out by reading the repo?* **Only
@@ -142,20 +140,19 @@ rule at round close, not an agent, because its context is the whole conversation
 | **Every axiom sits in exactly one tier** (company · instance · project) | a company axiom naming a toolchain, a project or a person belongs one tier down; an instance rule copied into more than one project file is a duplicate with no winner (`AX-20`) |
 | **Every axiom names the clause it serves, and every clause has at least one axiom** | the coverage table at the foot of each department, **regenerated and compared**, never transcribed. ⚠️ **No count appears in this cell**, for the reason the cell itself gives |
 | **Every role states its dismissal criterion and keeps a log** — the two together are what make it a role | `tools/roles-check.sh --skills skills --logs <the instance's logs dir>`. **The two sets must be the same set**, and each direction is reported separately: *a criterion with no log* and *a log with no criterion* are different problems |
-| **Every artefact stamps the rule-set version it was written against** (`AX-33`) | `skills/release-cut/`. ⚠️ **The stamp moves only when a file is read whole and cleared** — bumping it to make the check pass destroys what it measures |
+| **A rule that changes is followed to every artefact citing it** (`AX-33`) | `grep -rln '<the id>' $(git ls-files)` gives the dependency list, and `tools/axiom-refs.sh` proves none of them points at a row that no longer exists. ⚠️ **The artefact that breaks loudly is not the risk** — it is the one that still runs and is now wrong |
 | **Never push to `master` without explicit operator permission** | no agent workflow targets `origin master` automatically |
 
 ⚠️ **Every check here reads `git ls-files` or a diff, never the working tree** — the tree at this
 root legitimately holds the instance and every project, which are none of this repo's business. A
 check that walks the tree (`find`, a bare `grep -r`) is wrong by construction here.
 
-⛔ **This file breaks `AX-30` and says so rather than hiding it.** The contract is meant to be
-generated from a method half and a repository half; this one is hand-written and the generator is
-stage 2's work. **An axiom broken silently by its own repository is the precedent every later
-exemption cites**, so the breach is declared here and carries stage 2's gate as its expiry.
-
 ⚠️ **Until the first release these checks run by hand at each cut, which is a hope and not a
 guarantee** (`AX-7`). Wiring them into CI, a release script or a hook is stage 2's gate.
+
+⛔ **An invariant this repository exempts itself from is not an invariant.** The exemption granted to
+the authoring repo is the one every later exemption cites, and it is granted by whoever is least
+able to see the cost of granting it.
 
 ⚠️ **And every check states the root it runs from.** *The same correct check, run from the wrong
 checkout or the wrong root, returns clean* — the sibling of *a pattern that cannot match*, and not a
@@ -165,11 +162,11 @@ decoration. The three implementations here are the pattern to copy.
 
 ## 6. Hiring and firing
 
-**The rule is `AX-11`; it is not restated here.** What this file adds is the shape the numbers take:
-each role sets its own **N** — consecutive firings adding nothing, after which it is retired — and
-**K** — genuine findings, after which the *next* role may be hired, one, not several. **Both are
-fixed before the role's first firing**, both are countable by a command over the instance's ledger,
-and both live in the instance's hiring record, out of the role's own sight.
+**Both are the operator's act.** A role states its dismissal criterion when it is written and keeps a
+log from the moment it is hired (`AX-11`); **the criterion exists to give the operator something to
+read the log against, not to retire a role by arithmetic.** ⚠️ **A threshold that fires on its own
+retires a role on the round that happened to be quiet** — a property of the round, not of the role.
+The criterion lives in the instance's hiring record, out of the role's own sight.
 
 ## 7. Gates
 

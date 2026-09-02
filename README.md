@@ -1,7 +1,5 @@
 # MLabs
 
-> **Version:** 1.1.0
-
 **A working methodology for building knowledge systems with AI agents — packaged as a company.**
 
 MLabs is not a framework you install. It is the structure of a one-person company whose
@@ -101,8 +99,9 @@ which rules turned out to be theatre, and what breaks first.
 
 ## Status
 
-**1.1.0** — tagged release. Philosophy, axioms, method, orchestration and fourteen
-skills. An instance pins this tag; upgrading is a deliberate act.
+**1.1.0** — tagged release. Philosophy, axioms, method, orchestration, and the skills that run
+them — `ls skills/` is the list, and it is stated nowhere else. An instance pins this tag;
+upgrading is a deliberate act.
 
 **What it does not yet have**, declared rather than discovered: none of the invariant checks
 runs without a human — the release gate is a documented procedure, not a hook — and the

@@ -3,8 +3,6 @@ name: audit
 description: Dispatches an auditor over a closed task — company, instance or project, whichever department the work touched — or runs the saturation or promotion review. **Invoked by the operator, never automatic.** The natural moment is when an active front closes; use it also after a long stretch of work, or whenever you want a reading you did not ask for.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # audit
 
 This skill **dispatches** an auditor; it does not perform the audit.
@@ -141,8 +139,9 @@ row carries.
 | `Finding` · `Where` | one line each; the reasoning stays in the ledger |
 
 ⚠️ **Read your own log before reporting.** A finding you raised before and that is still `open` is
-**a repeat, not a new finding** — say so and cite the ID. Without that the dismissal rule miscounts
-in the direction that never retires anyone.
+**a repeat, not a new finding** — say so and cite the ID. Without that a log reports the same finding
+as new every round, and **the role's value reads larger than it is** in the one direction the
+operator reading that log cannot detect.
 
 ⚠️ **The reader, and its proof against an adversarial plant, live in the employee-log directory's
 own `README.md`** — instance-side. This table is the structure it implements; that file is the state.
@@ -162,9 +161,10 @@ the failure `MLabs:AX-1` exists to prevent, and the release gate blocks it.
 **The same holds for the hiring record: it is reached through the binding, never by a name written
 here** — including inside the paragraph that forbids naming it.
 
-⚠️ **Rounds 1–7 belong to both scopes and count toward neither role's dismissal.** One role held both
-jurisdictions; splitting that history retroactively would be inventing a measurement. **The per-role
-clocks start at round 8.**
+⚠️ **A row belongs to the role that wrote it and is never reassigned.** Where one role held two
+jurisdictions before the split, its rows stay its own and the new roles start empty — **splitting
+that history retroactively would be inventing a measurement**, and an invented one is
+indistinguishable from a real one once it is in the table.
 
 ⚠️ **Test the tally against a planted row before trusting it** (`MLabs:AX-7`), and **plant against
 the format, not merely into it** — a plant written in the file's own style reproduces the file's own

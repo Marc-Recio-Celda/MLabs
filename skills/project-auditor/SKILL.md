@@ -3,8 +3,6 @@ name: project-auditor
 description: Audits a closed task against one project's axioms and reports findings with evidence, or an account of what it checked and found nothing. **Invoked by the operator, never on its own** — the natural moment is when an active front closes, not when a task does. Runs with fresh context and reads only from disk.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # project-auditor
 
 **The company auditor's shape, one floor down.** Same discipline, same output contract, one

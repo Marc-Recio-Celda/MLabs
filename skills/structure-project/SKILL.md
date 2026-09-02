@@ -3,8 +3,6 @@ name: structure-project
 description: Creates a project's cartridge under the method — definition, state, decision log, agent log, and its own axioms once it has one — plus the agent contract where the repository is owned, and a compass row; when a new project starts or when work already underway is brought under the method for the first time.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # structure-project
 
 **Firing event** (`MLabs:AX-4`): a new project starts, **or** a body of work already underway is
@@ -30,7 +28,9 @@ substitute every placeholder — the project's name, its path, its own `AX-n` se
 | `architecture.md` | Standing | the project's own axioms — **created when the first one exists**, never as an empty table |
 | `skills/` | — | procedures that only make sense here — **created when the first one exists** |
 
-**2. Fill `definition.md`.** Measurable objective · context · deliverables and their format ·
+**2. Fill `definition.md`, and purpose comes before mechanism.** ⛔ **What this project is for, and
+what it refuses, is written before any procedure** — purpose is what breaks a tie when two rules both
+apply, so it goes where it is read first. Measurable objective · context · deliverables and their format ·
 success criteria · constraints · data available. **Then, in its own section, what this project is
 not.** The negative half is written now, while the boundary is still visible to the author: **it
 keeps scope from arriving unannounced, and no later pass can reconstruct it** (`MLabs:AX-4`).
@@ -57,9 +57,9 @@ shape was rejected for it.
   committed-but-not-started work is a task carrying `blocked_by:`, and the sequence is the graph
   those edges describe. **An unordered list of pending items is not a third drawer.**
 
-**6. Place the agent contract — only in a repository the operator owns.** It is generated from the
-method half plus the repository's local half, never typed, with a check that fails on drift
-(`MLabs:AX-30`).
+**6. Place the agent contract — only in a repository the operator owns.** It holds what is true of
+**this** repository and reaches the method by reference: it is the one file naming where MLabs
+lives, and every rule it needs from there is cited, never copied (`MLabs:AX-30`).
 
 - **Owned** → at the root of the code repository, local half filled: build and test commands, the
   working branch, the invariants that hold only here and the check for each.

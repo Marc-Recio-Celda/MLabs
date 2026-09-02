@@ -3,8 +3,6 @@ name: release-cut
 description: Cuts a public release of the methodology repository — verifies the tracked set against the allowlist, proves the depersonalisation check actually fires before trusting it, runs the cold start, and tags. Use whenever a version is about to be tagged, published, or made public for the first time, and whenever a consuming instance is about to adopt a new release.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # release-cut
 
 The gate every invariant in `AGENTS.md` §5 was written for. Until this runs, those invariants
@@ -54,7 +52,7 @@ The denylist lives in the instance, never here: a list of names is itself person
 | Every event-triggered skill | states its dismissal criterion |
 | Every skill | has a description saying **what it does and when to use it**, and no two overlap |
 | Records are append-only | the diff since the last tag removes no line from **a Record** — a decision log, a ledger, an employee log. ⚠️ **Standing documents are exempt and must be**: an axiom file, a binding and a method evolve, and forcing them to only grow is what fills the central text with deprecated rows |
-| Version stamps | every tracked document names the release it was written against (`AX-20`). ⚠️ **The stamps have never agreed and this check has never been run at a cut.** ⚠️⚠️ **AND THE FIX IS NOT TO BUMP THEM.** `AX-20` says the stamp answers *which rule set was this written against* — so a file at 1.0.0 is **reporting that nobody has reviewed it since 1.0.0**, which is the signal the stamp exists to give. **Bumping without reading is a lie that costs nothing to tell and destroys the only drift detector this repository has at zero maintenance cost.** **A stamp moves when a file is read whole and cleared, and by nothing else** — which makes it the auditors' act, since they are the only readers who read a file whole. Editing a row is not reviewing a file, so an edited file correctly keeps its old stamp. **What this check reports at a cut is therefore a list, not a failure**: *these are the files no audit has cleared since version X.* |
+| No transcribed version | `grep -rn '^> \*\*Version:' $(git ls-files)` **returns nothing.** The release's version is the tag; a number typed into a header is one nothing updates (`AX-36`). ⚠️ **This replaced a per-file stamp that never once agreed with itself** — six values across twenty-five files, a check that had never run at a cut, and the signal it was meant to give — *which files has an audit cleared* — belongs to the auditors' ledger, not to a line at the top of every file |
 
 ## 4 · The cold start — the one that actually tests the claim
 

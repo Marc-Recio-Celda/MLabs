@@ -3,8 +3,6 @@ name: compact
 description: Crushes an artefact's text without changing what it says, and reports every reference that no longer resolves — archaeology written into a file instead of its log, dangling identifiers, dead paths and wikilinks, stale counts, text in the wrong language. Runs over what changed since the last pass. Use before a release cut, before a pull request, after a long session that touched structural files, or whenever a reader who has never seen this repository is about to read it.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # compact
 
 **It makes what is there take less room; it never decides what belongs.** *(the operator: "como

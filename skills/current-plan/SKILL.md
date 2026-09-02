@@ -3,8 +3,6 @@ name: current-plan
 description: Plans how a sub-block will be worked, before any of it is done — the items, their order, and the reason for that order. Use when a sub-block is reached and it is time to decide how to tackle it, when an existing plan needs reopening, or when work is about to start with no plan behind it. Produces one plan record; it does not execute it.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # current-plan
 
 **One sub-block, one plan.** This decides *how* the work will be done and writes it down while

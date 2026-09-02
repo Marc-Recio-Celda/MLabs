@@ -3,8 +3,6 @@ name: company-auditor
 description: Audits a closed task against the company's axioms — the public structure that binds any instance — and reports findings with evidence, or an account of what it checked and found nothing. **Invoked by the operator, never on its own** — the natural moment is when an active front closes, not when a task does. Runs with fresh context and reads only from disk.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # company-auditor
 
 **The company's long-term health.** A subagent with fresh context, never the conversation itself: it
@@ -118,11 +116,11 @@ Of every axiom, including the untouched ones:
 | **Distinct?** | Which other axiom is nearest, and is the gap worth the reader's attention? Two axioms one reader cannot tell apart are one axiom and a tax |
 | **In force?** | Does it bind, or does it advise? An axiom that can be politely ignored is a decision wearing the wrong hat. ⚠️ **And a check that passes over zero lines is vacuous, not verified** |
 
-⚠️ **A file this role reads whole and clears gets its version stamp moved to the current release, in
-the same act** (`AX-33`). **Nothing else in this method moves it** — `release-cut` checks that
-stamps agree and has no step that makes them agree, so the check could only ever report a list.
-⚠️ **Bounded by *read whole*:** editing a row is not reviewing a file. **A stamp bumped without a
-full read is worse than a stale one — it reports a review that did not happen.**
+⚠️ **An axiom this role changes or retires is followed to every file citing it, in the same act**
+(`AX-33`). `grep -rln '<the id>' $(git ls-files)` gives the list, and `tools/axiom-refs.sh` proves
+none was left pointing at a row that no longer exists. **Nothing else in this method does that
+sweep.** ⚠️ **A citation left behind is not a broken link** — it is a file quietly obeying a rule
+that has changed, which nothing reports and no reader can see from inside the file.
 
 **Demotion is the expected outcome, not a failure.** An axiom that turns out narrower, softer or
 already-implied **becomes a decision** and moves to the log. **The set is meant to shrink under this

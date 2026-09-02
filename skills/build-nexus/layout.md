@@ -34,7 +34,9 @@ there. The kind is the contract; the filename is a convention this file happens 
 
 ```
 # ── the operations centre ────────────────────────────────────────────────────
-$SYS/PURPOSE.md            Standing   what this instance is for — left for its owner
+$SYS/PURPOSE.md            Standing   what this instance is for, and what it refuses — left for
+#                                     its owner, and written BEFORE any mechanism: purpose is what
+#                                     breaks a tie, so it goes where it is read first
 $SYS/AXIOMS.md             Standing   the instance's own axiom department
 $SYS/AGENTS.md             Standing   the binding — the one file naming MLabs
 $SYS/COMPASS.md            Compass    one ▶, seeded with *set your first front*
@@ -88,10 +90,10 @@ $DOM/                       —          knowledge domains, numbered, each with 
   would make both pass vacuously — the exact defect class the builder exists to close, committed by
   the builder.
 
-- **`AGENTS.md` is the binding and is the ONE file that names MLabs.** Everything else reaches the
-  method through it. ⚠️ **It is generated, never hand-written** (`AX-30`) — and the authoring
-  repository's own contract is currently hand-written and declares that debt, so this is the first
-  place the axiom is actually obeyed.
+- **`AGENTS.md` is the binding and is the ONE file that resolves MLabs to an address.** Everything
+  else reaches the method through it, by scope prefix (`AX-30`). ⚠️ **A second file holding the path
+  is a second place to edit the day the method moves**, and the one that gets missed is the one an
+  agent reads.
 
 ⚠️ **The tree above is the whole answer.** A file not on it is not created — there is no second list
 of things deliberately omitted, because a list of absences grows with every layout this method has

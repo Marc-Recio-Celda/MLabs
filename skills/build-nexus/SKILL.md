@@ -3,8 +3,6 @@ name: build-nexus
 description: Creates an operations centre from nothing and walks its owner to a first task in flight — invoke on a machine that has cloned MLabs and has no instance yet, or to repair a tree whose base files were never generated; it builds in three separable layers and writes an empty instance, never a copy of an existing one.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # build-nexus
 
 **The first thing that runs, and the reason the rest can be audited.** Every other skill names files

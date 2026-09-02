@@ -3,8 +3,6 @@ name: learn
 description: Works a coursework exercise forward from its problem statement so the operator reaches both the deliverable and the understanding — invoke when an unsolved assignment, problem set, or exam question arrives and the operator wants a worked guide, a submittable solution, or a taught concept; if the work is already written, invoke correct-exercise instead.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # learn
 
 

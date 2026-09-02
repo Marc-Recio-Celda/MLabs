@@ -3,8 +3,6 @@ name: instance-auditor
 description: Audits a closed task against this instance's own axioms — the operations centre's department, its binding, and the shape of its live set — and reports findings with evidence, or an account of what it checked and found nothing. **Invoked by the operator, never on its own** — the natural moment is when an active front closes, not when a task does. Runs with fresh context and reads only from disk.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # instance-auditor
 
 **The operations centre's own health.** A subagent with fresh context that reads from disk, never

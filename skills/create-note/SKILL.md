@@ -3,8 +3,6 @@ name: create-note
 description: Writes and edits every note in the instance's knowledge vault and nothing else does; fires when the operator asks for a new note or a change to an existing one, hands over a course syllabus to ingest, asks for a sub-domain's scaffolding, or wants something learned from their own working experience turned into vault theory.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # create-note
 
 ## When it fires

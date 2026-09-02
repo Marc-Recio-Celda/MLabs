@@ -1,7 +1,5 @@
 # PHILOSOPHY — what this company optimises for
 
-> **Version:** 1.2.0
-
 > **Level 1 of three.** *Philosophy* (this file) says what the company is for and what it
 > refuses. *Axioms* (`AXIOMS.md`) are the rules that follow and may never be violated.
 > *Decisions* live in **NEXUS**, the operations centre, with their author, date and reasoning —
