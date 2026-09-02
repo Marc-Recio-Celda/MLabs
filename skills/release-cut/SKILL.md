@@ -47,7 +47,9 @@ The denylist lives in the instance, never here: a list of names is itself person
 | Check | Passes when |
 |---|---|
 | Axiom numbering | no duplicates, and **gaps are expected** — a retired axiom leaves the file and its number is never reused, so the gap is the trace and the log says where it went |
-| Cross-references | `bash tools/axiom-refs.sh <axioms> <SCOPE> <files…>` exits 0, and every `§n` resolves. **A retired axiom has no row, so citing one IS citing a missing id** — one search, not two |
+| Cross-references, axioms | `bash tools/axiom-refs.sh <axioms> <SCOPE> <files…>` exits 0, and every `§n` resolves. **A retired axiom has no row, so citing one IS citing a missing id** — one search, not two |
+| Cross-references, clauses | `bash tools/clause-refs.sh PHILOSOPHY.md <files…>` exits 0. ⚠️ **It catches a clause that was removed, and cannot catch one that was reassigned** — an id that still resolves after it means something else is invisible to any reference check, which is why `AX-31` says a reference names its target rather than numbering it |
+| Every check has been seen to fire | `bash tools/tests/run.sh` exits 0 (`AX-7`). It runs each check against **two plants and a negative control**, and names every runnable check with no test at all. ⚠️ **A check nobody has planted against is a claim, not a check** — and the plant that matters is the one written in the file's own style |
 | Coverage | regenerated from the rows, never typed — and it matches |
 | Every event-triggered skill | states its dismissal criterion |
 | Every skill | has a description saying **what it does and when to use it**, and no two overlap |

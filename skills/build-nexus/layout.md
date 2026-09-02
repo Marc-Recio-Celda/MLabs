@@ -91,7 +91,7 @@ $DOM/                       —          knowledge domains, numbered, each with 
   the builder.
 
 - **`AGENTS.md` is the binding and is the ONE file that resolves MLabs to an address.** Everything
-  else reaches the method through it, by scope prefix (`AX-30`). ⚠️ **A second file holding the path
+  else reaches the method through it, by scope prefix (`AX-20`). ⚠️ **A second file holding the path
   is a second place to edit the day the method moves**, and the one that gets missed is the one an
   agent reads.
 

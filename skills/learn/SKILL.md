@@ -58,7 +58,7 @@ state, no project layer, nothing survives but the deliverable and what leaves th
      reproducibility fixed → per section: *what it asks* → *why it matters* → fully commented
      code → an **empty observation-and-interpretation template** → wrap-up comparison and
      discussion skeleton → submission checklist → the map back to the knowledge base. Code is
-     never withheld: **the transcription is handed over, the judgement is left** (`MLabs:PH-2`).
+     never withheld: **the transcription is handed over, the judgement is kept** (`MLabs:AX-40`).
    - `solve` — same gate, same citations, none of the scaffolding.
    - At any fork, the options with their trade-offs and one contextualised recommendation, which
      is the one carried into execution (`NEXUS:AX-14`).

@@ -59,7 +59,7 @@ shape was rejected for it.
 
 **6. Place the agent contract — only in a repository the operator owns.** It holds what is true of
 **this** repository and reaches the method by reference: it is the one file naming where MLabs
-lives, and every rule it needs from there is cited, never copied (`MLabs:AX-30`).
+lives, and every rule it needs from there is cited, never copied (`MLabs:AX-20`).
 
 - **Owned** → at the root of the code repository, local half filled: build and test commands, the
   working branch, the invariants that hold only here and the check for each.

@@ -416,7 +416,7 @@ the company file makes that file unusable by anyone else. **When in doubt it goe
 promoting later costs one restatement; demoting later means a public file is wrong for however
 long nobody notices.
 
-**Every `AGENTS.md` in the chain holds only its own half** (AX-30): what is true of that repository
+**Every `AGENTS.md` in the chain holds only its own half** (AX-20): what is true of that repository
 is written there, and everything the method says is reached by reference — the contract names where
 MLabs lives, once, and cites it thereafter. **A method rule pasted into a contract is a copy nothing
 regenerates** (AX-20), and it is read as current for as long as nobody compares the two.
