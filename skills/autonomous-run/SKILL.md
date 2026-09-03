@@ -39,9 +39,9 @@ misread is caught.
 that is `AX-14`, the premise failing — not something to quietly improve while executing. Say which
 item made it wrong and hand it back to `current-plan`.
 
-**Items get their outcome as they close**, never in a batch at the end: `done` · `mailbox` ·
-`ideas` · `discarded` with its reason. A run that dies at item nine must leave nine outcomes
-behind, which is the whole reason the record is written while working rather than after.
+**Items get their outcome as they close**, never in a batch at the end (`FLOW.md`). **A run that
+dies at item nine must leave nine outcomes behind**, which is the whole reason the sheet is written
+while working rather than after.
 
 ## The four stops — where autonomy ends
 

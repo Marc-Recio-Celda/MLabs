@@ -336,7 +336,7 @@ def parse_plan(path, text):
     })
 
     # The outcome vocabulary, and it is TWO vocabularies because two are on disk.
-    # `SCHEMA.md`, `FLOW.md` and `current-plan/SKILL.md` all declare `done · mailbox ·
+    # `SCHEMA.md` and `FLOW.md` declare `done · mailbox ·
     # ideas · discarded`; this pattern knew only the older `✅ resolved · → integrated ·
     # → park · ⚫`. A plan written to the declared contract therefore had every closed
     # item reported as *a failed close* — the mirror of a pattern that cannot match, and

@@ -58,26 +58,20 @@ written afterwards — it is written *while* deciding, which is what makes it wo
 is written to be read by the operator, who governs the flow. ⚠️ **Opening one can never overwrite
 another**: every task has its own sheet from the moment it exists (`FLOW.md`).
 
-**Work the list, striking through as you go.** Every item leaves with a **destination**, and
-the vocabulary is closed:
+**Work the list, striking through as you go, and every item struck through carries a destination**
+(`AX-9`). **The vocabulary is `FLOW.md`'s four**, and it is the instance schema's `outcome` field.
 
-| Destination | Means |
-|---|---|
-| ✅ resolved here | done in this task; the trace goes to a Record |
-| → task list | needs execution; becomes a task carrying its why |
-| → integrated | landed in code or in a document; the diff is the evidence |
-| → park | worth keeping, not now; goes to an ideas register |
-| → mailbox | belongs to someone else's inbox, or is a passive finding you must not fix here (AX-25) |
-| ⚫ discarded | rejected — **with its reason**, which is the half that has no other record (AX-24) |
-
-**Every item struck through carries a destination** (`AX-9`).
+⛔ **An item that needs its own task goes to the mailbox and is digested into one.** The task list
+runs operator → agent (§4), so an agent writing straight into it fills the queue it will then
+execute from — which is what `AX-15` forbids, and the digestion step is where the operator's
+judgement enters.
 
 **When an item spawns others, write them down immediately, right after the current one.** Even
 — *especially* — when they have nothing to do with what you are on. An idea that arrives while
 you are deep in something else is the one that gets lost, and "I'll remember it" is the exact
 moment PH-3 is broken. Writing it down is not the same as doing it: it takes its place in the
-list and gets a destination like everything else. Most will be ⚫ or → park, and that is a
-successful outcome, not a wasted line.
+list and gets a destination like everything else. Most will leave as `ideas` or `discarded`, and
+that is a successful outcome, not a wasted line.
 
 **Two review surfaces, two scopes.** The **diff** is the gate for one change: applied, left
 uncommitted, read by the operator. The **branch** is the gate for a session, which is what makes
@@ -161,7 +155,7 @@ a friendlier name, and `AX-17` routes committed-but-not-started work somewhere e
 Two queues, running in opposite directions, and **neither side empties its own** (AX-15):
 
 - **Mailbox** — agent → operator. Un-integrated deltas: what an agent found, proposed, or
-  crossed. Every entry declares its destination from the closed vocabulary above.
+  crossed. Every entry declares its destination from `skills/triage/`'s vocabulary, which is the mailbox entry's and not the plan item's.
 - **Task list** — operator → agent. Work to execute, each task carrying **its why**, because an
   executor that does not know the purpose cannot refuse a task whose premise is false (AX-14).
 

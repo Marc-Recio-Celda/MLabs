@@ -39,9 +39,9 @@ from the moment the task exists** — empty until somebody plans it, planned whe
 chooses, and closed with the task. A second state set on the plan is a second answer to *what is
 happening now*, and two answers disagree inside a week.
 
-⚠️ **A state is not an outcome.** A task carries one of the five; an **item** leaves with a
-destination — done · to the mailbox · to ideas · discarded with its reason. Four, not five, and not
-the same four.
+⚠️ **A state is not an outcome, and the two sets are different sizes.** A task carries one of the
+five above; an **item** leaves with one of the four destinations, which is what the instance's
+`outcome` field holds.
 
 ## The rules, because each one has a failure it prevents
 

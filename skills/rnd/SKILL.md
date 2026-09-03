@@ -9,10 +9,9 @@ description: Lateral thinking against the company's own design, on request. Use 
 called — which is almost always — and gets full context when it is, which is precisely when that
 context is worth spending.
 
-> **Its description names a request**, which by `MLabs:AGENTS.md` §4 makes it a capability rather
-> than a role. **It keeps a log all the same** (`MLabs:AX-11`) — one row per proposal, at the path
-> the instance's binding declares, on its own contract: an auditor's ruling is *was it real*, a
-> proposal's is *did we do it*.
+> **A role, on the definition that decides it: a log and a criterion** (`MLabs:METHOD.md` §5). Its
+> description names a **request** rather than an occasion, which is a separate axis — `MLabs:AGENTS.md`
+> §4 — and settles only how the model reaches it, never what it answers for.
 
 ## Occasion
 **The operator is stuck on a problem** · a decision has been circled several times without closing ·
@@ -51,7 +50,9 @@ making hard · which constraint would, if dropped, make the problem disappear.
 
 ## What persists
 
-**One row per proposal in its log, and the reasoning stays in the conversation.** ⛔ **A proposal
+**One row per proposal in its log** — at the path the instance's binding declares, on that log's own
+contract, because an auditor's ruling is *was it real* and a proposal's is *did we do it* — **and
+the reasoning stays in the conversation.** ⛔ **A proposal
 already ruled on is never re-proposed** — an idea that has to be argued twice was not good enough the
 first time, and the row is what makes that visible six months later.
 
@@ -67,11 +68,11 @@ nothing else**: not the ledger, and not any axiom department.
 
 ## Dismissal
 
-**Retired if, across five invocations, nothing it raised was picked up.** One idea ignored is not a
-failure; five in a row is a capability that has misread what the operator needs.
+**Its criterion is the instance's hiring record**, written before its first firing and read against
+its log by the operator (`MLabs:METHOD.md` §5).
 
-⚠️ **Its measure is `Changed a decision`, never adoption** — a capability whose every proposal is
-adopted is either excellent or unchallenged, and an adoption rate cannot tell you which.
+⚠️ **The number worth reading is `Changed a decision`, not adoption** — a role whose every proposal
+is adopted is either excellent or unchallenged, and an adoption rate cannot tell you which.
 
 **Its occasion is the standing question.** One that turns out regular is an occasion this file
 should name; one that stays irregular is a request, and **the invocation record is what says

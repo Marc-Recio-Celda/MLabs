@@ -70,16 +70,18 @@ in `skills/audit/`; each role file states its scope, the occasion that calls for
 checks — and **the role file is where those live**, because a skill's description is already loaded
 in every context.
 
-**What makes a skill a role is the shape of its description**, and that shape decides what the model
-does when the occasion arrives:
+⚠️ **The definition above is the whole of it, and it is about accountability.** **The shape of a
+description decides something else — how the model reaches the skill** — and the two axes are
+independent: a role's description may name a request, and a skill with neither log nor criterion may
+name an occasion.
 
-| | Its description names | What the model does with it |
-|---|---|---|
-| **Role** | **an occasion** — *"when a task closes"* | recognises it and **says so**; the operator invokes it (`METHOD.md` §5) |
-| **Capability** | **a request** — *"when the operator wants X"* | offers it when what was asked for matches |
-| **Locked** | either, plus `disable-model-invocation: true` | **the operator calls it by name.** ⚠️ **Its description leaves context entirely** — lock what only he should reach for |
+| Its description names | What the model does with it |
+|---|---|
+| **an occasion** — *"when a task closes"* | recognises it and **says so**; the operator invokes it (`METHOD.md` §5) |
+| **a request** — *"when the operator wants X"* | offers it when what was asked for matches |
+| either, plus `disable-model-invocation: true` | **the operator calls it by name.** ⚠️ **Its description leaves context entirely** — lock what only he should reach for |
 
-⛔ **An occasion named in prose is a prompt to speak.** The agent names the role and the occasion;
+⛔ **An occasion named in prose is a prompt to speak.** The agent names the skill and the occasion;
 the operator invokes it.
 
 **Hiring and firing are the operator's act**, and **a role's criterion and standing live in the

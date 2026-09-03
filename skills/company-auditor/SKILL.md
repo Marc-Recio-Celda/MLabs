@@ -33,12 +33,12 @@ confusion this role exists to catch, seen from inside.**
 **One event: a task closes having changed a company-structural file.** Then this role fires
 **once**, over everything that task touched. Not per entry, not per file.
 
-| | |
-|---|---|
-| The three levels | `PHILOSOPHY.md` · any `AXIOMS.md`, in any department · any project's `architecture.md` |
-| The method and the bindings | `METHOD.md` · any `AGENTS.md` and its `CLAUDE.md` pointer · `PURPOSE.md` |
-| What executes | any `skills/*/SKILL.md` · anything under `tools/` · **anything under `interface/`** |
-| What guards the boundary | the allowlist (`.gitignore`) · the denylist · the router |
+|                             |                                                                                        |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| The three levels            | `PHILOSOPHY.md` · any `AXIOMS.md`, in any department · any project's `architecture.md` |
+| The method and the bindings | `METHOD.md` · any `AGENTS.md` and its `CLAUDE.md` pointer · `PURPOSE.md`               |
+| What executes               | any `skills/*/SKILL.md` · anything under `tools/` · **anything under `interface/`**    |
+| What guards the boundary    | the allowlist (`.gitignore`) · the denylist · the router                               |
 
 **Not structural — and this half is the whole point:** the live set (`COMPASS` · `PLAN` · `MAILBOX`
 · `TASKS` · `IDEAS`) · the three logs · notes in the knowledge domains · code, data and content.
@@ -56,11 +56,11 @@ happily as in the engine**, and the view is the larger half by an order of magni
 
 **The vetoes** — mechanical, cheap, and they reject:
 
-| # | Check |
-|---|---|
-| V1 | **Traceability** — every new decision entry carries its origin, naming **who decided**. Evidence is not a decider; `inherited` is a value |
-| V2 | **Single source** — if this fact changes, how many files must be touched? >1 with no written expiry is a veto |
-| V3 | **Real return** — what concrete work does this unblock, for whom? No named consumer, no entry |
+| #   | Check                                                                                                                                     |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| V1  | **Traceability** — every new decision entry carries its origin, naming **who decided**. Evidence is not a decider; `inherited` is a value |
+| V2  | **Single source** — if this fact changes, how many files must be touched? >1 with no written expiry is a veto                             |
+| V3  | **Real return** — what concrete work does this unblock, for whom? No named consumer, no entry                                             |
 
 ⚠️ **`traps.md` beside this file is the department's trap set**, keyed by axiom id — *this is how
 you get it wrong*, held here rather than in `AXIOMS.md` because a trap fires when the governed thing
@@ -72,14 +72,14 @@ are read in this order because a pressure skipped while designing cannot be retr
 the inverse of the order the vetoes run in: a veto is verifiable after the fact and a pressure is
 not.
 
-| # | Check |
-|---|---|
-| A1 | **Scale at 10×** — not *does it survive*, but **which step breaks first, and at what multiple**. Ten times is deliberately beyond anything planned: a design that only answers for the next doubling is answering about today |
-| A2 | **Context cost** — what does this cost to load, and what does it displace? A rule is paid every turn; a skill is paid once |
-| A3 | **Rule-vs-tool** (`AX-4`) — must this fire while the work happens, or could a pass fix the artefact afterwards? |
-| A4 | **Alignment** — which philosophy clause does this serve, and does the axiom it leans on still implement that clause? Report drift **in both directions**: a clause with no axiom behind it, and an axiom serving no clause |
-| A5 | **Arrival at level 1** — fires only when `PHILOSOPHY.md` gained or lost a clause. Three questions, in this order: **what does it forbid that was not already forbidden** — a clause that forbids nothing new is a summary, and the overlap is found by reading it against every *axiom*, not against the other clauses · **does it arbitrate** — a clause that decides nothing when two axioms disagree is an axiom wearing the wrong tier · **does it clash with a clause here**, and ⚠️ **nothing in this system resolves that clash**, because that file is the last court and has no court above it |
-| A6 | **Did the compaction lose the rule?** `skills/compact/` does the mechanical half — growth, archaeology, references. **This check is only what a tool cannot decide:** for each block that moved, **is the operative layer still complete without it**, and is the note itself still worth keeping. ⚠️ **A rule that survived as a note is a rule retired without anyone deciding to** — the failure mode of a compaction pass, and invisible to the pass itself |
+| #   | Check                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | **Scale at 10×** — not *does it survive*, but **which step breaks first, and at what multiple**. Ten times is deliberately beyond anything planned: a design that only answers for the next doubling is answering about today                                                                                                                                                                                                                                                                                                                                                                           |
+| A2  | **Context cost** — what does this cost to load, and what does it displace? A rule is paid every turn; a skill is paid once                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| A3  | **Rule-vs-tool** (`AX-4`) — must this fire while the work happens, or could a pass fix the artefact afterwards?                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| A4  | **Alignment** — which philosophy clause does this serve, and does the axiom it leans on still implement that clause? Report drift **in both directions**: a clause with no axiom behind it, and an axiom serving no clause                                                                                                                                                                                                                                                                                                                                                                              |
+| A5  | **Arrival at level 1** — fires only when `PHILOSOPHY.md` gained or lost a clause. Three questions, in this order: **what does it forbid that was not already forbidden** — a clause that forbids nothing new is a summary, and the overlap is found by reading it against every *axiom*, not against the other clauses · **does it arbitrate** — a clause that decides nothing when two axioms disagree is an axiom wearing the wrong tier · **does it clash with a clause here**, and ⚠️ **nothing in this system resolves that clash**, because that file is the last court and has no court above it |
+| A6  | **Did the compaction lose the rule?** `skills/compact/` does the mechanical half — growth, archaeology, references. **This check is only what a tool cannot decide:** for each block that moved, **is the operative layer still complete without it**, and is the note itself still worth keeping. ⚠️ **A rule that survived as a note is a rule retired without anyone deciding to** — the failure mode of a compaction pass, and invisible to the pass itself                                                                                                                                         |
 
 > **Portability is not on this list.** It is **derived**, not independent: where origins are
 > recorded, state is on disk rather than in a transcript, and artefacts are stamped, portability

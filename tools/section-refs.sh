@@ -12,8 +12,9 @@
 # WHAT IT READS, and every form here is in use:
 #   a file        `METHOD.md` §2 · `MLabs:AGENTS.md` §4 · AGENTS.md §5
 #   a skill       `skills/compact/` §1 · `open-session` §5 — both resolve to that skill's SKILL.md
-#   bare          §5 — resolved against the file it appears in
-# A run of numbers after one name is read whole: `§2 and §7`, `§2/§7`, `§2, §7`, `§2 step 1b`.
+#   bare          §5 — the file it appears in, and ONLY when its sentence names no other target
+# **Every §n belongs to the nearest target earlier in its own sentence**, whatever sits between
+# them — a possessive, a parenthesis, a line wrap inside a blockquote, a run of `and`/`,`/`/`.
 #
 # WHAT COUNTS AS A SECTION, because three notations are in use and a check that knew one would
 # report the other two as missing:
@@ -54,15 +55,37 @@ for f in files:
         m.group(1) for line in t.split('\n')
         for m in [HEAD.match(line) or BOLD.match(line)] if m)
 
-# A target, then the run of §n that follows it. A target is BACKTICKED (where a scope, a
-# `skills/` prefix, a `.md` suffix and a trailing slash are all optional) or a bare `Name.md`.
-# ⚠️ Anything looser matches the ordinary word before a bare §n and reports it as a file.
+# TWO PASSES, and the order is the whole of the resolution rule.
+#   1. Every TARGET in the file: a backticked `Scope:skills/name.md/` in any combination, or a
+#      bare `Name.md`. Anything looser matches the ordinary word before a §n.
+#   2. Every `§n`, resolved to **the nearest target earlier in its own sentence** — and to the
+#      file it sits in only when its sentence names none.
+# ⚠️ THE FIRST VERSION MATCHED A NAME AND A NUMBER TOGETHER, with a fixed list of what could sit
+# between them. Anything outside that list — an apostrophe-s, a parenthesis, any ordinary word —
+# dropped the §n to the self-reference branch, where it resolved against the CITING file and, if
+# that file happened to have a section of the same number, was reported clean. A check that reports
+# clean while blind is the failure this repository exists to prevent, and it was in the check
+# written to prevent it. The list is gone; a sentence boundary decides instead.
 NAMED = re.compile(
     r'(?:`(?:[A-Za-z][A-Za-z0-9]*:)?(?:skills/)?([A-Za-z_][A-Za-z0-9_.-]*?)(?:\.md)?/?`'
-    r'|(?<![`/\w])([A-Za-z_][A-Za-z0-9_-]*\.md))'
-    r'((?:\s|\*\*|and|,|/|·|§\d+[a-z]?|step\s+\d+[a-z]?){0,40}?§\d+[a-z]?'
-    r'(?:(?:\s|\*\*|and|,|/|§\d+[a-z]?){0,12})?)')
+    r'|(?<![`/\w])([A-Za-z_][A-Za-z0-9_-]*\.md))')
 RUN = re.compile(r'§(\d+[a-z]?)')
+
+# ⚠️ An identifier is not a target. `AX-7`, `PH-5`, `M-116`, `CA-083`, `D42` and `I1` are all
+# backticked names sitting in the same sentences as §n, and one of them **stole a citation on the
+# round this rule was written** — `AGENTS.md:117` reads "(`AX-7`), and §8 holds the gate", where §8
+# is that file's own. A target is a file or a skill; an id points at a row.
+ID = re.compile(r'^(?:[A-Z]{1,3}-?\d+[a-z]?|[A-Z]{1,2}\d+)$')
+
+# A sentence ends at `. ` or `.\n`, at a blank line, or at a table-cell wall. It does NOT end at a
+# single newline: a citation and its §n land on opposite sides of one in every blockquote here.
+BOUND = re.compile(r'\.\s|\n\s*\n|\|')
+
+def sentence_start(t, at):
+    last = 0
+    for m in BOUND.finditer(t, 0, at):
+        last = m.end()
+    return last
 
 def resolve(name):
     for k in (name, name + '.md'):
@@ -75,15 +98,14 @@ for f in files:
     self_key = os.path.basename(os.path.dirname(f)) if os.path.basename(f) == 'SKILL.md' \
                else os.path.basename(f)
     t = re.sub(r'```.*?```', '', text[f], flags=re.S)
-    claimed, spans = [], []
-    for m in NAMED.finditer(t):
-        name = m.group(1) or m.group(2)
-        spans.append(m.span())
-        for s in RUN.findall(m.group(3)):
-            claimed.append((name, s, m.start()))
-    for m in RUN.finditer(t):                                   # bare §n → the file it is in
-        if not any(a <= m.start() < b for a, b in spans):
-            claimed.append((self_key, m.group(1), m.start()))
+    names = [(m.start(), n) for m in NAMED.finditer(t)
+             if not ID.match(n := (m.group(1) or m.group(2)))]
+    claimed = []
+    for m in RUN.finditer(t):
+        at = m.start()
+        floor = sentence_start(t, at)
+        near = [n for pos, n in names if floor <= pos < at]
+        claimed.append((near[-1] if near else self_key, m.group(1), at))
     for target, sec, at in claimed:
         line = t[:at].count('\n') + 1
         key = resolve(target)
