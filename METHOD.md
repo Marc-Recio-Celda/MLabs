@@ -15,14 +15,14 @@ Every artefact is exactly one kind, and **the kind fixes its lifecycle**. Mixing
 one file is the most frequently recorded failure in this company's history: a queue that never
 empties, a record someone edited, a plan that quietly became a backlog.
 
-| Kind          | Lifecycle                                                                                                                                                                                                                                                                                                        | Failure if mixed                                                                                                                                      |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Record**    | Append-only. Never edited, never deleted, grows forever. The receipt                                                                                                                                                                                                                                             | Editing it destroys the only copy of what was true then                                                                                               |
-| **Queue**     | Filled by one side, drained by the other; an item leaves when it is done (AX-15). **Not a stack and not first-in-first-out** — the order is the operator's to set and reset at any time; what a queue guarantees is that nothing leaves without a destination, never that things leave in the order they arrived | A queue that only grows stops saying what is left                                                                                                     |
-| **Compass**   | Tiny, rewritten in place, **one active front**. Read at every open, updated at every close                                                                                                                                                                                                                       | A compass with eight priorities never contradicts reality, so it is never corrected                                                                   |
-| **Live plan** | **Rewritten continuously while the work happens; CLOSED when the work closes — never emptied** (`FLOW.md` rule 3). It becomes a plan record and stays readable; deleting it drops the order, the reason for that order, and the items discarded with their reasons, which live nowhere else                      | A live plan that survives its task has become a backlog. ⚠️ And one that is *deleted* takes `PH-3` with it in exactly the case `PH-3` was written for |
-| **Park**      | No date, no commitment, no obligation to revisit                                                                                                                                                                                                                                                                 | A park with dates is a task list nobody agreed to                                                                                                     |
-| **Standing**  | Rewritten in place; always states what is true *now* or what must hold. Never appended to, never emptied                                                                                                                                                                                                         | A standing document that grows by accretion has become a record nobody can trust as current                                                           |
+| Kind | Lifecycle | Failure if mixed |
+|---|---|---|
+| **Record** | Append-only. Never edited, never deleted, grows forever. The receipt | Editing it destroys the only copy of what was true then |
+| **Queue** | Filled by one side, drained by the other; an item leaves when it is done (AX-15). **Not a stack and not first-in-first-out** — the order is the operator's to set and reset at any time; what a queue guarantees is that nothing leaves without a destination, never that things leave in the order they arrived | A queue that only grows stops saying what is left |
+| **Compass** | Tiny, rewritten in place, **one active front**. Read at every open, updated at every close | A compass with eight priorities never contradicts reality, so it is never corrected |
+| **Live plan** | **The active task's subtasks, rewritten continuously while the work happens.** Its lifecycle is the task's and `FLOW.md` rules 3 and 4 own it — this row does not restate them | A live plan that survives its task has become a backlog |
+| **Park** | No date, no commitment, no obligation to revisit | A park with dates is a task list nobody agreed to |
+| **Standing** | Rewritten in place; always states what is true *now* or what must hold. Never appended to, never emptied | A standing document that grows by accretion has become a record nobody can trust as current |
 
 ⚠️ **Two queues at different speeds, and the fast one reports rather than files.** An instance
 that runs a fast lane beside its deliberative queue **must not let the fast one file into the
@@ -52,10 +52,11 @@ all **Standing**: each is rewritten to stay true, and none is ever a place thing
 Either way `COMPASS.md` names one active front `▶` and points at where that work is described;
 it describes none of it.
 
-**Open the live plan on that front.** `PLAN.md` is rewritten to hold *this task and
-nothing else*: the concrete items, in the order they will be done, and the reasoning for that
-order. It is not a summary written afterwards — it is written *while* deciding, which is what
-makes it worth anything.
+**Open the active task's live plan**: the concrete subtasks, in the order they will be done, and
+the reasoning for that order. It is not a summary written afterwards — it is written *while*
+deciding, which is what makes it worth anything. ⚠️ **Opening one never overwrites another** — a
+paused task keeps its plan (`FLOW.md` rule 4), and it must be readable by the operator, who is the
+one governing the flow.
 
 **Work the list, striking through as you go.** Every item leaves with a **destination**, and
 the vocabulary is closed:
@@ -109,11 +110,8 @@ at the close"* is the same failure with a delay.
    auditor reading a blank file while believing it read the reasoning. **The audit precedes
    the erasure, always.** The operator can also call it on any close, for any reason.
 4. **Then the plan is closed** — and only then. ⚠️ **Closed, not emptied** (`FLOW.md` rule 3, the
-   declared winner). Deleting it drops the two things that live nowhere else: **the
-   order and why that order**, and **the items discarded with their reason** — `PH-3` in exactly
-   the case it was written for. Closing costs nothing visually: a closed plan leaves the working
-   view the same way a deleted one would, and it becomes what a sub-block's row expands into —
-   not *that* it finished, but *how* it went.
+   declared winner): what closing preserves and what deleting costs are that rule's to state, and
+   **this step's only job is to sit after step 3**, so the erasure can never precede the reading.
 5. **Print what was touched — derived from the close, never written from memory.** One line per
    file, no pasted diffs. ⚠️ **A session report is not a Record and must not be written like one**,
    because a claim in it is read as evidence and nothing contrasts it against the tree. What comes
@@ -229,7 +227,7 @@ lapse.
 | File | Kind | Holds |
 |---|---|---|
 | `COMPASS.md` | Compass | one `▶`, edges not nodes, every project |
-| `PLAN.md` | Live plan | the task in flight, and only it |
+| `PLAN.md` | Live plan | **the active task's subtasks** — a view, since a paused task keeps its own |
 | `MAILBOX.md` | Queue | agent → operator, every project |
 | `TASKS.md` | Queue | operator → agent, every project |
 | `IDEAS.md` | Park | undecided, every project |
