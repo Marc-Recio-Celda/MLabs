@@ -19,8 +19,8 @@
 > rule with nowhere to spill either splits or does not enter.
 >
 > **Where the other three things go:** a **trap** — *this is how you get it wrong* — is
-> `skills/company-auditor/traps.md`, keyed by axiom id, because it fires when someone writes the
-> thing an axiom governs and this file is read on every turn (`AX-4`). **History** is the log's,
+> `skills/company-auditor/traps.md`, keyed by axiom id, and that file says why (`AX-4`).
+> **History** is the log's,
 > always. A **consequence** that changes no behaviour is not written.
 >
 > ⛔ **The `Check` column holds the state, the command, and what a reader needs to read that
@@ -102,7 +102,7 @@
 | **AX-4** | 🟢 | **A rule earns its place only if it must fire while the work happens, and it names the event that fires it**; if a pass over the finished artefact could apply it, it is a tool. | PH-5 | `$` `grep -L '^## Fires when' skills/*/SKILL.md` — ⛔ **a second spelling of the heading is in use**, so the flag is wider than the fault |
 | **AX-17** | 🟢 | **Everything routes at the moment it is written, and by commitment rather than by topic** — decided, not yet decided, and committed but not started go to three different places, and the method says which. **An item that resists routing is evidence the structure is wrong**, never that the item is special. | PH-5 | `$` `python3 interface/model/parse.py --adapter <the instance's>` reports `with project: n/n` |
 | **AX-38** | 🟢 | **Editing a structural file is finished when what the edit made untrue has left it, and the rules it cites still hold** — the diff that adds is the same diff that removes. ⛔ **Deprecated text does not announce itself**: the file still runs, still reads as current, and costs that reading every time it is loaded. | PH-5 · PH-4 | `$` `bash tools/axiom-refs.sh AXIOMS.md <SCOPE> <the files the diff touched>` **and** `bash tools/clause-refs.sh PHILOSOPHY.md <the same files>` — the citation half only |
-| **AX-41** | 🟢 | **A structural file states what is true now and never how it got there.** ⛔ **What changed and why is the log's** — a file that explains its own history pays for that explanation on every read, forever, and the explanation is the first half to become false. | PH-5 · PH-3 | `$` `grep -rnE '\b[0-9]{4}-[0-9]{2}-[0-9]{2}\b' $(git ls-files '*.md')` returns nothing. ⛔ **A pattern published in this table may not contain a pipe** — escaped it is a literal to `grep -E`, and it is still a column separator either way |
+| **AX-41** | 🟢 | **A structural file states what is true now — never how it got there, and never the mechanism that was rejected.** ⛔ **What changed, what was discarded, and why, are the log's** — a file that explains itself against an absent alternative teaches the absent thing on every read, and the reader who arrives later cannot tell which of the two is in force. | PH-5 · PH-3 | `$` `grep -rnE '\b[0-9]{4}-[0-9]{2}-[0-9]{2}\b' $(git ls-files '*.md')` returns nothing. ⛔ **A pattern published in this table may not contain a pipe** — escaped it is a literal to `grep -E`, and it is still a column separator either way |
 | **AX-21** | 🟢 | **Startup reads where the work stands from a literal path; knowledge loads only when the reasoning touches it.** **Rules travel and maps point** — whatever must survive a fresh checkout is generated *into* it, whatever would go stale if copied is a pointer — and anything opened beyond the index's row is declared and logged as a repair to the index. | PH-5 | `—` |
 | **AX-25** | 🟢 | **Record what you cross, one line, and neither investigate nor fix it.** The firing event is *while doing something else*: going looking is an audit, and fixing in passing turns one reviewable change into two. | PH-5 | `—` |
 

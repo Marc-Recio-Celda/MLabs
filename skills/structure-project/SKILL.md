@@ -17,6 +17,9 @@ root is the instance's, declared in its binding.**
 substitute every placeholder — the project's name, its path, its own `AX-n` series — in one pass.
 **A placeholder that survives the copy is a defect, not a to-do.**
 
+**Every file below goes in the project's `nexus/` folder**, which is the cartridge — the project's
+own directory holds its code and its data, and `nexus/` holds what governs them.
+
 **Four files, and two more only when they have content** — `MLabs:METHOD.md` §2, verbatim:
 
 | File | Kind | Holds |

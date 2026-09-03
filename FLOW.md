@@ -34,9 +34,10 @@ the one the `▶` sits on. **`cancelled` and `done` are terminal**: they leave t
 view over the other three, and they leave nothing behind them because nothing moved — the task is
 recorded where it always was, carrying its outcome.
 
-⛔ **The plan has no state of its own.** It is the task's subtasks: written when the task becomes
-`active`, held with the task when it pauses, closed with it when it ends. A second state set on the
-plan is a second answer to *what is happening now*, and two answers disagree inside a week.
+⛔ **The plan has no state of its own and no life of its own.** **Every task carries one plan sheet
+from the moment the task exists** — empty until somebody plans it, planned whenever the operator
+chooses, and closed with the task. A second state set on the plan is a second answer to *what is
+happening now*, and two answers disagree inside a week.
 
 ⚠️ **A state is not an outcome.** A task carries one of the five; an **item** leaves with a
 destination — done · to the mailbox · to ideas · discarded with its reason. Four, not five, and not
@@ -62,11 +63,10 @@ merely that it finished.
 allowed; **losing the count is not** — ⚠️ **two active tasks are two active fronts, and then the `▶`
 is not one.** A list of parallel priorities never contradicts reality, so it never gets corrected.
 
-⚠️ **`paused` is not `pending`, and the difference is the plan.** A pending task has never been
-started and has no subtasks yet; a paused one has both, **held and visible**, so resuming it costs
-reading rather than reconstructing. **`paused` is not a courtesy state — it is what makes switching
-safe**, and a plan dropped on a switch takes its order, its reasons and its unrouted items with it.
-**The `▶` moves; the work does not vanish.**
+⚠️ **Both `pending` and `paused` may carry a full sheet, and what separates them is that `paused`
+has been `active`** — which is why a paused task has struck items. **`paused` is what makes
+switching safe**: the sheet is held and visible, so resuming costs reading rather than
+reconstructing. **The `▶` moves and the work stays where it is.**
 
 **5 · Some sub-blocks are maintenance, and maintenance does not close.** Rule 1 cannot be
 satisfied by a queue that **keeps filling** — by agents at every close, by the passive-finding rule
@@ -79,11 +79,9 @@ making filing free and correct, and by the operator directly as things occur.
 | Its plan | closes into a plan record | closes into a record **per pass**, and the sub-block stays |
 | If ignored | the block cannot close, and that is visible | ⚠️ **nothing is visibly wrong** — the failure this rule prevents |
 
-⚠️ **The bound on a queue is not a number.** *Above N open, triage becomes the active front*
-**invents a constant nobody can defend, and fires on volume rather than on attention.** The bound
-is that the triage never dies and never silently disappears: it is `active` or it is `⏸ paused`,
-always one of the two, always on the board. **Not draining the queue becomes a state you can see
-rather than a thing you forgot.**
+⚠️ **The bound on a queue is a state, not a threshold.** The maintenance task that drains it is
+`active` or `paused`, always one of the two and always on the board, so **a queue nobody is draining
+is something you can see.**
 
 ## What every record carries
 
