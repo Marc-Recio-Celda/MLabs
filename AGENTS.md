@@ -29,6 +29,9 @@ loop and the routing table, because the close is not optional and its destinatio
 there. **The axioms are what the close is *checked against*, not what the work is done through**, and
 loading all five documents for a defined task displaces the work itself.
 
+**The design pressures and the vetoes live in `skills/company-auditor/`** — the reviewer that
+re-runs them at close, and the one place they are written.
+
 **Three levels, and nothing is allowed to blur them.** *Philosophy* — the clauses, changed almost
 never, only by the operator. *Axioms* — the rules that implement them, never violated, each naming
 the clause it serves. *Decisions* — concrete, with author, date and reasoning, living instance-side
@@ -60,65 +63,27 @@ denylist is a list of names and project words, personal data by definition, so i
 never here. ⚠️ **An arriving agent lists the system root rather than assuming the name**, since instances
 differ on it.
 
-## 3. The hierarchy — two lists, not one
-
-Authority and attention run in opposite directions, on purpose: **vetoes are verifiable at the end,
-design pressures cannot be retrofitted** — so the order of attention is the inverse of the order of
-authority. Both lists sit *below* `PHILOSOPHY.md`, which decides when they tie.
-
-**While designing** — in this order, because a pressure skipped here cannot be retrofitted:
-
-| Tier  | Pressure           | The control question                                                                                                                        |
-| ----- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1** | **Purpose**        | Does it serve the next thing, or only this one? · Does it buy speed at the cost of understanding? · Does it lower the cost of a transition? |
-| **2** | **Scale**          | Does it hold at 3× today's volume? Which step becomes manual first?                                                                         |
-| **2** | **Context cost**   | What must be loaded to do this work, and what does that displace?                                                                           |
-| **3** | **Operator load**  | The manual step it adds — is it a *decision* or *transcription*? Transcription is always debt; review is not                                |
-| **3** | **Portability**    | Given only the artefacts, does a new agent, tool, model, machine — or the operator in six months — reach productive?                        |
-| **4** | **Migration cost** | How many existing artefacts must be touched, and who consumes the new thing?                                                                |
-| **5** | **Coupling**       | If this changes, what else must be opened? Split by owner first, rate of change second (`PH-1`)                                             |
-
-**At close — the vetoes.** Mechanical, cheap, verifiable after the fact, and they reject:
-
-| Order | Veto              | The control question                                  |
-| ----- | ----------------- | ----------------------------------------------------- |
-| **1** | **Traceability**  | Is it recorded with its reasoning and its origin?     |
-| **2** | **Single source** | If this fact changes, how many files must be touched? |
-| **3** | **Real return**   | What concrete work does this unblock, and for whom?   |
-
-Ties among vetoes are broken by purpose. **The conversation attends to the first list while
-designing; the company auditor re-runs both at close, because at close it is the only one that
-still will.**
-
 ## 4. Roles
 
-**A role is a skill plus a log plus a dismissal criterion** (`METHOD.md` §5, `AX-11`). The three
-auditors share one contract in `skills/audit/`; each role file states **only** its scope, the
-occasion that calls for it, and its own checks.
-
-**Hired — active:**
-
-| Role | Scope | Occasion | Defined in |
-|---|---|---|---|
-| **Company auditor** | **the public structure** — whatever passes `AXIOMS.md`'s second entry test. **Checks decisions; does not propose** | a close that changed a company-structural file | `skills/company-auditor/` |
-| **Instance auditor** | the operations centre's own health. **Different failures, not a smaller scope**: an instance fails by its checks going quietly vacuous — a glob that stops matching, an invariant run from the wrong root, a permission table that lost its paths | a close that changed the instance's structure or the declared shape of its live set | `skills/instance-auditor/` |
-| **Project auditor** | one project's cartridge, plus the checks only it runs. **Hired per project**, each with its own criterion | a close in that project | `skills/project-auditor/` |
-| **R&D** | lateral work on the axioms — **kept out of the audit because a role paid for findings must not be invited to invent** | request | `skills/rnd/` |
+**A role is a skill with a log and a dismissal criterion** (`AX-11`). The auditors share one contract
+in `skills/audit/`; each role file states its scope, the occasion that calls for it, and its own
+checks — and **the role file is where those live**, because a skill's description is already loaded
+in every context.
 
 **What makes a skill a role is the shape of its description**, and that shape decides what the model
 does when the occasion arrives:
 
-|                | Its description names                         | What the model does with it                                                                                            |
-| -------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Role**       | **an occasion** — *"when a task closes"*      | recognises it and **says so**; the operator invokes it (`METHOD.md` §5)                                                |
-| **Capability** | **a request** — *"when the operator wants X"* | offers it when what was asked for matches                                                                              |
-| **Locked**     | either, plus `disable-model-invocation: true` | **the operator calls it by name.** ⚠️ **Its description leaves context entirely** — lock what only he should reach for |
+| | Its description names | What the model does with it |
+|---|---|---|
+| **Role** | **an occasion** — *"when a task closes"* | recognises it and **says so**; the operator invokes it (`METHOD.md` §5) |
+| **Capability** | **a request** — *"when the operator wants X"* | offers it when what was asked for matches |
+| **Locked** | either, plus `disable-model-invocation: true` | **the operator calls it by name.** ⚠️ **Its description leaves context entirely** — lock what only he should reach for |
 
 ⛔ **An occasion named in prose is a prompt to speak.** The agent names the role and the occasion;
 the operator invokes it.
 
-**A role's criterion and standing are governance, and they live in the operations centre's hiring
-record**, out of the role's own sight — one home per employee, so one place to change one fact.
+**Hiring and firing are the operator's act**, and **a role's criterion and standing live in the
+operations centre's hiring record** — out of the role's own sight, and read against the role's log.
 
 **Written and available — a skill existing is not a hire.** `gather` (collects and cites; its value
 is burning someone else's context) · `dispatch` (hands work to the executor entitled to claim the
@@ -129,19 +94,19 @@ the one context no agent can be handed.
 
 ## 5. Invariants — each carries its check
 
-| Invariant                                                                                                                                                                                                                                                                                          | The check                                                                                                                                                                                                                                                      |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **No personal information in what git tracks.** No person's name, no employer, no project name, no path inside the operations centre. Naming the centre itself is vocabulary (§2)                                                                                                                  | `tools/gate.sh` — greps the instance's denylist over `git ls-files`, and returns nothing. ⚠️ **Test it against a planted leak, and plant against the *format***                                                                                                |
-| **The tracked set is exactly the allowlist** — nothing more, and nothing named that does not exist                                                                                                                                                                                                 | `tools/gate.sh` check 3, both directions. A **surplus** file is a leak; a `!` line with **no tracked file behind it** is empty scaffolding, and the line goes                                                                                                  |
-| **`git clean` is never run at this root.** The untracked here is everything the operator owns                                                                                                                                                                                                      | none — prevention only (`AX-4`)                                                                                                                                                                                                                                |
-| **Records are append-only; Standing documents are not.** A log, a ledger and a decision store only grow. **`AXIOMS.md`, this file and `METHOD.md` are Standing and are rewritten to stay true** — what protects them is that every change is read as a diff and agreed, not that nothing may leave | `skills/release-cut/` §3 over the Records. ⚠️ **Forcing a Standing file to only grow is how its centre fills with deprecated rows**                                                                                                                            |
-| **Every structural change carries an axiom or a logged decision**                                                                                                                                                                                                                                  | `git diff <last-tag>..HEAD --stat` against the same range's `AXIOMS.md` additions, at the cut                                                                                                                                                                  |
-| **Every queue and park entry carries `project:`** — a name or `cross`                                                                                                                                                                                                                              | `interface/model/parse.py --adapter <the instance's>` reports **`with project: n/n`** per kind and **`Nothing unplaceable.`**                                                                                                                                  |
-| **Every axiom sits in exactly one tier** (company · instance · project)                                                                                                                                                                                                                            | a company axiom naming a toolchain, a project or a person belongs one tier down; an instance rule copied into more than one project file is a duplicate with no winner (`AX-20`)                                                                               |
-| **Every axiom names the clause it serves, and every clause has at least one axiom**                                                                                                                                                                                                                | the coverage table at the foot of each department, **regenerated and compared**, never transcribed                                                                                                                                                             |
-| **Every role states its dismissal criterion and keeps a log** — the two together are what make it a role                                                                                                                                                                                           | `tools/roles-check.sh --skills skills --logs <the instance's logs dir>`. **The two sets must be the same set**, and each direction is reported separately, because the fix differs by direction                                                                |
-| **Citation follow-through** (`AX-33`)                                                                                                                                                                                                                                                              | `grep -rln '<the id>' $(git ls-files)` gives the dependency list, and `tools/axiom-refs.sh` proves none of them points at a row that no longer exists. ⚠️ **The artefact that breaks loudly is not the risk** — it is the one that still runs and is now wrong |
-| **Never push to the stable branch without explicit operator permission**                                                                                                                                                                                                                           | the binding names the working branch as **a literal value**, and no agent workflow targets the stable one automatically. ⚠️ **A rule whose subject is a phrase cannot be checked; one whose subject is a value can**                                           |
+| Invariant | The check |
+|---|---|
+| **No personal information in what git tracks.** No person's name, no employer, no project name, no path inside the operations centre. Naming the centre itself is vocabulary (§2) | `tools/gate.sh` — greps the instance's denylist over `git ls-files`, and returns nothing. ⚠️ **Test it against a planted leak, and plant against the *format*** |
+| **The tracked set is exactly the allowlist** — nothing more, and nothing named that does not exist | `tools/gate.sh` check 3, both directions. A **surplus** file is a leak; a `!` line with **no tracked file behind it** is empty scaffolding, and the line goes |
+| **`git clean` is never run at this root.** The untracked here is everything the operator owns | none — prevention only (`AX-4`) |
+| **Records are append-only; Standing documents are not.** A log, a ledger and a decision store only grow. **`AXIOMS.md`, this file and `METHOD.md` are Standing and are rewritten to stay true** — what protects them is that every change is read as a diff and agreed, not that nothing may leave | `skills/release-cut/` §3 over the Records. ⚠️ **Forcing a Standing file to only grow is how its centre fills with deprecated rows** |
+| **Every structural change carries an axiom or a logged decision** | `git diff <last-tag>..HEAD --stat` against the same range's `AXIOMS.md` additions, at the cut |
+| **Every queue and park entry carries `project:`** — a name or `cross` | `interface/model/parse.py --adapter <the instance's>` reports **`with project: n/n`** per kind and **`Nothing unplaceable.`** |
+| **Every axiom sits in exactly one tier** (company · instance · project) | a company axiom naming a toolchain, a project or a person belongs one tier down; an instance rule copied into more than one project file is a duplicate with no winner (`AX-20`) |
+| **Every axiom names the clause it serves, and every clause has at least one axiom** | the coverage table at the foot of each department, **regenerated and compared**, never transcribed |
+| **Every role states its dismissal criterion and keeps a log** — the two together are what make it a role | `tools/roles-check.sh --skills skills --logs <the instance's logs dir>`. **The two sets must be the same set**, and each direction is reported separately, because the fix differs by direction |
+| **Citation follow-through** (`AX-33`) | `grep -rln '<the id>' $(git ls-files)` gives the dependency list, and `tools/axiom-refs.sh` proves none of them points at a row that no longer exists. ⚠️ **The artefact that breaks loudly is not the risk** — it is the one that still runs and is now wrong |
+| **Never push to the stable branch without explicit operator permission** | the binding names the working branch as **a literal value**, and no agent workflow targets the stable one automatically. ⚠️ **A rule whose subject is a phrase cannot be checked; one whose subject is a value can** |
 
 ⚠️ **Every check here reads `git ls-files` or a diff, never the working tree** — the tree at this
 root legitimately holds the instance and every project, which are none of this repo's business. A
@@ -158,27 +123,22 @@ returns clean, so **a check that cannot state its root has not been run** — an
 exit 2 are three different answers** (`AX-22`). The three implementations here are the pattern to
 copy.
 
-## 6. Hiring and firing
-
-**Both are the operator's act.** A role states its dismissal criterion when it is written and keeps a
-log from the moment it is hired (`AX-11`); **the criterion exists to give the operator something to
-read the log against, not to retire a role by arithmetic.** ⚠️ **A threshold that fires on its own
-retires a role on the round that happened to be quiet** — a property of the round, not of the role.
-The criterion lives in the instance's hiring record, out of the role's own sight.
-
 ## 7. Gates
 
-- **A task closes** → if a structural file changed, **the auditor for the department that changed**
-  is invoked — one of them, not two; `skills/audit/` routes — once, over everything the task
-  touched, **after** the destinations are read back and **before** the live plan is closed
-  (`METHOD.md` §2). **A close that touched only the live set, the logs, notes, code or content does
-  not fire it.** Each role file states its own two lists — structural, and expressly not
-  structural. The operator may invoke it on any close.
+**What runs on its own:**
+
 - **Every close** → every open thread is enumerated with its destination (`AX-9`), and *written* is
   claimed only after reading the file back from disk. **A thread with no destination fails the
   close.**
 - **A release is cut** → all §5 checks run, the cold-start test runs, the version is tagged.
   Instances upgrade by choice, never by drift.
+
+**What the agent says, and the operator invokes:**
+
+- **A task closes having changed a structural file** → the agent names **the auditor for the
+  department that changed** — one of them, `skills/audit/` routes — and the occasion for it is
+  **after** the destinations are read back and **before** the live plan is closed (`METHOD.md` §2).
+  Each role file states its own two lists: structural, and expressly not structural.
 
 ## 8. Stage map
 

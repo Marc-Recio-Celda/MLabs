@@ -80,7 +80,10 @@ you get it wrong*, held here rather than in `AXIOMS.md` because a trap fires whe
 is written and that file is read on every turn (`AX-4`). Read it while checking a row, and **prune
 it here**: a trap whose axiom has left `AXIOMS.md` binds nobody.
 
-**The pressures** — the actual job; they do not reject, they return with the cost named:
+**The pressures** — the actual job; they do not reject, they return with the cost named. ⚠️ **They
+are read in this order because a pressure skipped while designing cannot be retrofitted**, which is
+the inverse of the order the vetoes run in: a veto is verifiable after the fact and a pressure is
+not.
 
 | # | Check |
 |---|---|
@@ -165,7 +168,7 @@ never renamed.
 
 ## Dismissal
 
-Per `AGENTS.md` §6: **the criterion is written before the first firing** and lives in the instance's
+Per `AGENTS.md` §4: **the criterion is written before the first firing** and lives in the instance's
 hiring record. **The operator reads this role's log against it and decides** — nothing retires the
 role by arithmetic.
 

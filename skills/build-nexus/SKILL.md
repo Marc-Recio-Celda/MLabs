@@ -12,10 +12,8 @@ has found eight times: **a published check that cannot run.** This builds the tr
 point at, so they resolve **without any skill knowing which machine it is on** *(the operator,
 "así el auditor encuentra ya los archivos que quiera de forma desacoplada")*.
 
-⚠️ **`AGENTS.md` §3 lists this skill last, under the name `nexus-builder`, and the reason it was
-last is now spent.** It was deferred because *"it encodes the shape of an instance, so building it
-before the shape stops moving means building it twice."* The shape stopped moving: six document
-kinds, the block model, the plan lifecycle, and the rule/skill/role split are all written down.
+⚠️ **This skill encodes the shape of an instance**, so it is rewritten whenever that shape moves —
+the six document kinds, the block model, the plan lifecycle and the rule/skill/role split.
 **The §3 row is renamed to `build-nexus` in the same act** — a verb and its object, like every other
 skill here.
 
