@@ -25,4 +25,31 @@ run 'See `../MLabs/AXIOMS.md` for the company department.' \
 run 'The narrower loses (`MLabs:AX-20`), and MLabs. MLabs is the referent.' \
   && { echo "negative control fired — a scope citation is being read as a path"; exit 1; }
 
-echo "3/3 · home path fires · relative path fires · scope citation stays silent"
+# ── the row's second command: the same prose in two structural files (`AX-20`'s general form)
+DUP="$ROOT/tools/dup-prose.sh"
+dup() { printf '%s\n' "$1" > "$TMP/a.md"; printf '%s\n' "$2" > "$TMP/b.md"
+        bash "$DUP" "$TMP/a.md" "$TMP/b.md" > "$TMP/dup.out" 2>&1; }
+
+# 4 · obvious: a sentence typed into both files.
+dup 'The operator decides and the auditors only ever report what they found.' \
+    'Elsewhere: the operator decides and the auditors only ever report what they found.'
+grep -q '✗' "$TMP/dup.out" \
+  || { echo "obvious plant (a sentence in both files) did not fire"; cat "$TMP/dup.out"; exit 1; }
+
+# 5 · subtle: the copy arrives as a QUOTATION, which is how it actually happens — an axiom
+#     quoting the clause it serves reads as respect for the source and is a second copy that
+#     nothing regenerates.
+dup 'A metric must be able to move in the bad direction, and the run where it does is the reason it exists.' \
+    'This axiom implements *"a metric must be able to move in the bad direction, and the run where it does is the reason it exists"*.'
+grep -q '✗' "$TMP/dup.out" \
+  || { echo "subtle plant (a quoted clause) did not fire"; cat "$TMP/dup.out"; exit 1; }
+
+# 6 · negative control: two files that share only vocabulary — the same ids, paths and commands,
+#     which is the COMPLIANT shape. A check that flags a cited id makes correct citation look
+#     like duplication and gets switched off within a week.
+dup 'Before merging, run `bash tools/axiom-refs.sh AXIOMS.md MLabs $(git ls-files "*.md" "*.sh")`.' \
+    'The gate is `bash tools/axiom-refs.sh AXIOMS.md MLabs $(git ls-files "*.md" "*.sh")`, nothing else.'
+grep -q '✗' "$TMP/dup.out" \
+  && { echo "negative control fired — shared ids and commands read as copied prose"; cat "$TMP/dup.out"; exit 1; }
+
+echo "6/6 · home path · relative path · scope citation silent · copy fires · quoted copy fires · shared ids silent"

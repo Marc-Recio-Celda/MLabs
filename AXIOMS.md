@@ -15,23 +15,18 @@
 >
 > **The row is the rule**: one or two sentences, complete on their own. ⛔ **If it does not fit in
 > two, it is two axioms, or a `Check`, or a decision — and there is no fourth option.** This file
-> has **no notes section and no overflow of any kind**; a rule with nowhere to spill either splits
-> or does not enter, and that is the only bound this file has ever had that worked.
->
-> ⚠️ **The bucket is how it broke last time.** Given a place to put a third sentence, seventeen
-> rules put one there — and what was labelled *notes* turned out on measurement to be **fourteen
-> live rules and three pieces of history**. A category that exists gets filled.
+> has **no notes section and no overflow of any kind**: **a category that exists gets filled**, so a
+> rule with nowhere to spill either splits or does not enter.
 >
 > **Where the other three things go:** a **trap** — *this is how you get it wrong* — is
 > `skills/company-auditor/traps.md`, keyed by axiom id, because it fires when someone writes the
 > thing an axiom governs and this file is read on every turn (`AX-4`). **History** is the log's,
 > always. A **consequence** that changes no behaviour is not written.
 >
-> ⛔ **The `Check` column carries three states and they are never counted as one number.** It holds
-> the state, the command, and what a reader must know to read that command's result — nothing else.
-> A column that adds *a command you run* to *a warning you read* can only ever rise, which is the
-> failure `AX-36` names, and the warnings cost **31% of this file on every read** while verifying
-> nothing.
+> ⛔ **The `Check` column holds the state, the command, and what a reader needs to read that
+> command's result — nothing else.** Its three states are never counted as one number: a column that
+> adds *a command you run* to *a warning you read* can only ever rise, which is the failure `AX-36`
+> names.
 >
 > | | Means | Counting it |
 > |---|---|---|
@@ -39,22 +34,16 @@
 > | `` `⊘` `` | **owed** — a check is named and does not run: no tool, wrong side of the boundary, or a procedure rather than a command | ⛔ **`AX-7` broken, declared.** Every one is a debt with an address |
 > | `—` | nothing | the honest empty |
 >
-> ⛔ **A retired axiom leaves this file entirely, and the log records where it went.** Its number is
-> never reused, so **the gap in the numbering is the trace** — the only trace this file keeps.
-> ⚠️ **A tombstone row is loaded on every read to say nothing binds**, and this file is read
-> constantly; the log is read when someone asks what happened, which is the only time the answer
-> matters. **Identifiers are never reused or renumbered.**
-> **Status:** 🟢 in force · 🟡 proposed. **There is no third value.**
-> **Anchoring:** a bare `AX-n` here is unambiguous; the moment it leaves this repo it carries its
-> anchor (`AX-31`).
+> ⛔ **A retired axiom leaves this file entirely and the log records where it went**, so the gap in
+> the numbering is the trace (`AX-31`) — a tombstone row would be loaded on every read to say that
+> nothing binds. **Status:** 🟢 in force · 🟡 proposed. **There is no third value.**
 >
 > **Who touches this file.** Auditors check, never edit. R&D proposes. The operator decides.
 > **A change here fires the saturation review over every axiom in every department** — the
 > mechanics are `skills/company-auditor/`, not repeated here.
 >
 > **The rows are grouped by the first clause they serve, and inside a group by check state** —
-> `` `⊘` `` first, then `` `$` ``, then a trap, then nothing, so what is broken sits at the top of
-> its section. **An axiom serving two clauses appears once**; the coverage table at the foot counts
+> `` `⊘` `` first, then `` `$` ``, then nothing, so what is broken sits at the top of its section. **An axiom serving two clauses appears once**; the coverage table at the foot counts
 > it under both, which is why that table and these sections do not add to the same number.
 >
 > **Departments are nested scopes, not ranks.** This file binds everything, MLabs included; the
@@ -66,8 +55,8 @@
 | ID | Status | Axiom | Serves | Check |
 |---|---|---|---|---|
 | **AX-1** | 🟢 | **Structure is public and depersonalised; state is private.** The method ships as one artefact; everything an operator works on lives in their operations centre, and the method may name that centre and its conventional root — never anything inside it. | PH-1 · PH-3 | `$` `bash tools/gate.sh --denylist <the instance's>` — the tracked tree, never the history |
-| **AX-20** | 🟢 | **The same fact does not live in two files.** Where it must, one place is declared the source and the other is a **generated view** — regenerated, and it loses on conflict — or a **declared photograph** carrying the date it was frozen and why; anything else is a duplicate. | PH-1 · PH-3 | `$` `grep -rnE '[~./][A-Za-z0-9_/-]*MLabs' <the instance's rule files>` returns nothing |
-| **AX-39** | 🟢 | **Modularity is the default shape: each piece owns its boundary, its lifecycle and its version**, and boundaries are drawn by owner first, rate of change second — never by topic. ⛔ **Coupling is paid on every change; separation is paid once**, when the boundary is drawn. | PH-1 · PH-2 | `—` |
+| **AX-20** | 🟢 | **The same fact does not live in two files.** Where it must, one place is declared the source and the other is a **generated view** — regenerated, and it loses on conflict — or a **declared photograph** carrying the date it was frozen and why; anything else is a duplicate. | PH-1 · PH-3 | `$` `grep -rnE '[~./][A-Za-z0-9_/-]*MLabs' <the instance's rule files>` returns nothing · `bash tools/dup-prose.sh <the structural files>` — the same prose in two of them |
+| **AX-39** | 🟢 | **Modularity is the default shape: each piece owns its boundary, its lifecycle and its version**, and boundaries are drawn by owner first, rate of change second — never by topic. ⛔ **A boundary costs once and coupling costs forever** (`PH-1`). | PH-1 · PH-2 | `—` |
 | **AX-19** | 🟢 | **Work the operator does not own is never modified — however dead it looks.** An observation about it goes to the mailbox **marked as another owner's**, and it cannot become a task without that owner's word or an explicit recorded waiver. | PH-1 · PH-3 | `—` |
 
 ## PH-2 · Sustainability
@@ -122,15 +111,15 @@
 | ID | Status | Axiom | Serves | Check |
 |---|---|---|---|---|
 | **AX-36** | 🟢 | **A number states what it is out of and where it was read from, or it is not a measurement.** *57 accepted* is a number; *57 of 64, from the log* is a measurement — and **a count typed by hand is already wrong**, because nothing recomputes it when the thing it counts moves. | PH-6 | `—` |
-| **AX-44** | 🟢 | **A measurement carries the runs that went badly, and one that cannot move in the bad direction is not a measurement but a scoreboard.** ⛔ **What was rejected, withdrawn or never confirmed belongs inside the number rather than in an appendix** — a record with no failures in it is not a strong record, it is an unaudited one, and the first reader who notices stops believing the rest. | PH-6 | `—` |
+| **AX-44** | 🟢 | **A measurement carries the runs that went badly, and one that cannot move in the bad direction is not a measurement but a scoreboard.** ⛔ **What was rejected, withdrawn or never confirmed belongs inside the number rather than in an appendix**, and a reader who finds one missing is entitled to assume the rest were dropped too. | PH-6 | `—` |
 
 ---
 
 ## Coverage — which clause each axiom serves
 
 > ⚠️ **Regenerated, never transcribed** (`AX-2`). A clause at zero is a stated priority nothing
-> implements — **except `PH-0`, which is served by the clauses rather than by axioms** and whose
-> zero is the design (`PHILOSOPHY.md`). **The count runs over `PH-1`…`PH-6`.**
+> implements — **except `PH-0`, whose zero is the design** and whose reason is `PHILOSOPHY.md`'s to
+> give. **The count runs over `PH-1`…`PH-6`.**
 
 | Clause | Axioms | Count |
 |---|---|---|

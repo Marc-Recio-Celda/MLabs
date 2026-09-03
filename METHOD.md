@@ -15,14 +15,14 @@ Every artefact is exactly one kind, and **the kind fixes its lifecycle**. Mixing
 one file is the most frequently recorded failure in this company's history: a queue that never
 empties, a record someone edited, a plan that quietly became a backlog.
 
-| Kind | Lifecycle | Failure if mixed |
-|---|---|---|
-| **Record** | Append-only. Never edited, never deleted, grows forever. The receipt | Editing it destroys the only copy of what was true then |
-| **Queue** | Filled by one side, drained by the other; an item leaves when it is done (AX-15). **Not a stack and not first-in-first-out** — the order is the operator's to set and reset at any time; what a queue guarantees is that nothing leaves without a destination, never that things leave in the order they arrived | A queue that only grows stops saying what is left |
-| **Compass** | Tiny, rewritten in place, **one active front**. Read at every open, updated at every close | A compass with eight priorities never contradicts reality, so it is never corrected |
-| **Live plan** | **Rewritten continuously while the work happens; CLOSED when the work closes — never emptied** (`FLOW.md` rule 3). It becomes a plan record and stays readable; deleting it drops the order, the reason for that order, and the items discarded with their reasons, which live nowhere else | A live plan that survives its task has become a backlog. ⚠️ And one that is *deleted* takes `PH-3` with it in exactly the case `PH-3` was written for |
-| **Park** | No date, no commitment, no obligation to revisit | A park with dates is a task list nobody agreed to |
-| **Standing** | Rewritten in place; always states what is true *now* or what must hold. Never appended to, never emptied | A standing document that grows by accretion has become a record nobody can trust as current |
+| Kind          | Lifecycle                                                                                                                                                                                                                                                                                                        | Failure if mixed                                                                                                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Record**    | Append-only. Never edited, never deleted, grows forever. The receipt                                                                                                                                                                                                                                             | Editing it destroys the only copy of what was true then                                                                                               |
+| **Queue**     | Filled by one side, drained by the other; an item leaves when it is done (AX-15). **Not a stack and not first-in-first-out** — the order is the operator's to set and reset at any time; what a queue guarantees is that nothing leaves without a destination, never that things leave in the order they arrived | A queue that only grows stops saying what is left                                                                                                     |
+| **Compass**   | Tiny, rewritten in place, **one active front**. Read at every open, updated at every close                                                                                                                                                                                                                       | A compass with eight priorities never contradicts reality, so it is never corrected                                                                   |
+| **Live plan** | **Rewritten continuously while the work happens; CLOSED when the work closes — never emptied** (`FLOW.md` rule 3). It becomes a plan record and stays readable; deleting it drops the order, the reason for that order, and the items discarded with their reasons, which live nowhere else                      | A live plan that survives its task has become a backlog. ⚠️ And one that is *deleted* takes `PH-3` with it in exactly the case `PH-3` was written for |
+| **Park**      | No date, no commitment, no obligation to revisit                                                                                                                                                                                                                                                                 | A park with dates is a task list nobody agreed to                                                                                                     |
+| **Standing**  | Rewritten in place; always states what is true *now* or what must hold. Never appended to, never emptied                                                                                                                                                                                                         | A standing document that grows by accretion has become a record nobody can trust as current                                                           |
 
 ⚠️ **Two queues at different speeds, and the fast one reports rather than files.** An instance
 that runs a fast lane beside its deliberative queue **must not let the fast one file into the
@@ -63,7 +63,7 @@ the vocabulary is closed:
 | Destination | Means |
 |---|---|
 | ✅ resolved here | done in this task; the trace goes to a Record |
-| → task list | needs execution; becomes a task with its why (AX-14) |
+| → task list | needs execution; becomes a task carrying its why |
 | → integrated | landed in code or in a document; the diff is the evidence |
 | → park | worth keeping, not now; goes to an ideas register |
 | → mailbox | belongs to someone else's inbox, or is a passive finding you must not fix here (AX-25) |
@@ -154,8 +154,8 @@ past tense. No compass can — it is one line. This is the natural source of a l
 whenever one gets built, precisely because it is the only file whose content is the present.
 
 ⚠️ **And it is closed, not emptied and not archived** — §2 step 4 is the winner and this line
-does not restate it. What must not happen is a live plan that *accumulates*: that is the backlog
-`AX-17` dissolved, returning under a friendlier name.
+does not restate it. What must not happen is a live plan that *accumulates* — that is a backlog wearing
+a friendlier name, and `AX-17` routes committed-but-not-started work somewhere else.
 
 ---
 

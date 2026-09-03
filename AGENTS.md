@@ -4,7 +4,8 @@
 > governs hiring and firing. **Every line here passes two tests** — *if an agent ignored it, would
 > the work come out wrong?* and *could it have worked this out by reading the repo?* **Only
 > yes-then-no stays** (`AX-29`); there is no notes section and nothing overflows — history is
-> the log's (`AX-41`), a trap goes to the check that catches it, and everything else is not written.
+> the log's (`AX-41`), a trap goes to `skills/company-auditor/traps.md`, and everything else is not
+> written.
 
 ---
 
