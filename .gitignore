@@ -9,7 +9,7 @@
 !/.gitignore
 !/README.md
 
-# The signature layer (AX-1, amended 2026-08-20). These two files are the ONLY
+# The signature layer (`AX-1`). These two files are the ONLY
 # place in the tracked set permitted to carry the author's name, and the denylist's
 # `## SIGNATURE` section is what permits it — by path AND by term, so every other
 # private word still blocks inside them exactly as it does anywhere else.
@@ -24,26 +24,21 @@
 !/PHILOSOPHY.md
 !/AXIOMS.md
 !/METHOD.md
+!/FLOW.md
 !/skills
 !/skills/**
 !/tools
 !/tools/**
-!/interface
-!/interface/**
-interface/**/__pycache__/
-*.pyc
-
-# The interface engine (T64). Public and generic by construction: it knows the six
+# The interface engine. Public and generic by construction: it knows the six
 # document kinds and no instance, and reaches one only through the adapter it is
 # handed at startup. The adapter itself is NOT here — it lives instance-side, which
 # is what keeps this directory cedible (`interface:AX-1`).
 !/interface
 !/interface/**
-# ...but never the interpreter's residue: `!/interface/**` is a wide gate, and it
-# swallowed __pycache__ twice — the second time one directory deeper than the
-# first rule reached, and it got staged. Match it at any depth.
-/interface/**/__pycache__/
-/interface/**/*.pyc
+# ⚠️ The interpreter's residue is NOT excluded here. It is excluded in the LAST block
+# of this file, and the reason is the rule this file learned the hard way: in a
+# default-deny allowlist **a `!` line undoes every exclude above it**, so an exclude
+# only holds if no re-include follows it.
 
 # The tools' view of the skills: RELATIVE symlinks, committed so a fresh clone has
 # working skills with nothing to run first. Only the link — everything else the tools
@@ -57,3 +52,22 @@ interface/**/__pycache__/
 !/.agents/skills
 
 # Stage 2+ adds, one line per piece, when the piece exists: templates/.
+
+# ────────────────────────────────────────────────────────────────────────────────
+# THE INTERPRETER'S RESIDUE — LAST IN THE FILE, AND IT STAYS LAST.
+#
+# ⚠️ This is a position, not a preference. Every `!` line above re-includes what the
+# excludes above it had just removed, so an exclude high in this file is undone by any
+# re-include below it — silently, with no error and no diff.
+#
+# ⛔ Verify with `git check-ignore -v`, never by reading: a duplicated allowlist block
+# makes the LATER copy's excludes the live ones, so the copy that LOOKS like residue can
+# be the only one working, and tidying it away puts the residue straight back.
+#
+# ⚠️ And a narrowing that looks like a tidy-up is the shape this file must never acquire.
+# An exclude scoped to one directory leaves every other allowlisted root uncovered, and
+# what this file decides is what goes public.
+#
+# Unanchored on purpose: any depth, any allowlisted root.
+__pycache__/
+*.pyc

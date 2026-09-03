@@ -3,8 +3,6 @@ name: correct-exercise
 description: Reviews work the operator has already written — invoke when a finished exercise, a submitted solution, or existing code arrives to be corrected, improved, or put through a levelled code analysis; if the work does not exist yet and only a problem statement does, invoke learn instead.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # correct-exercise
 
 
@@ -50,7 +48,7 @@ no project layer. The stance is critical throughout — pedagogical support belo
    points out and explains; the rewrite is `improve`.
 4. **`improve` — the stronger version.** Starts from work already correct and returns a better
    one: better method, cleaner, more idiomatic, better justified. **Every change is marked with
-   what changed and why**, because the delta is the part that teaches (`MLabs:PH-2`). It does not
+   what changed and why**, because the delta is the part that teaches (`MLabs:AX-40`). It does not
    solve from scratch — that is `learn`.
 5. **`analyze` — the levelled sweep.** Independent levels, requested one at a time or in full:
    L1 format and style · L2 naming · L3 documentation · L4 data structures · L5 logic and

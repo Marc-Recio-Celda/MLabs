@@ -3,8 +3,6 @@ name: release-cut
 description: Cuts a public release of the methodology repository — verifies the tracked set against the allowlist, proves the depersonalisation check actually fires before trusting it, runs the cold start, and tags. Use whenever a version is about to be tagged, published, or made public for the first time, and whenever a consuming instance is about to adopt a new release.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # release-cut
 
 The gate every invariant in `AGENTS.md` §5 was written for. Until this runs, those invariants
@@ -48,13 +46,15 @@ The denylist lives in the instance, never here: a list of names is itself person
 
 | Check | Passes when |
 |---|---|
-| Axiom numbering | contiguous, no duplicates, retired entries kept as ⚫ rows rather than removed |
-| Cross-references | every `AX-n` and every section reference resolves; **none points at a retired identifier** |
+| Axiom numbering | no duplicates, and **gaps are expected** — a retired axiom leaves the file and its number is never reused, so the gap is the trace and the log says where it went |
+| Cross-references, axioms | `bash tools/axiom-refs.sh <axioms> <SCOPE> <files…>` exits 0, and every `§n` resolves. **A retired axiom has no row, so citing one IS citing a missing id** — one search, not two |
+| Cross-references, clauses | `bash tools/clause-refs.sh PHILOSOPHY.md <files…>` exits 0. ⚠️ **It catches a clause that was removed, and cannot catch one that was reassigned** — an id that still resolves after it means something else is invisible to any reference check, which is why `AX-31` says a reference names its target rather than numbering it |
+| Every check has been seen to fire | `bash tools/tests/run.sh` exits 0 (`AX-7`). It runs each check against **two plants and a negative control**, and names every runnable check with no test at all. ⚠️ **A check nobody has planted against is a claim, not a check** — and the plant that matters is the one written in the file's own style |
 | Coverage | regenerated from the rows, never typed — and it matches |
 | Every event-triggered skill | states its dismissal criterion |
 | Every skill | has a description saying **what it does and when to use it**, and no two overlap |
-| Append-only | the diff since the last tag removes no line from a decision log |
-| Version stamps | every tracked document names the release it was written against. ⚠️ **Measured 2026-08-19: 11 skills at 1.1.0 against 6 at 1.0.0 and one with none** — `T76` carries it, and this check has never been run at a cut |
+| Records are append-only | the diff since the last tag removes no line from **a Record** — a decision log, a ledger, an employee log. ⚠️ **Standing documents are exempt and must be**: an axiom file, a binding and a method evolve, and forcing them to only grow is what fills the central text with deprecated rows |
+| No transcribed version | `grep -rn '^> \*\*Version:' $(git ls-files)` **returns nothing.** The release's version is the tag; a number typed into a header is one nothing updates (`AX-36`). ⚠️ **This replaced a per-file stamp that never once agreed with itself** — six values across twenty-five files, a check that had never run at a cut, and the signal it was meant to give — *which files has an audit cleared* — belongs to the auditors' ledger, not to a line at the top of every file |
 
 ## 4 · The cold start — the one that actually tests the claim
 
@@ -71,7 +71,7 @@ the repository is not keeping.
 
 ## 5 · Tag
 
-> ⚠️ **The cut records the commit it was cut against, and that is not optional** *(2026-08-19)*.
+> ⚠️ **The cut records the commit it was cut against, and that is not optional.**
 > `AX-1`'s clause *"and pins the release it runs"* was **retired** — this instance co-develops MLabs
 > rather than consuming it, so the two repositories move in the same round and a pin is what a
 > consumer holds. **Retiring the pin removed the field that answered *which MLabs is this?***, so the

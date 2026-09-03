@@ -3,8 +3,6 @@ name: open-session
 description: Opens a working session over an MLabs instance and runs the loop from compass to close. Use at the start of any session on the knowledge base, a project, or the method itself — whether the operator names what they want to do or opens with nothing. Also use to close a task correctly, which is the half most sessions get wrong.
 ---
 
-> **Version:** MLabs 1.0.0
-
 # open-session
 
 **Routing and sequence only.** Every rule lives in a file this skill points at. If this skill and
@@ -47,10 +45,8 @@ is declared and logged as a defect in the index** — never as licence to read l
 
 ## 4. Work the loop
 
-**Planning moved out on 2026-08-19 and lives in `skills/current-plan/`.** It used to be here
-because planning happened once, when a session opened; under the block flow it is a discrete act
-repeated once per sub-block. **That file wins on everything about how a plan is written** — this
-section is the routing, not the rules.
+**Planning lives in `skills/current-plan/`, and that file wins on everything about how a plan is
+written** — this section is the routing, not the rules.
 
 Invoke it when a sub-block is reached. Then work the list: every item leaves with an outcome from
 the closed vocabulary (`METHOD.md` §2), items that spawn items are written down immediately, and

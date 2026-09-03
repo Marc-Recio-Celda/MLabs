@@ -3,8 +3,6 @@ name: current-plan
 description: Plans how a sub-block will be worked, before any of it is done — the items, their order, and the reason for that order. Use when a sub-block is reached and it is time to decide how to tackle it, when an existing plan needs reopening, or when work is about to start with no plan behind it. Produces one plan record; it does not execute it.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # current-plan
 
 **One sub-block, one plan.** This decides *how* the work will be done and writes it down while
@@ -17,10 +15,9 @@ already knows which one it will take.
 
 ## Why it is its own door
 
-It lived inside `open-session` until 2026-08-19, and moved because **the trigger moved**. Planning
-used to happen once, when a session opened. Under the block flow it is a discrete act repeated
-once per sub-block — several times in a session, or not at all. A step whose trigger has changed
-needs its own name, or it keeps firing on the old one.
+**Planning is a discrete act repeated once per sub-block** — several times in a session, or not at
+all — so it has its own trigger and therefore its own name. ⚠️ **A step whose trigger has changed
+needs a new name, or it keeps firing on the old one.**
 
 ## What it produces
 
@@ -91,7 +88,7 @@ the sub-block's row in the projects hub expands into: not *that* it finished, bu
 | 4 | Every closed item carries an outcome; none carries a bare tick |
 | 5 | Nothing was deleted — closed plans are still addressable by id |
 
-## Dismissal
+## Retirement
 
 Retired if, after five plans, the `order_why` field is being filled with restatements of the
 order rather than reasons for it. That would mean the field is theatre and the skill is a form to

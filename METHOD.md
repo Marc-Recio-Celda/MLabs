@@ -1,7 +1,5 @@
 # METHOD — how work actually flows
 
-> **Version:** 1.0.0
-
 > **The fourth document, and the only one you use every day.** `PHILOSOPHY.md` says what this
 > company optimises for; `AXIOMS.md` what may never be violated; **this file says how work
 > actually moves**; and NEXUS holds what happened. The first two are read once and rarely
@@ -22,9 +20,16 @@ empties, a record someone edited, a plan that quietly became a backlog.
 | **Record** | Append-only. Never edited, never deleted, grows forever. The receipt | Editing it destroys the only copy of what was true then |
 | **Queue** | Filled by one side, drained by the other; an item leaves when it is done (AX-15). **Not a stack and not first-in-first-out** — the order is the operator's to set and reset at any time; what a queue guarantees is that nothing leaves without a destination, never that things leave in the order they arrived | A queue that only grows stops saying what is left |
 | **Compass** | Tiny, rewritten in place, **one active front**. Read at every open, updated at every close | A compass with eight priorities never contradicts reality, so it is never corrected |
-| **Live plan** | **Rewritten continuously while the work happens; CLOSED when the work closes — never emptied** (`FLOW.md` rule 3, 2026-08-19). It becomes a plan record and stays readable; deleting it drops the order, the reason for that order, and the items discarded with their reasons, which live nowhere else | A live plan that survives its task has become a backlog. ⚠️ And one that is *deleted* takes `PH-3` with it in exactly the case `PH-3` was written for |
+| **Live plan** | **The active task's subtasks, rewritten continuously while the work happens.** Its lifecycle is the task's and `FLOW.md` rules 3 and 4 own it — this row does not restate them | A live plan that survives its task has become a backlog |
 | **Park** | No date, no commitment, no obligation to revisit | A park with dates is a task list nobody agreed to |
 | **Standing** | Rewritten in place; always states what is true *now* or what must hold. Never appended to, never emptied | A standing document that grows by accretion has become a record nobody can trust as current |
+
+⚠️ **Two queues at different speeds, and the fast one reports rather than files.** An instance
+that runs a fast lane beside its deliberative queue **must not let the fast one file into the
+slow one**: its entries are trivial by construction, so every doubt becomes an entry, and the
+loop has no bound. **The drainer's channel back is its drain report** — what it did, what it
+could not do, and what the entry taught — read at the next open and answered by whoever holds
+the context.
 
 The three levels of governance sit above all six: philosophy, axioms, then decisions — and
 **decisions are Records.** A definition, a set of axioms, a state file and a sequenced plan are
@@ -47,10 +52,11 @@ all **Standing**: each is rewritten to stay true, and none is ever a place thing
 Either way `COMPASS.md` names one active front `▶` and points at where that work is described;
 it describes none of it.
 
-**Open the live plan on that front.** `PLAN.md` is rewritten to hold *this task and
-nothing else*: the concrete items, in the order they will be done, and the reasoning for that
-order. It is not a summary written afterwards — it is written *while* deciding, which is what
-makes it worth anything.
+**Open the active task's live plan**: the concrete subtasks, in the order they will be done, and
+the reasoning for that order. It is not a summary written afterwards — it is written *while*
+deciding, which is what makes it worth anything. ⚠️ **Opening one never overwrites another** — a
+paused task keeps its plan (`FLOW.md` rule 4), and it must be readable by the operator, who is the
+one governing the flow.
 
 **Work the list, striking through as you go.** Every item leaves with a **destination**, and
 the vocabulary is closed:
@@ -58,7 +64,7 @@ the vocabulary is closed:
 | Destination | Means |
 |---|---|
 | ✅ resolved here | done in this task; the trace goes to a Record |
-| → task list | needs execution; becomes a task with its why (AX-14) |
+| → task list | needs execution; becomes a task carrying its why |
 | → integrated | landed in code or in a document; the diff is the evidence |
 | → park | worth keeping, not now; goes to an ideas register |
 | → mailbox | belongs to someone else's inbox, or is a passive finding you must not fix here (AX-25) |
@@ -89,6 +95,10 @@ at the close"* is the same failure with a delay.
 **Close the task, in this order — the order is the point.**
 
 1. Every line struck, every residue routed to a destination.
+1b. **Update the `state.md` of every project the task touched**, by rule rather than by habit.
+   **The test is the file's own: would this still be true if work stopped today?** If the answer
+   changed during the task and the file did not, the close is not done. ⚠️ **Numbered `1b` rather
+   than renumbering**, so every reference to steps 2–6 elsewhere still resolves.
 2. **Read each destination back from disk.** *Written* is verified, never remembered (AX-9);
    the interval between "I wrote that" and "that is on disk" is where work is lost.
 3. **Then the audit fires — but only if a structural file changed** (`skills/company-auditor/`
@@ -99,18 +109,13 @@ at the close"* is the same failure with a delay.
    the plan is the only record of how the task thought, and emptying it first leaves the
    auditor reading a blank file while believing it read the reasoning. **The audit precedes
    the erasure, always.** The operator can also call it on any close, for any reason.
-4. **Then the plan is closed** — and only then. ⚠️ **Closed, not emptied** (`FLOW.md` rule 3,
-   declared the winner 2026-08-19). Deleting it drops the two things that live nowhere else: **the
-   order and why that order**, and **the items discarded with their reason** — `PH-3` in exactly
-   the case it was written for. Closing costs nothing visually: a closed plan leaves the working
-   view the same way a deleted one would, and it becomes what a sub-block's row expands into —
-   not *that* it finished, but *how* it went. Four files said *empty* against two that said
-   *close*, with no winner declared; this line is the winner.
-5. **Print what was touched — derived from the close, never written from memory**
-   *(operator, 2026-08-19)*. One line per file, no pasted diffs. ⚠️ **A session report is not a Record and must
-   not be written like one**: one claimed *"axioms AX-28 to AX-30 added"* against a file that held
-   `AX-1`…`AX-31` with all three predating that session — no damage, and **a false line read as
-   evidence**. What comes out of the diff goes here; **what does not is narrative and goes to the
+4. **Then the plan is closed** — and only then. ⚠️ **Closed, not emptied** (`FLOW.md` rule 3, the
+   declared winner): what closing preserves and what deleting costs are that rule's to state, and
+   **this step's only job is to sit after step 3**, so the erasure can never precede the reading.
+5. **Print what was touched — derived from the close, never written from memory.** One line per
+   file, no pasted diffs. ⚠️ **A session report is not a Record and must not be written like one**,
+   because a claim in it is read as evidence and nothing contrasts it against the tree. What comes
+   out of the diff goes here; **what does not is narrative and goes to the
    ledger, which is a Record and where a claim can be checked against the round it describes.**
    *A report nobody contrasts against the tree is the same failure class as a check that cannot
    fail.* The table is not the review;
@@ -146,10 +151,9 @@ were reached.**
 past tense. No compass can — it is one line. This is the natural source of a live dashboard,
 whenever one gets built, precisely because it is the only file whose content is the present.
 
-**And it is emptied, not archived.** The temptation is to keep it "for the history". Don't: the
-history is the Record's job, and a live plan that accumulates is the backlog AX-17 dissolved,
-returning under a friendlier name. What survives a task is its routed residue, not its
-scratchpad.
+⚠️ **And it is closed, not emptied and not archived** — §2 step 4 is the winner and this line
+does not restate it. What must not happen is a live plan that *accumulates* — that is a backlog wearing
+a friendlier name, and `AX-17` routes committed-but-not-started work somewhere else.
 
 ---
 
@@ -193,16 +197,16 @@ choose work one project at a time.** Deciding what comes next means looking at e
 once and filtering; reading what happened means opening one project and following it down. Put
 each artefact where its actual use is.
 
-**This does not violate modularity — it is what PH-5 asks for.** Owner first, rate of change
+**This does not violate modularity — it is what PH-1 asks for.** Owner first, rate of change
 second. The owner of every planning artefact is the same person; a queue per project is a split
-**by topic**, which PH-5 rules out in as many words. The `project:` field is the rate-of-change
-slicing *inside* the file, which is where PH-5 puts it.
+**by topic**, which PH-1 rules out in as many words. The `project:` field is the rate-of-change
+slicing *inside* the file, which is where PH-1 puts it.
 
 **What it buys, and the cost it pays.** One schema per kind instead of one per kind per project:
 the generated database (AX-2) gets one table for tasks, not eleven, and the interface **filters**
 instead of aggregating — a filter over one table is trivial where an aggregation over eleven
 drifting files is a project of its own. Cross-project items get a home for the first time.
-Startup reads one set (PH-6).
+Startup reads one set (PH-5).
 
 ⚠️ **The cost is real and it is paid immediately: one long file is harder to read than eleven
 short ones — until something filters it.** Centralising without the filter is the worse half of
@@ -223,7 +227,7 @@ lapse.
 | File | Kind | Holds |
 |---|---|---|
 | `COMPASS.md` | Compass | one `▶`, edges not nodes, every project |
-| `PLAN.md` | Live plan | the task in flight, and only it |
+| `PLAN.md` | Live plan | **the active task's subtasks** — a view, since a paused task keeps its own |
 | `MAILBOX.md` | Queue | agent → operator, every project |
 | `TASKS.md` | Queue | operator → agent, every project |
 | `IDEAS.md` | Park | undecided, every project |
@@ -233,7 +237,7 @@ an agent that has to guess has already failed the cold start.
 
 ### What this was designed for, and where it breaks first
 
-Required by AX-27(b), and answered rather than deferred. **Designed for ~10 projects and ~50
+**Answered rather than deferred**, because a design that has not named its breaking point was designed for today. **Designed for ~10 projects and ~50
 open items across all queues.** The first thing to become manual is **triage**, and it breaks
 earlier than the rest: at roughly **25–30 open entries** a single triage stops fitting behind
 one active front, and the five-item audit cap turns it into six firings inside one front that
@@ -245,8 +249,6 @@ first view is the live task list and not a nice-to-have.
 
 ### What a project cartridge still holds
 
-| File | Kind | Holds |
-|---|---|---|
 **Four files, and two more only when they have content.**
 
 | File | Kind | Holds |
@@ -308,11 +310,8 @@ copying one company's rules, it is instantiating a pattern that knows how to ins
 
 ### Rule · skill · role — three things, and only one of them fires by itself
 
-**Named 2026-08-20** *(the operator)*: *"prácticamente no hay skills que se lancen automáticamente
-por el consumo de tokens, así que los roles son un tipo de skill que puede ser solicitado pero no se
-lanza automático."* ⚠️ **This is a discovery, not a new taxonomy** — the repository already
-implements all three and had never said so, which is why *should this be a skill or a rule* had to
-be re-argued every time it came up.
+⚠️ **Nothing here is a new taxonomy** — the repository already implements all three, and naming
+them is what stops *should this be a skill or a rule* being re-argued every time it comes up.
 
 | | Loads | Costs | Accountable |
 |---|---|---|---|
@@ -321,8 +320,28 @@ be re-argued every time it came up.
 | **Role** | when invoked, **never automatically** | the same as a skill | **yes** — a log and a criterion that can fire it |
 
 **A role is a skill plus two things: a log and a dismissal criterion** (`AX-11`). That is the whole
-difference and it is already visible on disk — `logs/` holds one file per role and none for any
-other skill. **Accountability, not capability, is what makes something a role.**
+difference. **Accountability, not capability, is what makes something a role.**
+
+⛔ **A definition that claims to be observable is a check, and it is run or it is a claim.**
+⚠️ **One heading cannot carry three meanings** — a role's firing criterion, a skill's retirement
+condition, and a section written to satisfy the grep are three different things, and a count over
+them measures none. **Two words, and the difference is the log:**
+
+| Heading | Ends | Needs a log | Needs a hiring decision |
+|---|---|---|---|
+| `## Dismissal` | a **role** | yes — **created at hiring, empty, with its contract** | yes — the criterion is written before the first firing (`AX-11`), and the operator judges against it |
+| `## Retirement` | a **skill** | no | no — it is retired when the repository can do without it |
+
+**Checked by `MLabs:tools/roles-check.sh`**, which compares the two sets and reports each direction
+separately: *a criterion with no log* and *a log with no criterion* are different problems and the
+fix is different. ⚠️ **The log is created by the act of hiring, not by the first firing.** **An empty log is a
+state; a missing file is a guess** — an absent file is indistinguishable from one deleted,
+mis-pathed, or that a brief never reached, and reading an absence as a fact is how this method
+produced four false findings. ⚠️ **An ageing empty log is evidence of nothing on its own**: a role
+whose firing event has not occurred is healthy, not idle. **The honest measure is firing events passed against firings
+recorded**, and a log with no firing event behind it says nothing. ⚠️ **It only works because the
+words were separated first** — attach a third meaning to either heading and it stops measuring
+anything.
 
 ⚠️ **Nothing auto-fires, and that is a measured decision rather than an omission.** The automatic
 audit trigger was retired after five firings in one session cost more context than the work they
@@ -339,7 +358,7 @@ also needs to answer for its own record, it is a **role**.
 
 ```
 MLabs/                      the constitution — public, released, no state
-├── PHILOSOPHY · AXIOMS · METHOD · AGENTS · skills/
+├── PHILOSOPHY · AXIOMS · METHOD · FLOW · AGENTS · skills/ · tools/
 │
 ├── NEXUS/                  the operations centre — private, and the hub
 │   ├── AGENTS.md           the binding: names the MLabs it runs; declares ledger and denylist
@@ -356,15 +375,16 @@ MLabs/                      the constitution — public, released, no state
 NEXUS. NEXUS names MLabs, once, in its binding. MLabs names nothing. An agent dropped into any
 repository can walk *up* the chain to the rules and *across* to the work, and never has to guess.
 
-**Three departments of axioms — different scope, identical force.** None outranks another; each
-binds absolutely inside its own jurisdiction. **They are reviewed together** whenever any of them
-changes, because a rule can only contradict a rule it shares a reader with.
+**Three departments of axioms — nested scopes, not ranks.** The company binds everything, an
+instance binds everything done in it, a project's own file binds that project alone; ⚠️ **when two
+disagree the narrower one loses**, because it should not have been opened over ground the wider one
+already governed. **They are reviewed together** whenever any changes, since a rule can only
+contradict a rule it shares a reader with.
 
-> ⚠️ **What an agent loads is decided by the task, not by the tier — `AGENTS.md` §2 wins**
-> *(operator, 2026-08-19)*. Measured that day: company **43.6 KB / 21 axioms** + instance **13.7 KB / 17
-> axioms** + a project's own **4.2–26.7 KB** is **60–82 KB before a single work file opens**, against
-> the **31 KB** §2 prescribes for a defined task (the binding + `METHOD` §2/§7). *Loads all three*
-> was **2–2.7× the budget the rule itself sets**, and it rises with every project.
+> ⚠️ **What an agent loads is decided by the task, not by the tier — `AGENTS.md` §2 wins.**
+> ⛔ **Loading all three departments for a defined task costs multiples of the budget §2 sets, and
+> the multiple rises with every project opened.** Measure it before assuming otherwise; the numbers
+> are in the log and go stale the moment a department changes.
 >
 > | Doing | Loads |
 > |---|---|
@@ -394,9 +414,10 @@ the company file makes that file unusable by anyone else. **When in doubt it goe
 promoting later costs one restatement; demoting later means a public file is wrong for however
 long nobody notices.
 
-**Every `AGENTS.md` in the chain is generated, never hand-written** (AX-30): the method half
-comes from MLabs, the local half lives beside its own repository, and a script concatenates them
-into a file nobody edits, with a check that fails on drift.
+**Every `AGENTS.md` in the chain holds only its own half** (AX-20): what is true of that repository
+is written there, and everything the method says is reached by reference — the contract names where
+MLabs lives, once, and cites it thereafter. **A method rule pasted into a contract is a copy nothing
+regenerates** (AX-20), and it is read as current for as long as nobody compares the two.
 
 ## 7. Routing table — "I have X, where does it go?"
 

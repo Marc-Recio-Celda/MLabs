@@ -3,8 +3,6 @@ name: triage
 description: Empties the mailbox by routing every entry to a destination the operator confirms. Use when the inbox has accumulated entries, when the compass names a triage, or when an agent's findings need integrating. Also use to triage a single project's entries by filter rather than taking the whole pile.
 ---
 
-> **Version:** MLabs 1.0.0
-
 # triage
 
 The working loop applied to the inbox — with **one step that may never be skipped**, because
@@ -12,7 +10,7 @@ The working loop applied to the inbox — with **one step that may never be skip
 
 ## Read the whole pile before routing any of it
 
-**The operator's observation, 2026-08-19.** Two entries that are the same finding seen twice get worked twice if each is
+**Two entries that are the same finding seen twice get worked twice if each is
 routed on arrival — and a queue that has been sitting produces those constantly, because the same
 defect keeps surfacing from different angles.
 

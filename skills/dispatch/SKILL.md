@@ -3,8 +3,6 @@ name: dispatch
 description: Hands a defined piece of work to the right executor with a brief it can act on and refuse — deciding what goes to an agent with file access, what stays in conversation, and what is split. Use when a task is ready to execute, when work needs breaking into pieces that can run independently, or when deciding whether something should be done here or handed over.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # dispatch
 
 The step between *deciding* and *doing*. Getting it wrong is expensive in a way that hides: work

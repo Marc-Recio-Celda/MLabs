@@ -18,6 +18,17 @@ instance, and it is why every table here is keyed by its header row.
 that drops what it does not understand turns a lossless record into a lossy one without saying so —
 which is the one thing this whole system exists to prevent.
 
+> ⛔ **The id grammar is spelled once and every site imports it.** Four copies is how a sub-block
+> with a letter suffix matches nothing and vanishes **while `Nothing unplaceable.` prints
+> underneath** — a silent drop, which is the one failure a parser must never have.
+>
+> ⚠️ **Reporting was the easy half.** The first attempt reported *nineteen* rows from neighbouring
+> tables and one correct heading in a real file — and **a check that cries wolf gets deleted**, which
+> would have left this rule with no implementation at all. So the parser now distinguishes an entry
+> that **tried to be an id and failed** (letters then a digit; a heading with its separator) from
+> text that was never an id. **The line between *unplaceable* and *not an entry* is part of the rule,
+> not an implementation detail** — without it, obeying rule 2 makes the output unreadable.
+
 ## Inheritance — a fact is written once
 
 | Entity | Gets its project from |
@@ -42,8 +53,8 @@ which is the one thing this whole system exists to prevent.
 **project:** `<name>`
 **Why** *(author, YYYY-MM-DD)*. …
 ```
-`status` ∈ ⬜ 🔨 ⛔ 🔴 ✅. **`project:` is required** — three tasks lacked it until 2026-08-18,
-carried over from the pre-split list and never noticed, because nothing read them.
+`status` ∈ ⬜ 🔨 ⛔ 🔴 ✅. **`project:` is required** — ⚠️ **an entry can lack it for
+months without anyone noticing, because nothing reads a field no check counts.**
 
 ### `park` — idea
 ```

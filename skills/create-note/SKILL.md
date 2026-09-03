@@ -1,26 +1,30 @@
 ---
 name: create-note
-description: Writes and edits every note under the NEXUS knowledge domains 01_–08_ and nothing else does; fires when the operator asks for a new note or a change to an existing one, hands over a course syllabus to ingest, asks for a sub-domain's scaffolding, or wants something learned from his own working experience turned into vault theory.
+description: Writes and edits every note in the instance's knowledge vault and nothing else does; fires when the operator asks for a new note or a change to an existing one, hands over a course syllabus to ingest, asks for a sub-domain's scaffolding, or wants something learned from their own working experience turned into vault theory.
 ---
 
 # create-note
 
 ## When it fires
 
-The operator names a note, hands over a syllabus, asks for scaffolding, or has something from his own
-work to condense. **The one door into `01_`–`08_`** (`NEXUS:AX-4`): no other skill, no sweep, no
-script completing the structure, no agent acting on its own reading of what is missing. The operator's
-working experience enters through this same door — what he learned on a project becomes a note by
-this procedure, under the same standard and the same gates as a syllabus block. Those notes are
-🔴: the write is authorised per change (`NEXUS:AX-3`) and the commit message names `create-note`.
+The operator names a note, hands over a syllabus, asks for scaffolding, or has something from their
+own work to condense. **The one door into the knowledge domains** (`NEXUS:AX-4`): no other skill, no
+sweep, no script completing the structure, no agent acting on its own reading of what is missing. The
+operator's working experience enters through this same door — what they learned on a project becomes
+a note by this procedure, under the same standard and the same gates as a syllabus block. Those notes
+are 🔴: the write is authorised per change (`NEXUS:AX-3`) and the commit message names `create-note`.
 
 ## Read first, in this order
 
-1. `00_INDEXES/00_NEXUS_ROUTER.md` — **only** the *Loading Protocol* row for the target domain.
-2. The domain index that row names: `01_NEXUS_KERNEL.md` · `02_NEXUS_Capture.md` ·
-   `03_NEXUS_Storage.md` · `04_NEXUS_Analysis&Modeling.md` · `05_NEXUS_Visualization.md`.
-3. the domain index when the attachment is not obvious from the index, and the
-   Router's bridge table for the pair when the note crosses domains.
+1. **The Router** — the vault's index of indexes, reached at the path the binding declares — and in
+   it **only** the *Loading Protocol* row for the target domain.
+2. **The domain index that row names**, and nothing from any other domain.
+3. **The Router's bridge table for the pair**, when the note crosses domains.
+
+⚠️ **No filename appears above, and that is the rule rather than the style.** A skill that spells
+the vault's own files runs on exactly one machine and publishes that machine's shape (`MLabs:AX-1`).
+**The Router is reached through the binding; every index is reached through the Router.** This skill
+knows the two hops and neither path.
 
 Anything opened beyond that is declared, and the declaration is logged as a defect in the Router
 (`MLabs:AX-21`). A domain with no index takes no notes until it has one (`NEXUS:AX-8`) — say so
@@ -31,7 +35,7 @@ and stop.
 ### Phase 1 — Attachment (a syllabus; a single named note skips to Phase 3)
 
 1. Read the syllabus whole and list its knowledge blocks.
-2. Classify each against the index and the Backbone: **already covered** → one line to
+2. Classify each against the domain index: **already covered** → one line to
    the instance mailbox for the audit, never rewritten here · **extends** a sub-domain → new
    note · **new coherent body** → propose a sub-domain, a domain only for a whole field.
 3. Output `block → domain/sub-domain → extend | create | exists`. **Gate: the operator approves.**
@@ -45,9 +49,10 @@ and stop.
 
 ### Phase 3 — Write, one note per turn (`continue` takes the next)
 
-6. **Placement.** Content notes sit flat in `NN_Sub-domain/Phases-[dom]/`; scaffolding at the
-   sub-domain root, one set per sub-domain, not per phase. KERNEL (01) and DeepLearning&RL (06)
-   are flat and carry no scaffolding.
+6. **Placement.** Content notes sit flat in `<sub-domain>/Phases-[dom]/`; scaffolding at the
+   sub-domain root, **one set per sub-domain, not per phase**. ⚠️ **A domain the index marks *flat*
+   takes no scaffolding at all** — the index says which, and a skill that remembers which is a skill
+   that is wrong the first time a domain changes shape.
 7. **Numbering.** Take the next free prefix in that folder. The prefix orders, the alias
    addresses, nothing already numbered moves (`NEXUS:AX-5`).
 8. **Frontmatter**, four keys, this order (`NEXUS:AX-6` — written whole, key order preserved):
@@ -104,11 +109,11 @@ script that reconciles every reference in the same pass (`NEXUS:AX-5`).
 12. **Protocol is not technique.** `_Protocol-[dom]` carries `> **Definition**`,
     `## 🛡️ Expert checklist` (anchored steps, ⚠️/🚀), an optional Mermaid `## Visual flow`,
     `## Frequent decisions` (situation → action) and `## Relationships`. It says **when and in
-    what order**, links the technique note, never restates it. One home per technique, referenced
-    from everywhere else: quality → `[[Dimensiones de calidad]]` · metrics →
-    `[[Model-evaluation]]` · split/leakage → `[[Data-splitting]]` · descriptive statistics and
-    ethics → KERNEL (the ethics *technique* in Modeling).
-13. **Sources.** Raw material stays in the external `Sources/` vault; the note is the
+    what order**, links the technique note, never restates it. ⚠️ **One home per technique, and
+    every other mention is a link to it.** Which note is the home is the *index's* answer, never
+    this file's — a routing table kept in a skill goes stale silently, and a technique with two
+    homes is the duplication Phase 1 exists to catch, arriving through the back door.
+13. **Sources.** Raw material stays in the external sources vault the binding names; the note is the
     condensation and cites the original by address (`NEXUS:AX-7`). An unnameable source is marked
     unsourced, not quietly asserted (`MLabs:AX-6`). Content beyond the source is allowed where a
     working data scientist needs it, and is flagged — 🚀 on a protocol step, and in a note:

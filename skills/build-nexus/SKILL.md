@@ -3,8 +3,6 @@ name: build-nexus
 description: Creates an operations centre from nothing and walks its owner to a first task in flight — invoke on a machine that has cloned MLabs and has no instance yet, or to repair a tree whose base files were never generated; it builds in three separable layers and writes an empty instance, never a copy of an existing one.
 ---
 
-> **Version:** MLabs 1.1.0
-
 # build-nexus
 
 **The first thing that runs, and the reason the rest can be audited.** Every other skill names files
@@ -12,7 +10,7 @@ it expects to exist — a mailbox, a compass, a live plan, a coherence check —
 created them. A skill whose verification points at a file nobody generated is the class this company
 has found eight times: **a published check that cannot run.** This builds the tree those checks
 point at, so they resolve **without any skill knowing which machine it is on** *(the operator,
-2026-08-20: "así el auditor encuentra ya los archivos que quiera de forma desacoplada")*.
+"así el auditor encuentra ya los archivos que quiera de forma desacoplada")*.
 
 ⚠️ **`AGENTS.md` §3 lists this skill last, under the name `nexus-builder`, and the reason it was
 last is now spent.** It was deferred because *"it encodes the shape of an instance, so building it

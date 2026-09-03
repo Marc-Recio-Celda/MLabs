@@ -20,11 +20,31 @@ Standard library only.
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
 
 KINDS = ("compass", "plan", "queue", "park", "record", "standing", "skills", "records")
+
+
+# The board's id grammar, in ONE place. ⛔ Never copy it. A second copy diverges, and a
+# sub-block whose suffix the copy does not accept matches nothing and is DROPPED WITH NO
+# REPORT — in the parser whose own GRAMMAR.md rule 2 says nothing may be skipped.
+BLOCK_ID    = re.compile(r"^[A-Z]{1,3}[0-9]+$")
+SUBBLOCK_ID = re.compile(r"^[A-Z]{1,3}[0-9]+(\.[0-9A-Za-z]+)?$")
+# The first cell's LEADING token, anchored. Anchored because the previous form searched
+# anywhere in the cell and would take a capital from the middle of a sentence.
+HEAD_TOKEN  = re.compile(r"[`*\s]*([A-Za-z0-9._-]+)")
+# ⚠️ And the line between *unplaceable* and *not an id at all*: a token TRYING to be an id
+# — letters then a digit. Without it the first version of this fix reported 19 rows from
+# neighbouring tables (`| Edge | Here | There |`), and a check that cries wolf gets deleted.
+ID_LIKE     = re.compile(r"^[A-Za-z]{1,3}[0-9]")
+# ⚠️ And the line between a heading that FAILED to be a block and one that never tried:
+# the separator. `### `B3` · Title` is a block heading with a broken id and is reported;
+# `### B3's Metrics Are Three, Not One` is prose that merely starts with an id-shaped word
+# and is not. Without this the fix reported a real, correct heading in a real project file.
+HEADING_SHAPE = re.compile(r"^###\s+[`*]*([A-Za-z0-9._-]+)[`*]*\s*[·–-]")
 
 
 class Problem(dict):
@@ -157,9 +177,8 @@ def parse_queue(path, text):
             why = re.search(r"\*\*Why\*\*\s*\*?\(?(?P<author>[^,)]+),\s*"
                             r"(?P<date>\d{4}-\d{2}-\d{2})\)?", "\n".join(lines[i:i + 12]))
             f["id_raw"] = f.pop("id", None)
-            # The why is the whole point of a task — an executor that does not know the
-            # purpose cannot test the premise, and testing it is its job. It was matched
-            # for author and date and then discarded until 2026-08-18.
+            # ⛔ The why is the whole point of a task and is never discarded — an executor
+            # that does not know the purpose cannot test the premise, and testing it is its job.
             body, k = [], i + 1
             while k < len(lines) and not lines[k].startswith("### "):
                 body.append(lines[k]); k += 1
@@ -200,10 +219,9 @@ def parse_park(path, text):
             continue
         if not line.startswith("- "):
             continue
-        # The title may wrap. Join forward until the closing ** is in view, then match.
-        # Until 2026-08-18 this required both markers on one line and SKIPPED the rest
-        # in silence — one live entry was being dropped from the model while the file
-        # printed "Nothing unplaceable".
+        # ⛔ The title may wrap, so join forward until the closing ** is in view.
+        # Requiring both markers on ONE line skips every wrapped entry in silence, while
+        # the file goes on printing "Nothing unplaceable".
         joined, k = line, i
         while "**" in joined and joined.count("**") < 2 and k + 1 < len(lines):
             k += 1
@@ -245,10 +263,8 @@ def parse_compass(path, text):
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if not cells or len(cells) < 3:
             continue
-        # Read by header name, not by index. This block was positional until
-        # 2026-08-18 — in the one file whose grammar states, twice, that positional
-        # reading is what five earlier findings were spent on. One inserted column
-        # shifted every field and reported nothing.
+        # ⛔ Read by header NAME, never by index. One inserted column shifts every
+        # positional field and reports nothing — silently, with plausible output.
         row = header_of(lines, i)
         if cells[0] in ("▶", "⏸", "?") or re.fullmatch(r"\d+", cells[0]):
             g = dict(zip(row, cells)) if row and len(row) == len(cells) else {}
@@ -352,6 +368,7 @@ def parse_plan(path, text):
 def parse_standing(path, text, project_pattern=None):
     """A project's state. Reads its header fields, definition, phase, and ramified blocks."""
     lines = text.splitlines()
+    probs = []   # nothing is dropped — GRAMMAR.md rule 2, which this function broke in four places
     first = next((i for i, l in enumerate(lines) if l.startswith("# ")), -1)
     fields = kv_block(lines, first + 1)
     title = lines[first][2:].strip() if first >= 0 else path.stem
@@ -422,7 +439,7 @@ def parse_standing(path, text, project_pattern=None):
     current_block = None
     in_board_section = False
 
-    for line in lines:
+    for i, line in enumerate(lines):
         # Detect start of board or progress sections
         if re.search(r"^##\s+\d*\.?\s*(The board|Progress by Block|Roadmap|Blocks)\b", line, re.I):
             in_board_section = True
@@ -442,7 +459,7 @@ def parse_standing(path, text, project_pattern=None):
         if m_head:
             b_id = m_head.group(1).strip()
             # Only valid block ids like A1, B3, S1, TR1, P2, etc.
-            if re.match(r"^[A-Z]{1,3}[0-9]+$", b_id):
+            if BLOCK_ID.match(b_id):
                 b_title = m_head.group(2).strip()
                 current_block = {
                     "id": b_id,
@@ -453,15 +470,30 @@ def parse_standing(path, text, project_pattern=None):
                 }
                 board_blocks.append(current_block)
                 continue
+            elif ID_LIKE.match(b_id):
+                probs.append(Problem(path, i + 1, f"a board block id the grammar cannot place: {b_id!r}", line))
+                current_block = None   # and DETACH: never let this heading's rows join the block above
+                continue
+
+        # ⚠️ A `###` heading the pattern above could not read AT ALL still ends the previous
+        # block. Without this, its rows kept appending to the block above it — which is worse
+        # than dropping them: a row that belongs nowhere was being shown under a real id, and
+        # nothing said so. Reported only when the heading is TRYING to be an id.
+        if line.startswith("### "):
+            tried = HEADING_SHAPE.match(line)
+            if tried and ID_LIKE.match(tried.group(1)):
+                probs.append(Problem(path, i + 1, f"a board heading the grammar cannot read: {tried.group(1)!r}", line))
+            current_block = None
+            continue
 
         if current_block and line.startswith("|") and not line.startswith("|---") and not line.startswith("| #") and not line.startswith("| |") and not line.startswith("| Kind"):
             parts = [p.strip() for p in line.split("|")[1:-1]]
             if len(parts) >= 3 and not parts[0].startswith("---"):
-                sub_id_m = re.search(r"([A-Z0-9\._-]+)", parts[0])
+                sub_id_m = HEAD_TOKEN.match(parts[0])
                 if sub_id_m:
                     sub_id = sub_id_m.group(1)
                     # Validate subblock pattern e.g. A1.1, B8.2, S1.3, TR1.2
-                    if re.match(r"^[A-Z]{1,3}[0-9]+(\.[0-9]+)?$", sub_id):
+                    if SUBBLOCK_ID.match(sub_id):
                         kind = parts[1] if len(parts) > 1 else ""
                         what = parts[2] if len(parts) > 2 else ""
                         status_str = parts[-1] if len(parts) >= 4 else ""
@@ -472,11 +504,13 @@ def parse_standing(path, text, project_pattern=None):
                             "desc": what.replace("**", "").replace("`", ""),
                             "status": "completed" if "✅" in status_str else ("active" if any(s in status_str for s in ["🔨", "▶", "🔴", "open"]) else "pending")
                         })
+                    elif ID_LIKE.match(sub_id):
+                        probs.append(Problem(path, i + 1, f"a sub-block id the grammar cannot place: {sub_id!r}", line))
 
     # Format B: "Progress by Block" Table
     if not board_blocks:
         in_prog = False
-        for line in lines:
+        for i, line in enumerate(lines):
             if "Progress by Block" in line:
                 in_prog = True
                 continue
@@ -485,8 +519,8 @@ def parse_standing(path, text, project_pattern=None):
             elif in_prog and line.startswith("|") and not line.startswith("|---") and not line.startswith("| Block"):
                 parts = [p.strip() for p in line.split("|")[1:-1]]
                 if len(parts) >= 3 and not parts[0].startswith("---"):
-                    b_id_m = re.search(r"\b([A-Z0-9\._-]+)\b", parts[0])
-                    if b_id_m and re.match(r"^[A-Z]{1,3}[0-9]+$", b_id_m.group(1)):
+                    b_id_m = HEAD_TOKEN.match(parts[0])
+                    if b_id_m and BLOCK_ID.match(b_id_m.group(1)):
                         b_id = b_id_m.group(1)
                         b_name = parts[0].replace(b_id, "").replace("**", "").replace("`", "").strip()
                         status_raw = parts[1]
@@ -498,13 +532,15 @@ def parse_standing(path, text, project_pattern=None):
                             "summary": what,
                             "subblocks": []
                         })
+                    elif ID_LIKE.match(b_id_m.group(1)):
+                        probs.append(Problem(path, i + 1, f"a board block id the grammar cannot place: {b_id_m.group(1)!r}", line))
 
         # Match subblocks sections like "## 6. B8 — Sub-Blocks"
         for b in board_blocks:
             b_id_str = b["id"]
             sub_sec_name = b_id_str + " — Sub-Blocks"
             in_sub = False
-            for line in lines:
+            for i, line in enumerate(lines):
                 if sub_sec_name in line or (b_id_str in line and "Sub-Blocks" in line):
                     in_sub = True
                     continue
@@ -513,10 +549,10 @@ def parse_standing(path, text, project_pattern=None):
                 elif in_sub and line.startswith("|") and not line.startswith("|---") and not line.startswith("| #") and not line.startswith("| Sub-block"):
                     parts = [p.strip() for p in line.split("|")[1:-1]]
                     if len(parts) >= 3 and not parts[0].startswith("---"):
-                        sub_id_m = re.search(r"([A-Z0-9\._-]+)", parts[0])
+                        sub_id_m = HEAD_TOKEN.match(parts[0])
                         if sub_id_m:
                             sub_id = sub_id_m.group(1)
-                            if re.match(r"^[A-Z]{1,3}[0-9]+(\.[0-9]+)?$", sub_id):
+                            if SUBBLOCK_ID.match(sub_id):
                                 sub_title = parts[1] if len(parts) > 1 else ""
                                 sub_closes = parts[2] if len(parts) > 2 else ""
                                 sub_status = parts[3] if len(parts) > 3 else (parts[-1] if len(parts) >= 3 else "")
@@ -526,6 +562,8 @@ def parse_standing(path, text, project_pattern=None):
                                     "desc": sub_closes.replace("**", "").replace("`", ""),
                                     "status": "completed" if "✅" in sub_status else ("active" if any(s in sub_status for s in ["🔨", "▶"]) else "pending")
                                 })
+                            elif ID_LIKE.match(sub_id):
+                                probs.append(Problem(path, i + 1, f"a sub-block id the grammar cannot place: {sub_id!r}", line))
 
     # 4. Extract Code Repo and Remote URL from metadata tables
     code_repo = ""
@@ -594,30 +632,123 @@ def parse_standing(path, text, project_pattern=None):
         except Exception:
             pass
 
-    # Look for README.md or guide.md for Visual Usage Guide
+    # Look for README.md, guide.md, HOW-TO-USE.md, or definition.md for Visual Usage Guide
     readme_content = ""
     readme_path = ""
+    readme_type = "readme"
+
     possible_readmes = [
-        path.parent / "guide.md",
-        path.parent / "usage.md",
-        path.parent / "README.md",
-        path.parent.parent / "README.md",
+        (path.parent / "guide.md", "guide"),
+        (path.parent / "usage.md", "guide"),
+        (path.parent / "README.md", "readme"),
+        (path.parent.parent / "README.md", "readme"),
+        (path.parent.parent / "HOW-TO-USE.md", "how-to-use"),
     ]
     if code_repo:
         try:
             r_dir = Path(os.path.expanduser(code_repo)).resolve()
-            possible_readmes.insert(0, r_dir / "README.md")
+            possible_readmes.insert(0, (r_dir / "README.md", "readme"))
+            possible_readmes.insert(1, (r_dir / "guide.md", "guide"))
         except Exception:
             pass
 
-    for rp in possible_readmes:
+    for rp, rtype in possible_readmes:
         if rp.exists() and rp.is_file():
             try:
                 readme_content = rp.read_text(encoding="utf-8")
                 readme_path = str(rp)
+                readme_type = rtype
                 break
             except Exception:
                 pass
+
+    # Extract full definition & architecture contents
+    definition_content = ""
+    def_file = path.parent / "definition.md"
+    if def_file.exists() and def_file.is_file():
+        try:
+            definition_content = def_file.read_text(encoding="utf-8")
+        except Exception:
+            pass
+
+    # Fallback to definition if no dedicated README was found
+    if not readme_content and definition_content:
+        readme_content = definition_content
+        readme_path = str(def_file)
+        readme_type = "definition"
+
+    architecture_content = ""
+    arch_file = path.parent / "architecture.md"
+    if arch_file.exists() and arch_file.is_file():
+        try:
+            architecture_content = arch_file.read_text(encoding="utf-8")
+        except Exception:
+            pass
+
+    # Extract any sub-guides under Guides/
+    extra_guides = {}
+    guides_dir = path.parent / "Guides"
+    if guides_dir.exists() and guides_dir.is_dir():
+        for gf in sorted(guides_dir.glob("*.md")):
+            try:
+                extra_guides[gf.stem] = gf.read_text(encoding="utf-8")
+            except Exception:
+                pass
+
+    # Tech stack detection & tailored quickstart commands based on keywords
+    tech_stack = "Python / Modular Pipeline"
+    target_repo = code_repo or f"~/Documents/{project or 'project'}"
+    quick_install = f"cd {target_repo} && python3 -m venv .venv && source .venv/bin/activate && pip install -e ."
+    quick_run = "python main.py"
+    quick_test = "pytest tests/"
+
+    all_text = f"{readme_content} {definition} {architecture_content}".lower()
+
+    if "astro" in all_text or "static site" in all_text:
+        tech_stack = "Astro / HTML5 / CSS3 / TypeScript"
+        quick_install = f"cd {target_repo} && npm install"
+        quick_run = "npm run dev"
+        quick_test = "npm run build && npm run preview"
+    elif "react" in all_text or "vite" in all_text or "sqlite (225" in all_text:
+        tech_stack = "React / Vite / TypeScript / FastAPI"
+        quick_install = f"cd {target_repo} && npm install && (cd backend && pip install -r requirements.txt)"
+        quick_run = "npm run dev"
+        quick_test = "npm test && pytest backend/"
+    elif "server.py" in all_text or "cockpit" in all_text or "operations centre" in all_text:
+        tech_stack = "Vanilla JS / Modern CSS / Python Engine"
+        quick_install = f"cd {target_repo} && ./tools/install-hooks.sh"
+        quick_run = "python3 interface/server.py --port 8776"
+        quick_test = "tools/gate.sh"
+    elif "docling" in all_text or "pix2tex" in all_text or "latex-ocr" in all_text:
+        tech_stack = "Python (Docling / PyMuPDF / Pix2Tex / LaTeX-OCR)"
+        quick_install = f"cd {target_repo} && python3 -m venv .venv && source .venv/bin/activate && pip install -e ."
+        quick_run = "python -m cli convert input_folder/ --output out/"
+        quick_test = "pytest tests/ -v"
+    elif "grapedia" in all_text or "litellm" in all_text or "navarro-payá" in all_text:
+        tech_stack = "Python (LiteLLM / Pydantic / PyMuPDF / GRAPEDIA)"
+        quick_install = f"cd {target_repo} && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
+        quick_run = "python -m pipeline.main --paper paper.pdf"
+        quick_test = "pytest tests/"
+    elif "reinforcement learning" in all_text or "gymnasium" in all_text or "irrigation" in all_text:
+        tech_stack = "Python (Reinforcement Learning / Gymnasium / InfluxDB)"
+        quick_install = f"cd {target_repo} && python3 -m venv .venv && source .venv/bin/activate && pip install -e ."
+        quick_run = "python -m sim.main"
+        quick_test = "pytest tests/"
+    elif "xauusd" in all_text or "backtrader" in all_text or "regime detection" in all_text:
+        tech_stack = "Python (Pandas / Backtrader / MetaTrader 5)"
+        quick_install = f"cd {target_repo} && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
+        quick_run = "python -m backtest.main --strategy gold_regime"
+        quick_test = "pytest tests/"
+    elif "transcriptomics" in all_text or "scanpy" in all_text or "deseq2" in all_text:
+        tech_stack = "Python / R (BioConductor / Scanpy / Nextflow)"
+        quick_install = f"cd {target_repo} && python3 -m venv .venv && source .venv/bin/activate && pip install -e ."
+        quick_run = "python -m pipeline.main --config config.yaml"
+        quick_test = "pytest tests/"
+    elif "how-to-use" in str(readme_path).lower() or "[project]" in all_text:
+        tech_stack = "MLabs Cartridge Specification / Markdown"
+        quick_install = "cp -r template/ <target_directory>"
+        quick_run = "python3 -m skills.structure_project"
+        quick_test = "tools/gate.sh"
 
     ent = {
         "kind": "project-state",
@@ -634,11 +765,20 @@ def parse_standing(path, text, project_pattern=None):
         "git_commit_date": git_info.get("git_commit_date", ""),
         "readme_content": readme_content,
         "readme_path": readme_path,
+        "readme_type": readme_type,
+        "definition_content": definition_content,
+        "architecture_content": architecture_content,
+        "extra_guides": extra_guides,
+        "tech_stack": tech_stack,
+        "quick_install": quick_install,
+        "quick_run": quick_run,
+        "quick_test": quick_test,
         "blocks": board_blocks,
         **fields
     }
 
-    probs = []
+    # ⚠️ `probs` is initialised at the TOP of this function — the board extraction reports
+    # into it, and a reset here would discard exactly those findings.
     for req in ("last_updated", "next_action"):
         if req not in fields:
             probs.append(Problem(path, 1, f"a project state with no `{req.replace('_',' ')}` field"))
@@ -676,9 +816,9 @@ def parse_skills(path, text):
     elif (m := re.search(r"\bfires (?:when|on|once)\b[^.]*", d)):
         trigger, evidence = "event", m.group(0).strip()
     elif (m := re.search(r"\buse (?:at the close|whenever an?\b[^.]*changes)\b[^.]*", d)):
-        # A description naming a moment rather than a wish is an event, however it is
-        # phrased. `audit` read as a request until 2026-08-18 on "use at the close",
-        # which filed the audit door under things you call when you feel like it.
+        # ⛔ A description naming a MOMENT rather than a wish is an event, however it is
+        # phrased — "use at the close" is an event, and reading it as a request files the
+        # audit door under things you call when you feel like it.
         trigger, evidence = "event", m.group(0).strip()
     elif (m := re.search(r"\b(?:use|invoke) (?:when|it when|at|before|whenever|after|to)\b[^.]*", d)):
         trigger, evidence = "request", m.group(0).strip()

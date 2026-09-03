@@ -354,18 +354,21 @@ function ingestModel(model) {
   STATE.plans = entities.filter(e => e.kind === "plan").map(e => ({
     id: e._record_id || e.id || "",
     project: e.project || "nexus",
+    title: e.title || e.task || "",
     task: e.task || e.title || "",
+    block: e.block || "",
     sub_block: e.sub_block || "",
     status: e.status || "closed",
     date: e.date || "",
     closed_on: e.closed_on || e.closed_date || null,
     author: e.author || e.origin || "Operator",
     order_why: e.order_why || "",
-    items: Array.isArray(e.items) ? e.items.map(it => ({
-      index: it.index || 1,
+    closing_note: e.closing_note || "",
+    items: Array.isArray(e.items) ? e.items.map((it, idx) => ({
+      index: it.n || it.index || idx + 1,
       text: it.text || "",
-      status: it.status || (it.struck ? "done" : "open"),
-      destination: it.destination || it.outcome || (it.struck ? "✅ resolved" : ""),
+      status: (it.outcome === "done" || it.status === "done" || it.status === "closed" || Boolean(it.struck)) ? "done" : "open",
+      destination: it.destination || it.outcome || (it.note ? it.note : (it.struck ? "✅ resolved" : "")),
       completed_at: it.completed_at || it.date || null
     })) : []
   }));
@@ -559,12 +562,12 @@ function ingestModel(model) {
       codeRepo,
       remoteUrl,
       file: pState ? pState.file : "",
-      // The fallback is the generic one `getProjectLab` already uses. Until 2026-08-19 it
-      // was the literal name of a grouping folder from one operations centre, hard-coded
-      // into the public engine — exactly the `interface:AX-1` breach this project exists to
-      // avoid. It was invisible to the release gate because that word was not on the
-      // instance's denylist; adding the word found this on the very first run, which is the
-      // argument for deriving that list from disk rather than remembering it.
+      // ⛔ The fallback is the generic one `getProjectLab` already uses, and must stay
+      // generic. A literal folder name from one operations centre hard-coded into the
+      // public engine is the `interface:AX-1` breach this project exists to avoid — and
+      // ⚠️ the release gate CANNOT see it unless that word is on the instance's denylist,
+      // which is why the list is derived from disk (`tools/denylist-coverage.sh`) rather
+      // than remembered.
       lab: pState?.lab || (pState ? getProjectLab(pState) : "Workspaces"),
       workflow
     };
@@ -636,14 +639,156 @@ function updateHUD() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VIEW ROUTER & RENDERERS
+// VIEW ROUTER & PERSISTENCE (URL HASH + LOCAL STORAGE)
 // ─────────────────────────────────────────────────────────────────────────────
+
+function syncUrlHash() {
+  if (!STATE.loaded) return;
+  let hash = "";
+  const view = STATE.currentView || "overview";
+
+  if (view === "project-detail") {
+    const proj = encodeURIComponent(STATE.selectedProject || "");
+    const tab = encodeURIComponent(STATE.projectSubtab || "workflow");
+    hash = `#/project/${proj}/${tab}`;
+    const activeDoc = STATE.guideActiveDoc && STATE.selectedProject ? STATE.guideActiveDoc[STATE.selectedProject] : null;
+    if (tab === "guide" && activeDoc) {
+      hash += `?doc=${encodeURIComponent(activeDoc)}`;
+    }
+  } else if (view === "cockpit") {
+    hash = `#/cockpit`;
+    const params = [];
+    if (STATE.cockpitSelectedFrontId) {
+      params.push(`front=${encodeURIComponent(STATE.cockpitSelectedFrontId)}`);
+    }
+    if (STATE.cockpitFilterProj && STATE.cockpitFilterProj !== "ALL") {
+      params.push(`filter=${encodeURIComponent(STATE.cockpitFilterProj)}`);
+    }
+    if (params.length) {
+      hash += `?${params.join("&")}`;
+    }
+  } else if (view === "cheatsheet") {
+    hash = `#/cheatsheet`;
+    if (STATE.activeCsTab && STATE.activeCsTab !== "session") {
+      hash += `?tab=${encodeURIComponent(STATE.activeCsTab)}`;
+    }
+  } else if (view === "skills") {
+    hash = `#/skills`;
+    if (STATE.skillFilterType && STATE.skillFilterType !== "ALL") {
+      hash += `?filter=${encodeURIComponent(STATE.skillFilterType)}`;
+    }
+  } else if (view === "decisions") {
+    hash = `#/decisions`;
+    if (STATE.decFilterProj) {
+      hash += `?project=${encodeURIComponent(STATE.decFilterProj)}`;
+    }
+  } else if (view === "inbox") {
+    hash = `#/inbox`;
+    if (STATE.selectedTaskFilter && STATE.selectedTaskFilter !== "ALL") {
+      hash += `?filter=${encodeURIComponent(STATE.selectedTaskFilter)}`;
+    }
+  } else {
+    hash = `#/${view}`;
+  }
+
+  if (window.location.hash !== hash) {
+    history.replaceState(null, "", hash);
+  }
+  try {
+    localStorage.setItem("nexus_last_route", hash);
+  } catch (e) {}
+}
+
+function restoreRouteFromUrl() {
+  let hash = window.location.hash;
+  if (!hash || hash === "#" || hash === "#/") {
+    try {
+      const saved = localStorage.getItem("nexus_last_route");
+      if (saved && saved.startsWith("#/")) {
+        hash = saved;
+      }
+    } catch (e) {}
+  }
+  if (!hash || hash === "#" || hash === "#/") {
+    hash = "#/overview";
+  }
+
+  const [pathPart, queryPart] = hash.replace(/^#\/?/, "").split("?");
+  const segments = pathPart.split("/").filter(Boolean);
+  const params = new URLSearchParams(queryPart || "");
+
+  const mainView = segments[0] || "overview";
+
+  if (mainView === "project" || mainView === "project-detail") {
+    STATE.currentView = "project-detail";
+    if (segments[1]) {
+      STATE.selectedProject = decodeURIComponent(segments[1]);
+    }
+    if (segments[2]) {
+      STATE.projectSubtab = decodeURIComponent(segments[2]);
+    }
+    if (params.has("doc") && STATE.selectedProject) {
+      STATE.guideActiveDoc = STATE.guideActiveDoc || {};
+      STATE.guideActiveDoc[STATE.selectedProject] = decodeURIComponent(params.get("doc"));
+    }
+  } else if (mainView === "cockpit") {
+    STATE.currentView = "cockpit";
+    if (params.has("front")) {
+      STATE.cockpitSelectedFrontId = decodeURIComponent(params.get("front"));
+    }
+    if (params.has("filter")) {
+      STATE.cockpitFilterProj = decodeURIComponent(params.get("filter"));
+    }
+  } else if (mainView === "cheatsheet") {
+    STATE.currentView = "cheatsheet";
+    if (params.has("tab")) {
+      STATE.activeCsTab = decodeURIComponent(params.get("tab"));
+    }
+  } else if (mainView === "skills") {
+    STATE.currentView = "skills";
+    if (params.has("filter")) {
+      STATE.skillFilterType = decodeURIComponent(params.get("filter"));
+    }
+  } else if (mainView === "decisions") {
+    STATE.currentView = "decisions";
+    if (params.has("project")) {
+      STATE.decFilterProj = decodeURIComponent(params.get("project"));
+    }
+  } else if (mainView === "inbox") {
+    STATE.currentView = "inbox";
+    if (params.has("filter")) {
+      STATE.selectedTaskFilter = decodeURIComponent(params.get("filter"));
+    }
+  } else if (["overview", "projects", "ideas"].includes(mainView)) {
+    STATE.currentView = mainView;
+  }
+
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.classList.toggle("active", btn.getAttribute("data-view") === STATE.currentView);
+  });
+}
+
+window.addEventListener("hashchange", () => {
+  if (STATE.loaded) {
+    restoreRouteFromUrl();
+    renderView();
+  }
+});
+
+window.addEventListener("popstate", () => {
+  if (STATE.loaded) {
+    restoreRouteFromUrl();
+    renderView();
+  }
+});
+
 window.navigateTo = function(viewName) {
   STATE.currentView = viewName;
   document.querySelectorAll(".nav-item").forEach(btn => {
     btn.classList.toggle("active", btn.getAttribute("data-view") === viewName);
   });
   renderView();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 
@@ -723,6 +868,8 @@ function renderView() {
     case "skills": renderSkills(main); break;
     default: renderOverview(main); break;
   }
+
+  syncUrlHash();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -784,7 +931,7 @@ function renderOverview(container) {
             <div class="gov-principles-grid">
               <div class="gov-principle-card">
                 <div class="gov-principle-card-head">
-                  <span class="principle-badge">PH-1</span>
+                  <span class="principle-badge">PH-0</span>
                   <h4 class="principle-title">El horizonte largo es la premisa</h4>
                 </div>
                 <p class="principle-desc">Todo se construye para lo siguiente, no solo para hoy. Diseña para 3× a 10× el volumen actual. Lo que se aprende una vez no se vuelve a aprender desde cero.</p>
@@ -832,7 +979,7 @@ function renderOverview(container) {
 
               <div class="gov-principle-card">
                 <div class="gov-principle-card-head">
-                  <span class="principle-badge">PH-5</span>
+                  <span class="principle-badge">PH-1</span>
                   <h4 class="principle-title">El trabajo es modular</h4>
                 </div>
                 <p class="principle-desc">Cada pieza es dueña de su propio ciclo de vida y versión. El acoplamiento se paga en cada cambio; la separación una sola vez. Fronteras por <strong>propietario primero</strong>.</p>
@@ -844,7 +991,7 @@ function renderOverview(container) {
 
               <div class="gov-principle-card">
                 <div class="gov-principle-card-head">
-                  <span class="principle-badge">PH-6</span>
+                  <span class="principle-badge">PH-5</span>
                   <h4 class="principle-title">La atención es el recurso escaso</h4>
                 </div>
                 <p class="principle-desc">Todo se registra; casi nada se carga en memoria a la vez. <strong>Un único frente activo (▶)</strong>. El coste crítico no es el disco, sino lo que hay que retener en la cabeza.</p>
@@ -1098,13 +1245,13 @@ function renderWorkflowDetail(type) {
             <div class="wf-node">
               <span class="wf-node-step">4</span>
               <div class="wf-node-title">Auditoría & Coherencia</div>
-              <p class="wf-node-desc">Comprueba la integridad de wikilinks, indexa en 00_INDEXES y verifica coherencia.</p>
+              <p class="wf-node-desc">Comprueba la integridad de wikilinks, actualiza los índices del dominio y verifica coherencia.</p>
               <button class="wf-node-btn" onclick="openSkillInCatalog('instance-auditor')">⚡ instance-auditor</button>
             </div>
           </div>
 
           <div class="callout tip" style="margin-top: 14px; padding: 10px 14px;">
-            <strong>Regla clave:</strong> Estructurar primero para crear sobre una base modular clara; auditar coherencia y wikilinks antes de dar por cerrado (PH-1, PH-4).
+            <strong>Regla clave:</strong> Estructurar primero para crear sobre una base modular clara; auditar coherencia y wikilinks antes de dar por cerrado (PH-0, PH-4).
           </div>
         </div>
       `;
@@ -1150,7 +1297,7 @@ function renderWorkflowDetail(type) {
           </div>
 
           <div class="callout tip" style="margin-top: 14px; padding: 10px 14px;">
-            <strong>Regla clave:</strong> Cada proyecto es un repositorio soberano; jamás se acoplan por temática (PH-5).
+            <strong>Regla clave:</strong> Cada proyecto es un repositorio soberano; jamás se acoplan por temática (PH-1).
           </div>
         </div>
       `;
@@ -1291,14 +1438,7 @@ window.openSkillInCatalog = function(skillName) {
   }, 100);
 };
 
-window.navigateTo = function(viewName) {
-  STATE.currentView = viewName;
-  document.querySelectorAll(".nav-item").forEach(btn => {
-    btn.classList.toggle("active", btn.getAttribute("data-view") === viewName);
-  });
-  renderView();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-};
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. PROJECTS HUB & SOVEREIGN PROJECT DEDICATED WEBS
@@ -2112,7 +2252,7 @@ function renderProjectReposTab(proj) {
           </div>
 
           <p style="font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.5;">
-            Estructura de metadatos, estado vivo, definición arquitectónica y log append-only de decisiones (PH-5).
+            Estructura de metadatos, estado vivo, definición arquitectónica y log append-only de decisiones (PH-1).
           </p>
 
           <div class="repo-path-box">
@@ -2385,20 +2525,80 @@ function getProjectIcon(name) {
 
 // ── TAB 7: GUÍA DE USO & README VISUAL ──
 function renderProjectGuideTab(proj) {
-  const hasReadme = proj.readmeContent && proj.readmeContent.trim().length > 0;
-  const rawDoc = hasReadme ? proj.readmeContent : (proj.definition || "Sin guía de uso disponible para este proyecto.");
+  // Available documents for this project
+  const docsList = [];
 
-  // Quickstart command heuristics based on project type
-  let quickInstallCmd = `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && npm install`;
-  let quickRunCmd = `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && npm run dev`;
-  let quickTestCmd = `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && npm test`;
+  // 1. Primary README or guide
+  if (proj.readmeContent && proj.readmeContent.trim().length > 0) {
+    let label = "📖 README.md";
+    if (proj.readmeType === "guide") label = "📖 Guía de Uso";
+    else if (proj.readmeType === "how-to-use") label = "📖 HOW-TO-USE.md";
+    else if (proj.readmeType === "definition") label = "📋 Definición (definition.md)";
 
-  const isPython = (proj.readmeContent && (proj.readmeContent.includes("python") || proj.readmeContent.includes(".venv") || proj.readmeContent.includes("pip install"))) || (proj.definition && proj.definition.toLowerCase().includes("python"));
-  if (isPython) {
-    quickInstallCmd = `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && source .venv/bin/activate && pip install -e .`;
-    quickRunCmd = `python main.py`;
-    quickTestCmd = `pytest`;
+    docsList.push({
+      id: "primary",
+      label: label,
+      path: proj.readmePath ? proj.readmePath.split("/").slice(-2).join("/") : "README.md",
+      content: proj.readmeContent,
+      type: proj.readmeType || "readme"
+    });
   }
+
+  // 2. Definition doc (if different from primary)
+  if (proj.definitionContent && proj.definitionContent.trim().length > 0 && proj.readmeType !== "definition") {
+    docsList.push({
+      id: "definition",
+      label: "📋 Especificación (definition.md)",
+      path: "nexus/definition.md",
+      content: proj.definitionContent,
+      type: "definition"
+    });
+  }
+
+  // 3. Architecture doc
+  if (proj.architectureContent && proj.architectureContent.trim().length > 0) {
+    docsList.push({
+      id: "architecture",
+      label: "🏛️ Arquitectura (architecture.md)",
+      path: "nexus/architecture.md",
+      content: proj.architectureContent,
+      type: "architecture"
+    });
+  }
+
+  // 4. Extra guides (e.g. audit_usage, shortcuts)
+  if (proj.extraGuides && typeof proj.extraGuides === "object") {
+    for (const [gKey, gContent] of Object.entries(proj.extraGuides)) {
+      docsList.push({
+        id: "guide_" + gKey,
+        label: "🛠️ " + gKey.replace(/_/g, " ").toUpperCase(),
+        path: "nexus/Guides/" + gKey + ".md",
+        content: gContent,
+        type: "guide"
+      });
+    }
+  }
+
+  // Default fallback if no docs exist
+  if (docsList.length === 0) {
+    docsList.push({
+      id: "primary",
+      label: "📄 Definición",
+      path: "state.md",
+      content: proj.definition || "Sin guía de uso disponible para este proyecto.",
+      type: "definition"
+    });
+  }
+
+  // Current active doc
+  STATE.guideActiveDoc = STATE.guideActiveDoc || {};
+  const activeDocId = STATE.guideActiveDoc[proj.name] || docsList[0].id;
+  const currentDoc = docsList.find(d => d.id === activeDocId) || docsList[0];
+
+  // Quickstart commands
+  const quickInstallCmd = proj.quickInstall || `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && npm install`;
+  const quickRunCmd = proj.quickRun || `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && npm run dev`;
+  const quickTestCmd = proj.quickTest || `cd ${esc(proj.codeRepo || '~/Documents/' + proj.name)} && npm test`;
 
   return `
     <div class="doc-section">
@@ -2407,7 +2607,7 @@ function renderProjectGuideTab(proj) {
         <span class="tag-pill tag-live">📖 Visual README</span>
       </div>
       <p class="lead">
-        Documentación interactiva, instrucciones de instalación, ejemplos de ejecución y guía de usuario representada de forma visual y accesible.
+        Documentación técnica interactiva, especificaciones de arquitectura, quickstarts de instalación y manuales operativos renderizados visualmente en tiempo real.
       </p>
 
       <!-- HERO BANNER -->
@@ -2418,12 +2618,12 @@ function renderProjectGuideTab(proj) {
             <div>
               <h3 class="guide-hero-title">${esc(proj.name)}</h3>
               <div style="font-size: 12px; color: var(--gold, #d8b26a); font-family: var(--font-mono); margin-top: 2px;">
-                ${proj.readmePath ? esc(proj.readmePath.split('/').slice(-2).join('/')) : 'Documentación Integrada'}
+                ${esc(currentDoc.path)}
               </div>
             </div>
           </div>
           <div class="guide-hero-badges">
-            <span class="card-badge badge-vine">Gobernanza MLabs</span>
+            <span class="card-badge badge-vine">${esc(proj.techStack || 'MLabs Pipeline')}</span>
             <span class="tag-pill tag-purple">${esc(proj.currentPhase || 'Producción')}</span>
           </div>
         </div>
@@ -2441,8 +2641,8 @@ function renderProjectGuideTab(proj) {
             <h4 class="step-card-title">Instalación / Entorno</h4>
           </div>
           <p style="font-size: 12px; color: var(--ink-soft); margin: 0;">Preparar dependencias y entorno de ejecución local.</p>
-          <div class="repo-path-box" onclick="copyToClipboard('${quickInstallCmd}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
-            <code>${quickInstallCmd}</code>
+          <div class="repo-path-box" onclick="copyToClipboard('${quickInstallCmd.replace(/'/g, "\\'")}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
+            <code>${esc(quickInstallCmd)}</code>
           </div>
         </div>
 
@@ -2452,8 +2652,8 @@ function renderProjectGuideTab(proj) {
             <h4 class="step-card-title">Ejecución / Dev Server</h4>
           </div>
           <p style="font-size: 12px; color: var(--ink-soft); margin: 0;">Lanzar el servicio, servidor o pipeline en desarrollo.</p>
-          <div class="repo-path-box" onclick="copyToClipboard('${quickRunCmd}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
-            <code>${quickRunCmd}</code>
+          <div class="repo-path-box" onclick="copyToClipboard('${quickRunCmd.replace(/'/g, "\\'")}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
+            <code>${esc(quickRunCmd)}</code>
           </div>
         </div>
 
@@ -2463,32 +2663,51 @@ function renderProjectGuideTab(proj) {
             <h4 class="step-card-title">Tests &amp; Verificación</h4>
           </div>
           <p style="font-size: 12px; color: var(--ink-soft); margin: 0;">Comprobar integridad antes de commitear cambios.</p>
-          <div class="repo-path-box" onclick="copyToClipboard('${quickTestCmd}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
-            <code>${quickTestCmd}</code>
+          <div class="repo-path-box" onclick="copyToClipboard('${quickTestCmd.replace(/'/g, "\\'")}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
+            <code>${esc(quickTestCmd)}</code>
           </div>
         </div>
       </div>
 
+      <!-- DOCUMENT SWITCHER (IF MULTIPLE DOCS EXIST) -->
+      ${docsList.length > 1 ? `
+        <div class="guide-doc-switcher">
+          <span style="font-size: 12px; font-weight: 800; color: var(--ink-muted); margin-right: 6px; text-transform: uppercase;">Explorar Documentos:</span>
+          ${docsList.map(d => `
+            <button class="guide-doc-pill ${d.id === currentDoc.id ? 'active' : ''}" onclick="setGuideActiveDoc('${esc(proj.name)}', '${esc(d.id)}')">
+              <span>${esc(d.label)}</span>
+              <span class="guide-doc-badge">${esc(d.path.split('/').pop())}</span>
+            </button>
+          `).join('')}
+        </div>
+      ` : ''}
+
       <!-- VISUAL README / DOCUMENTATION BODY -->
       <div class="readme-rendered-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
           <h3 style="margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px;">
-            <span>📄</span> <span>Contenido de la Guía &amp; README</span>
+            <span>📄</span> <span>${esc(currentDoc.label)}</span>
           </h3>
-          <button class="btn-repo-action" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(rawDoc)}'), 'Documento completo copiado', event)">
+          <button class="btn-repo-action" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(currentDoc.content)}'), 'Documento completo copiado', event)">
             <span>📋 Copiar Markdown Completo</span>
           </button>
         </div>
 
         <div class="readme-markdown-body">
-          ${renderMarkdownBody(rawDoc)}
+          ${renderMarkdownBody(currentDoc.content)}
         </div>
       </div>
     </div>
   `;
 }
 
-// Markdown parser helper for README body
+window.setGuideActiveDoc = function(projName, docId) {
+  STATE.guideActiveDoc = STATE.guideActiveDoc || {};
+  STATE.guideActiveDoc[projName] = docId;
+  renderView();
+};
+
+// Enhanced Markdown parser helper for README and Guide body
 function renderMarkdownBody(text) {
   if (!text) return "<p>Sin contenido.</p>";
 
@@ -2496,22 +2715,63 @@ function renderMarkdownBody(text) {
   let html = "";
   let inCode = false;
   let codeBuffer = [];
+  let codeLang = "";
   let inTable = false;
   let tableBuffer = [];
   let inList = false;
+  let listType = "ul";
+  let inBlockquote = false;
+  let blockquoteBuffer = [];
+
+  function flushBlockquote() {
+    if (!inBlockquote) return;
+    const bText = blockquoteBuffer.join(" ").trim();
+    blockquoteBuffer = [];
+    inBlockquote = false;
+
+    // Detect Callout type
+    if (bText.startsWith("⚠️") || bText.toLowerCase().startsWith("[!warning]")) {
+      const cleanText = bText.replace(/^⚠️\s*|^\[!warning\]\s*/i, "");
+      html += `<div class="callout callout-warning"><span class="callout-icon">⚠️</span><div class="callout-content">${inline(cleanText)}</div></div>`;
+    } else if (bText.startsWith("🚀") || bText.toLowerCase().startsWith("[!tip]") || bText.startsWith("🎯")) {
+      const cleanText = bText.replace(/^[🚀🎯]\s*|^\[!tip\]\s*/i, "");
+      html += `<div class="callout callout-tip"><span class="callout-icon">🚀</span><div class="callout-content">${inline(cleanText)}</div></div>`;
+    } else if (bText.startsWith("🧊") || bText.toLowerCase().startsWith("[!note]")) {
+      const cleanText = bText.replace(/^🧊\s*|^\[!note\]\s*/i, "");
+      html += `<div class="callout callout-note"><span class="callout-icon">🧊</span><div class="callout-content">${inline(cleanText)}</div></div>`;
+    } else if (bText.startsWith("🚫") || bText.startsWith("⚫") || bText.toLowerCase().startsWith("[!caution]")) {
+      const cleanText = bText.replace(/^[🚫⚫]\s*|^\[!caution\]\s*/i, "");
+      html += `<div class="callout callout-danger"><span class="callout-icon">🚫</span><div class="callout-content">${inline(cleanText)}</div></div>`;
+    } else {
+      html += `<blockquote>${inline(bText)}</blockquote>`;
+    }
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const trimmed = line.trim();
 
-    // Code blocks
-    if (line.trim().startsWith("```")) {
+    // Code blocks (```lang ... ```)
+    if (trimmed.startsWith("```")) {
+      flushBlockquote();
       if (inCode) {
-        html += `<pre><code>${esc(codeBuffer.join("\n"))}</code></pre>`;
+        const fullCode = codeBuffer.join("\n");
+        html += `
+          <div class="code-block-container">
+            <div class="code-block-header">
+              <span>${esc(codeLang || 'snippet')}</span>
+              <button class="btn-code-copy" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(fullCode)}'), 'Código copiado', event)">Copiar</button>
+            </div>
+            <pre><code>${esc(fullCode)}</code></pre>
+          </div>
+        `;
         codeBuffer = [];
+        codeLang = "";
         inCode = false;
       } else {
-        if (inList) { html += "</ul>"; inList = false; }
+        if (inList) { html += `</${listType}>`; inList = false; }
         inCode = true;
+        codeLang = trimmed.slice(3).trim();
       }
       continue;
     }
@@ -2520,14 +2780,25 @@ function renderMarkdownBody(text) {
       continue;
     }
 
-    // Tables
-    if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+    // Blockquotes & Callouts
+    if (trimmed.startsWith(">")) {
+      if (inList) { html += `</${listType}>`; inList = false; }
+      if (inTable) { html += renderMarkdownTable(tableBuffer); tableBuffer = []; inTable = false; }
+      inBlockquote = true;
+      blockquoteBuffer.push(trimmed.slice(1).trim());
+      continue;
+    } else if (inBlockquote) {
+      flushBlockquote();
+    }
+
+    // Markdown Tables
+    if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
       if (!inTable) {
-        if (inList) { html += "</ul>"; inList = false; }
+        if (inList) { html += `</${listType}>`; inList = false; }
         inTable = true;
         tableBuffer = [];
       }
-      tableBuffer.push(line);
+      tableBuffer.push(trimmed);
       continue;
     } else if (inTable) {
       html += renderMarkdownTable(tableBuffer);
@@ -2535,95 +2806,248 @@ function renderMarkdownBody(text) {
       inTable = false;
     }
 
+    // Checklist items: - [x] or - [ ]
+    const chkMatch = trimmed.match(/^[-*]\s+\[([ xX])\]\s+(.+)$/);
+    if (chkMatch) {
+      if (!inList || listType !== "ul") {
+        if (inList) html += `</${listType}>`;
+        html += '<ul class="readme-checklist">';
+        inList = true;
+        listType = "ul";
+      }
+      const isDone = chkMatch[1].toLowerCase() === "x";
+      const chkText = chkMatch[2];
+      html += `
+        <li class="checklist-item ${isDone ? 'done' : 'pending'}">
+          <span class="chk-icon">${isDone ? '✅' : '⬜'}</span>
+          <span>${inline(chkText)}</span>
+        </li>
+      `;
+      continue;
+    }
+
     // Headings
     if (line.startsWith("# ")) {
-      if (inList) { html += "</ul>"; inList = false; }
+      if (inList) { html += `</${listType}>`; inList = false; }
       html += `<h2>${inline(line.slice(2))}</h2>`;
     } else if (line.startsWith("## ")) {
-      if (inList) { html += "</ul>"; inList = false; }
+      if (inList) { html += `</${listType}>`; inList = false; }
       html += `<h3>${inline(line.slice(3))}</h3>`;
     } else if (line.startsWith("### ")) {
-      if (inList) { html += "</ul>"; inList = false; }
+      if (inList) { html += `</${listType}>`; inList = false; }
       html += `<h4>${inline(line.slice(4))}</h4>`;
-    } else if (line.startsWith("> ")) {
-      if (inList) { html += "</ul>"; inList = false; }
-      html += `<blockquote>${inline(line.slice(2))}</blockquote>`;
-    } else if (line.trim().startsWith("- ") || line.trim().startsWith("* ")) {
-      if (!inList) { html += "<ul>"; inList = true; }
-      html += `<li>${inline(line.trim().slice(2))}</li>`;
-    } else if (line.trim().length === 0) {
-      if (inList) { html += "</ul>"; inList = false; }
+    } else if (line.startsWith("#### ")) {
+      if (inList) { html += `</${listType}>`; inList = false; }
+      html += `<h5>${inline(line.slice(5))}</h5>`;
+    } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      if (!inList || listType !== "ul") {
+        if (inList) html += `</${listType}>`;
+        html += "<ul>";
+        inList = true;
+        listType = "ul";
+      }
+      html += `<li>${inline(trimmed.slice(2))}</li>`;
+    } else if (trimmed.match(/^\d+\.\s+(.+)$/)) {
+      const m = trimmed.match(/^\d+\.\s+(.+)$/);
+      if (!inList || listType !== "ol") {
+        if (inList) html += `</${listType}>`;
+        html += "<ol>";
+        inList = true;
+        listType = "ol";
+      }
+      html += `<li>${inline(m[1])}</li>`;
+    } else if (trimmed.length === 0) {
+      if (inList) { html += `</${listType}>`; inList = false; }
+    } else if (trimmed.startsWith("---")) {
+      if (inList) { html += `</${listType}>`; inList = false; }
+      html += '<hr style="border: 0; border-top: 1px solid var(--line); margin: 20px 0;">';
     } else {
-      if (inList) { html += "</ul>"; inList = false; }
+      if (inList) { html += `</${listType}>`; inList = false; }
       html += `<p>${inline(line)}</p>`;
     }
   }
 
+  flushBlockquote();
   if (inCode) html += `<pre><code>${esc(codeBuffer.join("\n"))}</code></pre>`;
   if (inTable) html += renderMarkdownTable(tableBuffer);
-  if (inList) html += "</ul>";
+  if (inList) html += `</${listType}>`;
 
   return html;
 }
 
 function renderMarkdownTable(lines) {
   if (!lines || lines.length < 2) return "";
-  const headerParts = lines[0].split("|").slice(1, -1).map(p => p.trim());
-  let rows = [];
-  for (let i = 2; i < lines.length; i++) {
-    const cols = lines[i].split("|").slice(1, -1).map(p => p.trim());
-    if (cols.length > 0) rows.push(cols);
+
+  let html = '<div style="overflow-x: auto; margin: 16px 0 20px;"><table class="doc-table">';
+  let hasHeader = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const row = lines[i].trim();
+    if (!row.startsWith("|") || !row.endsWith("|")) continue;
+    if (row.includes("---") && row.replace(/[|\s-:]/g, "").length === 0) {
+      hasHeader = true;
+      continue;
+    }
+
+    const cells = row.split("|").slice(1, -1).map(c => c.trim());
+    if (i === 0 || !hasHeader) {
+      html += "<thead><tr>";
+      cells.forEach(c => { html += `<th>${inline(c)}</th>`; });
+      html += "</tr></thead><tbody>";
+      hasHeader = true;
+    } else {
+      html += "<tr>";
+      cells.forEach(c => { html += `<td>${inline(c)}</td>`; });
+      html += "</tr>";
+    }
   }
 
-  return `
-    <div style="overflow-x: auto;">
-      <table>
-        <thead>
-          <tr>${headerParts.map(h => `<th>${inline(h)}</th>`).join("")}</tr>
-        </thead>
-        <tbody>
-          ${rows.map(r => `<tr>${r.map(c => `<td>${inline(c)}</td>`).join("")}</tr>`).join("")}
-        </tbody>
-      </table>
+  html += "</tbody></table></div>";
+  return html;
+}
+
+function initAppListeners() {
+  ["taskTitle", "taskProject", "taskStatus", "taskWhy"].forEach(id => {
+    document.getElementById(id)?.addEventListener("input", updateTaskPreview);
+  });
+
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const view = btn.getAttribute("data-view");
+      if (view) navigateTo(view);
+    });
+  });
+
+  document.getElementById("projectFilter")?.addEventListener("change", e => {
+    const val = e.target.value;
+    if (val === "ALL") {
+      STATE.taskFilterProj = "";
+      STATE.decFilterProj = "";
+    } else {
+      STATE.taskFilterProj = val;
+      STATE.decFilterProj = val;
+      STATE.selectedProject = val;
+    }
+    renderView();
+  });
+
+  document.getElementById("globalSearch")?.addEventListener("input", e => {
+    const q = e.target.value.trim().toLowerCase();
+    STATE.taskSearch = q;
+    STATE.decSearch = q;
+    renderView();
+  });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAppListeners);
+} else {
+  initAppListeners();
+}
+
+async function loadModel() {
+  try {
+    const res = await fetch("/api/model");
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    const modelData = await res.json();
+    STATE.error = null;
+    ingestModel(modelData);
+    restoreRouteFromUrl();
+    renderView();
+  } catch (err) {
+    STATE.error = `No se pudo conectar con el servidor: ${err.message}`;
+    renderView();
+  }
+}
+
+function renderCheatSheet(container) {
+  const curCat = STATE.activeCsTab || "session";
+  const catData = CHEATSHEET_DATA.find(c => c.category === curCat) || CHEATSHEET_DATA[0];
+
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>📖</span> CheatSheet & Atajos Rápidos ⭐</h1>
+        <p class="view-subtitle">Chuleta interactiva para copiar comandos de sesión, worktrees y Claude Code en 1 clic</p>
+      </div>
+    </div>
+
+    <div class="cheatsheet-container">
+      <div class="cheatsheet-toolbar">
+        <div class="cs-tabs">
+          ${CHEATSHEET_DATA.map(c => `
+            <button class="cs-tab-btn ${c.category === curCat ? 'active' : ''}" onclick="selectCsTab('${c.category}')">
+              ${esc(c.catLabel)}
+            </button>
+          `).join("")}
+        </div>
+      </div>
+
+      <div class="cs-groups-grid">
+        ${catData.groups.map(g => `
+          <div class="cs-group-card">
+            <div class="cs-group-header">
+              <h3>${esc(g.title)}</h3>
+              <p>${esc(g.desc)}</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${g.cmds.map((cmd, cIdx) => `
+                <div class="cs-cmd-row" id="cmdRow_${curCat}_${cIdx}" data-code="${esc(cmd.code)}" onclick="copyRowCommand(this)">
+                  <span class="cs-cmd-label">${esc(cmd.label)}</span>
+                  <code class="cs-cmd-code">${esc(cmd.code)}</code>
+                  <button class="cs-cmd-copy-btn">Copiar 📋</button>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `).join("")}
+      </div>
     </div>
   `;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. COCKPIT & LIVE VIEW
-// ─────────────────────────────────────────────────────────────────────────────
-window.selectCockpitFront = function(frontId) {
-  STATE.cockpitSelectedFrontId = frontId;
-  renderView();
-};
+// Helper to find persistent plan associated with a compass front
+function findPlanForFront(front) {
+  if (!front || !STATE.plans || !STATE.plans.length) return null;
+  const fName = (front.name || "").toLowerCase();
+  const fDesc = (front.described_in || "").toLowerCase();
+  const fMoves = (front.moves_when || "").toLowerCase();
+  const fWaits = (front.waits_on || "").toLowerCase();
+  const fText = `${fName} ${fDesc} ${fMoves} ${fWaits}`.toLowerCase();
 
-window.setCockpitFilter = function(proj) {
-  STATE.cockpitFilterProj = proj;
-  renderView();
-};
-
-
-function autoScrollPlanContainer(smooth = true) {
-  requestAnimationFrame(() => {
-    const container = document.querySelector(".plan-items-container");
-    if (!container) return;
-
-    const completedItems = container.querySelectorAll(".plan-item-row.completed");
-    if (completedItems.length > 0) {
-      const lastCompleted = completedItems[completedItems.length - 1];
-      const targetTop = lastCompleted.offsetTop;
-      if (smooth) {
-        container.scrollTo({
-          top: Math.max(0, targetTop - 4),
-          behavior: "smooth"
-        });
-      } else {
-        container.scrollTop = Math.max(0, targetTop - 4);
-      }
-    } else {
-      container.scrollTop = 0;
+  // 1. Exact plan ID in text (e.g. nexus-p2 in moves_when)
+  for (const p of STATE.plans) {
+    const pId = (p.id || "").toLowerCase();
+    if (pId && (fMoves.includes(pId) || fDesc.includes(pId) || fName.includes(pId) || fWaits.includes(pId))) {
+      return p;
     }
-  });
+  }
+
+  // 2. Exact sub-block (e.g. X1.7 or X7.2)
+  for (const p of STATE.plans) {
+    const pSub = (p.sub_block || "").toLowerCase();
+    if (pSub && pSub.length >= 2 && new RegExp(`\\b${pSub}\\b`, "i").test(fText)) {
+      return p;
+    }
+  }
+
+  // 3. Exact board block in described_in (e.g. board X1)
+  for (const p of STATE.plans) {
+    const pBlock = (p.block || "").toLowerCase();
+    if (pBlock && pBlock.length >= 2 && new RegExp(`\\bboard\\s+${pBlock}\\b`, "i").test(fDesc)) {
+      return p;
+    }
+  }
+
+  // 4. Title phrase match
+  for (const p of STATE.plans) {
+    const pTitle = (p.title || "").toLowerCase().split(" - ")[0].split(" — ")[0].trim();
+    if (pTitle.length >= 5 && fName.includes(pTitle)) {
+      return p;
+    }
+  }
+
+  return null;
 }
 
 function renderCockpit(container) {
@@ -2647,11 +3071,7 @@ function renderCockpit(container) {
   const isActiveFlight = Boolean(selectedFront && (selectedFront.active || (STATE.activeFront && selectedFront.id === STATE.activeFront.id)));
   
   // Check if there is a persistent plan for this front
-  const persistentPlan = STATE.plans.find(p => 
-    (p.task && selectedFront?.name && selectedFront.name.includes(p.task)) ||
-    (selectedFront?.project && p.project === selectedFront.project) ||
-    (p.sub_block && selectedFront?.name && selectedFront.name.includes(p.sub_block))
-  );
+  const persistentPlan = !isActiveFlight ? findPlanForFront(selectedFront) : null;
 
   // Live plan stats
   const totalLive = STATE.livePlan.length;
@@ -2966,82 +3386,192 @@ function renderCockpit(container) {
   autoScrollPlanContainer(true);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 4. CHEATSHEET VIEW ⭐
-// ─────────────────────────────────────────────────────────────────────────────
-function renderCheatSheet(container) {
-  const curCat = STATE.activeCsTab || "session";
-  const catData = CHEATSHEET_DATA.find(c => c.category === curCat) || CHEATSHEET_DATA[0];
+function renderDecisions(container) {
+  const allProjects = [...new Set(STATE.decisions.map(d => d.project).filter(Boolean))].sort();
+  const frozenCount = STATE.decisions.filter(d => d.frozen).length;
+  const showFrozen = STATE.showFrozen === true;
+  const projFilter = STATE.decFilterProj || "";
+  const statusFilter = STATE.decFilterStatus || "";
+  const searchTxt = (STATE.decSearch || "").toLowerCase().trim();
+
+  // Filter decisions
+  let filtered = STATE.decisions.filter(d => {
+    if (!showFrozen && d.frozen) return false;
+    if (projFilter && d.project !== projFilter) return false;
+    if (statusFilter === "ALIVE" && d.isSuperseded) return false;
+    if (statusFilter === "SUPERSEDED" && !d.isSuperseded) return false;
+
+    if (searchTxt) {
+      const matchTitle = (d.title || "").toLowerCase().includes(searchTxt);
+      const matchWhy = (d.why || "").toLowerCase().includes(searchTxt);
+      const matchId = (d.id || "").toLowerCase().includes(searchTxt);
+      const matchProj = (d.project || "").toLowerCase().includes(searchTxt);
+      const matchDiscarded = (d.discarded || "").toLowerCase().includes(searchTxt);
+      if (!matchTitle && !matchWhy && !matchId && !matchProj && !matchDiscarded) return false;
+    }
+    return true;
+  });
+
+  // Sort decisions: newest or highest numeric ID first
+  filtered.sort((a, b) => {
+    const idA = parseInt(String(a.id).replace(/\D/g, "")) || 0;
+    const idB = parseInt(String(b.id).replace(/\D/g, "")) || 0;
+    if (idA && idB && a.project === b.project) return idB - idA;
+    return (b.date || "").localeCompare(a.date || "");
+  });
 
   container.innerHTML = `
     <div class="view-header">
       <div class="view-title-group">
-        <h1><span>📖</span> CheatSheet & Atajos Rápidos ⭐</h1>
-        <p class="view-subtitle">Chuleta interactiva para copiar comandos de sesión, worktrees y Claude Code en 1 clic</p>
+        <h1><span>📜</span> Decision Log (Registro de Decisiones)</h1>
+        <p class="view-subtitle">${liveDecisions().length} decisiones inmutables con autor, fecha, liveness y trazabilidad de supersedes</p>
       </div>
     </div>
 
-    <div class="cheatsheet-container">
-      <div class="cheatsheet-toolbar">
-        <div class="cs-tabs">
-          ${CHEATSHEET_DATA.map(c => `
-            <button class="cs-tab-btn ${c.category === curCat ? 'active' : ''}" onclick="selectCsTab('${c.category}')">
-              ${esc(c.catLabel)}
-            </button>
+    <!-- DECISION FILTERS (Priority #2) -->
+    <div class="view-toolbar">
+      <div class="toolbar-group">
+        <label for="decFilterProj">Proyecto:</label>
+        <select id="decFilterProj" class="custom-select" onchange="updateDecFilter('decFilterProj', this.value)">
+          <option value="">Todos los Proyectos (${liveDecisions().length})</option>
+          ${allProjects.map(p => `
+            <option value="${esc(p)}" ${p === projFilter ? "selected" : ""}>
+              ${esc(p)} (${STATE.decisions.filter(d => d.project === p).length})
+            </option>
           `).join("")}
-        </div>
+        </select>
       </div>
 
-      <div class="cs-groups-grid">
-        ${catData.groups.map(g => `
-          <div class="cs-group-card">
-            <div class="cs-group-header">
-              <h3>${esc(g.title)}</h3>
-              <p>${esc(g.desc)}</p>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              ${g.cmds.map((cmd, cIdx) => `
-                <div class="cs-cmd-row" id="cmdRow_${curCat}_${cIdx}" data-code="${esc(cmd.code)}" onclick="copyRowCommand(this)">
-                  <span class="cs-cmd-label">${esc(cmd.label)}</span>
-                  <code class="cs-cmd-code">${esc(cmd.code)}</code>
-                  <button class="cs-cmd-copy-btn">Copiar 📋</button>
-                </div>
-              `).join("")}
-            </div>
-          </div>
-        `).join("")}
+      <div class="toolbar-group">
+        <label for="decFilterStatus">Vivacidad:</label>
+        <select id="decFilterStatus" class="custom-select" onchange="updateDecFilter('decFilterStatus', this.value)">
+          <option value="">Todas las Decisiones</option>
+          <option value="ALIVE" ${statusFilter === "ALIVE" ? "selected" : ""}>🟢 Vivas (Activas)</option>
+          <option value="SUPERSEDED" ${statusFilter === "SUPERSEDED" ? "selected" : ""}>🔄 Reemplazadas (Superseded)</option>
+        </select>
       </div>
+
+      <div class="toolbar-group checkbox-group">
+        <label class="toggle-label" title="Las copias congeladas son fotografías selladas declaradas (AX-20)">
+          <input type="checkbox" id="decToggleFrozen" ${showFrozen ? "checked" : ""} onchange="updateDecFilter('showFrozen', this.checked)">
+          <span>Mostrar Copias Congeladas (${frozenCount})</span>
+        </label>
+      </div>
+
+      <div class="toolbar-group search-group">
+        <input type="text" id="decSearchInput" class="custom-input" placeholder="Buscar por D_n, texto, por qué, descartado..." value="${esc(STATE.decSearch)}" oninput="updateDecFilter('decSearch', this.value)">
+      </div>
+    </div>
+
+    <!-- DECISIONS LIST -->
+    <div class="tickets-list">
+      ${filtered.length ? filtered.map(d => `
+        <div class="ticket-card decision-card ${d.isSuperseded ? 'discarded' : ''}">
+          <div class="ticket-top">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
+              <span class="tag-pill tag-project">${esc(d.project)}</span>
+              ${d.isSuperseded ? `
+                <span class="tag-pill tag-superseded" title="Reemplazada por ${esc(d.supersededBy.join(', '))}">
+                  🔄 Reemplazada por ${esc(d.supersededBy.join(', '))}
+                </span>
+              ` : `
+                <span class="tag-pill tag-alive" title="Decisión VIVA">🟢 VIVA</span>
+              `}
+              ${d.supersedes ? `
+                <span class="tag-pill tag-supersedes" title="Reemplaza a ${esc(d.supersedes)}">⚡ Reemplaza a ${esc(d.supersedes)}</span>
+              ` : ''}
+              ${d.frozen ? `
+                <span class="tag-pill tag-frozen" title="Copia sellada de ${esc(d.mirror_of || 'snapshot')}">🧊 Frozen Mirror</span>
+              ` : ''}
+            </div>
+            ${renderDate(d.date, d.date_inferred)}
+          </div>
+
+          <h3 class="ticket-title" style="margin-top: 4px; font-size: 15px;">${inline(d.title)}</h3>
+          
+          ${(d.why || d.discarded) ? `
+            <details class="decision-details">
+              <summary>
+                <span class="toggle-icon">▶</span>
+                <span>Ver razonamiento (Why)${d.discarded ? ' y descartados' : ''}</span>
+              </summary>
+              <div class="decision-body-content">
+                ${d.why ? `
+                  <div class="decision-why-text">
+                    <strong>Por qué (Why):</strong> ${inline(d.why)}
+                  </div>
+                ` : ''}
+
+                ${d.discarded ? `
+                  <div class="discarded-box" style="margin-top: 4px;">
+                    <strong>Alternativa descartada:</strong> ${inline(d.discarded)}
+                  </div>
+                ` : ''}
+
+                <div class="ticket-meta" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line);">
+                  ${renderOrigin(d.origin, d.origin_inferred)}
+                  ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
+                  ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
+                </div>
+              </div>
+            </details>
+          ` : `
+            <div class="ticket-meta" style="margin-top: 4px;">
+              ${renderOrigin(d.origin, d.origin_inferred)}
+              ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
+              ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
+            </div>
+          `}
+        </div>
+      `).join("") : `
+        <div class="empty-state">
+          <div class="empty-icon">📜</div>
+          <h3>No hay decisiones que coincidan</h3>
+          <p>Prueba a ajustar los filtros de proyecto, vivacidad o búsqueda.</p>
+        </div>
+      `}
     </div>
   `;
 }
 
-window.selectCsTab = function(cat) {
-  STATE.activeCsTab = cat;
-  renderView();
-};
+function renderIdeas(container) {
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>💡</span> Idea Park</h1>
+        <p class="view-subtitle">Aparcamiento ordenado de ideas y mejoras futuras para preservar el foco (PH-3)</p>
+      </div>
+      <button class="btn-hud-action btn-add-idea" onclick="openIdeaModal()">
+        <span>💡</span> <span>Aparcar Idea</span>
+      </button>
+    </div>
 
-window.copyRowCommand = function(el) {
-  const code = el.getAttribute("data-code") || el.querySelector("code")?.textContent || "";
-  if (!code) return;
-  copyCommand(code, el.id);
-};
+    <div class="tickets-list">
+      ${STATE.ideas.length ? STATE.ideas.map(idea => `
+        <div class="ticket-card">
+          <div class="ticket-top">
+            <h3 class="ticket-title">${inline(idea.title)}</h3>
+            <span class="tag-pill tag-project">${esc(idea.project)}</span>
+          </div>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">${inline(idea.body)}</p>
+          <div class="ticket-meta">
+            <span class="tag-pill tag-purple">scope: ${esc(idea.scope)}</span>
+            <span class="tag-pill">sección: ${esc(idea.section)}</span>
+            ${renderOrigin(idea.origin, idea.origin_inferred)}
+          </div>
+        </div>
+      `).join("") : `
+        <div class="empty-state">
+          <div class="empty-icon">💡</div>
+          <h3>Parque de ideas despejado</h3>
+          <p>Utiliza el botón 'Aparcar Idea' para registrar mejoras sin interrumpir el frente activo.</p>
+        </div>
+      `}
+    </div>
+  `;
+}
 
-window.copyCommand = function(text, elementId) {
-  navigator.clipboard.writeText(text).then(() => {
-    const el = document.getElementById(elementId);
-    if (el) {
-      el.classList.add("copied");
-      setTimeout(() => el.classList.remove("copied"), 1200);
-    }
-    showToast(`Comando copiado al portapapeles: ${text.slice(0, 40)}...`);
-  }).catch(() => {
-    showToast(`Comando copiado: ${text.slice(0, 40)}...`);
-  });
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. INBOX & TASKS VIEW (Priority #1: Filters by Project, Status & Date)
-// ─────────────────────────────────────────────────────────────────────────────
 function renderInbox(container) {
   const allProjects = [...new Set(STATE.tasks.map(t => t.project).filter(Boolean))].sort();
   const projFilter = STATE.taskFilterProj || "";
@@ -3213,256 +3743,6 @@ function renderInbox(container) {
   `;
 }
 
-window.updateTaskFilter = function(key, val) {
-  STATE[key] = val;
-  renderView();
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 6. IDEAS VIEW
-// ─────────────────────────────────────────────────────────────────────────────
-function renderIdeas(container) {
-  container.innerHTML = `
-    <div class="view-header">
-      <div class="view-title-group">
-        <h1><span>💡</span> Idea Park</h1>
-        <p class="view-subtitle">Aparcamiento ordenado de ideas y mejoras futuras para preservar el foco (PH-3)</p>
-      </div>
-      <button class="btn-hud-action btn-add-idea" onclick="openIdeaModal()">
-        <span>💡</span> <span>Aparcar Idea</span>
-      </button>
-    </div>
-
-    <div class="tickets-list">
-      ${STATE.ideas.length ? STATE.ideas.map(idea => `
-        <div class="ticket-card">
-          <div class="ticket-top">
-            <h3 class="ticket-title">${inline(idea.title)}</h3>
-            <span class="tag-pill tag-project">${esc(idea.project)}</span>
-          </div>
-          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">${inline(idea.body)}</p>
-          <div class="ticket-meta">
-            <span class="tag-pill tag-purple">scope: ${esc(idea.scope)}</span>
-            <span class="tag-pill">sección: ${esc(idea.section)}</span>
-            ${renderOrigin(idea.origin, idea.origin_inferred)}
-          </div>
-        </div>
-      `).join("") : `
-        <div class="empty-state">
-          <div class="empty-icon">💡</div>
-          <h3>Parque de ideas despejado</h3>
-          <p>Utiliza el botón 'Aparcar Idea' para registrar mejoras sin interrumpir el frente activo.</p>
-        </div>
-      `}
-    </div>
-  `;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 7. DECISIONS VIEW (Priority #2: 274 Records, Supersedes, Frozen Toggle)
-// ─────────────────────────────────────────────────────────────────────────────
-function renderDecisions(container) {
-  const allProjects = [...new Set(STATE.decisions.map(d => d.project).filter(Boolean))].sort();
-  const frozenCount = STATE.decisions.filter(d => d.frozen).length;
-  const showFrozen = STATE.showFrozen === true;
-  const projFilter = STATE.decFilterProj || "";
-  const statusFilter = STATE.decFilterStatus || "";
-  const searchTxt = (STATE.decSearch || "").toLowerCase().trim();
-
-  // Filter decisions
-  let filtered = STATE.decisions.filter(d => {
-    if (!showFrozen && d.frozen) return false;
-    if (projFilter && d.project !== projFilter) return false;
-    if (statusFilter === "ALIVE" && d.isSuperseded) return false;
-    if (statusFilter === "SUPERSEDED" && !d.isSuperseded) return false;
-
-    if (searchTxt) {
-      const matchTitle = (d.title || "").toLowerCase().includes(searchTxt);
-      const matchWhy = (d.why || "").toLowerCase().includes(searchTxt);
-      const matchId = (d.id || "").toLowerCase().includes(searchTxt);
-      const matchProj = (d.project || "").toLowerCase().includes(searchTxt);
-      const matchDiscarded = (d.discarded || "").toLowerCase().includes(searchTxt);
-      if (!matchTitle && !matchWhy && !matchId && !matchProj && !matchDiscarded) return false;
-    }
-    return true;
-  });
-
-  // Sort decisions: newest or highest numeric ID first
-  filtered.sort((a, b) => {
-    const idA = parseInt(String(a.id).replace(/\D/g, "")) || 0;
-    const idB = parseInt(String(b.id).replace(/\D/g, "")) || 0;
-    if (idA && idB && a.project === b.project) return idB - idA;
-    return (b.date || "").localeCompare(a.date || "");
-  });
-
-  container.innerHTML = `
-    <div class="view-header">
-      <div class="view-title-group">
-        <h1><span>📜</span> Decision Log (Registro de Decisiones)</h1>
-        <p class="view-subtitle">${liveDecisions().length} decisiones inmutables con autor, fecha, liveness y trazabilidad de supersedes</p>
-      </div>
-    </div>
-
-    <!-- DECISION FILTERS (Priority #2) -->
-    <div class="view-toolbar">
-      <div class="toolbar-group">
-        <label for="decFilterProj">Proyecto:</label>
-        <select id="decFilterProj" class="custom-select" onchange="updateDecFilter('decFilterProj', this.value)">
-          <option value="">Todos los Proyectos (${liveDecisions().length})</option>
-          ${allProjects.map(p => `
-            <option value="${esc(p)}" ${p === projFilter ? "selected" : ""}>
-              ${esc(p)} (${STATE.decisions.filter(d => d.project === p).length})
-            </option>
-          `).join("")}
-        </select>
-      </div>
-
-      <div class="toolbar-group">
-        <label for="decFilterStatus">Vivacidad:</label>
-        <select id="decFilterStatus" class="custom-select" onchange="updateDecFilter('decFilterStatus', this.value)">
-          <option value="">Todas las Decisiones</option>
-          <option value="ALIVE" ${statusFilter === "ALIVE" ? "selected" : ""}>🟢 Vivas (Activas)</option>
-          <option value="SUPERSEDED" ${statusFilter === "SUPERSEDED" ? "selected" : ""}>🔄 Reemplazadas (Superseded)</option>
-        </select>
-      </div>
-
-      <div class="toolbar-group checkbox-group">
-        <label class="toggle-label" title="Las copias congeladas son fotografías selladas declaradas (AX-20)">
-          <input type="checkbox" id="decToggleFrozen" ${showFrozen ? "checked" : ""} onchange="updateDecFilter('showFrozen', this.checked)">
-          <span>Mostrar Copias Congeladas (${frozenCount})</span>
-        </label>
-      </div>
-
-      <div class="toolbar-group search-group">
-        <input type="text" id="decSearchInput" class="custom-input" placeholder="Buscar por D_n, texto, por qué, descartado..." value="${esc(STATE.decSearch)}" oninput="updateDecFilter('decSearch', this.value)">
-      </div>
-    </div>
-
-    <!-- DECISIONS LIST -->
-    <div class="tickets-list">
-      ${filtered.length ? filtered.map(d => `
-        <div class="ticket-card decision-card ${d.isSuperseded ? 'discarded' : ''}">
-          <div class="ticket-top">
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
-              <span class="tag-pill tag-project">${esc(d.project)}</span>
-              ${d.isSuperseded ? `
-                <span class="tag-pill tag-superseded" title="Reemplazada por ${esc(d.supersededBy.join(', '))}">
-                  🔄 Reemplazada por ${esc(d.supersededBy.join(', '))}
-                </span>
-              ` : `
-                <span class="tag-pill tag-alive" title="Decisión VIVA">🟢 VIVA</span>
-              `}
-              ${d.supersedes ? `
-                <span class="tag-pill tag-supersedes" title="Reemplaza a ${esc(d.supersedes)}">⚡ Reemplaza a ${esc(d.supersedes)}</span>
-              ` : ''}
-              ${d.frozen ? `
-                <span class="tag-pill tag-frozen" title="Copia sellada de ${esc(d.mirror_of || 'snapshot')}">🧊 Frozen Mirror</span>
-              ` : ''}
-            </div>
-            ${renderDate(d.date, d.date_inferred)}
-          </div>
-
-          <h3 class="ticket-title" style="margin-top: 4px; font-size: 15px;">${inline(d.title)}</h3>
-          
-          ${(d.why || d.discarded) ? `
-            <details class="decision-details">
-              <summary>
-                <span class="toggle-icon">▶</span>
-                <span>Ver razonamiento (Why)${d.discarded ? ' y descartados' : ''}</span>
-              </summary>
-              <div class="decision-body-content">
-                ${d.why ? `
-                  <div class="decision-why-text">
-                    <strong>Por qué (Why):</strong> ${inline(d.why)}
-                  </div>
-                ` : ''}
-
-                ${d.discarded ? `
-                  <div class="discarded-box" style="margin-top: 4px;">
-                    <strong>Alternativa descartada:</strong> ${inline(d.discarded)}
-                  </div>
-                ` : ''}
-
-                <div class="ticket-meta" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line);">
-                  ${renderOrigin(d.origin, d.origin_inferred)}
-                  ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
-                  ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
-                </div>
-              </div>
-            </details>
-          ` : `
-            <div class="ticket-meta" style="margin-top: 4px;">
-              ${renderOrigin(d.origin, d.origin_inferred)}
-              ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
-              ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
-            </div>
-          `}
-        </div>
-      `).join("") : `
-        <div class="empty-state">
-          <div class="empty-icon">📜</div>
-          <h3>No hay decisiones que coincidan</h3>
-          <p>Prueba a ajustar los filtros de proyecto, vivacidad o búsqueda.</p>
-        </div>
-      `}
-    </div>
-  `;
-}
-
-window.updateDecFilter = function(key, val) {
-  STATE[key] = val;
-  renderView();
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 8. SKILLS & ORG VIEW (Redesigned with rich layout, search & CLI commands)
-// ─────────────────────────────────────────────────────────────────────────────
-const SKILL_ICONS = {
-  "open-session": "⚡",
-  "triage": "📬",
-  "company-auditor": "🏛️",
-  "instance-auditor": "🔍",
-  "project-auditor": "🎯",
-  "audit": "🤖",
-  "autonomous-run": "🚀",
-  "code-cleanup": "🧹",
-  "redefine-project": "🔄",
-  "structure-project": "🏗️",
-  "rnd": "🔬",
-  "learn": "📚",
-  "correct-exercise": "✏️",
-  "dispatch": "📤",
-  "gather": "📥",
-  "release-cut": "🏷️"
-};
-
-function classifySkill(s) {
-  const name = s.title.toLowerCase();
-  if (name.includes("auditor") || s.trigger === "event") {
-    return {
-      type: "event",
-      label: "🔔 Rol de Evento",
-      badgeClass: "tag-live",
-      typeDesc: "Disparado automáticamente al cerrar tareas o modificar archivos estructurales"
-    };
-  }
-  if (s.trigger === "locked" || name === "release-cut") {
-    return {
-      type: "locked",
-      label: "🔒 Gobernanza / Release",
-      badgeClass: "tag-supersedes",
-      typeDesc: "Invocación restringida de gobierno o corte de release público"
-    };
-  }
-  return {
-    type: "request",
-    label: "🛠️ Capacidad Invocable",
-    badgeClass: "tag-purple",
-    typeDesc: "Invocada por nombre o comando directo por el operador"
-  };
-}
-
 function renderSkills(container) {
   const filterType = STATE.skillFilterType || "ALL";
   const searchTxt = (STATE.skillSearch || "").toLowerCase().trim();
@@ -3539,58 +3819,78 @@ function renderSkills(container) {
   `;
 }
 
-function renderEnhancedSkillCard(skill, idx) {
-  const cliCmd = `claude -p 'run ${skill.title}'`;
-  const rowId = `skillCmd_${idx}`;
-
-  return `
-    <div class="skill-enhanced-card">
-      <div class="skill-card-topbar">
-        <div class="skill-identity">
-          <span class="skill-icon-bubble">${skill.icon}</span>
-          <div>
-            <h3 class="skill-card-name">${esc(skill.title)}</h3>
-            <span class="skill-file-path">skills/${esc(skill.title)}/SKILL.md</span>
-          </div>
-        </div>
-        <span class="tag-pill ${skill.classification.badgeClass}">
-          ${esc(skill.classification.label)}
-        </span>
-      </div>
-
-      <p class="skill-card-summary">${inline(skill.summary || "Capacidad especializada de agente para operaciones.")}</p>
-
-      <div class="skill-card-when-box">
-        <div class="when-box-label">
-          <span>🎯</span> <strong>CUÁNDO USAR / DISPARO:</strong>
-        </div>
-        <p class="when-box-text">${inline(skill.when || skill.evidence || "Invocación directa bajo demanda.")}</p>
-      </div>
-
-      <div class="skill-card-footer">
-        <div class="skill-cli-box" id="${rowId}" data-code="${esc(cliCmd)}" onclick="copyRowCommand(this)" title="Clic para copiar comando de invocación">
-          <span class="cli-prompt-label">CLI:</span>
-          <code class="cli-prompt-code">${esc(cliCmd)}</code>
-          <button class="cli-copy-btn">Copiar 📋</button>
-        </div>
-      </div>
-    </div>
-  `;
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  const toastMsg = document.getElementById("toastMsg");
+  if (toast && toastMsg) {
+    toastMsg.textContent = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 2600);
+  }
 }
 
-window.updateSkillFilter = function(type) {
-  STATE.skillFilterType = type;
-  renderView();
-};
+function updateTaskPreview() {
+  const title = document.getElementById("taskTitle")?.value || "...";
+  const proj = document.getElementById("taskProject")?.value || (STATE.projects[0]?.name || "project");
+  const status = document.getElementById("taskStatus")?.value || "⬜";
+  const why = document.getElementById("taskWhy")?.value || "...";
+  const nextId = `T${STATE.tasks.length + 60}`;
 
-window.updateSkillSearch = function(q) {
-  STATE.skillSearch = q;
-  renderView();
-};
+  const preview = document.getElementById("taskMarkdownPreview");
+  if (preview) {
+    preview.textContent = `### ${nextId} · ${title} ${status}\n**project:** \`${proj}\`\n**Why** *(operator, ${new Date().toISOString().slice(0, 10)})*. ${why}`;
+  }
+}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INTERACTIVE TASK LIFECYCLE (Complete, Comment, Discard)
-// ─────────────────────────────────────────────────────────────────────────────
+function autoScrollPlanContainer(smooth = true) {
+  requestAnimationFrame(() => {
+    const container = document.querySelector(".plan-items-container");
+    if (!container) return;
+
+    const completedItems = container.querySelectorAll(".plan-item-row.completed");
+    if (completedItems.length > 0) {
+      const lastCompleted = completedItems[completedItems.length - 1];
+      const targetTop = lastCompleted.offsetTop;
+      if (smooth) {
+        container.scrollTo({
+          top: Math.max(0, targetTop - 4),
+          behavior: "smooth"
+        });
+      } else {
+        container.scrollTop = Math.max(0, targetTop - 4);
+      }
+    } else {
+      container.scrollTop = 0;
+    }
+  });
+}
+
+function classifySkill(s) {
+  const name = s.title.toLowerCase();
+  if (name.includes("auditor") || s.trigger === "event") {
+    return {
+      type: "event",
+      label: "🔔 Rol de Evento",
+      badgeClass: "tag-live",
+      typeDesc: "Disparado automáticamente al cerrar tareas o modificar archivos estructurales"
+    };
+  }
+  if (s.trigger === "locked" || name === "release-cut") {
+    return {
+      type: "locked",
+      label: "🔒 Gobernanza / Release",
+      badgeClass: "tag-supersedes",
+      typeDesc: "Invocación restringida de gobierno o corte de release público"
+    };
+  }
+  return {
+    type: "request",
+    label: "🛠️ Capacidad Invocable",
+    badgeClass: "tag-purple",
+    typeDesc: "Invocada por nombre o comando directo por el operador"
+  };
+}
+
 window.completeTask = function(taskId) {
   const task = STATE.tasks.find(t => t.id === taskId);
   if (!task) return;
@@ -3600,14 +3900,10 @@ window.completeTask = function(taskId) {
   showToast(`Tarea ${taskId} marcada como completada ✅`);
 };
 
-window.reopenTask = function(taskId) {
-  const task = STATE.tasks.find(t => t.id === taskId);
-  if (!task) return;
-  task.status = "⬜";
-  task.discardReason = null;
-  persistTasksLocally();
-  renderView();
-  showToast(`Tarea ${taskId} reabierta como pendiente ⬜`);
+window.copyRowCommand = function(el) {
+  const code = el.getAttribute("data-code") || el.querySelector("code")?.textContent || "";
+  if (!code) return;
+  copyCommand(code, el.id);
 };
 
 window.openCommentModal = function(taskId, title) {
@@ -3620,32 +3916,6 @@ window.openCommentModal = function(taskId, title) {
     label.textContent = `Tarea: ${taskId} · ${title}`;
     if (textInput) textInput.value = "";
     modal.classList.add("active");
-  }
-};
-
-window.closeCommentModal = function() {
-  const modal = document.getElementById("commentModal");
-  if (modal) modal.classList.remove("active");
-};
-
-window.handleSaveComment = function(e) {
-  e.preventDefault();
-  const taskId = document.getElementById("commentTaskId").value;
-  const text = document.getElementById("commentTextInput").value.trim();
-  if (!text) return;
-
-  const task = STATE.tasks.find(t => t.id === taskId);
-  if (task) {
-    if (!task.comments) task.comments = [];
-    task.comments.push({
-      author: "Operator",
-      date: new Date().toISOString().slice(0, 10),
-      text
-    });
-    persistTasksLocally();
-    closeCommentModal();
-    renderView();
-    showToast(`Comentario añadido a la tarea ${taskId} 💬`);
   }
 };
 
@@ -3662,35 +3932,11 @@ window.openDiscardModal = function(taskId, title) {
   }
 };
 
-window.closeDiscardModal = function() {
-  const modal = document.getElementById("discardModal");
-  if (modal) modal.classList.remove("active");
+window.openIdeaModal = function() {
+  const modal = document.getElementById("ideaModal");
+  if (modal) modal.classList.add("active");
 };
 
-window.handleSaveDiscard = function(e) {
-  e.preventDefault();
-  const taskId = document.getElementById("discardTaskId").value;
-  const reason = document.getElementById("discardReasonInput").value.trim();
-  if (!reason) return;
-
-  const task = STATE.tasks.find(t => t.id === taskId);
-  if (task) {
-    task.status = "⚫";
-    task.discardReason = reason;
-    persistTasksLocally();
-    closeDiscardModal();
-    renderView();
-    showToast(`Tarea ${taskId} descartada con registro PH-3 ⚫`);
-  }
-};
-
-function persistTasksLocally() {
-  localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(STATE.tasks));
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MODAL WRITE HANDLERS (New Task & New Idea)
-// ─────────────────────────────────────────────────────────────────────────────
 window.openTaskModal = function() {
   const modal = document.getElementById("taskModal");
   if (modal) {
@@ -3699,149 +3945,75 @@ window.openTaskModal = function() {
   }
 };
 
-window.closeTaskModal = function() {
-  const modal = document.getElementById("taskModal");
-  if (modal) modal.classList.remove("active");
-};
-
-function updateTaskPreview() {
-  const title = document.getElementById("taskTitle")?.value || "...";
-  const proj = document.getElementById("taskProject")?.value || (STATE.projects[0]?.name || "project");
-  const status = document.getElementById("taskStatus")?.value || "⬜";
-  const why = document.getElementById("taskWhy")?.value || "...";
-  const nextId = `T${STATE.tasks.length + 60}`;
-
-  const preview = document.getElementById("taskMarkdownPreview");
-  if (preview) {
-    preview.textContent = `### ${nextId} · ${title} ${status}\n**project:** \`${proj}\`\n**Why** *(operator, ${new Date().toISOString().slice(0, 10)})*. ${why}`;
-  }
-}
-
-window.handleCreateTask = function(e) {
-  e.preventDefault();
-  const title = document.getElementById("taskTitle").value.trim();
-  const project = document.getElementById("taskProject").value;
-  const status = document.getElementById("taskStatus").value;
-  const why = document.getElementById("taskWhy").value.trim();
-
-  const nextId = `T${STATE.tasks.length + 60}`;
-  const newTask = {
-    id: nextId,
-    title,
-    project,
-    status,
-    why,
-    author: "Operator",
-    date: new Date().toISOString().slice(0, 10),
-    date_inferred: false,
-    origin_inferred: false,
-    comments: [],
-    discardReason: null
-  };
-
-  STATE.tasks.unshift(newTask);
+window.reopenTask = function(taskId) {
+  const task = STATE.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  task.status = "⬜";
+  task.discardReason = null;
   persistTasksLocally();
-  closeTaskModal();
   renderView();
-  showToast(`Tarea ${nextId} creada correctamente ➕`);
+  showToast(`Tarea ${taskId} reabierta como pendiente ⬜`);
 };
 
-window.openIdeaModal = function() {
-  const modal = document.getElementById("ideaModal");
-  if (modal) modal.classList.add("active");
-};
-
-window.closeIdeaModal = function() {
-  const modal = document.getElementById("ideaModal");
-  if (modal) modal.classList.remove("active");
-};
-
-window.handleCreateIdea = function(e) {
-  e.preventDefault();
-  const title = document.getElementById("ideaTitle").value.trim();
-  const project = document.getElementById("ideaProject").value;
-  const scope = document.getElementById("ideaScope").value.trim() || "general";
-  const body = document.getElementById("ideaBody").value.trim();
-
-  const newIdea = {
-    id: `idea-${Math.random().toString(36).slice(2, 8)}`,
-    title,
-    project,
-    scope,
-    body,
-    section: "Ideación Rápida",
-    origin: "Operator"
-  };
-
-  STATE.ideas.unshift(newIdea);
-  localStorage.setItem(STORAGE_KEYS.IDEAS, JSON.stringify(STATE.ideas));
-  closeIdeaModal();
+window.selectCockpitFront = function(frontId) {
+  STATE.cockpitSelectedFrontId = frontId;
   renderView();
-  showToast(`Idea aparcada en Idea Park 💡`);
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FLOATING SCRATCHPAD DRAWER
-// ─────────────────────────────────────────────────────────────────────────────
-window.toggleScratchpad = function() {
-  const drawer = document.getElementById("scratchpadDrawer");
-  if (drawer) drawer.classList.toggle("open");
+window.selectCsTab = function(cat) {
+  STATE.activeCsTab = cat;
+  renderView();
 };
 
-window.convertScratchpadToTask = function() {
-  const text = document.getElementById("scratchpadInput")?.value.trim();
-  if (!text) return;
-  toggleScratchpad();
-  openTaskModal();
-  const titleInput = document.getElementById("taskTitle");
-  if (titleInput) titleInput.value = text.slice(0, 80);
-  const whyInput = document.getElementById("taskWhy");
-  if (whyInput) whyInput.value = text;
-  updateTaskPreview();
+window.setCockpitFilter = function(proj) {
+  STATE.cockpitFilterProj = proj;
+  renderView();
 };
 
-window.convertScratchpadToIdea = function() {
-  const text = document.getElementById("scratchpadInput")?.value.trim();
-  if (!text) return;
-  toggleScratchpad();
-  openIdeaModal();
-  const titleInput = document.getElementById("ideaTitle");
-  if (titleInput) titleInput.value = text.slice(0, 80);
-  const bodyInput = document.getElementById("ideaBody");
-  if (bodyInput) bodyInput.value = text;
+window.updateDecFilter = function(key, val) {
+  STATE[key] = val;
+  renderView();
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TOAST NOTIFICATIONS
-// ─────────────────────────────────────────────────────────────────────────────
-function showToast(msg) {
-  const toast = document.getElementById("toast");
-  const toastMsg = document.getElementById("toastMsg");
-  if (toast && toastMsg) {
-    toastMsg.textContent = msg;
-    toast.classList.add("show");
-    setTimeout(() => toast.classList.remove("show"), 2600);
-  }
+window.updateSkillFilter = function(type) {
+  STATE.skillFilterType = type;
+  renderView();
+};
+
+window.updateSkillSearch = function(q) {
+  STATE.skillSearch = q;
+  renderView();
+};
+
+window.updateTaskFilter = function(key, val) {
+  STATE[key] = val;
+  renderView();
+};
+
+window.copyCommand = function(text, elementId) {
+  navigator.clipboard.writeText(text).then(() => {
+    const el = document.getElementById(elementId);
+    if (el) {
+      el.classList.add("copied");
+      setTimeout(() => el.classList.remove("copied"), 1200);
+    }
+    showToast(`Comando copiado al portapapeles: ${text.slice(0, 40)}...`);
+  }).catch(() => {
+    showToast(`Comando copiado: ${text.slice(0, 40)}...`);
+  });
+};
+
+function persistTasksLocally() {
+  localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(STATE.tasks));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DATA FETCHING & REAL-TIME POLLING
-// ─────────────────────────────────────────────────────────────────────────────
+window.retryLoad = () => {
+  STATE.error = null;
+  renderView();
+  loadModel();
+};
+
 let isPolling = false;
-
-async function loadModel() {
-  try {
-    const res = await fetch("/api/model");
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    const modelData = await res.json();
-    STATE.error = null;
-    ingestModel(modelData);
-    renderView();
-  } catch (err) {
-    STATE.error = `No se pudo conectar con el servidor: ${err.message}`;
-    renderView();
-  }
-}
 
 async function watchStamp() {
   if (isPolling) return;
@@ -3865,52 +4037,6 @@ async function watchStamp() {
   }
 }
 
-window.retryLoad = () => {
-  STATE.error = null;
-  renderView();
-  loadModel();
-};
-
-function initAppListeners() {
-  ["taskTitle", "taskProject", "taskStatus", "taskWhy"].forEach(id => {
-    document.getElementById(id)?.addEventListener("input", updateTaskPreview);
-  });
-
-  document.querySelectorAll(".nav-item").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const view = btn.getAttribute("data-view");
-      if (view) navigateTo(view);
-    });
-  });
-
-  document.getElementById("projectFilter")?.addEventListener("change", e => {
-    const val = e.target.value;
-    if (val === "ALL") {
-      STATE.taskFilterProj = "";
-      STATE.decFilterProj = "";
-    } else {
-      STATE.taskFilterProj = val;
-      STATE.decFilterProj = val;
-      STATE.selectedProject = val;
-    }
-    renderView();
-  });
-
-  document.getElementById("globalSearch")?.addEventListener("input", e => {
-    const q = e.target.value.trim().toLowerCase();
-    STATE.taskSearch = q;
-    STATE.decSearch = q;
-    renderView();
-  });
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initAppListeners);
-} else {
-  initAppListeners();
-}
-
 // Initial boot & periodic watcher
 loadModel().then(watchStamp);
 setInterval(watchStamp, 2000);
-

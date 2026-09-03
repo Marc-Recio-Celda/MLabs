@@ -35,9 +35,9 @@ except Exception as e:                       # the engine can serve a page witho
 else:
     _MODEL_ERROR = None
 
-# Defined ONCE, in the model. A second copy here carried different values until
-# 2026-08-18, so the same adapter was valid or invalid depending on whether an
-# import had succeeded — and nothing in the output said which (`MLabs:AX-20`).
+# ⛔ Defined ONCE, in the model. A second copy here diverges, and then the same adapter is
+# valid or invalid depending on whether an import succeeded — with nothing in the output
+# saying which (`MLabs:AX-20`).
 KINDS = set(model.KINDS) if model else set()
 
 
