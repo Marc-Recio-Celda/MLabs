@@ -22,7 +22,7 @@
 > **Where the boundary between two clauses is load-bearing, the clause says so**, because that line
 > is what makes an axiom derivable from one clause instead of floating between two.
 >
-> **A change here fires two reviews:** `A5` — *does this clause belong at this level* — and the
+> **A change here fires two reviews:** `company-auditor:A5` — *does this clause belong at this level* — and the
 > review over every axiom in every department that `AXIOMS.md` already triggers.
 >
 > **It changes rarely, only by the operator, and explicitly — but it is not frozen.** Working on

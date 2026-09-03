@@ -3,7 +3,10 @@
 # Proves the date check fires: a change register almost always carries a date, and
 # prose that states a present truth almost never needs one.
 set -uo pipefail
-PAT='\b(19|20)[0-9]{2}-[0-9]{2}-[0-9]{2}\b'
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+. "$ROOT/tools/tests/lib.sh"
+PAT="$(published_pattern AX-41 "$ROOT/AXIOMS.md")"
+[ -n "$PAT" ] || { echo "AX-41 publishes no pattern — the row lost its command and this test would prove nothing"; exit 1; }
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 run() { printf '%s\n' "$1" > "$TMP/f.md"; grep -qE "$PAT" "$TMP/f.md"; }
 

@@ -75,6 +75,11 @@ ever reading a transcript (`METHOD.md` §3).
 | V2 | **Single source** — if this fact changes, how many files must be touched? >1 with no written expiry is a veto |
 | V3 | **Real return** — what concrete work does this unblock, for whom? No named consumer, no entry |
 
+⚠️ **`traps.md` beside this file is the department's trap set**, keyed by axiom id — *this is how
+you get it wrong*, held here rather than in `AXIOMS.md` because a trap fires when the governed thing
+is written and that file is read on every turn (`AX-4`). Read it while checking a row, and **prune
+it here**: a trap whose axiom has left `AXIOMS.md` binds nobody.
+
 **The pressures** — the actual job; they do not reject, they return with the cost named:
 
 | # | Check |

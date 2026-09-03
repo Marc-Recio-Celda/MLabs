@@ -20,6 +20,10 @@
 # department and is skipped.
 # Exit 0 clean · 1 unresolved citations · 2 could not run, which is NOT a pass.
 set -uo pipefail
+# ⚠️ Missing arguments used to crash on an unbound $1, and bash exits 1 for that — the same
+# code this tool uses for *unresolved citations*. A reader could not tell a crash from a finding,
+# which is the collapse `AX-22` names. Checked before anything is touched.
+[ $# -ge 3 ] || { echo "  axiom-refs: usage: axiom-refs.sh <axioms-file> <SCOPE> <files…>"; exit 2; }
 AX="$1"; SCOPE="$2"; shift 2
 [ -f "$AX" ] || { echo "  axiom-refs: no axiom file at $AX"; exit 2; }
 [ $# -gt 0 ] || { echo "  axiom-refs: no files given"; exit 2; }

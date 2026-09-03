@@ -27,4 +27,13 @@ both 'This serves `PH-1` and also `PH-7`.' \
 both 'This serves `PH-1` and obeys `AX-1`.' \
   && { echo "negative control fired — a clean edit was flagged"; exit 1; }
 
-echo "3/3 · stale axiom fires · stale clause fires · clean edit stays silent"
+# 4 · could-not-run must not wear a verdict. Called with no arguments both tools used to
+#     die on an unbound $1, and bash exits 1 for that — the same code they use for
+#     *unresolved citations*. A crash was indistinguishable from a finding, which is the
+#     collapse `AX-22` names, and the row published the bare invocation for its whole life.
+bash "$ROOT/tools/axiom-refs.sh"  >/dev/null 2>&1; [ $? -eq 2 ] \
+  || { echo "axiom-refs.sh with no arguments did not exit 2"; exit 1; }
+bash "$ROOT/tools/clause-refs.sh" >/dev/null 2>&1; [ $? -eq 2 ] \
+  || { echo "clause-refs.sh with no arguments did not exit 2"; exit 1; }
+
+echo "4/4 · stale axiom fires · stale clause fires · clean edit silent · no arguments exits 2"

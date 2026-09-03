@@ -3,7 +3,10 @@
 # Proves the one instance of it that runs today: a rule file must reach the method by
 # scope, never by a path, so the method's address exists in exactly one place.
 set -uo pipefail
-PAT='[~./][A-Za-z0-9_/-]*MLabs'
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+. "$ROOT/tools/tests/lib.sh"
+PAT="$(published_pattern AX-20 "$ROOT/AXIOMS.md")"
+[ -n "$PAT" ] || { echo "AX-20 publishes no pattern — the row lost its command and this test would prove nothing"; exit 1; }
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 
 run() { printf '%s\n' "$1" > "$TMP/rules.md"; grep -qE "$PAT" "$TMP/rules.md"; }

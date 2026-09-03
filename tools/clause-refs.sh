@@ -23,6 +23,9 @@
 # own edge case without failing is one nobody will trust to describe anything else.
 # Exit 0 clean · 1 unresolved citations · 2 could not run, which is NOT a pass.
 set -uo pipefail
+# ⚠️ Same as tools/axiom-refs.sh: a missing argument crashed on an unbound $1 and bash exits 1,
+# which is this tool's code for unresolved citations. Could-not-run must never wear a verdict.
+[ $# -ge 2 ] || { echo "  clause-refs: usage: clause-refs.sh <philosophy-file> <files…>"; exit 2; }
 PH="$1"; shift
 [ -f "$PH" ] || { echo "  clause-refs: no philosophy file at $PH"; exit 2; }
 [ $# -gt 0 ] || { echo "  clause-refs: no files given"; exit 2; }

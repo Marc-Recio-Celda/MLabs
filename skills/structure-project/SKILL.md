@@ -46,8 +46,8 @@ own header (`MLabs:AX-2`); every entry carries author, date, reasoning and **wha
 (`MLabs:AX-24`). **The first entry is the one that created the project:** why it exists, and what
 shape was rejected for it.
 
-**5. Open `state.md` and `Decision_Log.md` as live documents.** Both state their present
-(`MLabs:AX-17`) and neither carries a changelog (`MLabs:AX-29`).
+**5. Open `state.md` and `Decision_Log.md` as live documents.** Both state their present and
+neither carries a changelog (`MLabs:AX-41`).
 
 - `state.md` — the test is *would this still be true if work stopped today?* Current position, what
   it waits on, the active risks with the fallback agreed for each. ⚠️ **And `next action` is a

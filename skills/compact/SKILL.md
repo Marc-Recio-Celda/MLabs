@@ -41,7 +41,7 @@ accumulate — running a growth pass over one fires on the shape that is working
 
 The expensive one, because it compounds: **a document carrying its own changelog becomes unreadable
 at exactly the length where it matters, and the reader who pays is the one who arrives latest and
-knows least** (`AX-29`).
+knows least** (`AX-41`).
 
 | Goes to the log | Stays in the file |
 |---|---|
@@ -61,7 +61,7 @@ somebody is **writing the thing**, which is not a review. **So it moves down to 
 | Trap about | Goes to |
 |---|---|
 | a tool — a regex, a git behaviour, an allowlist ordering | **the comment on the line that implements it** |
-| the method | **the `Check` column of the axiom that governs it** |
+| the method | **`skills/company-auditor/traps.md`, keyed by the id of the axiom that governs it** — never the `Check` column, which holds only the command |
 | a document's shape | **one line in that document's operative layer, undated** |
 
 ⚠️ **Relocate; never delete.** *A pass can strip archaeology but cannot tell whether it was ever
