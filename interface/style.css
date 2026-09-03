@@ -4729,3 +4729,476 @@ input[type="text"]:focus, textarea:focus {
   margin: 0 !important;
   border-radius: 0 0 8px 8px !important;
 }
+
+/* ==========================================================================
+   OFICINA (el mural) y DESPACHO (la mesa de una tarea)
+
+   ⚠️ The four outcomes of FLOW.md get four colours and nothing else does. A single
+   green tick meaning done, discarded and sent-to-the-mailbox at once is the failed
+   close this method already names — so the palette below is the vocabulary, and a
+   fifth colour here would be a fifth destination the method does not have.
+   ========================================================================== */
+
+:root {
+  --out-done-c:      var(--vine);
+  --out-done-bg:     var(--vine-bg);
+  --out-mailbox-c:   var(--accent-cyan);
+  --out-mailbox-bg:  var(--accent-cyan-bg);
+  --out-ideas-c:     var(--gold-deep);
+  --out-ideas-bg:    var(--gold-bg);
+  --out-discard-c:   var(--rust);
+  --out-discard-bg:  var(--rust-bg);
+}
+
+.out-done      { --oc: var(--out-done-c);    --ocbg: var(--out-done-bg); }
+.out-mailbox   { --oc: var(--out-mailbox-c); --ocbg: var(--out-mailbox-bg); }
+.out-ideas     { --oc: var(--out-ideas-c);   --ocbg: var(--out-ideas-bg); }
+.out-discarded { --oc: var(--out-discard-c); --ocbg: var(--out-discard-bg); }
+.st-active     { --oc: var(--vine);          --ocbg: var(--vine-bg); }
+.st-paused     { --oc: var(--gold-deep);     --ocbg: var(--gold-bg); }
+.st-pending    { --oc: var(--ink-muted);     --ocbg: var(--paper-subtle); }
+
+/* ── el aviso de más de un ▶ ─────────────────────────────────────────── */
+.office-warning {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 16px; margin-bottom: 16px;
+  background: var(--rust-bg); border: 1px solid var(--rust-border);
+  border-left: 4px solid var(--rust); border-radius: var(--radius-md);
+  font-size: 13px; color: var(--ink-soft);
+}
+.office-warning strong { color: var(--rust); }
+
+/* ── filtros ─────────────────────────────────────────────────────────── */
+.office-filters { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.filter-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.filter-label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-muted); min-width: 66px;
+}
+.chip-filter.st-active.active,
+.chip-filter.st-paused.active,
+.chip-filter.st-pending.active { background: var(--ocbg); border-color: var(--oc); color: var(--oc); }
+
+/* ── el mural: corcho de instituto ───────────────────────────────────
+   ⚠️ The texture is decoration and the STATE is not: a pin's colour and a card's border
+   still carry active/paused/queued, so nothing here is information that only the theme
+   knows. Strip every gradient below and the board still reads correctly. */
+.office-mural {
+  display: grid; gap: 22px 20px;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  padding: 26px 24px 30px;
+  border-radius: var(--radius-lg);
+  border: 10px solid #8a6a44;
+  outline: 1px solid rgba(60, 40, 20, .35);
+  background-color: #c9ab7c;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(120, 88, 48, .22) 0 2px, transparent 3px),
+    radial-gradient(circle at 62% 8%,  rgba(120, 88, 48, .16) 0 3px, transparent 4px),
+    radial-gradient(circle at 88% 42%, rgba(120, 88, 48, .20) 0 2px, transparent 3px),
+    radial-gradient(circle at 32% 72%, rgba(120, 88, 48, .15) 0 3px, transparent 4px),
+    radial-gradient(circle at 74% 88%, rgba(120, 88, 48, .22) 0 2px, transparent 3px),
+    radial-gradient(circle at 4% 56%,  rgba(150, 116, 70, .30) 0 4px, transparent 5px),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 244, 214, .28), transparent 62%),
+    linear-gradient(160deg, #cbae80, #bd9c6b 55%, #b18f5f);
+  background-size: 90px 90px, 130px 130px, 110px 110px, 150px 150px, 100px 100px, 170px 170px, cover, cover;
+  box-shadow: inset 0 2px 18px rgba(60, 40, 20, .30), var(--shadow-md);
+}
+
+/* Una nota clavada. Cuelga torcida, se endereza y crece al pasar por encima. */
+.mural-card {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--paper-elevated);
+  border: 1px solid rgba(120, 100, 70, .30);
+  border-top: 3px solid var(--oc);
+  border-radius: 3px;
+  padding: 22px 16px 12px; cursor: pointer;
+  box-shadow: 2px 5px 10px rgba(60, 40, 20, .28);
+  transform: rotate(var(--tilt, -1deg));
+  transition: transform .18s cubic-bezier(.2, .9, .3, 1.2), box-shadow .18s ease;
+}
+.mural-card:nth-child(3n+2) { --tilt:  1.7deg; }
+.mural-card:nth-child(3n+3) { --tilt: -2.4deg; }
+.mural-card:nth-child(4n+1) { --tilt:  0.9deg; }
+
+/* La chincheta. */
+.mural-card::before {
+  content: ""; position: absolute; top: 6px; left: 50%; width: 15px; height: 15px;
+  transform: translateX(-50%); border-radius: 50%; z-index: 2;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,.9) 0 18%, transparent 42%),
+    radial-gradient(circle at 50% 50%, var(--oc) 0 60%, rgba(0,0,0,.35) 100%);
+  box-shadow: 0 2px 4px rgba(60, 40, 20, .5);
+}
+.mural-card::after {
+  content: ""; position: absolute; top: 19px; left: 50%; width: 2px; height: 5px;
+  transform: translateX(-50%); background: rgba(60, 40, 20, .35); border-radius: 1px;
+}
+
+/* Al pasar el ratón se endereza, sube y ENSEÑA lo que llevaba escondido.
+   ⚠️ Behind `hover: hover` so a touch screen simply shows everything: a board whose
+   content only appears on hover is a board with no content on a tablet. */
+@media (hover: hover) {
+  .mural-extra {
+    max-height: 0; opacity: 0; overflow: hidden;
+    transition: max-height .22s ease, opacity .18s ease;
+  }
+  .mural-card:hover .mural-extra { max-height: 340px; opacity: 1; }
+  .mural-card:hover .mural-peek { visibility: hidden; height: 0; padding: 0; }
+}
+.mural-card:hover {
+  transform: rotate(0deg) translateY(-6px) scale(1.035);
+  box-shadow: 4px 14px 28px rgba(60, 40, 20, .38);
+  z-index: 6;
+}
+.mural-card.mural-active {
+  --tilt: -0.4deg;
+  box-shadow: 2px 6px 14px rgba(60, 40, 20, .32), 0 0 0 2px var(--oc);
+}
+
+.mural-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mural-marker {
+  width: 22px; height: 22px; flex: 0 0 22px; display: grid; place-items: center;
+  border-radius: var(--radius-full); background: var(--ocbg); color: var(--oc);
+  font-size: 11px; font-weight: 800; border: 1px solid var(--oc);
+}
+.mural-state {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--oc); background: var(--ocbg); border: 1px solid var(--oc);
+  padding: 2px 7px; border-radius: var(--radius-full);
+}
+.mural-title { margin: 0; font-size: 14.5px; font-weight: 700; line-height: 1.35; color: var(--ink); }
+.mural-why { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); }
+.mural-why strong { color: var(--ink); }
+.mural-cond {
+  display: flex; gap: 8px; align-items: baseline; margin-top: 7px;
+  padding: 7px 10px; background: var(--paper-subtle);
+  border-radius: var(--radius-sm); font-size: 12px;
+}
+.cond-k {
+  flex: 0 0 auto; font-size: 9.5px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--ink-muted);
+}
+.cond-v { color: var(--ink-soft); line-height: 1.45; }
+.mural-progress { display: flex; align-items: center; gap: 9px; }
+.mural-bar { flex: 1; height: 5px; background: var(--paper-subtle); border-radius: var(--radius-full); overflow: hidden; }
+.mural-fill { height: 100%; background: var(--oc); border-radius: var(--radius-full); transition: width .3s ease; }
+.mural-pct { font-size: 11px; font-family: var(--font-mono); color: var(--ink-muted); }
+.mural-noplan { font-size: 11.5px; font-style: italic; color: var(--ink-disabled); }
+.mural-peek {
+  font-size: 10px; font-style: italic; color: var(--ink-disabled);
+  text-align: center; margin-top: -3px;
+}
+.mural-foot {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding-top: 8px; border-top: 1px dashed var(--line-subtle);
+}
+/* ⚠️ Which file a card came from is not decoration: a card sourced only from `tasks` has
+   no compass row, and that is exactly the thing an operator needs to see to fix it. */
+.src-chip {
+  font-size: 9px; font-family: var(--font-mono); text-transform: uppercase;
+  letter-spacing: .05em; padding: 1px 5px; border-radius: var(--radius-sm);
+  background: var(--paper-subtle); color: var(--ink-muted); border: 1px solid var(--line-subtle);
+}
+.mural-go { margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--oc); }
+.office-mural .empty-state { grid-column: 1 / -1; background: var(--paper-elevated); border-radius: 3px; }
+
+/* ── el despacho: mesa, flexo y pantalla ─────────────────────────────
+   La luz cae desde arriba a la izquierda, que es donde está el flexo. */
+/* La franja de arriba: el flexo a la izquierda y la miga de pan a su lado, sobre la
+   madera. ⚠️ El flexo NECESITA su hueco — puesto encima del contenido tapaba el título,
+   que es exactamente lo que no puede hacer un adorno. */
+.desk-plate {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  min-height: 58px; margin-bottom: 14px;
+}
+@media (min-width: 901px) { .desk-plate { padding-left: 124px; } }
+.crumb-link {
+  background: rgba(255, 246, 224, .12); border: 1px solid rgba(255, 240, 210, .22);
+  cursor: pointer; padding: 5px 10px; border-radius: var(--radius-sm);
+  font-size: 12.5px; font-weight: 600; color: #f6ead0;
+}
+.crumb-link:hover { background: rgba(255, 246, 224, .24); color: #fff; }
+.crumb-sep { color: rgba(255, 240, 210, .55); }
+.crumb-here {
+  font-size: 14px; font-weight: 700; color: #fdf6e6;
+  text-shadow: 0 1px 2px rgba(40, 22, 8, .55);
+}
+.desk-plate .mural-state { background: rgba(255, 246, 224, .90); }
+
+.desk-surface {
+  position: relative; overflow: hidden;
+  padding: 24px 24px 30px; border-radius: var(--radius-lg);
+  border: 1px solid rgba(90, 62, 36, .35);
+  background-color: #9d7247;
+  background-image:
+    repeating-linear-gradient(92deg, rgba(70, 44, 22, .10) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(88deg, rgba(255, 232, 190, .07) 0 1px, transparent 1px 17px),
+    linear-gradient(165deg, #a97c4e, #966c42 60%, #85603a);
+  box-shadow: inset 0 3px 20px rgba(50, 30, 12, .32), var(--shadow-md);
+}
+/* El halo del flexo. Cae sobre la mesa, no sobre el texto: los paneles van encima. */
+.desk-surface::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 620px 420px at 8% -6%, rgba(255, 226, 160, .42), transparent 70%);
+}
+.desk-surface > * { position: relative; z-index: 1; }
+.desk-lamp { position: absolute; top: -4px; left: 12px; z-index: 2; pointer-events: none; }
+@media (max-width: 900px) { .desk-lamp { display: none; } }
+
+.desk-hero {
+  display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap;
+  padding: 18px 20px; margin: 0 0 20px 0;
+  background: var(--paper-card);
+  border: 1px solid rgba(90, 62, 36, .28);
+  border-left: 5px solid var(--oc); border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(50, 30, 12, .28);
+}
+.desk-hero-main { flex: 1 1 360px; display: flex; flex-direction: column; gap: 10px; }
+.desk-title { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.25; color: var(--ink); }
+.desk-hero-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.desk-why {
+  padding: 10px 13px; background: var(--paper-subtle); border-radius: var(--radius-md);
+  font-size: 13px; line-height: 1.55; color: var(--ink-soft);
+}
+.desk-why strong { color: var(--ink); }
+.desk-cond { display: flex; gap: 9px; align-items: baseline; font-size: 12.5px; }
+
+.desk-hero-stats { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.desk-ring {
+  width: 88px; height: 88px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--oc) calc(var(--pct) * 1%), var(--paper-subtle) 0);
+  position: relative;
+}
+.desk-ring::before {
+  content: ""; position: absolute; inset: 8px; border-radius: 50%; background: var(--paper-card);
+}
+.desk-ring-num { position: relative; font-size: 19px; font-weight: 800; color: var(--ink); }
+.desk-ring-lbl {
+  position: relative; font-size: 9px; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--ink-muted); margin-top: -2px;
+}
+.desk-outcome-counts { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
+.oc {
+  font-size: 11px; font-family: var(--font-mono); font-weight: 600;
+  padding: 2px 7px; border-radius: var(--radius-full);
+  background: var(--ocbg); color: var(--oc); border: 1px solid var(--oc);
+}
+.oc-open { background: var(--paper-subtle); color: var(--ink-muted); border-color: var(--line); }
+
+.desk-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px 22px; align-items: start; }
+@media (max-width: 1180px) { .desk-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* El plan vive en la pantalla: marco oscuro, superficie clara y su peana. */
+.desk-plan {
+  position: relative;
+  padding: 12px; border-radius: 10px; margin-bottom: 16px;
+  background: linear-gradient(180deg, #3c3a35, #2c2b27);
+  box-shadow: 0 10px 26px rgba(40, 24, 10, .40), inset 0 1px 0 rgba(255,255,255,.10);
+}
+.desk-plan::after {
+  content: ""; position: absolute; left: 50%; bottom: -12px; width: 130px; height: 12px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #33322e, #22211e);
+  border-radius: 0 0 7px 7px;
+}
+.desk-screen {
+  background: var(--paper); border-radius: 5px; padding: 16px;
+  box-shadow: inset 0 0 22px rgba(90, 80, 55, .10);
+}
+.desk-screen > *:last-child { margin-bottom: 0; }
+
+/* ── el plan por secciones ───────────────────────────────────────────── */
+.plan-section {
+  background: var(--paper-card); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); margin-bottom: 14px; overflow: hidden;
+}
+.plan-section-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 15px; background: var(--paper-subtle); border-bottom: 1px solid var(--line);
+}
+.plan-section-head h3 { margin: 0; font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.sec-parent { color: var(--ink-muted); font-weight: 500; }
+.sec-kind {
+  font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--ink-muted); background: var(--paper-card);
+  border: 1px solid var(--line); padding: 2px 8px; border-radius: var(--radius-full);
+}
+.sec-count { margin-left: auto; font-size: 11.5px; font-family: var(--font-mono); color: var(--ink-muted); }
+.plan-section-items { display: flex; flex-direction: column; }
+
+.pi {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 11px 15px; border-bottom: 1px solid var(--line-subtle);
+  transition: background .12s ease;
+}
+.pi:last-child { border-bottom: none; }
+.pi:hover { background: var(--paper-subtle); }
+.pi-marker {
+  flex: 0 0 22px; width: 22px; height: 22px; display: grid; place-items: center;
+  border-radius: var(--radius-full); font-size: 11px; font-weight: 700;
+  background: var(--paper-subtle); color: var(--ink-muted); border: 1px solid var(--line);
+}
+.pi-routed .pi-marker { background: var(--ocbg); color: var(--oc); border-color: var(--oc); }
+.pi-main { flex: 1; min-width: 0; }
+.pi-text { font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+.pi-routed .pi-text { color: var(--ink-muted); text-decoration: line-through; text-decoration-color: var(--oc); }
+.pi-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 4px; }
+.pi-outcome {
+  font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: 1px 7px; border-radius: var(--radius-full);
+  background: var(--ocbg); color: var(--oc); border: 1px solid var(--oc);
+}
+.pi-author, .pi-line { font-size: 10.5px; font-family: var(--font-mono); color: var(--ink-disabled); }
+.pi-route { display: flex; gap: 3px; opacity: .35; transition: opacity .14s ease; }
+.pi:hover .pi-route { opacity: 1; }
+.pi-route-btn {
+  width: 27px; height: 27px; display: grid; place-items: center; cursor: pointer;
+  font-size: 13px; background: var(--paper-card);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  transition: background .12s ease, border-color .12s ease, transform .12s ease;
+}
+.pi-route-btn:hover { background: var(--ocbg); border-color: var(--oc); transform: scale(1.12); }
+
+/* ── captura en vivo ─────────────────────────────────────────────────── */
+.capture-box {
+  background: var(--paper-elevated); border: 2px dashed var(--vine-border);
+  border-radius: var(--radius-lg); padding: 14px 16px; margin-top: 6px;
+}
+.capture-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 9px; }
+.capture-head strong { font-size: 13px; color: var(--ink); }
+.capture-head span { font-size: 11.5px; color: var(--ink-muted); }
+.capture-row textarea {
+  width: 100%; resize: vertical; padding: 10px 12px;
+  font-family: var(--font-main); font-size: 13.5px; line-height: 1.5; color: var(--ink);
+  background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md);
+}
+.capture-row textarea:focus { outline: none; border-color: var(--vine); background: var(--paper-elevated); }
+.capture-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
+.capture-sel { max-width: 220px; }
+.capture-ord { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink-muted); }
+.capture-sep { font-size: 11.5px; color: var(--ink-disabled); margin-left: 4px; }
+.btn-quick {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  padding: 6px 11px; font-size: 12px; font-weight: 600;
+  background: var(--ocbg); color: var(--oc);
+  border: 1px solid var(--oc); border-radius: var(--radius-md);
+}
+.btn-quick:hover { filter: brightness(.94); }
+
+/* ── el raíl de traza ────────────────────────────────────────────────── */
+.desk-rail { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 14px; }
+.rail-panel {
+  background: var(--paper-card); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); padding: 13px 15px;
+}
+.rail-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.rail-head strong { font-size: 12.5px; color: var(--ink); }
+.rail-refresh {
+  background: none; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  cursor: pointer; width: 24px; height: 24px; color: var(--ink-muted);
+}
+.rail-refresh:hover { background: var(--paper-subtle); color: var(--vine); }
+.trace-list { display: flex; flex-direction: column; gap: 9px; max-height: 46vh; overflow-y: auto; }
+.trace-empty { font-size: 12px; color: var(--ink-muted); line-height: 1.5; }
+.trace-empty span { color: var(--ink-disabled); font-size: 11.5px; }
+.trace-row { display: flex; gap: 8px; padding-bottom: 9px; border-bottom: 1px dashed var(--line-subtle); }
+.trace-row:last-child { border-bottom: none; padding-bottom: 0; }
+.trace-icon { flex: 0 0 auto; font-size: 14px; }
+.trace-body { min-width: 0; flex: 1; }
+.trace-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 11.5px; }
+.trace-where { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-muted); }
+.trace-text {
+  font-size: 11.5px; color: var(--ink-soft); line-height: 1.45; margin-top: 2px;
+  word-break: break-word;
+}
+.trace-at { font-size: 10px; font-family: var(--font-mono); color: var(--ink-disabled); margin-top: 2px; }
+.rail-legend .legend-row { display: flex; gap: 8px; align-items: flex-start; padding: 5px 0; }
+.rail-legend .legend-row strong { display: block; font-size: 12px; color: var(--oc); }
+.rail-legend .legend-row em { font-size: 11px; color: var(--ink-muted); font-style: normal; }
+.rail-note {
+  margin: 9px 0 0; padding-top: 9px; border-top: 1px dashed var(--line-subtle);
+  font-size: 11px; line-height: 1.5; color: var(--ink-muted);
+}
+
+/* ── el buzón ────────────────────────────────────────────────────────── */
+.mb-open     { --oc: var(--vine);       --ocbg: var(--vine-bg); }
+.mb-pending  { --oc: var(--gold-deep);  --ocbg: var(--gold-bg); }
+.mb-resolved { --oc: var(--ink-muted);  --ocbg: var(--paper-subtle); }
+.mb-archived { --oc: var(--ink-disabled); --ocbg: var(--paper-subtle); }
+
+.mailbox-panel { margin-bottom: 24px; }
+.mailbox-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap; margin-bottom: 13px;
+}
+.mailbox-head h2 { margin: 0 0 3px; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+.mailbox-sub { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-muted); max-width: 620px; }
+.mailbox-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.mb-card {
+  background: var(--paper-card); border: 1px solid var(--line);
+  border-left: 4px solid var(--oc); border-radius: var(--radius-lg);
+  padding: 14px 17px; margin-bottom: 11px;
+}
+.mb-top { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 6px; }
+.mb-state {
+  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: var(--radius-full);
+  background: var(--ocbg); color: var(--oc); border: 1px solid var(--oc);
+}
+.mb-dest {
+  font-size: 11px; font-family: var(--font-mono); font-weight: 600;
+  padding: 2px 8px; border-radius: var(--radius-sm);
+  background: var(--grape-bg); color: var(--grape); border: 1px solid var(--grape-border);
+}
+.mb-title { margin: 0 0 7px; font-size: 15px; font-weight: 700; line-height: 1.4; color: var(--ink); }
+/* ⛔ The body is the entry. It was dropped by the parser and rendered by nothing, so the
+   whole argument of every mailbox entry was invisible — the thing the operator has to
+   weigh in order to route it. */
+.mb-body {
+  font-size: 13px; line-height: 1.6; color: var(--ink-soft);
+  padding: 10px 13px; background: var(--paper-subtle);
+  border-radius: var(--radius-md); margin-bottom: 9px;
+}
+.mb-body > *:first-child { margin-top: 0; }
+.mb-body > *:last-child { margin-bottom: 0; }
+.mb-body p { margin: 0 0 8px; }
+.mb-body code { font-size: 12px; }
+.mb-nobody { font-size: 12px; font-style: italic; color: var(--ink-disabled); margin: 0 0 9px; }
+.mb-foot { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.mb-file { opacity: .75; }
+
+.queue-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0 16px; }
+.qd-line { flex: 1; height: 1px; background: var(--line); }
+.qd-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-muted); white-space: nowrap;
+}
+
+
+/* El raíl descansa sobre la madera, así que necesita su propia sombra para no
+   flotar: los paneles del resto de la web viven sobre papel, no sobre mesa. */
+.desk-surface .rail-panel {
+  border-color: rgba(90, 62, 36, .28);
+  box-shadow: 0 6px 16px rgba(50, 30, 12, .26);
+}
+.desk-surface .capture-box { background: var(--paper-elevated); }
+.desk-surface .front-state-card { background: var(--paper-card); }
+
+/* Las tres píldoras del encabezado de la Oficina llevan el color de su estado. Sin esto
+   heredan el gris de `.spec-pill` y las tres se leen igual, que es justo lo contrario de
+   lo que un contador de estados existe para hacer. */
+.header-stats-bar .spec-pill.st-active,
+.header-stats-bar .spec-pill.st-paused,
+.header-stats-bar .spec-pill.st-pending {
+  background: var(--ocbg); border-color: var(--oc); color: var(--oc);
+}
+.header-stats-bar .spec-pill strong { color: inherit; }
+
+/* Una chincheta gris no se ve sobre el corcho: la de "en cola" es plateada, no apagada. */
+.mural-card.st-pending::before {
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,.95) 0 20%, transparent 46%),
+    radial-gradient(circle at 50% 50%, #b9bfba 0 58%, rgba(0,0,0,.4) 100%);
+}

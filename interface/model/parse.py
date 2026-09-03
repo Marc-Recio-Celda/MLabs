@@ -167,7 +167,17 @@ def parse_queue(path, text):
                      r"\((?P<author>[^,]+),\s*(?P<date>\d{4}-\d{2}-\d{2})\)\s*$", head)
         if m:
             f = {k: clean(v) for k, v in m.groupdict().items()}
-            ents.append({"kind": "mailbox-entry", "id": None, "line": i + 1, **f})
+            # ⛔ The body is the entry. An earlier version read the header only, so every
+            # argument an agent wrote — the cost, the evidence, the thing the operator has
+            # to weigh — was dropped in silence while `Nothing unplaceable.` printed
+            # underneath. That is the failure rule 2 of `GRAMMAR.md` exists to prevent, and
+            # it is invisible precisely because the entry still appears, with a title.
+            body, k = [], i + 1
+            while k < len(lines) and not lines[k].startswith("### "):
+                body.append(lines[k])
+                k += 1
+            ents.append({"kind": "mailbox-entry", "id": None, "line": i + 1,
+                         "body": "\n".join(body).strip(), **f})
             continue
 
         m = re.match(r"^(?P<id>T\d+)\s*·\s*(?P<title>.+?)\s*(?P<status>[⬜🔨⛔🔴✅])?\s*$", head)
@@ -281,6 +291,13 @@ def parse_compass(path, text):
                     row_proj = re.search(r"\b([a-zA-Z0-9_\-]+):[A-Z0-9]", desc_in).group(1)
 
             ents.append({"kind": "front", "line": i + 1, "marker": cells[0],
+                         # ⚠️ Which table a row came from is a FACT the file states and the
+                         # view cannot recover: the summary table is the ranked queue, the
+                         # board tables are per-project detail about the same fronts. Left
+                         # untagged, every front appears twice on any board built from these
+                         # — once ranked and once not — and the duplicate looks like a
+                         # second front rather than a second mention.
+                         "row": "summary",
                          "active": cells[0] == "▶",
                          "name": fname,
                          "described_in": desc_in,
@@ -293,6 +310,7 @@ def parse_compass(path, text):
         elif project and cells[0] not in ("Front", "") and not cells[0].startswith("---"):
             g = dict(zip(row, cells)) if row and len(row) == len(cells) else {}
             ents.append({"kind": "front", "line": i + 1, "marker": None, "active": False,
+                         "row": "board",
                          "name": clean(g.get("Front", cells[0])),
                          "waits_on": clean(g.get("Waits on", cells[1] if len(cells) > 1 else "")),
                          "note": clean(g.get("Note", cells[2] if len(cells) > 2 else None)),
@@ -342,26 +360,100 @@ def parse_plan(path, text):
     # item reported as *a failed close* — the mirror of a pattern that cannot match, and
     # just as useless: a check that fires when it should not is a check nobody reads.
     # Both forms are accepted; the schema's is canonical and the older one is history.
-    DEST = (r"(✅ *`?resolved`?|✅ *`?done`?|→ *`?TASKS[^`]*`?|→ *integrated"
-            r"|→ *`?MAILBOX[^`]*`?|→ *`?IDEAS[^`]*`?|→ *park|⚫|`?discarded`?)")
-    for i, line in enumerate(lines):
-        m = re.match(r"^(?P<n>\d+)\.\s+(?P<text>.+)$", line)
-        if not m:
-            continue
-        body = m.group("text")
-        j = i + 1
-        while j < len(lines) and lines[j].startswith("   ") and lines[j].strip():
-            body += " " + lines[j].strip()
-            j += 1
+    # ⚠️ `[^`]*` was `[^\x60]*` here and it is greedy: with no closing backtick on the line
+    # it ran to the end, so `→ MAILBOX` swallowed everything written after it — the item's
+    # author note among it. A destination is one token, so the tail is spelled as one.
+    DEST = (r"(✅ *`?resolved`?|✅ *`?done`?|→ *`?TASKS[\w./-]*`?|→ *integrated"
+            r"|→ *`?MAILBOX[\w./-]*`?|→ *`?IDEAS[\w./-]*`?|→ *park|⚫ *`?discarded`?"
+            r"|⚫|`?discarded`?)")
+
+    # Which of `FLOW.md`'s four a destination is. The view paints by outcome, so it needs
+    # the outcome and not the spelling — ⚠️ **and the spellings are what differ between two
+    # eras of the same file**, which is why the mapping lives here rather than in the view.
+    def outcome_of(dest):
+        if not dest:
+            return None
+        d = dest.lower()
+        if "discard" in d or "⚫" in d:
+            return "discarded"
+        if "mailbox" in d or "integrated" in d:
+            return "mailbox"
+        if "idea" in d or "park" in d:
+            return "ideas"
+        if "task" in d:
+            return "mailbox"
+        return "done"
+
+    # ⛔ A section is not decoration. `FLOW.md` nests the work and the operator asked for a
+    # sheet that shows it, so headings inside a plan group its items — and a group may be
+    # ORDERED (numbered, one after another) or UNORDERED (bulleted, no sequence implied).
+    # ⚠️ Forcing every item into one numbered run is what makes a plan read as a sequence
+    # that does not exist, and the operator then works it in that false order.
+    ORDER_WHY = "the order, and why this order"
+    section = subsection = None
+    in_order_why = False
+    seen = set()
+
+    def push(i, raw_index, body, ordered):
         struck = "~~" in body
         dest = re.search(DEST, body)
-        ents.append({"kind": "plan-item", "line": i + 1, "index": int(m.group("n")),
+        destination = clean(dest.group(0)) if dest else None
+        text = body
+        if destination:
+            # The destination is a field, so it leaves the text. Left in, the view prints
+            # it twice — once as prose and once as its own tag.
+            text = re.sub(DEST, "", text)
+        # An item written from the office carries who wrote it and when, in the same shape
+        # every other record in this method uses. Nothing new to learn, and nothing to
+        # migrate: an item without it simply has no author.
+        note = re.search(r"\*\(([^,)]+),\s*(\d{4}-\d{2}-\d{2})\)\*\s*$", text.strip())
+        if note:
+            text = text[:note.start()]
+        ents.append({"kind": "plan-item", "line": i + 1, "index": raw_index,
                      "project": plan_project,
-                     "struck": struck, "destination": clean(dest.group(0)) if dest else None,
-                     "text": clean(re.sub(r"~~", "", body))[:300]})
-        if struck and not dest:
+                     "section": section, "subsection": subsection, "ordered": ordered,
+                     "struck": struck, "destination": destination,
+                     "outcome": outcome_of(destination),
+                     "author": clean(note.group(1)) if note else None,
+                     "date": note.group(2) if note else None,
+                     "text": clean(re.sub(r"~~", "", text))[:300]})
+        if struck and not destination:
             probs.append(Problem(path, i + 1,
                                  "a struck plan item with no destination — a failed close", body))
+
+    for i, line in enumerate(lines):
+        h = re.match(r"^(?P<hashes>#{2,3})\s+(?P<h>.+?)\s*$", line)
+        if h:
+            head = clean(h.group("h"))
+            if len(h.group("hashes")) == 2:
+                section, subsection = head, None
+            else:
+                subsection = head
+            in_order_why = head.lower().startswith(ORDER_WHY)
+            if not in_order_why:
+                ents.append({"kind": "plan-section", "line": i + 1, "project": plan_project,
+                             "level": len(h.group("hashes")), "title": head,
+                             "section": section, "subsection": subsection})
+            continue
+        if in_order_why or i in seen:
+            continue
+
+        m = re.match(r"^(?P<n>\d+)\.\s+(?P<text>.+)$", line)
+        bullet = None if m else re.match(r"^[-*]\s+(?P<text>.+)$", line)
+        if not m and not bullet:
+            continue
+        body = (m or bullet).group("text")
+        j = i + 1
+        # A continuation is indented under its item. ⚠️ It must not swallow the NEXT item,
+        # which is why each consumed line is recorded: an indented `1.` is a nested item in
+        # some plans and a wrapped line in others, and only the marker tells them apart.
+        while j < len(lines) and lines[j].startswith("   ") and lines[j].strip():
+            if re.match(r"^\s+(?:\d+\.|[-*])\s+", lines[j]):
+                break
+            body += " " + lines[j].strip()
+            seen.add(j)
+            j += 1
+        push(i, int(m.group("n")) if m else None, body, ordered=bool(m))
     return ents, probs
 
 

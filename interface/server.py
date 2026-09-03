@@ -35,6 +35,14 @@ except Exception as e:                       # the engine can serve a page witho
 else:
     _MODEL_ERROR = None
 
+try:
+    import write as writer
+except Exception as e:                       # ⚠️ a missing writer disables writing and
+    writer = None                            # says so; it never degrades to pretending
+    _WRITER_ERROR = e                        # a write happened (which is what the stub
+else:                                        # endpoints below used to do).
+    _WRITER_ERROR = None
+
 # ⛔ Defined ONCE, in the model. A second copy here diverges, and then the same adapter is
 # valid or invalid depending on whether an import succeeded — with nothing in the output
 # saying which (`MLabs:AX-20`).
@@ -157,6 +165,10 @@ def make_handler(adapter):
                         self._send(200, {"entities": [], "problems": [{"why": str(e)}]})
                 else:
                     self._send(200, {"entities": [], "standalone": True})
+            elif path == "/api/trace":
+                # What this session has written, so a confirmation is something the operator
+                # can read back rather than a toast that has already faded.
+                self._send(200, {"events": writer.read_journal(adapter) if writer else []})
             elif path == "/api/stamp":
                 self._send(200, {"stamp": stamp(adapter)})
             else:
@@ -174,23 +186,98 @@ def make_handler(adapter):
                 else:
                     self._send(404, f"Not found: {path}", "text/plain")
 
+        # ⛔ The routes below used to answer `{"status": "ok"}` and touch nothing. That is
+        # worse than no write layer at all: the interface reported success, the operator
+        # believed the entry was filed, and `PH-3` was broken by the one component built to
+        # uphold it. Every route here writes through `model/write.py` or fails out loud.
+        def _writable(self):
+            if writer is None:
+                self._send(503, {"status": "error",
+                                 "msg": f"the write layer failed to load: {_WRITER_ERROR}"})
+                return None
+            if not adapter.get("path"):
+                self._send(409, {"status": "error",
+                                 "msg": "no adapter is connected, so there is no file to "
+                                        "write to. Start the server with --adapter."})
+                return None
+            return adapter
+
+        def _wrote(self, kind, result, echo=None):
+            writer.record(adapter, {"kind": kind, **result, **(echo or {})})
+            self._send(200, {"status": "ok", "kind": kind, **result})
+
         def do_POST(self):
             path = self.path.split("?", 1)[0]
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
             try:
                 payload = json.loads(body)
             except Exception:
                 payload = {}
 
-            if path == "/api/task":
-                self._send(200, {"status": "ok", "msg": "Task recorded", "data": payload})
-            elif path == "/api/idea":
-                self._send(200, {"status": "ok", "msg": "Idea recorded", "data": payload})
-            elif path == "/api/scratchpad":
-                self._send(200, {"status": "ok", "msg": "Scratchpad saved"})
-            else:
+            routes = {
+                "/api/mailbox": ("mailbox", lambda a: writer.append_mailbox(
+                    a, title=payload.get("title", ""), project=payload.get("project", "cross"),
+                    destination=payload.get("destination", "decision"),
+                    body=payload.get("body", ""), author=payload.get("author", "operator"),
+                    state=payload.get("state", "open"))),
+                "/api/idea": ("idea", lambda a: writer.append_idea(
+                    a, title=payload.get("title", ""), body=payload.get("body", ""),
+                    project=payload.get("project", "cross"),
+                    scope=payload.get("scope", "general"),
+                    author=payload.get("author", "operator"))),
+                "/api/task": ("task", lambda a: writer.append_task(
+                    a, title=payload.get("title", ""), project=payload.get("project", "cross"),
+                    why=payload.get("why", ""), status=payload.get("status", "⬜"),
+                    author=payload.get("author", "operator"))),
+                "/api/plan/item": ("plan-item", lambda a: writer.append_plan_item(
+                    a, text_=payload.get("text", ""), section=payload.get("section") or None,
+                    ordered=payload.get("ordered", True),
+                    author=payload.get("author", "operator"))),
+            }
+            if path not in routes:
                 self._send(404, "Endpoint not found", "text/plain")
+                return
+            a = self._writable()
+            if a is None:
+                return
+            kind, run = routes[path]
+            if not str(payload.get("title") or payload.get("text") or "").strip():
+                self._send(400, {"status": "error", "msg": "an entry with no text"})
+                return
+            try:
+                self._wrote(kind, run(a))
+            except writer.WriteError as e:
+                self._send(400, {"status": "error", "msg": str(e)})
+            except OSError as e:
+                self._send(500, {"status": "error", "msg": f"could not write: {e}"})
+
+        def do_PATCH(self):
+            path = self.path.split("?", 1)[0]
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
+            try:
+                payload = json.loads(body)
+            except Exception:
+                payload = {}
+            if path != "/api/plan/item":
+                self._send(404, "Endpoint not found", "text/plain")
+                return
+            a = self._writable()
+            if a is None:
+                return
+            try:
+                self._wrote("plan-route", writer.route_plan_item(
+                    a, line=payload.get("line"), expect=payload.get("expect", ""),
+                    outcome=payload.get("outcome", "")))
+            except writer.Conflict as e:
+                # 409, not 400: the caller's edit is fine and its view is stale. The office
+                # reloads and retries; a 400 would tell it the request itself was wrong.
+                self._send(409, {"status": "stale", "msg": str(e)})
+            except writer.WriteError as e:
+                self._send(400, {"status": "error", "msg": str(e)})
+            except OSError as e:
+                self._send(500, {"status": "error", "msg": f"could not write: {e}"})
 
         def log_message(self, *args):
             pass

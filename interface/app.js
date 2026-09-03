@@ -342,11 +342,23 @@ function ingestModel(model) {
   // Live Plan items & metadata
   STATE.livePlan = entities.filter(e => e.kind === "plan-item").map(e => ({
     id: e.id,
-    index: e.index || 1,
+    index: e.index,
+    // ⛔ `line` is what lets the desk write an item BACK. Without it the office can only
+    // read the plan, which is the whole of what was wrong with the old cockpit.
+    line: e.line,
     text: e.text || "",
     struck: Boolean(e.struck),
     destination: e.destination || "",
+    outcome: e.outcome || null,
+    section: e.section || null,
+    subsection: e.subsection || null,
+    ordered: e.ordered !== false,
+    author: e.author || null,
+    date: e.date || null,
     project: e.project || "cross"
+  }));
+  STATE.planSections = entities.filter(e => e.kind === "plan-section").map(e => ({
+    level: e.level, title: e.title, section: e.section, subsection: e.subsection, line: e.line
   }));
   STATE.livePlanMeta = entities.find(e => e.kind === "live-plan-meta") || null;
 
@@ -422,6 +434,9 @@ function ingestModel(model) {
     project: e.project || "cross",
     state: e.state || "open",
     destination: e.destination || "inbox",
+    body: e.body || "",
+    line: e.line,
+    file: e.file || "",
     author: e.author || e.origin || "Agent",
     date: e.date || "",
     date_inferred: Boolean(e.date_inferred),
@@ -601,6 +616,12 @@ function updateHUD() {
   const badgeProjects = document.getElementById("badgeProjects");
   if (badgeProjects) badgeProjects.textContent = STATE.projects.length;
 
+  const badgeMailbox = document.getElementById("badgeMailbox");
+  if (badgeMailbox) {
+    const open = (STATE.mailbox || []).filter(e => ["open", "pending"].includes(e.state)).length;
+    badgeMailbox.textContent = open;
+    badgeMailbox.classList.toggle("warn-badge", open > 0);
+  }
   const badgeInbox = document.getElementById("badgeInbox");
   if (badgeInbox) {
     const activeTasks = STATE.tasks.filter(t => ["⬜", "🔨", "⛔", "🔴"].includes(t.status)).length;
@@ -655,6 +676,8 @@ function syncUrlHash() {
     if (tab === "guide" && activeDoc) {
       hash += `?doc=${encodeURIComponent(activeDoc)}`;
     }
+  } else if (view === "desk") {
+    hash = `#/desk/${encodeURIComponent(STATE.deskCardId || "")}`;
   } else if (view === "cockpit") {
     hash = `#/cockpit`;
     const params = [];
@@ -731,6 +754,9 @@ function restoreRouteFromUrl() {
       STATE.guideActiveDoc = STATE.guideActiveDoc || {};
       STATE.guideActiveDoc[STATE.selectedProject] = decodeURIComponent(params.get("doc"));
     }
+  } else if (mainView === "desk") {
+    STATE.currentView = "desk";
+    if (segments[1]) STATE.deskCardId = decodeURIComponent(segments[1]);
   } else if (mainView === "cockpit") {
     STATE.currentView = "cockpit";
     if (params.has("front")) {
@@ -803,6 +829,14 @@ function summarise(text, max = 110) {
   return { head: t.slice(0, cut > 40 ? cut : max).trim(), rest: t.slice(cut > 40 ? cut : max).trim() };
 }
 
+// ⚠️ `summarise` returns a pair, not a string — interpolating it gives `[object Object]`,
+// which is what every card on the first office build showed. This is the string form, for
+// the places that cannot open (a card whose whole surface is already a link).
+function cut(text, max = 110) {
+  const { head, rest } = summarise(text, max);
+  return inline(head) + (rest ? "…" : "");
+}
+
 function expandable(text, cls = "") {
   const { head, rest } = summarise(text);
   if (!rest) return `<span class="${cls}">${inline(head)}</span>`;
@@ -860,7 +894,8 @@ function renderView() {
     case "overview": renderOverview(main); break;
     case "projects": renderProjectsHub(main); break;
     case "project-detail": renderProjectDetailPage(main); break;
-    case "cockpit": renderCockpit(main); break;
+    case "cockpit": renderOffice(main); break;
+    case "desk": renderDesk(main); break;
     case "cheatsheet": renderCheatSheet(main); break;
     case "inbox": renderInbox(main); break;
     case "ideas": renderIdeas(main); break;
@@ -2722,6 +2757,16 @@ function renderMarkdownBody(text) {
   let listType = "ul";
   let inBlockquote = false;
   let blockquoteBuffer = [];
+  // ⛔ A paragraph is a RUN of non-blank lines, not one paragraph per line. Emitting a
+  // `<p>` per source line turned every hard-wrapped paragraph into a stack of blocks with
+  // gaps between them — which is what every mailbox entry looked like, because a mailbox
+  // entry is prose wrapped at 100 columns like the rest of these files.
+  let paraBuffer = [];
+  function flushPara() {
+    if (!paraBuffer.length) return;
+    html += `<p>${inline(paraBuffer.join(" "))}</p>`;
+    paraBuffer = [];
+  }
 
   function flushBlockquote() {
     if (!inBlockquote) return;
@@ -2750,6 +2795,15 @@ function renderMarkdownBody(text) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
+
+    // Anything that is not plain prose ends the paragraph that was accumulating. ⚠️ The
+    // test lists what STARTS a block, so a construct added below without being added here
+    // would swallow its own opening line into the previous paragraph.
+    const isPlainText = trimmed.length > 0 && !inCode
+      && !trimmed.startsWith("```") && !trimmed.startsWith("|") && !trimmed.startsWith("#")
+      && !trimmed.startsWith(">") && !trimmed.startsWith("- ") && !trimmed.startsWith("* ")
+      && !trimmed.startsWith("---") && !/^\d+\.\s+/.test(trimmed);
+    if (!isPlainText) flushPara();
 
     // Code blocks (```lang ... ```)
     if (trimmed.startsWith("```")) {
@@ -2863,10 +2917,11 @@ function renderMarkdownBody(text) {
       html += '<hr style="border: 0; border-top: 1px solid var(--line); margin: 20px 0;">';
     } else {
       if (inList) { html += `</${listType}>`; inList = false; }
-      html += `<p>${inline(line)}</p>`;
+      paraBuffer.push(trimmed);
     }
   }
 
+  flushPara();
   flushBlockquote();
   if (inCode) html += `<pre><code>${esc(codeBuffer.join("\n"))}</code></pre>`;
   if (inTable) html += renderMarkdownTable(tableBuffer);
@@ -2954,6 +3009,7 @@ async function loadModel() {
     ingestModel(modelData);
     restoreRouteFromUrl();
     renderView();
+    if (STATE.trace === undefined) loadTrace();
   } catch (err) {
     STATE.error = `No se pudo conectar con el servidor: ${err.message}`;
     renderView();
@@ -3614,12 +3670,22 @@ function renderInbox(container) {
   container.innerHTML = `
     <div class="view-header">
       <div class="view-title-group">
-        <h1><span>📬</span> Inbox & Tasks Lifecycle</h1>
-        <p class="view-subtitle">Gestión interactiva de tareas con trazabilidad de descarte (PH-3) e hilo de comentarios</p>
+        <h1><span>📬</span> Las dos colas</h1>
+        <p class="view-subtitle">Corren en direcciones opuestas y <strong>ninguna vacía la suya</strong>
+          (<code>AX-15</code>): el <strong>buzón</strong> va de agente a operador, la
+          <strong>lista de tareas</strong> de operador a agente.</p>
       </div>
       <button class="btn-hud-action btn-add-task" onclick="openTaskModal()">
         <span>➕</span> <span>Nueva Tarea</span>
       </button>
+    </div>
+
+    ${renderMailboxPanel()}
+
+    <div class="queue-divider">
+      <span class="qd-line"></span>
+      <span class="qd-label">↓ operador → agente · la lista de tareas</span>
+      <span class="qd-line"></span>
     </div>
 
     <!-- FILTER TOOLBAR (Priority #1) -->
@@ -3932,13 +3998,37 @@ window.openDiscardModal = function(taskId, title) {
   }
 };
 
+// ⚠️ The two project selects were `<!-- populated dynamically -->` and nothing populated
+// them, so both modals submitted an empty `project` — the one field `AX-24` and every
+// filter in this interface depend on, and the one nothing else can infer.
+function fillProjectSelect(id) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const names = [...new Set([
+    ...STATE.projects.map(p => p.name),
+    ...STATE.tasks.map(t => t.project),
+    ...STATE.fronts.map(f => f.project),
+    ...STATE.ideas.map(i => i.project)
+  ].filter(Boolean))].sort();
+  const keep = sel.value;
+  sel.innerHTML = names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("")
+    + `<option value="cross">cross — vale para varios proyectos</option>`;
+  if (keep && names.includes(keep)) sel.value = keep;
+  else if (STATE.deskCardId) {
+    const c = officeCards().find(c => c.id === STATE.deskCardId);
+    if (c && names.includes(c.project)) sel.value = c.project;
+  }
+}
+
 window.openIdeaModal = function() {
   const modal = document.getElementById("ideaModal");
+  fillProjectSelect("ideaProject");
   if (modal) modal.classList.add("active");
 };
 
 window.openTaskModal = function() {
   const modal = document.getElementById("taskModal");
+  fillProjectSelect("taskProject");
   if (modal) {
     updateTaskPreview();
     modal.classList.add("active");
@@ -4040,3 +4130,751 @@ async function watchStamp() {
 // Initial boot & periodic watcher
 loadModel().then(watchStamp);
 setInterval(watchStamp, 2000);
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+// OFICINA (el mural) y DESPACHO (la mesa de una tarea)
+//
+// ⛔ Everything below WRITES. The rest of this file reads a model and paints it; these
+// functions change files on disk through `/api`, and every one of them confirms from the
+// server's answer rather than from having sent the request. A view that says *saved*
+// because it called `fetch` is the failure this section replaces: the previous write layer
+// answered `ok` and touched nothing, so the interface built to uphold `PH-3` was the thing
+// breaking it.
+// ═════════════════════════════════════════════════════════════════════════════
+
+// `FLOW.md`'s four, in one place. ⚠️ The view paints by outcome and the writer spells the
+// destination; if these two lists ever disagree, an item is written with a destination no
+// view can colour — so the vocabulary is defined once and both sides import it.
+const OUTCOMES = {
+  done:      { label: "hecho",      icon: "✅", cls: "out-done",      hint: "resuelto aquí y ahora" },
+  mailbox:   { label: "al buzón",   icon: "📬", cls: "out-mailbox",   hint: "hay que debatirlo" },
+  ideas:     { label: "a ideas",    icon: "💡", cls: "out-ideas",     hint: "interesante, no ahora" },
+  discarded: { label: "descartado", icon: "⚫", cls: "out-discarded", hint: "con su motivo" }
+};
+
+async function api(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  let data = {};
+  try { data = await res.json(); } catch (_) { /* a body that is not JSON is still a status */ }
+  if (!res.ok) {
+    const err = new Error(data.msg || `${res.status} ${res.statusText}`);
+    err.stale = res.status === 409;
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+// One place that reports a write, so a confirmation always says WHERE it landed. ⚠️ "Idea
+// guardada" is not traceability; "IDEAS.md línea 14" is, because it can be checked.
+function confirmWrite(data, what) {
+  const where = data.file ? ` · <code>${esc(data.file)}</code>${data.line ? ` línea ${data.line}` : ""}` : "";
+  showToast(`${what}${where.replace(/<[^>]+>/g, "")}`);
+  STATE.lastWrite = { what, ...data, at: new Date().toISOString() };
+  loadModel();
+  loadTrace();
+}
+
+function reportWriteError(e) {
+  if (e.stale) {
+    showToast("El plan cambió en disco. Recargando para que veas el estado real.");
+    loadModel();
+  } else {
+    showToast(`No se pudo escribir: ${e.message}`);
+  }
+}
+
+async function loadTrace() {
+  try {
+    const d = await api("GET", "/api/trace");
+    STATE.trace = (d.events || []).slice().reverse();
+    const rail = document.getElementById("traceRail");
+    if (rail) rail.innerHTML = renderTraceList();
+  } catch (_) { STATE.trace = STATE.trace || []; }
+}
+
+// ───────────────────────────────────────────────── the unified card
+//
+// ⛔ A compass row and a task list entry are the SAME THING under `FLOW.md`: every
+// sub-block is a task. They arrive from two files because two files is how the instance
+// keeps them, and the board that shows them twice is showing one piece of work as two.
+// The merge is by title, which is what the operator wrote in both places.
+function normaliseTitle(s) {
+  return String(s || "").toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[`*_~]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function officeCards() {
+  const cards = new Map();
+  const key = t => normaliseTitle(t);
+
+  // The summary table is the ranked queue and is the spine of the board. Board rows are
+  // detail about the same fronts (`row: "board"`), so they enrich and never add.
+  for (const f of STATE.fronts.filter(f => f.row !== "board")) {
+    cards.set(key(f.name), {
+      id: f.id || f.name, title: f.name, project: f.project || "cross",
+      marker: f.marker, active: Boolean(f.active),
+      moves_when: f.moves_when || "", described_in: f.described_in || "",
+      why: "", taskId: null, status: null, sources: ["compass"], line: f.line
+    });
+  }
+  for (const f of STATE.fronts.filter(f => f.row === "board")) {
+    const c = cards.get(key(f.name)) || [...cards.values()].find(
+      c => key(c.title).includes(key(f.name)) || key(f.name).includes(key(c.title)));
+    if (c) {
+      c.waits_on = f.waits_on || c.waits_on || "";
+      c.note = f.note || c.note || "";
+      if (!c.sources.includes("board")) c.sources.push("board");
+    } else {
+      cards.set(key(f.name), {
+        id: f.id || f.name, title: f.name, project: f.project || "cross",
+        marker: null, active: false, moves_when: f.moves_when || "",
+        waits_on: f.waits_on || "", note: f.note || "", described_in: f.described_in || "",
+        why: "", taskId: null, status: null, sources: ["board"], line: f.line
+      });
+    }
+  }
+  for (const t of STATE.tasks) {
+    if (t.status === "✅" || t.status === "⚫") continue;   // terminal: it leaves the board
+    const k = key(t.title);
+    const hit = cards.get(k) || [...cards.values()].find(
+      c => key(c.title).includes(k) || k.includes(key(c.title)));
+    if (hit) {
+      hit.taskId = t.id; hit.why = t.why || hit.why; hit.status = t.status;
+      if (!hit.sources.includes("tasks")) hit.sources.push("tasks");
+    } else {
+      cards.set(k, {
+        id: t.id, title: t.title, project: t.project || "cross", marker: null,
+        active: false, moves_when: "", described_in: t.file || "", why: t.why || "",
+        taskId: t.id, status: t.status, sources: ["tasks"], line: t.line
+      });
+    }
+  }
+
+  const rank = c => c.active ? 0 : c.marker === "⏸" ? 3 : /^\d+$/.test(c.marker || "") ? 1 : 2;
+  return [...cards.values()].sort((a, b) =>
+    rank(a) - rank(b) ||
+    (parseInt(a.marker) || 99) - (parseInt(b.marker) || 99) ||
+    a.title.localeCompare(b.title));
+}
+
+// The five states of `FLOW.md`, derived rather than stored — ⚠️ a second place holding
+// "what is happening now" is the thing that rule exists to prevent.
+function cardState(c) {
+  if (c.active) return "active";
+  if (c.marker === "⏸") return "paused";
+  return "pending";
+}
+const STATE_META = {
+  active:  { label: "activa",   icon: "▶", cls: "st-active" },
+  paused:  { label: "en pausa", icon: "⏸", cls: "st-paused" },
+  pending: { label: "en cola",  icon: "○", cls: "st-pending" }
+};
+
+// ───────────────────────────────────────────────── the plan, in sections
+//
+// Items keep the order the file gives them; sections group them, and an UNORDERED section
+// carries no sequence at all. ⚠️ Numbering an unordered group is how a plan reads as a
+// chain of dependencies that were never there — and then it gets worked in that order.
+function planTree(items, sections) {
+  const groups = [];
+  const at = (sec, sub) => {
+    const k = `${sec || ""}⇢${sub || ""}`;
+    let g = groups.find(g => g.key === k);
+    if (!g) {
+      g = { key: k, section: sec, subsection: sub, items: [], ordered: true };
+      groups.push(g);
+    }
+    return g;
+  };
+  for (const s of sections || []) at(s.section, s.level === 3 ? s.subsection : null);
+  for (const it of items) {
+    const g = at(it.section, it.subsection);
+    g.items.push(it);
+    if (it.ordered === false) g.ordered = false;
+  }
+  return groups.filter(g => g.items.length);
+}
+
+function renderPlanItem(item, editable) {
+  const meta = item.outcome ? OUTCOMES[item.outcome] : null;
+  const routed = Boolean(item.struck || meta);
+  const marker = item.ordered === false ? "•" : (item.index ?? "·");
+  return `
+    <div class="pi ${routed ? "pi-routed" : "pi-open"} ${meta ? meta.cls : ""}">
+      <div class="pi-marker">${routed ? (meta ? meta.icon : "✓") : esc(String(marker))}</div>
+      <div class="pi-main">
+        <div class="pi-text">${inline(item.text)}</div>
+        <div class="pi-meta">
+          ${meta ? `<span class="pi-outcome ${meta.cls}">${meta.icon} ${meta.label}</span>` : ""}
+          ${item.author ? `<span class="pi-author">✍ ${esc(item.author)}${item.date ? ` · ${esc(item.date)}` : ""}</span>` : ""}
+          ${item.line ? `<span class="pi-line" title="Línea en PLAN.md">L${item.line}</span>` : ""}
+        </div>
+      </div>
+      ${!routed && editable ? `
+        <div class="pi-route" title="Dale su destino — los cuatro de FLOW.md">
+          ${Object.entries(OUTCOMES).map(([k, o]) => `
+            <button class="pi-route-btn ${o.cls}" title="${o.label} — ${o.hint}"
+                    onclick="routePlanItem(${item.line}, ${JSON.stringify(item.text.slice(0, 40)).replace(/"/g, "&quot;")}, '${k}')">
+              ${o.icon}
+            </button>`).join("")}
+        </div>` : ""}
+    </div>`;
+}
+
+function renderTraceList() {
+  const ev = STATE.trace || [];
+  if (!ev.length) {
+    return `<div class="trace-empty">Nada escrito todavía en esta sesión.<br>
+            <span>Cada nota, idea o entrada al buzón aparecerá aquí con su fichero y su línea.</span></div>`;
+  }
+  const KIND = {
+    "mailbox":    { icon: "📬", label: "al buzón" },
+    "idea":       { icon: "💡", label: "a ideas" },
+    "task":       { icon: "➕", label: "tarea creada" },
+    "plan-item":  { icon: "📝", label: "item al plan" },
+    "plan-route": { icon: "🎯", label: "item enrutado" }
+  };
+  return ev.map(e => {
+    const k = KIND[e.kind] || { icon: "•", label: e.kind };
+    return `
+      <div class="trace-row">
+        <span class="trace-icon">${k.icon}</span>
+        <div class="trace-body">
+          <div class="trace-head"><strong>${k.label}</strong>
+            <span class="trace-where"><code>${esc(e.file || "")}</code>${e.line ? ` L${e.line}` : ""}</span>
+          </div>
+          <div class="trace-text">${esc(String(e.wrote || "").slice(0, 160))}</div>
+          <div class="trace-at">${esc(String(e.at || "").replace("T", " "))}</div>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+// ───────────────────────────────────────────────── OFICINA — the board
+function renderOffice(container) {
+  const cards = officeCards();
+  const projects = [...new Set(cards.map(c => c.project).filter(Boolean))].sort();
+  const fp = STATE.officeFilterProj || "ALL";
+  const fs = STATE.officeFilterState || "ALL";
+  const shown = cards.filter(c =>
+    (fp === "ALL" || (c.project || "").toLowerCase() === fp.toLowerCase()) &&
+    (fs === "ALL" || cardState(c) === fs));
+  const count = st => cards.filter(c => cardState(c) === st).length;
+
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>🗂️</span> Oficina</h1>
+        <p class="view-subtitle">El mural de todo lo que hay abierto. Una tarjeta por tarea —
+          se fusionan las filas del <code>COMPASS</code> y las entradas de <code>TASKS</code>,
+          porque bajo <code>FLOW.md</code> un sub-bloque <em>es</em> una tarea.</p>
+      </div>
+      <div class="header-stats-bar">
+        <span class="spec-pill st-active"><strong>▶ Activa:</strong> ${count("active")}</span>
+        <span class="spec-pill st-paused"><strong>⏸ En pausa:</strong> ${count("paused")}</span>
+        <span class="spec-pill st-pending"><strong>○ En cola:</strong> ${count("pending")}</span>
+      </div>
+    </div>
+
+    ${count("active") !== 1 ? `
+      <div class="office-warning">
+        <strong>⚠️ Hay ${count("active")} tareas marcadas <code>▶</code>.</strong>
+        <span><code>FLOW.md</code> regla 4: varias tareas pueden estar abiertas, pero exactamente
+        una está <code>active</code>. ${count("active") === 0
+          ? "Ninguna lo está, así que el <code>▶</code> no señala nada."
+          : "Dos activas son dos frentes, y entonces el <code>▶</code> no es uno."}</span>
+      </div>` : ""}
+
+    <div class="office-filters">
+      <div class="filter-row">
+        <span class="filter-label">Estado</span>
+        <button class="chip-filter ${fs === "ALL" ? "active" : ""}" onclick="setOfficeFilter('state','ALL')">Todas (${cards.length})</button>
+        ${Object.entries(STATE_META).map(([k, m]) => `
+          <button class="chip-filter ${fs === k ? "active" : ""} ${m.cls}" onclick="setOfficeFilter('state','${k}')">
+            ${m.icon} ${m.label} (${count(k)})
+          </button>`).join("")}
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Proyecto</span>
+        <button class="chip-filter ${fp === "ALL" ? "active" : ""}" onclick="setOfficeFilter('proj','ALL')">Todos</button>
+        ${projects.map(p => `
+          <button class="chip-filter ${fp.toLowerCase() === p.toLowerCase() ? "active" : ""}" onclick="setOfficeFilter('proj','${esc(p)}')">
+            ${esc(p)} (${cards.filter(c => c.project === p).length})
+          </button>`).join("")}
+      </div>
+    </div>
+
+    <div class="office-mural">
+      ${shown.length ? shown.map(c => {
+        const st = cardState(c);
+        const m = STATE_META[st];
+        // The plan belongs to the task. Only the active one has the live sheet; the rest
+        // show what their sheet holds when the instance keeps one per task.
+        const items = c.active ? STATE.livePlan : [];
+        const routed = items.filter(i => i.struck || i.outcome).length;
+        const pct = items.length ? Math.round(routed / items.length * 100) : null;
+        return `
+          <article class="mural-card ${m.cls} ${c.active ? "mural-active" : ""}"
+                   onclick="openDesk('${esc(c.id)}')" title="Abrir el despacho de esta tarea">
+            <header class="mural-top">
+              <span class="mural-marker ${m.cls}">${c.active ? "▶" : (c.marker || m.icon)}</span>
+              <span class="mural-state ${m.cls}">${m.label}</span>
+              ${c.project ? `<span class="tag-pill tag-project">${esc(c.project)}</span>` : ""}
+            </header>
+            <h3 class="mural-title">${inline(c.title)}</h3>
+            ${(c.why || c.moves_when || c.waits_on) ? `
+              <div class="mural-extra">
+                ${c.why ? `<p class="mural-why"><strong>Why.</strong> ${cut(c.why, 320)}</p>` : ""}
+                ${(c.moves_when || c.waits_on) ? `
+                  <div class="mural-cond">
+                    <span class="cond-k">${c.waits_on ? "espera" : "avanza cuando"}</span>
+                    <span class="cond-v">${cut(c.moves_when || c.waits_on, 220)}</span>
+                  </div>` : ""}
+              </div>
+              <div class="mural-peek">pasa el ratón para leerla entera</div>` : ""}
+            ${pct !== null ? `
+              <div class="mural-progress">
+                <div class="mural-bar"><div class="mural-fill" style="width:${pct}%"></div></div>
+                <span class="mural-pct">${routed}/${items.length} enrutados</span>
+              </div>` : `<div class="mural-noplan">sin plan abierto todavía</div>`}
+            <footer class="mural-foot">
+              ${c.taskId ? `<span class="tag-pill tag-purple">${esc(c.taskId)}</span>` : ""}
+              ${c.sources.map(s => `<span class="src-chip src-${s}">${s}</span>`).join("")}
+              <span class="mural-go">abrir despacho →</span>
+            </footer>
+          </article>`;
+      }).join("") : `
+        <div class="empty-state">
+          <div class="empty-icon">🗂️</div><h3>Nada que mostrar con este filtro</h3>
+          <p>Cambia el estado o el proyecto para ver el resto del mural.</p>
+        </div>`}
+    </div>`;
+}
+
+// ───────────────────────────────────────────────── DESPACHO — one task's desk
+function renderDesk(container) {
+  const cards = officeCards();
+  const card = cards.find(c => c.id === STATE.deskCardId)
+            || cards.find(c => normaliseTitle(c.title) === normaliseTitle(STATE.deskCardId))
+            || cards.find(c => c.active) || cards[0];
+  if (!card) { STATE.currentView = "cockpit"; return renderOffice(container); }
+
+  const st = cardState(card);
+  const m = STATE_META[st];
+  const isLive = card.active;
+  const items = isLive ? STATE.livePlan : [];
+  const sections = isLive ? (STATE.planSections || []) : [];
+  const groups = planTree(items, sections);
+  const routed = items.filter(i => i.struck || i.outcome).length;
+  const pct = items.length ? Math.round(routed / items.length * 100) : 0;
+  const byOutcome = k => items.filter(i => i.outcome === k).length;
+  const secNames = [...new Set(groups.map(g => g.section).filter(Boolean))];
+
+  container.innerHTML = `
+    <div class="desk-surface">
+    <div class="desk-plate">
+      <button class="crumb-link" onclick="navigateTo('cockpit')">🗂️ Oficina</button>
+      <span class="crumb-sep">›</span>
+      <span class="crumb-here">${inline(card.title)}</span>
+      <span class="mural-state ${m.cls}">${m.icon} ${m.label}</span>
+    </div>
+    <svg class="desk-lamp" width="118" height="92" viewBox="0 0 118 92" aria-hidden="true">
+      <!-- El flexo. Adorno: la luz que echa vive en el gradiente de la mesa, no aquí —
+           ⚠️ si el dibujo desaparece, el despacho sigue leyéndose igual de bien. -->
+      <defs>
+        <linearGradient id="lampMetal" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#55514a"/><stop offset="1" stop-color="#2a2825"/>
+        </linearGradient>
+        <linearGradient id="lampShade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#5d584f"/><stop offset="1" stop-color="#332f2a"/>
+        </linearGradient>
+        <radialGradient id="lampGlow" cx=".5" cy=".2" r=".9">
+          <stop offset="0" stop-color="#fff6d8" stop-opacity=".95"/>
+          <stop offset="1" stop-color="#f4cf78" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <!-- el cono de luz, hacia la mesa -->
+      <path d="M60 40 L104 88 L30 88 Z" fill="url(#lampGlow)" opacity=".55"/>
+      <!-- peana -->
+      <ellipse cx="24" cy="85" rx="19" ry="5" fill="rgba(30,16,6,.45)"/>
+      <path d="M8 84 h32 a3 3 0 0 1 0 5 h-32 a3 3 0 0 1 0-5z" fill="url(#lampMetal)"/>
+      <!-- columna y brazo articulado -->
+      <path d="M24 84 L24 52" stroke="url(#lampMetal)" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M24 52 L58 30" stroke="url(#lampMetal)" stroke-width="4.5" stroke-linecap="round"/>
+      <circle cx="24" cy="52" r="4" fill="#4a463f"/>
+      <circle cx="58" cy="30" r="3.6" fill="#4a463f"/>
+      <!-- pantalla, mirando abajo -->
+      <path d="M50 18 L78 12 L70 38 L47 30 Z" fill="url(#lampShade)"/>
+      <ellipse cx="58.5" cy="34" rx="12" ry="4.6" transform="rotate(-14 58.5 34)" fill="#ffeeb8"/>
+    </svg>
+    <div class="desk-hero ${m.cls}">
+      <div class="desk-hero-main">
+        <h1 class="desk-title">${inline(card.title)}</h1>
+        <div class="desk-hero-tags">
+          ${card.project ? `<span class="tag-pill tag-project-hero">${esc(card.project)}</span>` : ""}
+          ${card.taskId ? `<span class="tag-pill tag-purple">${esc(card.taskId)}</span>` : ""}
+          ${card.described_in ? `<span class="tag-pill"><code>${esc(card.described_in)}</code></span>` : ""}
+        </div>
+        ${card.why ? `<div class="desk-why"><strong>Why.</strong> ${expandable(card.why)}</div>` : ""}
+        ${(card.moves_when || card.waits_on) ? `
+          <div class="desk-cond">
+            <span class="cond-k">${card.waits_on ? "espera a" : "avanza cuando"}</span>
+            <span class="cond-v">${inline(card.moves_when || card.waits_on)}</span>
+          </div>` : ""}
+      </div>
+      ${isLive ? `
+        <div class="desk-hero-stats">
+          <div class="desk-ring" style="--pct:${pct}">
+            <span class="desk-ring-num">${pct}%</span>
+            <span class="desk-ring-lbl">enrutado</span>
+          </div>
+          <div class="desk-outcome-counts">
+            ${Object.entries(OUTCOMES).map(([k, o]) =>
+              `<span class="oc ${o.cls}" title="${o.hint}">${o.icon} ${byOutcome(k)}</span>`).join("")}
+            <span class="oc oc-open" title="sin destino todavía">○ ${items.length - routed}</span>
+          </div>
+        </div>` : ""}
+    </div>
+
+    <div class="desk-grid">
+      <section class="desk-plan"><div class="desk-screen">
+        ${isLive ? `
+          ${STATE.livePlanMeta?.order_why ? `
+            <div class="order-why-card">
+              <div class="order-why-header"><span class="order-why-icon">🧠</span>
+                <strong>El orden, y por qué este orden</strong></div>
+              <div class="order-why-body">${inline(STATE.livePlanMeta.order_why)}</div>
+            </div>` : ""}
+
+          ${groups.length ? groups.map(g => {
+            const gr = g.items.filter(i => i.struck || i.outcome).length;
+            return `
+            <div class="plan-section">
+              <div class="plan-section-head">
+                <h3>${g.subsection ? `<span class="sec-parent">${esc(g.section || "")} ›</span> ` : ""}${esc(g.subsection || g.section || "Plan")}</h3>
+                <span class="sec-kind" title="${g.ordered ? "los items van uno detrás de otro" : "sin orden: se pueden hacer en cualquier secuencia"}">
+                  ${g.ordered ? "↓ en orden" : "⇄ sin orden"}
+                </span>
+                <span class="sec-count">${gr}/${g.items.length}</span>
+              </div>
+              <div class="plan-section-items">
+                ${g.items.map(i => renderPlanItem(i, true)).join("")}
+              </div>
+            </div>`;
+          }).join("") : `
+            <div class="empty-state"><div class="empty-icon">📋</div>
+              <h3>El plan está vacío</h3>
+              <p>Esta tarea tiene su hoja desde que existe (<code>FLOW.md</code>), pero nadie la ha
+                 planificado todavía. Escribe abajo el primer item, o invoca <code>current-plan</code>.</p>
+            </div>`}
+
+          <!-- CAPTURA EN VIVO -->
+          <div class="capture-box">
+            <div class="capture-head">
+              <strong>📝 Anota sin salir de aquí</strong>
+              <span>Entra al plan <em>sin destino</em>. Lo leo del disco y decidimos juntos a dónde va.</span>
+            </div>
+            <div class="capture-row">
+              <textarea id="captureInput" rows="2" placeholder="Una idea, una observación, algo que acaba de surgir… (Ctrl+Enter para añadir)"
+                        onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')addPlanNote()"></textarea>
+            </div>
+            <div class="capture-actions">
+              ${secNames.length > 1 ? `
+                <select id="captureSection" class="custom-select capture-sel">
+                  ${secNames.map(s => `<option value="${esc(s)}">en «${esc(s)}»</option>`).join("")}
+                </select>` : `<input type="hidden" id="captureSection" value="${esc(secNames[0] || "")}">`}
+              <label class="capture-ord">
+                <input type="checkbox" id="captureOrdered" checked> lleva número
+              </label>
+              <button class="btn-submit" onclick="addPlanNote()">＋ Añadir al plan</button>
+              <span class="capture-sep">o directamente:</span>
+              <button class="btn-quick out-mailbox" onclick="captureTo('mailbox')" title="Va al buzón para debatirlo">📬 buzón</button>
+              <button class="btn-quick out-ideas" onclick="captureTo('ideas')" title="Interesante, pero no ahora">💡 idea</button>
+            </div>
+          </div>
+        ` : `
+          <div class="front-state-card ${st === "paused" ? "paused-state-card" : "queued-state-card"}">
+            <div class="state-card-icon">${m.icon}</div>
+            <h3>${st === "paused" ? "Tarea en pausa" : "Tarea en cola"}</h3>
+            <p class="state-card-desc">
+              ${st === "paused"
+                ? "Su hoja se conserva tal cual estaba: <code>paused</code> es lo que hace barato cambiar de tarea, porque reanudarla cuesta leer y no reconstruir (<code>FLOW.md</code>)."
+                : "Está en la brújula y todavía no es la activa. Su hoja existe y está vacía."}
+            </p>
+            <div class="state-detail-box">
+              <strong>${card.waits_on ? "Espera a" : "Condición de avance"}:</strong>
+              <p>${inline(card.moves_when || card.waits_on || "Secuenciada en el orden de trabajo.")}</p>
+            </div>
+            <div class="state-guidance-box">
+              <span>💡 El plan en vivo pertenece a la tarea marcada <code>▶</code>. Mueve el <code>▶</code>
+                    en <code>COMPASS</code> para trabajar ésta, y su hoja se abre aquí.</span>
+            </div>
+          </div>`}
+      </div></section>
+
+      <aside class="desk-rail">
+        <div class="rail-panel">
+          <div class="rail-head"><strong>🧾 Traza de la sesión</strong>
+            <button class="rail-refresh" onclick="loadTrace()" title="Releer el diario">⟳</button></div>
+          <div id="traceRail" class="trace-list">${renderTraceList()}</div>
+        </div>
+        <div class="rail-panel rail-legend">
+          <div class="rail-head"><strong>Los cuatro destinos</strong></div>
+          ${Object.entries(OUTCOMES).map(([k, o]) => `
+            <div class="legend-row ${o.cls}"><span>${o.icon}</span>
+              <div><strong>${o.label}</strong><em>${o.hint}</em></div></div>`).join("")}
+          <p class="rail-note">Un item tachado sin destino es un <strong>cierre fallido</strong>
+             — el parser lo reporta y aquí no puede ocurrir: los cuatro botones son los únicos
+             caminos de salida.</p>
+        </div>
+      </aside>
+    </div>
+    </div>`;
+}
+
+// ───────────────────────────────────────────────── acciones de la oficina
+window.setOfficeFilter = function (which, val) {
+  if (which === "proj") STATE.officeFilterProj = val; else STATE.officeFilterState = val;
+  renderView();
+};
+
+window.openDesk = function (cardId) {
+  STATE.deskCardId = cardId;
+  STATE.currentView = "desk";
+  renderView();
+  loadTrace();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+window.addPlanNote = async function () {
+  const ta = document.getElementById("captureInput");
+  const text = (ta?.value || "").trim();
+  if (!text) return;
+  const section = document.getElementById("captureSection")?.value || "";
+  const ordered = document.getElementById("captureOrdered")?.checked !== false;
+  try {
+    const d = await api("POST", "/api/plan/item", { text, section, ordered });
+    ta.value = "";
+    confirmWrite(d, "Anotado en el plan, sin destino");
+  } catch (e) { reportWriteError(e); }
+};
+
+// The two shortcuts out of the capture box. ⚠️ They are NOT a fifth destination: an entry
+// that leaves for the mailbox or the park still gets written where that queue lives, and
+// the plan is where its passage is recorded — which is why the item is written too.
+window.captureTo = async function (where) {
+  const ta = document.getElementById("captureInput");
+  const text = (ta?.value || "").trim();
+  if (!text) { showToast("Escribe algo primero."); return; }
+  const cards = officeCards();
+  const card = cards.find(c => c.id === STATE.deskCardId) || cards.find(c => c.active);
+  const project = card?.project || "cross";
+  const title = text.split("\n")[0].slice(0, 90);
+  try {
+    const d = where === "mailbox"
+      ? await api("POST", "/api/mailbox", { title, project, destination: "decision", body: text })
+      : await api("POST", "/api/idea", { title, project, body: text, scope: "general" });
+    ta.value = "";
+    confirmWrite(d, where === "mailbox" ? "Enviado al buzón" : "Aparcado en ideas");
+  } catch (e) { reportWriteError(e); }
+};
+
+window.routePlanItem = async function (line, expect, outcome) {
+  try {
+    const d = await api("PATCH", "/api/plan/item", { line, expect, outcome });
+    confirmWrite(d, `Item enrutado: ${OUTCOMES[outcome].label}`);
+  } catch (e) { reportWriteError(e); }
+};
+
+// ───────────────────────────────────────────────── los handlers que faltaban
+//
+// ⛔ `index.html` called all of these and none of them existed. The modals opened and
+// could not close; submitting a form threw and reloaded the page, so the entry was lost
+// *and* the view was reset. Every one of them now writes through the API and reports what
+// the server actually did.
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove("active");
+}
+window.closeTaskModal    = () => closeModal("taskModal");
+window.closeIdeaModal    = () => closeModal("ideaModal");
+window.closeCommentModal = () => closeModal("commentModal");
+window.closeDiscardModal = () => closeModal("discardModal");
+
+window.toggleScratchpad = function () {
+  const d = document.getElementById("scratchpadDrawer");
+  if (!d) return;
+  d.classList.toggle("open");
+  if (d.classList.contains("open")) {
+    const ta = document.getElementById("scratchpadInput");
+    if (ta) {
+      // ⚠️ Restored from storage, never blanked. A scratchpad that empties on close is a
+      // scratchpad that eats what was written in it, which is `PH-3` broken by a widget.
+      ta.value = localStorage.getItem(STORAGE_KEYS.SCRATCHPAD) || "";
+      ta.oninput = () => localStorage.setItem(STORAGE_KEYS.SCRATCHPAD, ta.value);
+      ta.focus();
+    }
+  }
+};
+
+window.handleCreateTask = async function (ev) {
+  ev.preventDefault();
+  const title = document.getElementById("taskTitle")?.value.trim();
+  const project = document.getElementById("taskProject")?.value;
+  const status = document.getElementById("taskStatus")?.value || "⬜";
+  const why = document.getElementById("taskWhy")?.value.trim();
+  try {
+    const d = await api("POST", "/api/task", { title, project, status, why });
+    closeModal("taskModal");
+    document.getElementById("taskForm")?.reset();
+    confirmWrite(d, `Tarea ${d.id || ""} creada`);
+  } catch (e) { reportWriteError(e); }
+  return false;
+};
+
+window.handleCreateIdea = async function (ev) {
+  ev.preventDefault();
+  const title = document.getElementById("ideaTitle")?.value.trim();
+  const project = document.getElementById("ideaProject")?.value;
+  const scope = document.getElementById("ideaScope")?.value.trim() || "general";
+  const body = document.getElementById("ideaBody")?.value.trim();
+  try {
+    const d = await api("POST", "/api/idea", { title, project, scope, body });
+    closeModal("ideaModal");
+    document.getElementById("ideaForm")?.reset();
+    confirmWrite(d, "Idea aparcada");
+  } catch (e) { reportWriteError(e); }
+  return false;
+};
+
+// A comment on a task is a delta the operator wants recorded against it — which is a
+// mailbox entry addressed at that task, not a field invented for the browser. ⚠️ The old
+// version kept them in `localStorage`, where no agent and no other machine can read them.
+window.handleSaveComment = async function (ev) {
+  ev.preventDefault();
+  const id = document.getElementById("commentTaskId")?.value;
+  const text = document.getElementById("commentTextInput")?.value.trim();
+  const task = STATE.tasks.find(t => t.id === id);
+  try {
+    const d = await api("POST", "/api/mailbox", {
+      title: `Nota sobre ${id} · ${task?.title || ""}`.slice(0, 120),
+      project: task?.project || "cross", destination: "task", body: text
+    });
+    closeModal("commentModal");
+    confirmWrite(d, `Nota sobre ${id} enviada al buzón`);
+  } catch (e) { reportWriteError(e); }
+  return false;
+};
+
+window.handleSaveDiscard = async function (ev) {
+  ev.preventDefault();
+  const id = document.getElementById("discardTaskId")?.value;
+  const reason = document.getElementById("discardReasonInput")?.value.trim();
+  const task = STATE.tasks.find(t => t.id === id);
+  try {
+    const d = await api("POST", "/api/mailbox", {
+      title: `Descartar ${id} · ${task?.title || ""}`.slice(0, 120),
+      project: task?.project || "cross", destination: "task",
+      body: `**Motivo del descarte (PH-3).** ${reason}`
+    });
+    closeModal("discardModal");
+    confirmWrite(d, `Descarte de ${id} propuesto al buzón`);
+  } catch (e) { reportWriteError(e); }
+  return false;
+};
+
+window.convertScratchpadToTask = function () {
+  const t = (document.getElementById("scratchpadInput")?.value || "").trim();
+  if (!t) { showToast("El bloc está vacío."); return; }
+  openTaskModal();
+  const title = document.getElementById("taskTitle");
+  const why = document.getElementById("taskWhy");
+  if (title) title.value = t.split("\n")[0].slice(0, 120);
+  if (why) why.value = t;
+  updateTaskPreview();
+};
+
+window.convertScratchpadToIdea = function () {
+  const t = (document.getElementById("scratchpadInput")?.value || "").trim();
+  if (!t) { showToast("El bloc está vacío."); return; }
+  openIdeaModal();
+  const title = document.getElementById("ideaTitle");
+  const body = document.getElementById("ideaBody");
+  if (title) title.value = t.split("\n")[0].slice(0, 120);
+  if (body) body.value = t;
+};
+
+// ───────────────────────────────────────────────── EL BUZÓN — agente → operador
+//
+// ⛔ It was parsed into `STATE.mailbox` and read by no view. The queue that carries what an
+// agent found, proposed or crossed simply did not appear in the interface, and `METHOD.md`
+// §4 is two queues running in opposite directions — with one of them invisible, the loop
+// the operator is supposed to close had no surface at all.
+const MAILBOX_STATE = {
+  open:     { icon: "🟢", label: "abierta",  cls: "mb-open" },
+  pending:  { icon: "🟡", label: "pendiente", cls: "mb-pending" },
+  resolved: { icon: "✅", label: "resuelta",  cls: "mb-resolved" },
+  archived: { icon: "📦", label: "archivada", cls: "mb-archived" }
+};
+
+function renderMailboxPanel() {
+  const f = STATE.mailboxFilter || "abiertas";
+  const all = STATE.mailbox || [];
+  const shown = f === "todas" ? all
+    : all.filter(e => ["open", "pending"].includes(e.state));
+  const byState = s => all.filter(e => e.state === s).length;
+
+  return `
+    <div class="mailbox-panel">
+      <div class="mailbox-head">
+        <div>
+          <h2><span>📬</span> Buzón <span class="tag-pill tag-live">${shown.length}</span></h2>
+          <p class="mailbox-sub">Agente → operador. Lo que un agente encontró, propuso o cruzó y
+             todavía no está integrado. <strong>Nadie vacía la cola que llena</strong> (<code>AX-15</code>):
+             estas entradas las enrutas tú.</p>
+        </div>
+        <div class="mailbox-filters">
+          <button class="chip-filter ${f === "abiertas" ? "active" : ""}" onclick="setMailboxFilter('abiertas')">
+            Sin cerrar (${byState("open") + byState("pending")})
+          </button>
+          <button class="chip-filter ${f === "todas" ? "active" : ""}" onclick="setMailboxFilter('todas')">
+            Todas (${all.length})
+          </button>
+        </div>
+      </div>
+
+      ${shown.length ? shown.map(e => {
+        const s = MAILBOX_STATE[e.state] || MAILBOX_STATE.open;
+        return `
+          <article class="mb-card ${s.cls}">
+            <header class="mb-top">
+              <span class="mb-state ${s.cls}">${s.icon} ${s.label}</span>
+              <span class="mb-dest" title="Destino declarado por quien la escribió">→ ${esc(e.destination)}</span>
+              <span class="tag-pill tag-project">${esc(e.project)}</span>
+            </header>
+            <h3 class="mb-title">${inline(e.title)}</h3>
+            ${e.body ? `<div class="mb-body">${renderMarkdownBody(e.body)}</div>`
+                     : `<p class="mb-nobody">— sin cuerpo: la entrada se escribió solo con su cabecera —</p>`}
+            <footer class="mb-foot">
+              ${renderOrigin(e.author, e.origin_inferred)}
+              ${renderDate(e.date, e.date_inferred)}
+              ${e.file ? `<span class="tag-pill mb-file"><code>${esc(e.file)}${e.line ? `:${e.line}` : ""}</code></span>` : ""}
+            </footer>
+          </article>`;
+      }).join("") : `
+        <div class="empty-state">
+          <div class="empty-icon">📭</div><h3>Buzón vacío</h3>
+          <p>Un buzón que entra lleno y sale lleno significa que la sesión no cerró nada
+             (<code>METHOD.md</code> §4). Éste está limpio.</p>
+        </div>`}
+    </div>`;
+}
+
+window.setMailboxFilter = function (v) { STATE.mailboxFilter = v; renderView(); };

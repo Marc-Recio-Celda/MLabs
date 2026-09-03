@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MLabs & NEXUS — Operations Cockpit</title>
+  <title>MLabs & NEXUS — Oficina</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -45,7 +45,7 @@
     <div class="hud-controls">
       <div class="search-box">
         <span class="search-icon">🔍</span>
-        <input type="text" id="globalSearch" placeholder="Buscar (D_n, comandos, ideas, tareas)... (Ctrl+K)">
+        <input type="text" id="globalSearch" placeholder="Buscar (D_n, comandos, ideas, tareas)… (Ctrl+K)">
       </div>
       <div class="hud-pill live-pill" title="Live sync activo cada 2s">
         <span class="heartbeat"></span>
@@ -70,8 +70,8 @@
           <span class="nav-badge count-badge" id="badgeProjects">0</span>
         </button>
         <button class="nav-item" data-view="cockpit">
-          <span class="nav-icon">🧭</span>
-          <span class="nav-label">Cockpit & Live</span>
+          <span class="nav-icon">🗂️</span>
+          <span class="nav-label">Oficina</span>
           <span class="nav-badge live-badge">LIVE</span>
         </button>
         <button class="nav-item" data-view="cheatsheet">
@@ -81,8 +81,9 @@
         </button>
         <button class="nav-item" data-view="inbox">
           <span class="nav-icon">📬</span>
-          <span class="nav-label">Inbox & Queues</span>
-          <span class="nav-badge count-badge warn-badge" id="badgeInbox">0</span>
+          <span class="nav-label">Buzón & Tareas</span>
+          <span class="nav-badge count-badge" id="badgeMailbox" title="Entradas de buzón sin cerrar">0</span>
+          <span class="nav-badge count-badge" id="badgeInbox" title="Tareas activas">0</span>
         </button>
         <button class="nav-item" data-view="ideas">
           <span class="nav-icon">💡</span>
