@@ -12,8 +12,7 @@ la basura ya se encargan otros.")*
 **This is the pass that exists so several rules do not have to fire on every turn** (`AX-4`: if a
 pass over the finished artefact can apply it, it is a tool, not an axiom).
 
-## Fires when
-
+## Occasion
 A release cut · a pull request · after a session that touched structural files · whenever a stranger
 is about to read the repository. **The operator invokes it; nothing auto-fires.**
 
@@ -77,7 +76,7 @@ first; write what is missing; then strip.**
 | an axiom id | `bash tools/axiom-refs.sh <axioms-file> <SCOPE> <files…>` — **exit 0 clean · 1 unresolved · 2 could not run, which is not a pass** |
 | a path | the file exists at that path from the declared root |
 | a wikilink `[[Note]]` | `.py`/`.js`/`.css`/`.html` **only**. ⚠️ **POSIX `[[:space:]]` and bash `[[ ]]` are indistinguishable from `[[Note]]` to any pattern** — and in the method repository's markdown wikilinks are the vocabulary being specified, not references being made |
-| a section reference `§n` | that section exists in that file. ⚠️ **`\b` does not match before `§`**, so a word-boundary search silently misses every one |
+| a section reference `§n` | `bash tools/section-refs.sh <files…>` — **exit 0 clean · 1 unresolved · 2 could not run**. ⚠️ **A citation naming a file outside the run is counted and printed, never skipped** (`AX-22`) |
 | a stated count | recomputed and compared, never read. ⚠️ **A count nothing derives is a count that is already wrong** |
 
 ### 3 · Identifiers that only resolve inside the operator's own base
@@ -100,9 +99,9 @@ was worth writing.
    ever grows is being written for its authors** — that number is the finding even when no single
    line is.
 3. **Search each class separately and report counts before changing anything.**
-4. ⚠️ **Test each pattern against a planted hit first, and plant against the format rather than
-   into it** (`AX-7`). A plant written in the file's own style reproduces the file's own blind spot;
-   a plant aimed at one half of a two-part rule proves nothing about the other half.
+4. ⚠️ **Test each pattern against a planted hit first** (`AX-7`, which says how to plant). **The
+   one this pass gets wrong: a plant aimed at one half of a two-part rule proves nothing about the
+   other half**, and jobs 1 and 2 are both two-part.
 5. **Read the log, write what is missing, then strip** — job 1's order, every time.
 6. **Land it as its own commit** from a clean tree, then **tag `compact-<date>`**.
 
@@ -123,8 +122,8 @@ artefact asserts.***
 
 ## What it does not do
 
-- **It does not decide what belongs.** Not a rule's worth, not a note's worth, not whether a
-  constraint is real. **Where a line might be load-bearing, it asks.**
+- **What belongs is somebody else's call** — a rule's worth, a note's worth, whether a constraint
+  is real. **Where a line might be load-bearing, it asks.**
 - **It does not resolve a contradiction it finds.** A rule citing an abolished clause is reported,
   not fixed — the fix is a decision.
 - **It does not touch Records**, or a repository the operator does not own (`AX-19`).

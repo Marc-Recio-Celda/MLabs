@@ -14,11 +14,8 @@ point at, so they resolve **without any skill knowing which machine it is on** *
 
 ⚠️ **This skill encodes the shape of an instance**, so it is rewritten whenever that shape moves —
 the six document kinds, the block model, the plan lifecycle and the rule/skill/role split.
-**The §3 row is renamed to `build-nexus` in the same act** — a verb and its object, like every other
-skill here.
 
-## Fires when
-
+## Occasion
 - A machine has MLabs and no instance. **This is the normal case and the one the whole design is
   for**: a stranger with a clone and nothing else.
 - A tree exists but a base file named by a rule was never generated. **Layer 1 is idempotent**, so

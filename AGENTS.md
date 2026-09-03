@@ -148,5 +148,5 @@ copy.
 | **2 — half done** | ✅ the split executed and the generic halves moved in · ✅ licence and first tagged release · ⬜ **§5's checks still need a human at every cut**, which is the half that decides the stage | **the checks run themselves.** Until then §5 is a documented procedure, and `AX-7` says what that is worth |
 | **3 — written** | the operating skills, plus `create-note` — the one door to a knowledge base | each carries its verification as a prediction. ⚠️ **The end-to-end gate has never been run as a test** — the loop has run in practice, which is a different claim |
 | **4 — now** | ✅ `compact`, run over the whole tracked set · ⬜ the collaborative-repo pass · ⬜ **the templates the standards ship as** — `AX-26` asks for them and nothing in the tracked set is one | each skill's own prediction |
-| **✅ done, out of order** | **`build-nexus`** — creates an operations centre from nothing and walks its owner to a first task | a stranger, given only this repo and the skill, ends with a working instance and a first task in flight |
-| later | roles beyond those hired, strictly by §6 | each role's own criterion |
+| **✅ done, out of order** | **`build-nexus`** — the cold start's own subject | a stranger, given only this repo and the skill, ends with a working instance and a first task in flight |
+| later | roles beyond those hired, strictly by §4 | each role's own criterion |

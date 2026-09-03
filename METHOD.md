@@ -305,7 +305,7 @@ once, when invoked; an axiom is paid on every turn of every task in that project
 ⚠️ **Skills are not free, and the cost is not where it looks.** A skill's *body* loads only when
 it fires, but its **name and description are always in context** — so the count of skills is paid
 continuously and their bodies are not. Two consequences: **write the description to say what it
-does *and* when to use it**, because that sentence is the entire trigger; and **keep descriptions
+does *and* when to use it**, because that sentence is the whole of what a model selects on; and **keep descriptions
 distinct**, because two that overlap mean the wrong one fires and neither author finds out. The
 budget to watch is the sum of descriptions, never the sum of skills.
 

@@ -1,25 +1,28 @@
 ---
 name: rnd
-description: Lateral thinking against the company's own design, invoked on demand. Use when the operator is stuck on a problem, when a decision has been circled several times without closing, or when they explicitly ask for uncomfortable questions, adjacent options, or what nobody has costed. Never fires on its own.
+description: Lateral thinking against the company's own design, on request. Use when the operator is stuck on a problem, when a decision has been circled several times without closing, or when they ask for the uncomfortable question, the adjacent option, or what nobody has costed.
 ---
 
 # rnd
 
-**A request-triggered skill, and deliberately nothing more.** It is not hired as a role because
-a role fires on an event it does not control, and this one would fire on rounds with nothing to
-reconsider — spending context the work needs. **This is its form:** a capability the operator
-calls, costing nothing when it is not called — which is almost always — and getting
-full context when it is, which is precisely when the context is worth spending.
+**Lateral thinking against the company's own design, on request.** It costs nothing while it is not
+called — which is almost always — and gets full context when it is, which is precisely when that
+context is worth spending.
 
-## Why it is invoked and never scheduled
+> **Its description names a request**, which by `MLabs:AGENTS.md` §4 makes it a capability rather
+> than a role. **It keeps a log all the same** (`MLabs:AX-11`) — one row per proposal, at the path
+> the instance's binding declares, on its own contract: an auditor's ruling is *was it real*, a
+> proposal's is *did we do it*.
 
-**An auditor needs a trigger it does not control**, or it drifts toward silence. **A lateral
-thinker needs an invitation**, or it drifts toward noise. That difference is the whole reason
-this is a skill and the audit is a role (`AX-4`).
+## Occasion
+**The operator is stuck on a problem** · a decision has been circled several times without closing ·
+they ask for the uncomfortable question, the adjacent option, or what nobody has costed.
 
-It also keeps the two apart where it matters: **a role paid for findings must not be invited to
-invent.** Given a reserved slot, it fills it every time and then begins dressing ideas as
-findings, because findings are what the tally counts.
+## Why it waits for an invitation
+
+**An auditor needs an occasion it does not choose**, or it drifts toward silence. **A lateral
+thinker needs an invitation**, or it drifts toward noise. That difference is why the two are
+separate (`AX-4`), and why **the auditors have no idea slot** (`skills/audit/`).
 
 ## What it works on
 
@@ -46,29 +49,30 @@ making hard · which constraint would, if dropped, make the problem disappear.
 6. **Say which you would take and why**, then stop (`NEXUS:AX-14` and its company equivalent —
    an open-ended *"it depends"* hands back the work the analysis existed to do).
 
-## The persistence rule
+## What persists
 
-**Everything here is ephemeral by construction.** It lives in the conversation and reaches a
-file only if the operator picks it up. Nothing is re-proposed: an idea that has to be argued
-twice was not good enough the first time.
+**One row per proposal in its log, and the reasoning stays in the conversation.** ⛔ **A proposal
+already ruled on is never re-proposed** — an idea that has to be argued twice was not good enough the
+first time, and the row is what makes that visible six months later.
 
-**With one exception, and it is not negotiable:** anything *observed* rather than *invented* —
-an inconsistency crossed on the way, a stale path, a premise that turns out false — is a
-**finding**, and findings are never ephemeral. It goes to the mailbox, one line, no fixing. The
+**Anything *observed* rather than *invented*** — an inconsistency crossed on the way, a stale path, a
+premise that turns out false — **is a finding, and goes to the mailbox in one line, unfixed.** The
 discriminator is *did I observe this, or did I think of it*.
 
-## What it does not do
+## Its boundary
 
-It does not audit — it is not measured on catching things, and it must not be, or it becomes the
-auditor with worse discipline. It does not write to any axiom department. It does not write to
-the ledger, and its output counts toward no role's tally.
+**It is measured on the decisions its proposals changed, never on defects caught** — a lateral
+thinker judged by an auditor's number becomes an auditor with worse discipline. **Its writing reaches its own log and
+nothing else**: not the ledger, and not any axiom department.
 
 ## Dismissal
 
-Fixed in advance (`AX-11`): **retired if, across five invocations, nothing it raised was picked
-up.** One idea ignored is not a failure; five in a row is a capability that has misread what the
-operator needs.
+**Retired if, across five invocations, nothing it raised was picked up.** One idea ignored is not a
+failure; five in a row is a capability that has misread what the operator needs.
 
-**Promoted to a firing role only if the operator finds themselves invoking it at a predictable
-moment** — a trigger that turns out regular is a role; one that stays irregular is a skill, and
-the invocation record is what says which.
+⚠️ **Its measure is `Changed a decision`, never adoption** — a capability whose every proposal is
+adopted is either excellent or unchallenged, and an adoption rate cannot tell you which.
+
+**Its occasion is the standing question.** One that turns out regular is an occasion this file
+should name; one that stays irregular is a request, and **the invocation record is what says
+which.**

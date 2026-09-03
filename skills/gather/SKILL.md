@@ -9,13 +9,13 @@ description: Collects raw information the operator does not have and returns a c
 working conversation with material used once is exactly the work to hand to a fresh agent, which
 returns the conclusion and keeps the reading to itself.
 
-## When it fires
+## Occasion
+**The operator asks**, and the signal that this is the right tool is that **the next decision is
+blocked on something nobody has looked up** — where looking it up means reading far more than the
+answer is worth carrying.
 
-The operator asks. It is a **request-triggered** capability: nothing about a schedule tells you
-when a fact is missing.
-
-The signal that it is the right tool: **the next decision is blocked on something nobody has
-looked up**, and looking it up means reading far more than the answer is worth carrying.
+**Its description names a request** (`MLabs:AGENTS.md` §4): nothing about a schedule says when a
+fact is missing.
 
 ## What it returns
 
@@ -25,7 +25,7 @@ access to the evidence.
 
 | Section | Content |
 |---|---|
-| **The question, restated** | as it understood it — the cheapest place to catch a misread brief |
+| **The question, restated** | as it understood it — a brief read wrong is cheapest to catch here |
 | **What it found** | organised by the question's own structure, not by where it looked |
 | **Every claim cited** | a file and line, a command and its output, or a source named properly (`AX-6`) |
 | **What it could not establish** | explicitly. **A gap named is a result; a gap hidden is a fabrication waiting to be quoted** |
@@ -52,5 +52,5 @@ a gathering one — and stating it up front is what makes the difference visible
 
 ## What it does not do
 
-It does not decide, recommend or advocate. It does not edit files or commit. It does not carry
-its reading back into the conversation — the report is the interface, and that is the point.
+**Deciding, recommending and advocating are the operator's.** It edits no file and makes no commit.
+**Its reading stays with it — the report is the interface, and that is the point.**

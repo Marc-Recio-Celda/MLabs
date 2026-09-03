@@ -6,16 +6,20 @@ description: Executes a defined objective end to end without stopping to ask, un
 # autonomous-run
 
 **Standing approval is not unlimited approval.** The operator has pre-accepted the *choices*;
-they have not pre-accepted the *scope*, and the difference is what keeps this safe enough to
-be worth using.
+they have not pre-accepted the *scope*, and that difference is what keeps this safe enough to be
+worth using.
+
+## Occasion
+**The operator hands over a task and says to run it to completion** — a feature, a migration, a
+sweep across many files, anything where stopping at every fork costs more than it protects.
 
 ## Before anything runs: the contract
 
 State all four, and get them wrong at your peril — this is the only moment the operator is in
 the loop.
 
-1. **The objective, restated in one sentence.** Not the task as given: the task as understood.
-   The cheapest place to catch a misread brief.
+1. **The objective, restated in one sentence.** Not the task as given: **the task as understood**,
+   which is where a misread brief is caught cheapest.
 2. **Done, defined as a check.** *"Finished"* is not a state you can be wrong about; **a command
    whose output you can predict is.** Write the prediction now — the gap between it and the real
    output at the end is the finding.
@@ -60,10 +64,9 @@ operator the review of work built on it.
 must leave nine steps of trace, and a report composed from memory at the close is the failure
 mode this exists to prevent (`AX-9`).
 
-**Keep the live plan current.** It is the record of *how* the run thought, and the only thing a
-reviewing agent can read without a transcript. Items get struck through with a destination;
-anything the work spawns gets written down immediately, right after the current item, even when
-unrelated.
+**Keep the live plan current.** It is the record of *how* the run thought, and **the only thing a
+reviewing agent can read without a transcript.** Items are struck through with a destination and
+spawned work is written down as it arrives, per `skills/current-plan/`.
 
 **Checkpoint at every natural boundary** — a working state, committed or clearly marked
 uncommitted. A long run that cannot be resumed is a long run that starts over.
@@ -108,6 +111,6 @@ with the output. If it fails, the run is not done** — regardless of how much w
 
 ## What this skill does not do
 
-It does not decide what the objective is. It does not widen its own scope. It does not treat
-standing approval as approval for the four stops. It does not commit on the operator's behalf
-unless the contract said so explicitly, and it never force-pushes or rewrites history at all.
+**The objective is the operator's**, and **the declared boundary is the whole of the scope** — the
+four stops above are outside standing approval by construction. **It commits only where the
+contract said so explicitly**, and **force-pushing and rewriting history are outside it always.**

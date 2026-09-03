@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # AX-4 — a rule names the event that fires it.
-# Proves `grep -L '^## Fires when'` distinguishes a skill that names its event from
+# Proves `grep -L '^## Occasion'` distinguishes a skill that names its event from
 # one that does not.
 #
 # ⛔ This check is KNOWN BAD on the real tree: it flags 15 of 19 and at most 8 are
@@ -10,11 +10,11 @@
 set -uo pipefail
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/s/a" "$TMP/s/b" "$TMP/s/c"
-flagged() { ( cd "$TMP" && grep -L '^## Fires when' s/*/SKILL.md | sed 's|.*/\(.\)/SKILL.md|\1|' | tr '\n' ' ' ); }
+flagged() { ( cd "$TMP" && grep -L '^## Occasion' s/*/SKILL.md | sed 's|.*/\(.\)/SKILL.md|\1|' | tr '\n' ' ' ); }
 
-printf '# a\n\n## Fires when\n\nA task closes.\n'      > "$TMP/s/a/SKILL.md"
+printf '# a\n\n## Occasion\n\nA task closes.\n'      > "$TMP/s/a/SKILL.md"
 printf '# b\n\nIt fires when a task closes.\n'         > "$TMP/s/b/SKILL.md"
-printf '# c\n\n### Fires when\n\nA task closes.\n'     > "$TMP/s/c/SKILL.md"
+printf '# c\n\n### Occasion\n\nA task closes.\n'     > "$TMP/s/c/SKILL.md"
 
 out="$(flagged)"
 # 1 · obvious: no heading at all, only prose. Must be flagged.

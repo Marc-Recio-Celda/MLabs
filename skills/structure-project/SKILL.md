@@ -5,8 +5,9 @@ description: Creates a project's cartridge under the method — definition, stat
 
 # structure-project
 
-**Firing event** (`MLabs:AX-4`): a new project starts, **or** a body of work already underway is
-brought under the method. One firing produces one cartridge and one compass row.
+## Occasion
+**A new project starts**, or a body of work already underway is brought under the method. One
+firing produces **one cartridge and one compass row**.
 
 **Where it writes:** the operations centre, at its projects root. **Path shapes only — the literal
 root is the instance's, declared in its binding.**
@@ -20,16 +21,9 @@ substitute every placeholder — the project's name, its path, its own `AX-n` se
 **Every file below goes in the project's `nexus/` folder**, which is the cartridge — the project's
 own directory holds its code and its data, and `nexus/` holds what governs them.
 
-**Four files, and two more only when they have content** — `MLabs:METHOD.md` §2, verbatim:
-
-| File | Kind | Holds |
-|---|---|---|
-| `definition.md` | Standing | what this project is, and explicitly what it is not |
-| `state.md` | Standing | the present tense: would this still be true if work stopped today? |
-| `Decision_Log.md` | Record | `Dn` with author, date, reasoning, and what was discarded |
-| `LOG_AGENTS.md` | Record | what each agent did **in this project** |
-| `architecture.md` | Standing | the project's own axioms — **created when the first one exists**, never as an empty table |
-| `skills/` | — | procedures that only make sense here — **created when the first one exists** |
+**The cartridge's files and what each holds are `MLabs:METHOD.md` §2's.** What this procedure adds
+is **when two of them are created at all**: `architecture.md` and `skills/` **open with their first
+entry and never as an empty container.**
 
 **2. Fill `definition.md`, and purpose comes before mechanism.** ⛔ **What this project is for, and
 what it refuses, is written before any procedure** — purpose is what breaks a tie when two rules both
@@ -52,13 +46,13 @@ shape was rejected for it.
 **5. Open `state.md` and `Decision_Log.md` as live documents.** Both state their present and
 neither carries a changelog (`MLabs:AX-41`).
 
-- `state.md` — the test is *would this still be true if work stopped today?* Current position, what
-  it waits on, the active risks with the fallback agreed for each. ⚠️ **And `next action` is a
-  required field, not a courtesy** — a state file without one is a project whose next move lives in
-  somebody's head. `interface/model/parse.py` reads it and reports its absence by name.
-- ⚠️ **No sequenced-plan file.** `AX-17`'s third drawer **is a field, not a document**:
-  committed-but-not-started work is a task carrying `blocked_by:`, and the sequence is the graph
-  those edges describe. **An unordered list of pending items is not a third drawer.**
+- `state.md` — current position, what it waits on, and the active risks with the fallback agreed
+  for each, all of it against `METHOD.md` §2 step 1b's test. ⚠️ **`next action` is a required field,
+  not a courtesy** — a state file without one is a project whose next move lives in somebody's head,
+  and `interface/model/parse.py` reports its absence by name.
+- ⚠️ **No sequenced-plan file.** `AX-17`'s third drawer **is a field, not a document** — the rule
+  is that axiom's, and the consequence here is that the cartridge has one file fewer than an author
+  expects.
 
 **6. Place the agent contract — only in a repository the operator owns.** It holds what is true of
 **this** repository and reaches the method by reference: it is the one file naming where MLabs
@@ -97,35 +91,19 @@ take the `▶` by arriving** — exactly one active front exists across every pr
 the operator's act. Anything this structuring turns up that is not this task leaves with a
 destination from the closed vocabulary, one line, **with `project:` filled in** (`MLabs:AX-25`).
 
-## ⚠️ What a cartridge never contains
+## ⚠️ The live set stays central
 
-**No mailbox. No task list. No ideas file. No live plan. No compass of its own.**
+**Which live artefacts are central and which Records stay with their project is `METHOD.md` §5's.**
+⛔ **Creating a per-project copy of one is the single most likely failure of this procedure**, and it
+fails twice over: the copy is a duplicate with no declared winner (`MLabs:AX-20`), and **its entries
+are invisible to the `project:` filter that is the whole point of centralising.** Prediction 2
+checks it mechanically, and is worth running even when one agent wrote the cartridge in a single
+pass.
 
-Those five are **one central set spanning every project**, filtered by the `project:` field.
-Creating a per-project copy of any of them is **the single most likely failure of this procedure**,
-and it fails twice over: the copy is a duplicate with no declared winner (`MLabs:AX-20`), and **its
-entries are invisible to the filter that is the whole point of centralising.** **Only Records stay
-with their project.** Prediction 2 checks it mechanically, and is worth running even when one agent
-wrote the cartridge in a single pass.
+## Placing the project's first rules
 
-## The placement test — which department a rule belongs to
-
-Three departments, **different scope, identical force**; none overrides another. ⚠️ **What an agent
-loads is decided by the task, not by the tier** (`METHOD.md` §6): a defined task loads the binding,
-`METHOD` §2/§7, the role file and **the departments it is about to touch**; designing, auditing or
-**placing a rule** loads all three whole, because there the contradiction between levels is the
-work. **Placement is the second case, so run this test with all three open.**
-
-| Department | Lives in | Passes if |
-|---|---|---|
-| Company | the company axiom file | it would bind an instance that is not this one |
-| Instance | the operations centre's axiom file | it binds **everything this operator does**, across every project — whether or not a stranger would adopt it |
-| Project | this project's `architecture.md` | it binds this project only |
-
-Anything narrower than the third row is not an axiom but a decision, and `METHOD.md` §7 routes it.
-**When in doubt it goes down, not up** — promoting later costs one restatement, while **demoting
-later means a public file was wrong for however long nobody noticed.** A rule that would have to be
-copied into several project files is an instance rule pushed one level too far (`MLabs:AX-20`).
+**The placement test is `METHOD.md` §6's**, and **placing a rule is the case that loads all three
+departments whole** — so run it with all three open.
 
 ## Verification — stated as a prediction, then run
 
@@ -145,7 +123,7 @@ trusting a clean run** (`MLabs:AX-7`).
 | 8 | The agent contract sits at the code repository root **iff** the operator owns it; otherwise in the cartridge and nowhere else |
 | **9** | **The denylist coverage check returns empty**, and the new name, planted into a tracked file, makes the release gate fire. **A name added and never tested is a name that may still be invisible** |
 
-**An unrunnable check is reported as unrun, never as passed** (`MLabs:AX-22`).
+**An unrunnable check is reported unrun** (`MLabs:AX-22`).
 
 ## What it does not do
 

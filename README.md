@@ -3,10 +3,13 @@
 **A working methodology for building knowledge systems with AI agents — packaged as a company.**
 
 MLabs is not a framework you install. It is the structure of a one-person company whose
-employees are AI agents: a hierarchy of design principles, a small set of roles with defined
-triggers, procedures packaged as skills, and — the part that makes it different — **a built-in
-mechanism that audits its own health and a rule that fires any role that stops earning its
-place.**
+employees are AI agents: a hierarchy of design principles, a small set of roles each with the
+occasion that calls for it, procedures packaged as skills, and — the part that makes it different —
+**a built-in mechanism that audits its own health, and a criterion written before a role's first
+firing that says when it has stopped earning its place.**
+
+> **This page orients; it holds no rule.** Every claim below is a one-line summary of a file named
+> beside it, and **where this page and that file disagree, the file wins** (`AX-20`).
 
 ## The shape
 
@@ -103,7 +106,6 @@ which rules turned out to be theatre, and what breaks first.
 them — `ls skills/` is the list, and it is stated nowhere else. An instance pins this tag;
 upgrading is a deliberate act.
 
-**What it does not yet have**, declared rather than discovered: none of the invariant checks
-runs without a human — the release gate is a documented procedure, not a hook — and the
-event-triggered skills fire when a model notices the event rather than because something
-called them. Both are named in `AGENTS.md` §5 and are the next release's work.
+**What it does not yet have**, declared rather than discovered: **none of the invariant checks runs
+without a human.** `AGENTS.md` §8 carries that as the gate on the current stage, and it is the next
+release's work.

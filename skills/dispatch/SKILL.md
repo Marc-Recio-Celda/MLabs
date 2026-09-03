@@ -5,8 +5,13 @@ description: Hands a defined piece of work to the right executor with a brief it
 
 # dispatch
 
-The step between *deciding* and *doing*. Getting it wrong is expensive in a way that hides: work
-handed over with a bad brief comes back looking finished.
+The step between *deciding* and *doing*. Getting it wrong is expensive in a way that hides: **work
+handed over with a bad brief comes back looking finished.**
+
+## Occasion
+- A task is ready to execute.
+- Work needs breaking into pieces that can run independently.
+- It is time to decide whether something is done here or handed over.
 
 ## Where the work goes
 
@@ -25,8 +30,8 @@ passes is asking it to guess, and it will.
 
 Every dispatch carries four things. A brief missing any of them is why work comes back wrong.
 
-1. **The why, not only the what.** An executor that does not know the purpose cannot test the
-   premise — and testing the premise is its job (`AX-14`).
+1. **The why, not only the what** (`METHOD.md` §4) — and here it is load-bearing, because
+   **testing the premise is the executor's job** (`AX-14`).
 2. **The verification, stated as a prediction.** What must be true afterwards, written *before*
    the work starts. The gap between prediction and result is the finding; without it, "done" is
    self-reported.
@@ -47,9 +52,9 @@ is one dispatch with steps.
 
 ## Closing a dispatch
 
-The executor's output is read against its prediction, and its trace goes to the agent log of the
-repository it worked in. **A task naming the entries it closes is the one delegated deletion** —
-those, and only those, the executor removes (`AX-15`).
+The executor's output is **read against its prediction**, and its trace goes to the agent log of
+the repository it worked in. **Where the task names the entries it closes, the executor removes
+exactly those** — the one delegated deletion, and it is `AX-15`'s.
 
 ## Verification, as a prediction
 
@@ -59,5 +64,5 @@ answer happens to be right.
 
 ## What it does not do
 
-It does not do the work. It does not decide what the work is — that is the plan. It does not
-accept a result that asserts more than its executor could know.
+It performs none of the work. **What the work is belongs to the plan**, and **a result asserting
+more than its executor could know is refused** rather than filed.

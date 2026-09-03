@@ -20,6 +20,7 @@
 | `AX-1` | **The gate greps the tracked tree, not the history** · **the signature carve-out is scoped by path *and* by term**, and both must hold |
 | `AX-20` | ⛔ **No repository is exempt, the authoring one least of all** · **Rule files only**: a task legitimately names paths · **The method's address is the one fact this rule can check today** — identical input must give byte-identical output, and the general form needs a generator that does not exist |
 | `AX-39` | **A boundary drawn by topic looks tidiest the day it is drawn and is the first one crossed** — the test is not *do these belong together* but *who changes them, and how often* |
+| `AX-45` | **A view nobody passed to the check is a view nobody checks** — the tool reports a target outside the file set rather than skipping it · **a view with no regeneration command is a photograph**, and `AX-20` wants that declared as one rather than implied |
 | `AX-19` | **The failure it prevents is an agent correctly judging an artefact's usefulness and never judging its ownership**, which no other permission class catches |
 
 ## PH-2 · Sustainability
