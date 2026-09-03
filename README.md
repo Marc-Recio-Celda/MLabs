@@ -3,10 +3,13 @@
 **A working methodology for building knowledge systems with AI agents — packaged as a company.**
 
 MLabs is not a framework you install. It is the structure of a one-person company whose
-employees are AI agents: a hierarchy of design principles, a small set of roles with defined
-triggers, procedures packaged as skills, and — the part that makes it different — **a built-in
-mechanism that audits its own health and a rule that fires any role that stops earning its
-place.**
+employees are AI agents: a hierarchy of design principles, a small set of roles each with the
+occasion that calls for it, procedures packaged as skills, and — the part that makes it different —
+**a built-in mechanism that audits its own health, and a criterion written before a role's first
+firing that says when it has stopped earning its place.**
+
+> **This page orients; it holds no rule.** Every claim below is a one-line summary of a file named
+> beside it, and **where this page and that file disagree, the file wins** (`AX-20`).
 
 ## The shape
 
@@ -32,8 +35,8 @@ Two mechanics make the containment safe, and they are rules, not hopes:
   everything you own. This is the one prohibition that is a rule rather than a tool, because
   deletion is the act no cleanup pass can undo.
 
-MLabs contains **no personal information in what it tracks, by construction** — the invariant
-is a command over `git ls-files`, not a promise (see `AGENTS.md` §Invariants).
+MLabs contains **no personal information in what it tracks, by construction** — the invariant is a
+command over `git ls-files`, not a promise (`AGENTS.md` §5).
 
 **NEXUS is the operations centre, and it is not optional.** Every instance of this methodology
 has exactly one: a private sibling repository holding the knowledge, the projects, the decision
@@ -43,8 +46,10 @@ NEXUS is *where* the work and its history are, and an agent that has read only M
 rule and nothing that has ever happened. Adopting this methodology means creating your own
 NEXUS, the way you create your own `main` branch.
 
-NEXUS **pins the MLabs release it runs**, the way code pins a dependency. Upgrading is a
-deliberate act, so a released structure never shifts under a running instance.
+**A release is a tag, and an instance names in its binding the release it runs** — the way code
+pins a dependency. Upgrading is a deliberate act, so a released structure never shifts under a
+running instance. ⚠️ **An instance that co-develops MLabs is the exception**, and its cut answers
+*which MLabs is this?* another way (`skills/release-cut/` §5).
 
 ## Three levels, and what is in each today
 
@@ -76,15 +81,21 @@ rather than disagreeing with it in a dozen places.
 log and its own dedicated auditor. That is what makes the shape reproducible rather than
 bespoke: adopting this is not copying one company's rules, it is instantiating a pattern.
 
-Also here: `AGENTS.md` — who does what and when, the invariants and their checks, and the stage
-map — and `skills/`, where every employee lives. **A skill whose description names an event is a
-role**; one that names a request is a capability. The first and only hired role is
-`skills/company-auditor/`, whose job is that level 2 is never quietly violated and never drifts
-from level 1.
+Also here: `AGENTS.md` — the binding's method half, the invariants and their checks, and the stage
+map — and `skills/`, where every employee lives. **What makes an employee a role is accountability
+— it keeps a log and answers to a criterion** (`AGENTS.md` §4); the shape of its description settles
+a different question, which is how a model reaches it. Four roles are hired, and the one that guards this
+repository is `skills/company-auditor/`: its job is that level 2 is never quietly violated and never
+drifts from level 1.
 
-Skills and templates arrive in later stages, one at a time, each accepted by a **cold-start
-test**: an agent — or a stranger — given only this repo must reach productive. If a stage fails
-that test, the stage is not done.
+And `tools/` — **the checks, each with a planted fault that has been seen to fire it.** A rule
+nobody can run is a rule nobody keeps, so the reference checks (axiom ids, philosophy clauses,
+section numbers, generated views), the depersonalisation gate and the duplication check are commands
+rather than intentions, and `tools/tests/run.sh` names any published check that has no plant behind
+it (`AX-7`).
+
+Templates arrive in a later stage, each accepted by a **cold-start test**: an agent — or a stranger
+— given only this repo must reach productive. If a stage fails that test, the stage is not done.
 
 ## Talk to me
 
@@ -99,11 +110,10 @@ which rules turned out to be theatre, and what breaks first.
 
 ## Status
 
-**1.1.0** — tagged release. Philosophy, axioms, method, orchestration, and the skills that run
-them — `ls skills/` is the list, and it is stated nowhere else. An instance pins this tag;
-upgrading is a deliberate act.
+**`git tag` is the version, and it is stated nowhere else** (`AX-36`). The tagged release carries philosophy, axioms, method, flow,
+orchestration, the skills that run them and the tools that check them; `ls skills/` is the list.
 
-**What it does not yet have**, declared rather than discovered: none of the invariant checks
-runs without a human — the release gate is a documented procedure, not a hook — and the
-event-triggered skills fire when a model notices the event rather than because something
-called them. Both are named in `AGENTS.md` §5 and are the next release's work.
+**What it does not yet have**, declared rather than discovered: **no invariant check runs without a
+human.** The commands exist and each has a plant; what is missing is the hook that runs them at a
+cut without being asked. `AGENTS.md` §8 carries it as the gate on the current stage, and it is the
+next release's work.

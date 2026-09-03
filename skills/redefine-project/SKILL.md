@@ -1,6 +1,6 @@
 ---
 name: redefine-project
-description: Brings a project's definition, plan and state back in line with what the work has actually become, when its cartridge has drifted from reality. Use when a project's blocks no longer describe the work, when its state is several decisions behind, when the next action names something already done, or when opening a project and not recognising it. Invoked by the operator; never fires on its own. Rewrites the definition and the state, appends a decision, and never touches another project.
+description: Brings a project's definition and state back in line with what the work has actually become, when its cartridge has drifted from reality. Use when a project's blocks no longer describe the work, when its state is several decisions behind, when the next action names something already done, or when opening a project and not recognising it. Rewrites the standing files, appends one decision, and works on one cartridge.
 ---
 
 # redefine-project
@@ -9,16 +9,11 @@ description: Brings a project's definition, plan and state back in line with wha
 defined once, at its least informed moment, and then the work teaches things that never travel back
 into the definition. **Six months later the plan describes a project nobody is doing.**
 
-## Why this is not the auditor's job
+## Why it is a separate door from the audit
 
-**A role paid to find faults must not be invited to fix them by redesign.** An auditor that may
-redefine the project it audits starts finding exactly the problems its redesign resolves — and
-nothing in the output distinguishes a real finding from a justification. **The same wall stands
-between `rnd` and `audit`, one floor up** (`AX-4`).
-
-**The division that matters:** the auditor says *this is not true any more*. This skill decides
-*what is true instead*. **The first is evidence; the second is a decision**, and decisions are the
-operator's with an agent holding the pen.
+**This skill decides what is true instead** — which is a **decision**, and decisions are the
+operator's with an agent holding the pen. **An audit produces evidence and stops there**, and
+`skills/audit/` says why the two may not be one role.
 
 ## The block authority — the line is *can it break a citation*, not *who is typing*
 
@@ -69,7 +64,7 @@ structure nobody decided — the failure at the other end from the one this rule
 against the format**: delete a heading whose id also appears in a sub-block row, so a naive pattern
 still finds the string and reports no change.
 
-## When it is invoked
+## Occasion
 
 | Symptom | What it usually means |
 |---|---|
@@ -79,8 +74,8 @@ still finds the string and reports no change.
 | Opening the project and not recognising it | the definition describes an ancestor of this project |
 | A decision changed the scope and the definition never absorbed it | the log grew and the standing files did not |
 
-**None of these fires it.** The operator does, because **deciding a project has drifted is a
-judgement about what the project is *for*, and that is not something a symptom can settle.**
+⛔ **A symptom is the signal to say so; the operator decides.** **Whether a project has drifted is a
+judgement about what the project is *for*, and no symptom settles that.**
 
 ## The procedure
 

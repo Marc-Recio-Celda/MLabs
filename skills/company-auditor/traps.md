@@ -20,6 +20,7 @@
 | `AX-1` | **The gate greps the tracked tree, not the history** · **the signature carve-out is scoped by path *and* by term**, and both must hold |
 | `AX-20` | ⛔ **No repository is exempt, the authoring one least of all** · **Rule files only**: a task legitimately names paths · **The method's address is the one fact this rule can check today** — identical input must give byte-identical output, and the general form needs a generator that does not exist |
 | `AX-39` | **A boundary drawn by topic looks tidiest the day it is drawn and is the first one crossed** — the test is not *do these belong together* but *who changes them, and how often* |
+| `AX-45` | **A view nobody passed to the check is a view nobody checks** — the tool reports a target outside the file set rather than skipping it · **a view with no regeneration command is a photograph**, and `AX-20` wants that declared as one rather than implied |
 | `AX-19` | **The failure it prevents is an agent correctly judging an artefact's usefulness and never judging its ownership**, which no other permission class catches |
 
 ## PH-2 · Sustainability
@@ -63,7 +64,7 @@
 | `AX-4` | **Both halves or neither** — a rule with no firing event loses to the stream of requests, and a rule that gains one just to have one makes none of them salient |
 | `AX-17` | **An unordered list of pending items is not a destination** — *committed but not started* carries an order, and that order is a property of the items rather than a document that lists them · **the three addresses are the method's**, and the rule outlives the method changing them |
 | `AX-38` | **The removal half has no command**: `git diff --numstat` over the structural set shows a file that only grew, which is a line to read rather than a verdict |
-| `AX-41` | **The pattern is looser than a year test on purpose** — it may not contain a pipe, and `[0-9]{4}` is what a year test costs once the alternation is gone · **It catches dated narration, not all narration** — a date is what a change register almost always carries and what prose almost never needs, which is what makes it the one mechanical shadow of this rule |
+| `AX-41` | **The tell is a sentence the reader cannot follow without knowing what was tried** — *never a hook*, *not a number*, *no longer fires*: each of them names something absent, and the same rule stated positively needs none of them · **The pattern is looser than a year test on purpose** — it may not contain a pipe, and `[0-9]{4}` is what a year test costs once the alternation is gone · **It catches dated narration, not all narration** — a date is what a change register almost always carries and what prose almost never needs, which is what makes it the one mechanical shadow of this rule |
 | `AX-21` | **There is exactly one routing index**, and it says not only what exists but when to read it |
 
 ## PH-6 · Measurement

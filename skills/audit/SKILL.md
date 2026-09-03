@@ -1,17 +1,37 @@
 ---
 name: audit
-description: Dispatches an auditor over a closed task — company, instance or project, whichever department the work touched — or runs the saturation or promotion review. **Invoked by the operator, never automatic.** The natural moment is when an active front closes; use it also after a long stretch of work, or whenever you want a reading you did not ask for.
+description: Routes a closed task to the auditor whose department the work touched — company, instance or project — or to the saturation or promotion review. Use when an active front closes, when a long stretch of work is behind you, or to get a reading nobody asked for.
 ---
 
 # audit
 
-This skill **dispatches** an auditor; it does not perform the audit.
+This skill **routes** to an auditor; it does not perform the audit.
 
 > ⚠️ **It is also the declared winner for everything the three auditors share** (`MLabs:AX-20`) —
-> the brief, the output shape, the ledger entry, the log row, the dismissal mechanics.
-> **A role file states its scope, its trigger and its own checks, and cites this one for the rest.**
+> the brief, the output shape, the ledger entry, the log row, the tally, the dismissal mechanics,
+> what an auditor does not do.
+> **A role file states its scope, its occasion and its own checks, and cites this one for the rest.**
 > The departments differ in **scope and not in force**, so no role is senior enough to own another's
 > contract; the dispatcher is nobody's peer.
+>
+> **A role file defines the role; the instance holds its hiring record** — the criterion, the
+> standing, the history (`MLabs:AGENTS.md` §4). **On structure the role file wins.**
+
+## Occasion
+**An active front closing** · a long stretch of work behind you · wanting a reading you did not ask
+for. **Each auditor names the narrower occasion of its own department**, and that is the one that
+decides whether a given close fires.
+
+⛔ **The operator invokes an audit; an agent that sees the occasion says so and names it.** The
+cost of that is real — a role tied to an event is one nobody has to decide to run — so it carries a
+condition to reconsider it by: ⏳ **if findings start arriving only from the operator noticing
+things, the trade has failed and this line is the evidence.**
+
+⚠️ **A condition that is true at every close names no occasion at all.** The close writes the live
+set, the logs and the compass by definition, so **each role publishes what in its department is not
+structural**, and that list is what keeps its occasion from being permanent.
+
+**A role fires once per close, over everything the task touched** — not per entry and not per file.
 
 ## Which one to dispatch
 
@@ -21,18 +41,11 @@ This skill **dispatches** an auditor; it does not perform the audit.
 | The operations centre — its own axiom department, its binding, the shape of its live set | **`skills/instance-auditor/`** |
 | One project's cartridge — its architecture, its contract, its own tooling | **`skills/project-auditor/`** |
 
-**Each role file is the single source for its own department.** ⚠️ **There is no `roles/`
-directory** (`MLabs:AGENTS.md` §4).
+**Each role file is the single source for its own department.**
 
 **Two auditors on one close is the expensive one doing work it was not hired for.** If a task
 genuinely spans two departments, dispatch the higher one and **say the lower was not run** — an
 unrun check is reported as unrun, never as passed (`MLabs:AX-22`).
-
-⚠️ **Nothing here fires by itself, and that is a trade with a reopening condition.** The automatic
-trigger was retired because five firings in one session cost more context than the work
-they audited. **The cost is real**: these roles existed as events precisely so they would never be
-convenient to skip, and they now are. **If findings start arriving only from the operator noticing
-things, the trade failed and this line is the evidence to reopen it.**
 
 ## The brief — fresh context, every time
 
@@ -94,9 +107,8 @@ edit files and it does not commit. **It does not propose**: a suggestion is not 
 tally ever counts one as the other the role has stopped being what it is for.
 
 **And it does not redefine what it audits.** A role paid to find faults must not be invited to fix
-them by redesign, or it starts finding exactly the problems its redesign resolves. The auditor says
-*this is not true any more*; deciding *what is true instead* is `skills/redefine-project/` and the
-operator's, with an agent holding the pen.
+them by redesign, or it starts finding exactly the problems its redesign resolves. **The auditor
+says *this is not true any more*; *what is true instead* is `skills/redefine-project/`.**
 
 ## What comes back, and what to do with it
 
@@ -146,9 +158,21 @@ operator reading that log cannot detect.
 ⚠️ **The reader, and its proof against an adversarial plant, live in the employee-log directory's
 own `README.md`** — instance-side. This table is the structure it implements; that file is the state.
 
+### Standing — the three of them, in one table
+
+| Role | Log | Ledger prefix, and where it is written | Hired |
+|---|---|---|---|
+| `company-auditor` | `CA-` | `[company-auditor]`, the instance ledger | **once**, for the public structure |
+| `instance-auditor` | `IA-` | `[instance-auditor]`, the instance ledger | **once**, for the operations centre |
+| `project-auditor` | `PA-<project>-`, **one file per project** | `[project-auditor]`, **that project's** agent log | **per project** — a project's blind spots are its own |
+
+**Every log sits at the path the instance's binding declares** (`MLabs:AX-1`). **The per-role
+prefixes apply from round 8 forward** under the renaming rule above, and **which earlier rounds a
+role inherits is in that role's own log.**
+
 ## The tally — read from the logs, not from the ledger
 
-**The operator reads a role's log against its criterion (`AGENTS.md` §6), and the logs are shaped so
+**The operator reads a role's log against its criterion (`AGENTS.md` §4), and the logs are shaped so
 that reading is a command rather than an impression**: one file per role, a `Round` column and an
 `Acc` column, parsed **by column name**.
 
@@ -160,16 +184,27 @@ python3 <the instance's metrics script> --json   # → audits.<role>.firings · 
 that hard-codes a path below an operations centre is a program that runs on exactly one machine —
 the failure `MLabs:AX-1` exists to prevent, and the release gate blocks it.
 **The same holds for the hiring record: it is reached through the binding, never by a name written
-here** — including inside the paragraph that forbids naming it.
+here.**
 
 ⚠️ **A row belongs to the role that wrote it and is never reassigned.** Where one role held two
 jurisdictions before the split, its rows stay its own and the new roles start empty — **splitting
 that history retroactively would be inventing a measurement**, and an invented one is
 indistinguishable from a real one once it is in the table.
 
-⚠️ **Test the tally against a planted row before trusting it** (`MLabs:AX-7`), and **plant against
-the format, not merely into it** — a plant written in the file's own style reproduces the file's own
-blind spot, which is how five consecutive counting defects survived a rule written to catch them.
+⚠️ **Test the tally against a planted row before trusting it** (`MLabs:AX-7`, which says how to
+plant). **Five consecutive counting defects survived a rule written to catch them**, and every one
+of them was in a log nobody had planted against.
+
+## How a role is dismissed — the mechanics, for all three
+
+**When the criterion is written and where it lives are `MLabs:METHOD.md` §5's**, and **the operator
+reads the role's log against it and decides.** ⛔ **The numbers are read, never arithmetic that acts
+on its own** — a threshold that fires by itself retires a role on the round that happened to be
+quiet.
+
+**A role file names its own standing** — its log prefix, and whether it is hired once or per project
+— **and cites this section for the rest.** The record itself is reached through the instance's
+binding, under the rule *The brief* states above.
 
 ## Verification, as a prediction
 
@@ -186,7 +221,7 @@ under it belongs in `AGENTS.md` rather than behind a door nobody opens. **The ta
 against corrections**: a wrong department chosen and then reversed is what this table prevents, and
 zero of those over ten dispatches is the evidence to close it.
 
-## What this skill does not do
+## Its boundary
 
-It does not audit — it dispatches. It does not propose ideas. It does not decide what the findings
-mean. It does not fix what they name.
+**It dispatches and audits nothing.** Proposing ideas is `skills/rnd/`; **what the findings mean,
+and what to do about them, are the operator's.**

@@ -52,32 +52,26 @@ all **Standing**: each is rewritten to stay true, and none is ever a place thing
 Either way `COMPASS.md` names one active front `▶` and points at where that work is described;
 it describes none of it.
 
-**Open the active task's live plan**: the concrete subtasks, in the order they will be done, and
-the reasoning for that order. It is not a summary written afterwards — it is written *while*
-deciding, which is what makes it worth anything. ⚠️ **Opening one never overwrites another** — a
-paused task keeps its plan (`FLOW.md` rule 4), and it must be readable by the operator, who is the
-one governing the flow.
+**Open the active task's plan sheet — and plan it now if it is still empty.** The concrete
+subtasks, in the order they will be done, and the reasoning for that order. It is not a summary
+written afterwards — it is written *while* deciding, which is what makes it worth anything, and it
+is written to be read by the operator, who governs the flow. ⚠️ **Opening one can never overwrite
+another**: every task has its own sheet from the moment it exists (`FLOW.md`).
 
-**Work the list, striking through as you go.** Every item leaves with a **destination**, and
-the vocabulary is closed:
+**Work the list, striking through as you go, and every item struck through carries a destination**
+(`AX-9`). **The vocabulary is `FLOW.md`'s four**, and it is the instance schema's `outcome` field.
 
-| Destination | Means |
-|---|---|
-| ✅ resolved here | done in this task; the trace goes to a Record |
-| → task list | needs execution; becomes a task carrying its why |
-| → integrated | landed in code or in a document; the diff is the evidence |
-| → park | worth keeping, not now; goes to an ideas register |
-| → mailbox | belongs to someone else's inbox, or is a passive finding you must not fix here (AX-25) |
-| ⚫ discarded | rejected — **with its reason**, which is the half that has no other record (AX-24) |
-
-**An item struck through with no destination is a failure of the close, not an omission** (AX-9).
+⛔ **An item that needs its own task goes to the mailbox and is digested into one.** The task list
+runs operator → agent (§4), so an agent writing straight into it fills the queue it will then
+execute from — which is what `AX-15` forbids, and the digestion step is where the operator's
+judgement enters.
 
 **When an item spawns others, write them down immediately, right after the current one.** Even
 — *especially* — when they have nothing to do with what you are on. An idea that arrives while
 you are deep in something else is the one that gets lost, and "I'll remember it" is the exact
 moment PH-3 is broken. Writing it down is not the same as doing it: it takes its place in the
-list and gets a destination like everything else. Most will be ⚫ or → park, and that is a
-successful outcome, not a wasted line.
+list and gets a destination like everything else. Most will leave as `ideas` or `discarded`, and
+that is a successful outcome, not a wasted line.
 
 **Two review surfaces, two scopes.** The **diff** is the gate for one change: applied, left
 uncommitted, read by the operator. The **branch** is the gate for a session, which is what makes
@@ -99,8 +93,7 @@ at the close"* is the same failure with a delay.
    **The test is the file's own: would this still be true if work stopped today?** If the answer
    changed during the task and the file did not, the close is not done. ⚠️ **Numbered `1b` rather
    than renumbering**, so every reference to steps 2–6 elsewhere still resolves.
-2. **Read each destination back from disk.** *Written* is verified, never remembered (AX-9);
-   the interval between "I wrote that" and "that is on disk" is where work is lost.
+2. **Read each destination back from disk.** *Written* is verified, never remembered (`AX-9`).
 3. **Then the audit fires — but only if a structural file changed** (`skills/company-auditor/`
    holds the list, and the list of what is *not* structural is the load-bearing half). Most
    closes do not qualify and should not: the close writes the live set and the logs by
@@ -157,24 +150,32 @@ a friendlier name, and `AX-17` routes committed-but-not-started work somewhere e
 
 ---
 
-## 4. The two channels, in practice
+## 4. The two queues, in practice
 
 Two queues, running in opposite directions, and **neither side empties its own** (AX-15):
 
 - **Mailbox** — agent → operator. Un-integrated deltas: what an agent found, proposed, or
-  crossed. Every entry declares its destination from the closed vocabulary above.
+  crossed. Every entry declares its destination from `skills/triage/`'s vocabulary, which is the mailbox entry's and not the plan item's.
 - **Task list** — operator → agent. Work to execute, each task carrying **its why**, because an
   executor that does not know the purpose cannot refuse a task whose premise is false (AX-14).
+
+⛔ **These are two directions, never two surfaces.** Whichever access point the operator works
+through can triage and can execute; **which one does which is his call, taken on the complexity of
+the work**, and nothing here depends on the answer. **What does not change with the surface** is the
+direction of each queue (`AX-15`), what the gate covers (`AX-18`), and one stance per conversation
+(`AX-13`).
 
 A triage is the loop applied to the mailbox — **with one step that cannot be skipped, because
 AX-15 says nobody drains the queue they fill.** The agent enumerates the entries into the live
 plan and **proposes** a destination for each; **the operator confirms the table**; only then is
 anything removed. The agent's hands do the deleting, the operator's judgement authorises it —
-and the one delegated case stays as AX-15 states it: a task that *names* the entries it closes,
-because the decision to close them was made when the task was written.
+and the one delegated case stays as `AX-15` states it: a task that *names* the entries it closes.
 
-The mailbox ends empty, or with what is unresolved **named explicitly**: a mailbox that goes in
-full and comes out full means the session closed nothing.
+**A queue empties and a plan does not, and that is the whole distinction.** What passes through a
+queue is in transit: it was written in order to be routed, and **the plan is the record of where
+each entry went**. So the plan closes and stays (`FLOW.md` rule 3), while the mailbox ends empty —
+or with what is unresolved **named explicitly**, because a mailbox that goes in full and comes out
+full means the session closed nothing.
 
 ⚠️ **Triage is scoped by filter, never "the whole mailbox".** One front triages one project, or
 one destination class — not thirty entries at once. That is not tidiness: a thirty-entry triage
@@ -227,7 +228,7 @@ lapse.
 | File | Kind | Holds |
 |---|---|---|
 | `COMPASS.md` | Compass | one `▶`, edges not nodes, every project |
-| `PLAN.md` | Live plan | **the active task's subtasks** — a view, since a paused task keeps its own |
+| `PLAN.md` | Live plan | **the active task's plan sheet** — a view, since every task carries its own |
 | `MAILBOX.md` | Queue | agent → operator, every project |
 | `TASKS.md` | Queue | operator → agent, every project |
 | `IDEAS.md` | Park | undecided, every project |
@@ -288,7 +289,7 @@ being read.
 
 | Where a project's know-how goes | Passes if |
 |---|---|
-| `architecture.md` — a project **axiom** | it must fire *while* the work happens, and no later pass could apply it |
+| `architecture.md` — a project **axiom** | it passes `AX-4`, and nothing narrower would |
 | `nexus/skills/` — a project **skill** | it is a procedure someone follows, invoked when that work comes up |
 | `Decision_Log.md` — a **decision** | it is a choice already made that binds nothing going forward |
 
@@ -298,7 +299,7 @@ once, when invoked; an axiom is paid on every turn of every task in that project
 ⚠️ **Skills are not free, and the cost is not where it looks.** A skill's *body* loads only when
 it fires, but its **name and description are always in context** — so the count of skills is paid
 continuously and their bodies are not. Two consequences: **write the description to say what it
-does *and* when to use it**, because that sentence is the entire trigger; and **keep descriptions
+does *and* when to use it**, because that sentence is the whole of what a model selects on; and **keep descriptions
 distinct**, because two that overlap mean the wrong one fires and neither author finds out. The
 budget to watch is the sum of descriptions, never the sum of skills.
 
@@ -308,7 +309,7 @@ own — and **each project gets its own dedicated auditor**, hired under the sam
 dismissal criterion. That repetition is the claim to reproducibility: adopting this is not
 copying one company's rules, it is instantiating a pattern that knows how to instantiate itself.
 
-### Rule · skill · role — three things, and only one of them fires by itself
+### Rule · skill · role — three things, and only the rule is loaded without being asked for
 
 ⚠️ **Nothing here is a new taxonomy** — the repository already implements all three, and naming
 them is what stops *should this be a skill or a rule* being re-argued every time it comes up.
@@ -317,7 +318,7 @@ them is what stops *should this be a skill or a rule* being re-argued every time
 |---|---|---|---|
 | **Rule** | always — it lives in a document already open | **every turn**, which is why `AX-4` makes a rule earn its place against being a tool | no |
 | **Skill** | when invoked | its **description**, continuously; its body only when it fires | no |
-| **Role** | when invoked, **never automatically** | the same as a skill | **yes** — a log and a criterion that can fire it |
+| **Role** | when the operator invokes it | the same as a skill | **yes** — it keeps a log (`AX-11`) |
 
 **A role is a skill plus two things: a log and a dismissal criterion** (`AX-11`). That is the whole
 difference. **Accountability, not capability, is what makes something a role.**
@@ -333,25 +334,17 @@ them measures none. **Two words, and the difference is the log:**
 | `## Retirement` | a **skill** | no | no — it is retired when the repository can do without it |
 
 **Checked by `MLabs:tools/roles-check.sh`**, which compares the two sets and reports each direction
-separately: *a criterion with no log* and *a log with no criterion* are different problems and the
-fix is different. ⚠️ **The log is created by the act of hiring, not by the first firing.** **An empty log is a
-state; a missing file is a guess** — an absent file is indistinguishable from one deleted,
-mis-pathed, or that a brief never reached, and reading an absence as a fact is how this method
-produced four false findings. ⚠️ **An ageing empty log is evidence of nothing on its own**: a role
-whose firing event has not occurred is healthy, not idle. **The honest measure is firing events passed against firings
-recorded**, and a log with no firing event behind it says nothing. ⚠️ **It only works because the
+separately, because the fix differs by direction. **The log is created at hiring** (`AX-11`), so an absent file is a fault in the hiring. **A role's measure is occasions that warranted it against times it was invoked**, and an empty log
+says the occasions have not arisen. ⚠️ **It only works because the
 words were separated first** — attach a third meaning to either heading and it stops measuring
 anything.
 
-⚠️ **Nothing auto-fires, and that is a measured decision rather than an omission.** The automatic
-audit trigger was retired after five firings in one session cost more context than the work they
-audited. So *what fires* is only the mechanical checks — the gate, the pre-commit hook, the close —
-and **everything else is requested.** A design that quietly assumes a role will notice something is
-assuming a trigger that was deliberately removed.
+⛔ **The operator invokes a role; an agent that sees its occasion says so and names it.**
+**What runs on its own is the mechanical set**: the gate, the pre-commit hook, the close.
 
-⚠️ **The consequence for where a check goes.** If it must fire while the work happens, it is a
-**rule** and belongs in a document that is already loaded — never in a new skill, because a skill
-that has to be remembered is not a check. If it can wait to be asked for, it is a **skill**; if it
+⚠️ **The consequence for where a check goes.** `AX-4`'s test decides it: what it sends to *rule*
+belongs in a document that is already loaded — never in a new skill, because a skill that has to be
+remembered is not a check. If it can wait to be asked for, it is a **skill**; if it
 also needs to answer for its own record, it is a **role**.
 
 ## 6. How the repositories connect
@@ -375,11 +368,9 @@ MLabs/                      the constitution — public, released, no state
 NEXUS. NEXUS names MLabs, once, in its binding. MLabs names nothing. An agent dropped into any
 repository can walk *up* the chain to the rules and *across* to the work, and never has to guess.
 
-**Three departments of axioms — nested scopes, not ranks.** The company binds everything, an
-instance binds everything done in it, a project's own file binds that project alone; ⚠️ **when two
-disagree the narrower one loses**, because it should not have been opened over ground the wider one
-already governed. **They are reviewed together** whenever any changes, since a rule can only
-contradict a rule it shares a reader with.
+**Three departments of axioms.** They are nested scopes and `AXIOMS.md`'s header settles what
+happens when two disagree; what this file adds is that **they are reviewed together whenever any of
+them changes**, since a rule can only contradict a rule it shares a reader with.
 
 > ⚠️ **What an agent loads is decided by the task, not by the tier — `AGENTS.md` §2 wins.**
 > ⛔ **Loading all three departments for a defined task costs multiples of the budget §2 sets, and
@@ -398,7 +389,7 @@ contradict a rule it shares a reader with.
 
 | Department | Lives in | Passes if |
 |---|---|---|
-| **Company** | MLabs `AXIOMS.md` | it would bind an instance that is not this one |
+| **Company** | MLabs `AXIOMS.md` | it passes the second entry test in that file's header |
 | **Instance** | NEXUS `AXIOMS.md` | it binds **everything this operator does**, across every project — whether or not a stranger would also adopt it |
 | **Project** | the project's `architecture.md` | it binds this project only |
 

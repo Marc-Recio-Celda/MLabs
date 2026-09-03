@@ -19,8 +19,8 @@
 > rule with nowhere to spill either splits or does not enter.
 >
 > **Where the other three things go:** a **trap** — *this is how you get it wrong* — is
-> `skills/company-auditor/traps.md`, keyed by axiom id, because it fires when someone writes the
-> thing an axiom governs and this file is read on every turn (`AX-4`). **History** is the log's,
+> `skills/company-auditor/traps.md`, keyed by axiom id, and that file says why (`AX-4`).
+> **History** is the log's,
 > always. A **consequence** that changes no behaviour is not written.
 >
 > ⛔ **The `Check` column holds the state, the command, and what a reader needs to read that
@@ -57,6 +57,7 @@
 | **AX-1** | 🟢 | **Structure is public and depersonalised; state is private.** The method ships as one artefact; everything an operator works on lives in their operations centre, and the method may name that centre and its conventional root — never anything inside it. | PH-1 · PH-3 | `$` `bash tools/gate.sh --denylist <the instance's>` — the tracked tree, never the history |
 | **AX-20** | 🟢 | **The same fact does not live in two files.** Where it must, one place is declared the source and the other is a **generated view** — regenerated, and it loses on conflict — or a **declared photograph** carrying the date it was frozen and why; anything else is a duplicate. | PH-1 · PH-3 | `$` `grep -rnE '[~./][A-Za-z0-9_/-]*MLabs' <the instance's rule files>` returns nothing · `bash tools/dup-prose.sh <the structural files>` — the same prose in two of them |
 | **AX-39** | 🟢 | **Modularity is the default shape: each piece owns its boundary, its lifecycle and its version**, and boundaries are drawn by owner first, rate of change second — never by topic. ⛔ **A boundary costs once and coupling costs forever** (`PH-1`). | PH-1 · PH-2 | `—` |
+| **AX-45** | 🟢 | **A source names every copy derived from it, and every copy names its source** — a **generated** copy adds the command that rebuilds it, a **frozen** copy the date it was taken and why. ⛔ **A copy that only points upward is invisible from above** — the edit that invalidates it happens in the source, where nothing says the copy exists. | PH-1 · PH-4 | `$` `bash tools/view-refs.sh <every source and copy>` — four marks: `Generates:`/`Generated from:` when a command rebuilds it, `Frozen copies:`/`Frozen from:` when nothing can |
 | **AX-19** | 🟢 | **Work the operator does not own is never modified — however dead it looks.** An observation about it goes to the mailbox **marked as another owner's**, and it cannot become a task without that owner's word or an explicit recorded waiver. | PH-1 · PH-3 | `—` |
 
 ## PH-2 · Sustainability
@@ -88,8 +89,8 @@
 
 | ID | Status | Axiom | Serves | Check |
 |---|---|---|---|---|
-| **AX-7** | 🟢 | **A check is not adopted until a planted fault has been seen to fire it**, and the same holds for anything else that runs on a trigger. **Plant against the format, not into it** — a plant written in the file's own style reproduces the file's own blind spot. | PH-4 | `$` `bash tools/tests/run.sh` — runs every plant and names every runnable check that has none |
-| **AX-31** | 🟢 | **Identifiers are never reused or renumbered, so a gap in the numbering is information rather than a mistake.** **A reference carries its scope the moment it leaves the file that minted it** — bare inside, anchored outside — and points at a name rather than a position wherever a renumbering could not be corrected. | PH-4 · PH-3 | `$` `bash tools/axiom-refs.sh <axioms-file> <SCOPE> <files…>` — exit 0 clean · 1 unresolved · 2 could not run |
+| **AX-7** | 🟢 | **A check is not adopted until a planted fault has been seen to fire it**, and the same holds for anything else that runs on a condition. **Plant against the format, not into it** — a plant written in the file's own style reproduces the file's own blind spot. | PH-4 | `$` `bash tools/tests/run.sh` — runs every plant and names every runnable check that has none |
+| **AX-31** | 🟢 | **Identifiers are never reused or renumbered, so a gap in the numbering is information rather than a mistake.** **A reference carries its scope the moment it leaves the file that minted it** — bare inside, anchored outside — and points at a name rather than a position wherever a renumbering could not be corrected. | PH-4 · PH-3 | `$` `bash tools/axiom-refs.sh <axioms-file> <SCOPE> <files…>` · `bash tools/section-refs.sh <files…>` — each exit 0 clean · 1 unresolved · 2 could not run. **A `§n` is a position and an `AX-n` is a name**, so the positional half needs its own command |
 | **AX-22** | 🟢 | **Evidence comes before the argument**: run the command that would falsify a claim before anything is built on it. ⛔ **A check that could not run is reported as unrun, never as passed** — one that cannot verify and stays silent is indistinguishable from one whose checks passed. | PH-4 | `—` |
 | **AX-43** | 🟢 | **What code can do, code does; the model is called only for what needs judgement.** ⛔ **A model call cannot be replayed, so it cannot be tested** — and it spends, every single time, the window that the judgement it was called for is going to need. | PH-4 · PH-5 | `—` |
 | **AX-6** | 🟢 | **A claim cites its evidence or it is an opinion, and the citation's form follows where the evidence came from** — from inside, the address it lives at, a file and line, or a command and its output; from outside, a source that can be fetched and versioned. **Every line of a log cites an artefact** or it is not written. | PH-4 | `—` |
@@ -99,10 +100,10 @@
 | ID | Status | Axiom | Serves | Check |
 |---|---|---|---|---|
 | **AX-29** | 🟢 | **What leaves a document and what records it leaving are one edit, never two.** **A line stays only if the work would come out wrong without it and the reader could not have worked it out from the repository.** | PH-5 · PH-3 | `⊘` **owed** — `skills/compact/` is a pass you invoke, not a check that returns a verdict; `company-auditor:A6` covers what a pass cannot decide |
-| **AX-4** | 🟢 | **A rule earns its place only if it must fire while the work happens, and it names the event that fires it**; if a pass over the finished artefact could apply it, it is a tool. | PH-5 | `$` `grep -L '^## Fires when' skills/*/SKILL.md` — ⛔ **a second spelling of the heading is in use**, so the flag is wider than the fault |
+| **AX-4** | 🟢 | **A rule earns its place only if it must fire while the work happens, and it names the event that fires it**; if a pass over the finished artefact could apply it, it is a tool. | PH-5 | `$` `grep -L '^## Occasion' skills/*/SKILL.md` — every skill it names has no occasion written at all |
 | **AX-17** | 🟢 | **Everything routes at the moment it is written, and by commitment rather than by topic** — decided, not yet decided, and committed but not started go to three different places, and the method says which. **An item that resists routing is evidence the structure is wrong**, never that the item is special. | PH-5 | `$` `python3 interface/model/parse.py --adapter <the instance's>` reports `with project: n/n` |
 | **AX-38** | 🟢 | **Editing a structural file is finished when what the edit made untrue has left it, and the rules it cites still hold** — the diff that adds is the same diff that removes. ⛔ **Deprecated text does not announce itself**: the file still runs, still reads as current, and costs that reading every time it is loaded. | PH-5 · PH-4 | `$` `bash tools/axiom-refs.sh AXIOMS.md <SCOPE> <the files the diff touched>` **and** `bash tools/clause-refs.sh PHILOSOPHY.md <the same files>` — the citation half only |
-| **AX-41** | 🟢 | **A structural file states what is true now and never how it got there.** ⛔ **What changed and why is the log's** — a file that explains its own history pays for that explanation on every read, forever, and the explanation is the first half to become false. | PH-5 · PH-3 | `$` `grep -rnE '\b[0-9]{4}-[0-9]{2}-[0-9]{2}\b' $(git ls-files '*.md')` returns nothing. ⛔ **A pattern published in this table may not contain a pipe** — escaped it is a literal to `grep -E`, and it is still a column separator either way |
+| **AX-41** | 🟢 | **A structural file states what is true now — never how it got there, and never the mechanism that was rejected.** ⛔ **What changed, what was discarded, and why, are the log's** — a file that explains itself against an absent alternative teaches the absent thing on every read, and the reader who arrives later cannot tell which of the two is in force. | PH-5 · PH-3 | `$` `grep -rnE '\b[0-9]{4}-[0-9]{2}-[0-9]{2}\b' $(git ls-files '*.md')` returns nothing. ⛔ **A pattern published in this table may not contain a pipe** — escaped it is a literal to `grep -E`, and it is still a column separator either way |
 | **AX-21** | 🟢 | **Startup reads where the work stands from a literal path; knowledge loads only when the reasoning touches it.** **Rules travel and maps point** — whatever must survive a fresh checkout is generated *into* it, whatever would go stale if copied is a pointer — and anything opened beyond the index's row is declared and logged as a repair to the index. | PH-5 | `—` |
 | **AX-25** | 🟢 | **Record what you cross, one line, and neither investigate nor fix it.** The firing event is *while doing something else*: going looking is an audit, and fixing in passing turns one reviewable change into two. | PH-5 | `—` |
 
@@ -124,9 +125,9 @@
 | Clause | Axioms | Count |
 |---|---|---|
 | `PH-0` | — | **0, by design** |
-| `PH-1` | `AX-1` · `AX-19` · `AX-20` · `AX-39` | 4 |
-| `PH-2` | `AX-13` · `AX-14` · `AX-18` · `AX-26` · `AX-28` · `AX-33` · `AX-39` · `AX-40` | 8 |
-| `PH-3` | `AX-1` · `AX-2` · `AX-9` · `AX-11` · `AX-15` · `AX-19` · `AX-20` · `AX-23` · `AX-24` · `AX-29` · `AX-31` · `AX-37` · `AX-41` · `AX-42` | 14 |
-| `PH-4` | `AX-2` · `AX-6` · `AX-7` · `AX-11` · `AX-22` · `AX-24` · `AX-31` · `AX-33` · `AX-37` · `AX-38` · `AX-40` · `AX-43` | 12 |
-| `PH-5` | `AX-4` · `AX-17` · `AX-21` · `AX-25` · `AX-29` · `AX-38` · `AX-41` · `AX-43` | 8 |
-| `PH-6` | `AX-36` · `AX-42` · `AX-44` | 3 |
+| `PH-1` | `AX-1` · `AX-20` · `AX-39` · `AX-45` · `AX-19` | 5 |
+| `PH-2` | `AX-39` · `AX-18` · `AX-33` · `AX-13` · `AX-40` · `AX-14` · `AX-26` · `AX-28` | 8 |
+| `PH-3` | `AX-1` · `AX-20` · `AX-19` · `AX-9` · `AX-2` · `AX-11` · `AX-23` · `AX-42` · `AX-15` · `AX-24` · `AX-37` · `AX-31` · `AX-29` · `AX-41` | 14 |
+| `PH-4` | `AX-45` · `AX-33` · `AX-40` · `AX-2` · `AX-11` · `AX-24` · `AX-37` · `AX-7` · `AX-31` · `AX-22` · `AX-43` · `AX-6` · `AX-38` | 13 |
+| `PH-5` | `AX-43` · `AX-29` · `AX-4` · `AX-17` · `AX-38` · `AX-41` · `AX-21` · `AX-25` | 8 |
+| `PH-6` | `AX-42` · `AX-36` · `AX-44` | 3 |

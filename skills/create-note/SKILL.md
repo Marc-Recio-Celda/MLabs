@@ -5,8 +5,7 @@ description: Writes and edits every note in the instance's knowledge vault and n
 
 # create-note
 
-## When it fires
-
+## Occasion
 The operator names a note, hands over a syllabus, asks for scaffolding, or has something from their
 own work to condense. **The one door into the knowledge domains** (`NEXUS:AX-4`): no other skill, no
 sweep, no script completing the structure, no agent acting on its own reading of what is missing. The

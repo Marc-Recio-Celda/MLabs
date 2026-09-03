@@ -5,55 +5,54 @@ description: Empties the mailbox by routing every entry to a destination the ope
 
 # triage
 
-The working loop applied to the inbox — with **one step that may never be skipped**, because
-`AX-15` says nobody drains the queue they fill.
+**The contract is `METHOD.md` §4** — the loop applied to the mailbox, the confirmation step that
+cannot be skipped, the one delegated case, and what the mailbox looks like when the session is over.
+**Below is how a pass is actually worked.**
 
-## Read the whole pile before routing any of it
+## Occasion
+- The mailbox has accumulated entries, or the compass names a triage.
+- An agent's findings need integrating.
 
-**Two entries that are the same finding seen twice get worked twice if each is
-routed on arrival — and a queue that has been sitting produces those constantly, because the same
-defect keeps surfacing from different angles.
+## 1 · Read the whole pile before routing any of it
+
+**Two entries that are the same finding seen twice get worked twice if each is routed on arrival** —
+and a queue that has been sitting produces those constantly, because the same defect keeps
+surfacing from different angles.
 
 **So: read everything first, then group, then route the groups.** The grouping is the saving; the
 routing is mechanical once it is done.
 
-## Batches of one to five, never the whole pile
+## 2 · Scope by filter, and work in batches of one to five
 
-A queue is not drained in one act. **Take between one and five related entries per pass**, sized to
-what fits without the reading displacing the deciding — which is the same reason the audit stopped
-firing on every close.
+`METHOD.md` §4 sets the filter — **one project, or one destination class.** The `project:` field on
+every entry exists so that filter is possible.
 
-⚠️ **The count is not the point; the grouping is.** Five entries that share a cause are one
-decision with five destinations. Five unrelated ones are five decisions, and that is a slower pass
-even though the number matches.
+Inside the filter, **take between one and five related entries per pass**, sized so the reading does
+not displace the deciding. ⚠️ **The count is not the point; the grouping is.** Five entries sharing
+a cause are one decision with five destinations; five unrelated ones are five decisions, and that
+is the slower pass even though the number matches.
 
-**A pass ends with its entries routed and confirmed, or it did not happen.** Leaving three of five
-half-decided is worse than taking three: the queue keeps its length and loses its meaning.
+⛔ **A pass ends with its entries routed and confirmed.** Leaving three of five half-decided keeps
+the queue's length and loses its meaning.
 
-## 1. Scope it by filter, never take the whole pile
+## 3 · Enumerate into the live plan
 
-Triage **one project, or one destination class**. Not thirty entries at once.
+One line per entry, **in the order they will be worked** — which is not the order they arrived. A
+queue guarantees that nothing leaves without a destination; it never guarantees first-in-first-out,
+and the order is the operator's to set.
 
-This is not tidiness. A triage sits behind a single active front for as long as it takes, and an
-unfiltered pile is exactly the front that never closes — the first thing to go manual as the
-instance grows. The `project:` field on every entry exists so this filter is possible.
-
-## 2. Enumerate into the live plan
-
-One line per entry, in the order they will be worked — which is **not** the order they arrived.
-A queue guarantees that nothing leaves without a destination; it never guarantees first-in-first-
-out, and the order is the operator's to set.
-
-## 3. Revalidate before proposing anything
+## 4 · Revalidate before proposing anything
 
 **Every entry is checked against the real state before it is routed.** Cite the file and line it
-names, and confirm the claim still holds. An entry written three weeks ago describes a repository
+names, and confirm the claim still holds — an entry written three weeks ago describes a repository
 that has moved.
 
-An entry whose premise no longer holds is not silently dropped: it is routed as **discarded, with
-the reason**, which is the half that has no other record (`AX-24`).
+**An entry whose premise no longer holds is routed as *discarded, with the reason*** (`AX-24`).
 
-## 4. Propose a destination for each — the closed vocabulary
+## 5 · Propose a destination for each
+
+⚠️ **This vocabulary is the mailbox entry's, and it is not the plan item's** (`METHOD.md` §2). An
+entry arrives to be *filed*; a plan item leaves to be *finished*.
 
 | Destination | When |
 |---|---|
@@ -66,36 +65,23 @@ the reason**, which is the half that has no other record (`AX-24`).
 | debate | it needs the operator's judgement before it can be routed |
 | discarded | rejected, **with the reason** |
 
-## 5. The step that may never be skipped
+## 6 · The confirmation, then the close
 
-**The operator confirms the entry → destination table before anything is removed.**
+**Every entry appears in the confirmed table, including the ones that stay open** — *"this one I did
+not resolve"* is a valid result, and hiding it is not (`AX-6`). The mechanics are `METHOD.md` §4's.
 
-Every entry appears in that table, **including the ones that stay open** — saying *"this one I
-did not resolve"* is a valid result and hiding it is not (`AX-6`). The agent's hands do the
-deleting; the operator's judgement authorises it.
-
-The one delegated case: a task that **names** the entries it closes. The executor deletes exactly
-those, because the decision to close them was made when the task was written.
-
-## 6. Close
-
-Per `open-session` §5: read every destination back from disk, then **close** the plan — never
-delete it (`FLOW.md` rule 3). **A triage
-alone does not fire the company auditor** — draining a queue changes no structural file, and the
-audit fires on those and nothing else. If the triage routed something *into* an axiom department
-or a skill, it does.
-
-**The mailbox ends empty, or with what is unresolved named explicitly.** A mailbox that goes in
-full and comes out full means the session closed nothing.
+Close per `open-session` §5. ⚠️ **A triage alone does not fire the company auditor** — draining a
+queue changes no structural file. It fires when the triage routed something *into* an axiom
+department or a skill.
 
 ## Verification, as a prediction
 
 Before starting, state: *after this triage the filtered set holds `N` entries, all of which are
-`open` for a named reason.* Any entry left without a destination and without appearing in the
-confirmation table is a defect in the triage, not an omission.
+`open` for a named reason.* **An entry left without a destination and absent from the confirmation
+table is a defect in the triage.**
 
 ## What this skill does not do
 
-It does not fix what an entry reports — that is a task. It does not investigate beyond
-revalidating the claim. It does not write into an axiom department. It never removes an entry the
-operator has not confirmed.
+It fixes nothing an entry reports — that becomes a task. It investigates no further than
+revalidating the claim. It writes into no axiom department, and it removes no entry the operator has
+not confirmed.
