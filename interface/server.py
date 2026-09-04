@@ -16,8 +16,10 @@ import importlib
 import mimetypes
 import json
 import os
+import re
 import socketserver
 import sys
+import urllib.parse
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -160,6 +162,34 @@ def doctrine():
     return {"root": str(DOCTRINE_ROOT), "entities": entities, "problems": problems}
 
 
+def one_skill(adapter, name):
+    """Un SKILL.md entero y los ficheros que lo acompañan.
+
+    ⚠️ Los 19 SKILL.md de este repositorio suman 120 KB. Mandarlos en cada `/api/model`
+    multiplicaría por veinte una respuesta que se pide cada dos segundos, para enseñar como
+    mucho uno. Se pide el que se va a leer.
+    """
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name or ""):
+        return {"error": "nombre de skill no válido"}
+    for src in adapter.get("sources", []):
+        if src.get("kind") != "skills":
+            continue
+        root = Path(adapter["root"])
+        sroot = (root / src["root"]).resolve() if src.get("root") else root
+        for f in sorted(sroot.glob(src.get("glob", ""))):
+            if f.parent.name != name and f.stem != name:
+                continue
+            siblings = []
+            for sib in sorted(f.parent.iterdir()):
+                if sib.is_file() and sib != f and sib.suffix in (".md", ".txt"):
+                    siblings.append({"name": sib.name,
+                                     "body": sib.read_text(encoding="utf-8", errors="replace")})
+            return {"name": name, "file": str(f.relative_to(sroot)),
+                    "body": f.read_text(encoding="utf-8", errors="replace"),
+                    "siblings": siblings}
+    return {"error": f"ninguna fuente de skills declarada contiene {name!r}"}
+
+
 def make_handler(adapter):
     class Handler(http.server.BaseHTTPRequestHandler):
         def _send(self, code, body, ctype="application/json"):
@@ -203,6 +233,14 @@ def make_handler(adapter):
                         self._send(200, {"entities": [], "problems": [{"why": str(e)}]})
                 else:
                     self._send(200, {"entities": [], "standalone": True})
+            elif path == "/api/skill":
+                # ⛔ Se pide por NOMBRE y se resuelve contra la fuente que el adaptador ya
+                # declara. Un cliente que pudiera nombrar una ruta leería cualquier fichero
+                # que el servidor alcance; uno que nombra una skill sólo alcanza las que la
+                # instancia ha declarado. Es la misma regla que gobierna la escritura.
+                name = urllib.parse.parse_qs(
+                    self.path.split("?", 1)[1] if "?" in self.path else "").get("name", [""])[0]
+                self._send(200, one_skill(adapter, name))
             elif path == "/api/doctrine":
                 # ⛔ MLabs' own structural files, parsed rather than transcribed. The
                 # engine ships INSIDE this repository, so `HERE.parent` is a structural

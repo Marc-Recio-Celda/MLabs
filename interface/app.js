@@ -457,24 +457,23 @@ function ingestModel(model) {
   }));
 
   // Skills
-  STATE.skills = entities.filter(e => e.kind === "skill").map(e => {
-    let trigger = e.trigger || "request";
-    let when = e.when || "";
-    if (e.title === "rnd") {
-      trigger = "event";
-      if (!when || when.toLowerCase().includes("never fires")) {
-        when = "Pensamiento lateral frente al diseño del sistema. Disparada ante impasses de diseño o decisiones encalladas.";
-      }
-    }
-    return {
-      id: e.id,
-      title: e.title || "",
-      trigger,
-      summary: e.summary || "",
-      when: when || e.when || "",
-      evidence: e.evidence || ""
-    };
-  });
+  // ⛔ Aquí había un caso especial que forzaba `rnd` a `event` y, si su `when` no le
+  // gustaba, **escribía uno inventado** que no aparece en ningún fichero. La descripción
+  // de `rnd` dice literalmente «on request» y «Use when the operator is stuck…»: el parser
+  // la lee bien y la vista la corregía hacia lo contrario, presentando texto fabricado con
+  // el mismo aspecto que el leído del disco. Una excepción por nombre en la capa de
+  // presentación es una segunda copia de un hecho, y ésta además era falsa.
+  //
+  // ⚠️ Un `trigger` que no viene se queda como `unclear`, no como `request`: el parser
+  // distingue expresamente lo que pudo probar de lo que no, y ese matiz es el valor.
+  STATE.skills = entities.filter(e => e.kind === "skill").map(e => ({
+    id: e.id,
+    title: e.title || "",
+    trigger: e.trigger || "unclear",
+    summary: e.summary || "",
+    when: e.when || "",
+    evidence: e.evidence || ""
+  }));
 
   // Tasks (from model + local overrides for comments/discards)
   const localTasks = JSON.parse(localStorage.getItem(STORAGE_KEYS.TASKS) || "[]");
@@ -676,6 +675,8 @@ function syncUrlHash() {
     if (tab === "guide" && activeDoc) {
       hash += `?doc=${encodeURIComponent(activeDoc)}`;
     }
+  } else if (view === "skill") {
+    hash = `#/skill/${encodeURIComponent(STATE.skillOpen?.name || "")}`;
   } else if (view === "clause") {
     hash = `#/clause/${encodeURIComponent(STATE.clauseId || "")}`;
   } else if (view === "doc") {
@@ -757,6 +758,15 @@ function restoreRouteFromUrl() {
     if (params.has("doc") && STATE.selectedProject) {
       STATE.guideActiveDoc = STATE.guideActiveDoc || {};
       STATE.guideActiveDoc[STATE.selectedProject] = decodeURIComponent(params.get("doc"));
+    }
+  } else if (mainView === "skill" && segments[1]) {
+    // ⚠️ Restaurar esta ruta no es sólo fijar la vista: su contenido se pide al servidor,
+    // así que hay que relanzar la petición o la página queda en blanco tras una recarga.
+    const n = decodeURIComponent(segments[1]);
+    STATE.currentView = "skill";
+    if (!STATE.skillOpen || STATE.skillOpen.name !== n) {
+      STATE.skillOpen = { name: n, loading: true };
+      setTimeout(() => window.openSkill(n), 0);
     }
   } else if (mainView === "clause") {
     STATE.currentView = "clause";
@@ -889,12 +899,19 @@ function renderView() {
   }
 
   if (STATE.error) {
+    const red = STATE.errorKind !== "vista";
     main.innerHTML = `
       <div class="error-state">
         <div class="error-icon">⚠️</div>
-        <h3>Error de conexión con el servidor</h3>
+        <h3>${red ? "No se pudo hablar con el servidor"
+                  : `La vista <code>${esc(STATE.errorWhere || "")}</code> falló al pintarse`}</h3>
         <p>${esc(STATE.error)}</p>
-        <button class="btn-retry" onclick="window.retryLoad()">Reintentar Conexión</button>
+        ${red ? `<p class="error-hint">El modelo no llegó. Comprueba que <code>server.py</code>
+                   sigue en pie y que el adaptador apunta a donde crees.</p>`
+              : `<p class="error-hint">El modelo llegó bien: el fallo es del código de la vista,
+                   no de la red ni del adaptador.</p>
+                 ${STATE.errorStack ? `<pre class="error-stack">${esc(STATE.errorStack)}</pre>` : ""}`}
+        <button class="btn-retry" onclick="window.retryLoad()">Reintentar</button>
       </div>
     `;
     return;
@@ -909,6 +926,7 @@ function renderView() {
     case "clause": renderClause(main); break;
     case "doc": renderDoc(main); break;
     case "dashboard": renderDashboard(main); break;
+    case "skill": renderSkillPage(main); break;
     case "cheatsheet": renderCheatSheet(main); break;
     case "inbox": renderInbox(main); break;
     case "ideas": renderIdeas(main); break;
@@ -926,190 +944,124 @@ function renderView() {
 function renderOverview(container) {
   const activeWf = STATE.selectedWorkflowTab || "project";
   const isCollapsed = (id) => Boolean(STATE.collapsedSections && STATE.collapsedSections[id]);
+  const ax = D().axioms, cl = D().clauses;
 
   container.innerHTML = `
     <div class="overview-container">
-      <!-- HERO HEADER BANNER (Chuleta Editorial Style) -->
-      <header class="chuleta-header">
-        <div class="brand">
-          <div class="kicker">MLabs & NEXUS · Sovereign Operational Matrix</div>
-          <h1>MLabs <span class="accent">& NEXUS</span></h1>
+      <!-- EL PROPILEO: la puerta -->
+      <header class="propylaea">
+        <div class="propylaea-fluting" aria-hidden="true"></div>
+        <div class="propylaea-inner">
+          <div class="kicker">ΜΗΧΑΝΗ · MLabs & NEXUS</div>
+          <h1>MLabs <span class="accent">&amp; NEXUS</span></h1>
           <p class="header-lead">
-            <strong>MLabs es la Constitución pública · NEXUS es el País privado · Cada Proyecto es un Cartridge soberano.</strong><br>
-            Orquestación determinista de tareas, gobernanza append-only y arquitectura modular sin pérdida de contexto.
+            <strong>MLabs es la constitución. La centralita de operaciones es el país.</strong><br>
+            Aquí están las reglas; el trabajo y su registro entero viven allí. Un agente que sólo
+            haya leído MLabs conoce todas las reglas y nada de lo que ha pasado nunca.
           </p>
           <div class="specs">
-            <span class="spec-pill" onclick="navigateTo('projects')"><strong>🚀 Proyectos:</strong> ${STATE.projects.length} Soberanos</span>
-            <span class="spec-pill" onclick="navigateTo('decisions')"><strong>📜 Decisiones:</strong> ${liveDecisions().length}+ Vivas (D_n)</span>
-            <span class="spec-pill" onclick="navigateTo('skills')"><strong>⚡ Skills:</strong> ${STATE.skills.length} Roles & Capacidades</span>
-            <span class="spec-pill" onclick="navigateTo('inbox')"><strong>📋 Tareas:</strong> ${STATE.tasks.length} en Vuelo</span>
-            <span class="spec-pill active-pill" onclick="navigateTo('cockpit')"><strong>🎯 Frente Activo:</strong> ${STATE.activeFront ? "1 En Marcha (▶)" : "0"}</span>
+            <span class="spec-pill" onclick="openClause('PH-0')"><strong>🏛️ Cláusulas:</strong> ${cl.length || "—"}</span>
+            <span class="spec-pill" onclick="navigateTo('dashboard')"><strong>⚖️ Axiomas:</strong> ${ax.length || "—"}</span>
+            <span class="spec-pill" onclick="navigateTo('skills')"><strong>🏺 Skills:</strong> ${STATE.skills.length}</span>
+            <span class="spec-pill" onclick="navigateTo('projects')"><strong>🚀 Proyectos:</strong> ${STATE.projects.length}</span>
+            <span class="spec-pill" onclick="navigateTo('inbox')"><strong>📬 Buzón:</strong> ${(STATE.mailbox || []).filter(e => ["open","pending"].includes(e.state)).length} sin cerrar</span>
+            <span class="spec-pill active-pill" onclick="navigateTo('cockpit')"><strong>▶ Frente activo:</strong> ${STATE.activeFront ? esc(cutText(STATE.activeFront.name, 34)) : "ninguno"}</span>
           </div>
         </div>
       </header>
 
-      <!-- TOC PILL BAR -->
       <nav class="toc-bar">
-        <button class="toc-pill" onclick="jumpToSection('sec-governance')"><span>🏛️</span> 01 · Gobernanza</button>
-        <button class="toc-pill" onclick="jumpToSection('sec-workflows')"><span>🔄</span> 02 · Flujos de Trabajo</button>
-        <button class="toc-pill" onclick="jumpToSection('sec-ecosystem')"><span>🗺️</span> 03 · Ecosistema</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-governance')"><span>🏛️</span> 01 · El templo</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-levels')"><span>🪜</span> 02 · Los tres niveles</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-structure')"><span>📜</span> 03 · Los ficheros troncales</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-routing')"><span>🧭</span> 04 · ¿Dónde va esto?</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-workflows')"><span>🔄</span> 05 · Los flujos</button>
+        <button class="toc-pill" onclick="jumpToSection('sec-ecosystem')"><span>🗺️</span> 06 · El ecosistema</button>
       </nav>
 
-      <!-- SECCIÓN 01: GOBERNANZA (tres niveles fusionados) -->
+      <!-- 01 · EL TEMPLO -->
       <section class="doc-section" id="sec-governance">
         <div class="section-head" onclick="toggleOverviewSection('sec-governance')">
-          <h2><span class="num">01</span> Gobernanza — Filosofía, Axiomas y Estado</h2>
-          <button class="btn-toggle-sec">${isCollapsed('sec-governance') ? '▶ Mostrar' : '▼ Plegar'}</button>
+          <h2><span class="num">01</span> <span class="sec-greek">ΝΑΟΣ</span> El templo — para qué existe la empresa</h2>
+          <button class="section-toggle">${isCollapsed("sec-governance") ? "▶ Desplegar" : "▼ Plegar"}</button>
         </div>
-        <div class="section-body ${isCollapsed('sec-governance') ? 'is-collapsed' : ''}">
-
-          <!-- ── PANEL SUPERIOR: Filosofía Inmutable ── -->
+        <div class="section-body ${isCollapsed("sec-governance") ? "collapsed" : ""}">
+          <p class="section-lead">
+            <code>PH-0</code> es el objetivo y sostiene el frontón; las seis columnas son las
+            <strong>maneras concretas de perderlo</strong>, cada una cerrada por su cláusula.
+            Pulsa una columna para leerla entera con los axiomas que la sirven.
+            <strong>Todo esto se lee de <code>PHILOSOPHY.md</code> y <code>AXIOMS.md</code>; la
+            página no guarda copia.</strong>
+          </p>
           ${renderPediment()}
           ${renderRefusals()}
-
-          <div class="gov-bottom-row">
-            <!-- NIVEL 2: AXIOMAS -->
-            <div class="gov-bottom-card gov-card-axioms">
-              <div class="gov-bottom-card-head">
-                <span class="gov-level-badge badge-gold">NIVEL 2 · ESTRUCTURA &amp; LEY</span>
-                <span class="gov-file-tag">AXIOMS.md · AGENTS.md · METHOD.md</span>
-              </div>
-              <h3 class="gov-bottom-title">Axiomas y Reglas Deterministas</h3>
-              <p class="gov-bottom-desc">Las reglas que implementan la filosofía y no se violan nunca. Cada fila nombra
-                la cláusula que sirve y su check — y <strong>los tres estados del check no se suman jamás en un solo
-                número</strong>, porque una columna que junta <em>un comando que corre</em> con <em>un aviso que se lee</em>
-                sólo puede subir. Los tres, por separado, están en el <button class="inline-link" onclick="navigateTo('dashboard')">dashboard</button>.</p>
-              
-              <div class="gov-stat-grid">
-                <div class="gov-stat-box">
-                  <span class="gov-stat-val">${D().axioms.length || "—"}</span>
-                  <span class="gov-stat-lbl">Axiomas en vigor</span>
-                </div>
-                <div class="gov-stat-box">
-                  <span class="gov-stat-val">${D().axioms.filter(a => a.check_state === "$").length || "—"}</span>
-                  <span class="gov-stat-lbl">Con check que corre</span>
-                </div>
-                <div class="gov-stat-box">
-                  <span class="gov-stat-val">${D().axioms.filter(a => a.check_state === "owed").length || "0"}</span>
-                  <span class="gov-stat-lbl">Checks en deuda</span>
-                </div>
-              </div>
-
-              <div class="gov-chips-container">
-                <div class="gov-chip-label">Axiomas Clave:</div>
-                <div class="gov-sample-rules">
-                  <span class="gov-rule-chip"><strong>AX-1</strong> Append-only</span>
-                  <span class="gov-rule-chip"><strong>AX-11</strong> Despido N/K</span>
-                  <span class="gov-rule-chip"><strong>AX-20</strong> Fuente única</span>
-                  <span class="gov-rule-chip"><strong>AX-21</strong> Carga selectiva</span>
-                  <span class="gov-rule-chip"><strong>AX-26</strong> Dueño primero</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- NIVEL 3: NEXUS -->
-            <div class="gov-bottom-card gov-card-nexus">
-              <div class="gov-bottom-card-head">
-                <span class="gov-level-badge badge-grape">NIVEL 3 · ESTADO PRIVADO</span>
-                <span class="gov-file-tag">NEXUS (operaciones)</span>
-              </div>
-              <h3 class="gov-bottom-title">Decisiones y Cartridges Soberanos</h3>
-              <p class="gov-bottom-desc">Donde vive la empresa real: registro histórico inmutable de decisiones con autor, fecha y razonamiento. Cada proyecto opera como un cartridge soberano con su propio ciclo de vida.</p>
-              
-              <div class="gov-stat-grid">
-                <div class="gov-stat-box">
-                  <span class="gov-stat-val">${liveDecisions().length}</span>
-                  <span class="gov-stat-lbl">Decisiones Vivas</span>
-                </div>
-                <div class="gov-stat-box">
-                  <span class="gov-stat-val">${STATE.projects.length}</span>
-                  <span class="gov-stat-lbl">Proyectos Soberanos</span>
-                </div>
-                <div class="gov-stat-box">
-                  <span class="gov-stat-val">${STATE.tasks.length}</span>
-                  <span class="gov-stat-lbl">Tareas en Vuelo</span>
-                </div>
-              </div>
-
-              <div class="gov-nexus-links">
-                <button class="gov-link-btn" onclick="navigateTo('decisions')">📜 Ver Decision Log →</button>
-                <button class="gov-link-btn" onclick="navigateTo('projects')">🚀 Abrir Projects Hub →</button>
-                <button class="gov-link-btn" onclick="navigateTo('inbox')">📋 Ir al Buzón →</button>
-              </div>
-            </div>
-          </div>
-
         </div>
       </section>
 
-      ${renderStructuralFiles()}
+      <!-- 02 · LOS TRES NIVELES -->
+      <section class="doc-section" id="sec-levels">
+        <div class="section-head" onclick="toggleOverviewSection('sec-levels')">
+          <h2><span class="num">02</span> <span class="sec-greek">ΒΑΘΜΟΙ</span> Los tres niveles, y nada puede difuminarlos</h2>
+          <button class="section-toggle">${isCollapsed("sec-levels") ? "▶ Desplegar" : "▼ Plegar"}</button>
+        </div>
+        <div class="section-body ${isCollapsed("sec-levels") ? "collapsed" : ""}">
+          ${renderEntablature()}
+        </div>
+      </section>
 
-      <!-- SECCIÓN 03: FLUJOS DE TRABAJO -->
+      <!-- 03 · LOS FICHEROS TRONCALES -->
+      ${renderStructuralFiles(isCollapsed("sec-structure"))}
+
+      <!-- 04 · LA TABLA DE ENRUTADO -->
+      ${renderRouting(isCollapsed("sec-routing"))}
+
+      <!-- 05 · LOS FLUJOS -->
       <section class="doc-section" id="sec-workflows">
         <div class="section-head" onclick="toggleOverviewSection('sec-workflows')">
-          <h2><span class="num">02</span> Los Cinco Flujos de Trabajo Operativos (Workflows)</h2>
-          <button class="btn-toggle-sec">${isCollapsed('sec-workflows') ? '▶ Mostrar' : '▼ Plegar'}</button>
+          <h2><span class="num">05</span> <span class="sec-greek">ΕΡΓΑ</span> Los cinco flujos de trabajo</h2>
+          <button class="section-toggle">${isCollapsed("sec-workflows") ? "▶ Desplegar" : "▼ Plegar"}</button>
         </div>
-        <div class="section-body ${isCollapsed('sec-workflows') ? 'is-collapsed' : ''}">
-          <div class="workflow-tabs">
+        <div class="section-body ${isCollapsed("sec-workflows") ? "collapsed" : ""}">
+          <p class="section-lead">
+            ⚠️ <strong>Esto es una lectura del método, no el método.</strong> A diferencia de todo
+            lo anterior, estos cinco flujos no salen de ningún fichero: son una interpretación
+            escrita a mano y pueden derivar. Lo que manda es
+            <button class="inline-link" onclick="openDoc('METHOD')">METHOD.md</button>.
+          </p>
+          <div class="wf-tabs">
             <button class="wf-tab ${activeWf === 'project' ? 'active' : ''}" onclick="setWorkflowTab('project')">🚀 1. Trabajar en Proyecto</button>
             <button class="wf-tab ${activeWf === 'environment' ? 'active' : ''}" onclick="setWorkflowTab('environment')">🛠️ 2. Mejorar Entorno</button>
             <button class="wf-tab ${activeWf === 'knowledge' ? 'active' : ''}" onclick="setWorkflowTab('knowledge')">📚 3. Añadir Temario</button>
             <button class="wf-tab ${activeWf === 'cartridge' ? 'active' : ''}" onclick="setWorkflowTab('cartridge')">🏗️ 4. Crear / Redefinir</button>
             <button class="wf-tab ${activeWf === 'coursework' ? 'active' : ''}" onclick="setWorkflowTab('coursework')">🎓 5. Formación & Corrección</button>
           </div>
-
           ${renderWorkflowDetail(activeWf)}
         </div>
       </section>
 
-      <!-- SECCIÓN 04: ECOSISTEMA -->
+      <!-- 06 · EL ECOSISTEMA -->
       <section class="doc-section" id="sec-ecosystem">
         <div class="section-head" onclick="toggleOverviewSection('sec-ecosystem')">
-          <h2><span class="num">03</span> Ecosistema de Módulos y Navegación Directa</h2>
-          <button class="btn-toggle-sec">${isCollapsed('sec-ecosystem') ? '▶ Mostrar' : '▼ Plegar'}</button>
+          <h2><span class="num">06</span> <span class="sec-greek">ΑΓΟΡΑ</span> El ecosistema — dónde se trabaja</h2>
+          <button class="section-toggle">${isCollapsed("sec-ecosystem") ? "▶ Desplegar" : "▼ Plegar"}</button>
         </div>
-        <div class="section-body ${isCollapsed('sec-ecosystem') ? 'is-collapsed' : ''}">
+        <div class="section-body ${isCollapsed("sec-ecosystem") ? "collapsed" : ""}">
           <div class="eco-grid">
-            <div class="eco-card-doc" onclick="navigateTo('projects')">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:24px;">🚀</span>
-                <span class="card-badge badge-vine">${STATE.projects.length} Proyectos</span>
-              </div>
-              <h3>Projects Hub</h3>
-              <p>Cartera de proyectos organizada por centros de trabajo y laboratorios con estado y hojas de ruta B_n.</p>
-              <span class="eco-link">Abrir Projects Hub →</span>
-            </div>
-
-            <div class="eco-card-doc" onclick="navigateTo('inbox')">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:24px;">📋</span>
-                <span class="card-badge badge-grape">${STATE.tasks.length} Tareas</span>
-              </div>
-              <h3>Tareas & Buzón Central</h3>
-              <p>Gestión reactiva de tickets, buzón central MAILBOX.md y acciones de ciclo de vida completas.</p>
-              <span class="eco-link">Abrir Inbox & Queues →</span>
-            </div>
-
-            <div class="eco-card-doc" onclick="navigateTo('decisions')">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:24px;">📜</span>
-                <span class="card-badge badge-gold">${liveDecisions().length} Vivas</span>
-              </div>
-              <h3>Log de Decisiones</h3>
-              <p>Registro histórico append-only con autor, fecha, justificación y verificación de vivacidad (supersedes).</p>
-              <span class="eco-link">Abrir Decision Log →</span>
-            </div>
-
-            <div class="eco-card-doc" onclick="navigateTo('skills')">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:24px;">⚡</span>
-                <span class="card-badge badge-cyan">${STATE.skills.length} Skills</span>
-              </div>
-              <h3>Skills & Organigrama</h3>
-              <p>Catálogo de capacidades especializadas, roles de auditoría de eventos y comandos CLI de un clic.</p>
-              <span class="eco-link">Abrir Skills & Org →</span>
-            </div>
+            ${[
+              ["cockpit", "🗂️", "Oficina", "El mural de todo lo que hay abierto. Una tarjeta por tarea; se clica y se entra en su despacho.", `${officeCards().length} tarjetas`],
+              ["inbox", "📬", "Buzón & Tareas", "Las dos colas, corriendo en direcciones opuestas. Ninguna vacía la suya.", `${(STATE.mailbox||[]).length} cartas · ${STATE.tasks.length} tareas`],
+              ["dashboard", "📐", "Dashboard", "Lo que se mide y lo que todavía no. Cada medida con su denominador y su fuente.", "PH-6"],
+              ["skills", "🏺", "Ágora", "Las skills, agrupadas por cómo las alcanza el modelo.", `${STATE.skills.length} skills`],
+              ["projects", "🚀", "Projects Hub", "Cada proyecto, un cartucho soberano con su propio ciclo de vida.", `${STATE.projects.length} proyectos`],
+              ["decisions", "📜", "Decision Log", "El registro que sólo crece: quién, cuándo, por qué, y qué se descartó.", `${liveDecisions().length} vivas`],
+              ["ideas", "💡", "Idea Park", "Lo interesante sin compromiso. Una línea mientras está fresca.", `${STATE.ideas.length} ideas`],
+              ["cheatsheet", "📖", "CheatSheet", "Los comandos, listos para copiar.", "⭐"]
+            ].map(([view, icon, title, desc, tag]) => `
+              <div class="eco-card-doc" onclick="navigateTo('${view}')">
+                <div class="eco-card-head"><span class="eco-icon">${icon}</span><h3>${title}</h3></div>
+                <p>${desc}</p>
+                <div class="eco-foot"><span class="eco-tag">${esc(tag)}</span><span class="eco-link">abrir →</span></div>
+              </div>`).join("")}
           </div>
         </div>
       </section>
@@ -1117,7 +1069,148 @@ function renderOverview(container) {
   `;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ── 02 · el entablamento: los tres niveles, uno encima de otro ───────────────
+function renderEntablature() {
+  const ax = D().axioms, cl = D().clauses;
+  const runnable = ax.filter(a => a.check_state === "$").length;
+  const levels = [
+    { n: 1, greek: "ΛΟΓΟΣ", tone: "tone-gold", band: "cornisa",
+      title: "Filosofía", file: "PHILOSOPHY.md",
+      what: "Para qué existe la empresa y qué rechaza. <strong>Rompe todo empate</strong>: cuando dos axiomas chocan decide la cláusula que sirven, y cuando chocan dos cláusulas decide <code>PH-0</code>.",
+      who: "Cambia casi nunca, y sólo el operador. Ningún rol puede enmendarla — la señal va al operador y muere ahí si no la recoge.",
+      count: `${cl.length || "—"} cláusulas`,
+      go: `openClause('PH-0')`, goLabel: "abrir el frontón →" },
+    { n: 2, greek: "ΝΟΜΟΣ", tone: "tone-aegean", band: "friso",
+      title: "Axiomas", file: "AXIOMS.md",
+      what: "Las reglas que la implementan y no se violan nunca. Una fila es una regla completa en sí misma; si no cabe en dos frases, son dos axiomas o es una decisión.",
+      who: "Los auditores comprueban, nunca editan. I+D propone. El operador decide.",
+      count: `${ax.length || "—"} axiomas · ${runnable} con check que corre`,
+      go: `navigateTo('dashboard')`, goLabel: "ver cuánto se hacen cumplir →" },
+    { n: 3, greek: "ΠΡΑΞΙΣ", tone: "tone-grape", band: "arquitrabe",
+      title: "Decisiones", file: "la centralita, nunca aquí",
+      what: "Concretas, con autor, fecha y razonamiento — <strong>y con lo que se descartó</strong>, que es la parte que no deja rastro en ningún otro sitio si nadie la escribe.",
+      who: "Se toman trabajando. Se escriben en el momento: una decisión sin escribir vuelve como debate abierto.",
+      count: `${liveDecisions().length} vivas`,
+      go: `navigateTo('decisions')`, goLabel: "abrir el registro →" }
+  ];
+  return `
+    <p class="section-lead">
+      Y <strong>los mismos tres se repiten un piso más abajo dentro de cada proyecto</strong>,
+      con su propio auditor, sus propios axiomas y su propio log. Lo que separa los niveles no es
+      la importancia sino <em>quién puede cambiarlos y con qué</em>.
+    </p>
+    <div class="entablature">
+      ${levels.map(l => `
+        <button class="entab-band ${l.tone}" onclick="${l.go}">
+          <span class="entab-rank">
+            <span class="entab-greek">${l.greek}</span>
+            <span class="entab-n">${l.n}</span>
+            <span class="entab-band-name">${l.band}</span>
+          </span>
+          <span class="entab-main">
+            <span class="entab-title">${l.title}
+              <code class="entab-file">${esc(l.file)}</code>
+            </span>
+            <span class="entab-what">${l.what}</span>
+            <span class="entab-who">${l.who}</span>
+          </span>
+          <span class="entab-side">
+            <span class="entab-count">${esc(l.count)}</span>
+            <span class="entab-go">${l.goLabel}</span>
+          </span>
+        </button>`).join("")}
+      <div class="entab-stylobate">
+        <span>Y debajo de todo, el trabajo: proyectos, tareas y planes — que es lo que la
+              centralita guarda y este repositorio nunca ve.</span>
+      </div>
+    </div>`;
+}
+
+// ── 04 · la tabla de enrutado, leída de METHOD.md §7 ─────────────────────────
+function renderRouting(collapsed) {
+  const sec = docSection("METHOD", "7. Routing table");
+  const { header, rows } = mdTable(sec);
+  // La coda del §7 es una regla, no un pie de tabla, y ocupa un párrafo entero: cogerla
+  // línea a línea la cortaba a mitad de frase — «Redefine the» y ahí se acababa.
+  let coda = "";
+  const at = sec.findIndex(l => l.trim().startsWith("**If something fits nowhere"));
+  if (at >= 0) {
+    const out = [];
+    for (let i = at; i < sec.length && sec[i].trim(); i++) out.push(sec[i].trim());
+    coda = out.join(" ");
+  }
+  const q = (STATE.routingQuery || "").toLowerCase().trim();
+  const shown = q ? rows.filter(r => r.join(" ").toLowerCase().includes(q)) : rows;
+
+  return `
+    <section class="doc-section" id="sec-routing">
+      <div class="section-head" onclick="toggleOverviewSection('sec-routing')">
+        <h2><span class="num">04</span> <span class="sec-greek">ΟΔΟΣ</span> Tengo esto, ¿dónde va?</h2>
+        <button class="section-toggle">${collapsed ? "▶ Desplegar" : "▼ Plegar"}</button>
+      </div>
+      <div class="section-body ${collapsed ? "collapsed" : ""}">
+        ${rows.length ? `
+          <p class="section-lead">
+            La tabla de enrutado del método, <strong>leída de <code>METHOD.md</code> §7 en vivo</strong>.
+            Es la pregunta que más veces se hace al día, así que vive en la portada y no en un manual.
+          </p>
+          <div class="routing-search">
+            <input type="text" class="custom-input" placeholder="Filtrar: decisión, hallazgo, regla, idea, tarea…"
+                   value="${esc(STATE.routingQuery || "")}" oninput="setRoutingQuery(this.value)">
+            <span class="routing-count">${shown.length} de ${rows.length}</span>
+          </div>
+          <div class="routing-table">
+            <div class="routing-head">
+              <span>${esc(header ? header[0] : "Lo que tienes")}</span>
+              <span>${esc(header ? header[1] : "Dónde va")}</span>
+            </div>
+            ${shown.length ? shown.map(r => `
+              <div class="routing-row">
+                <span class="routing-have">${inline(r[0])}</span>
+                <span class="routing-goes">${inline(r[1])}</span>
+              </div>`).join("") : `
+              <div class="routing-row routing-none">
+                <span>Nada encaja con «${esc(STATE.routingQuery || "")}».</span>
+                <span>Y si algo no encaja en ninguna fila, <strong>lo que está mal es la
+                      estructura, no el elemento</strong>.</span>
+              </div>`}
+          </div>
+          ${coda ? `<div class="callout callout-danger"><span class="callout-icon">⛔</span>
+            <div class="callout-content">${inline(coda)}</div></div>` : ""}
+        ` : `
+          <div class="empty-state"><div class="empty-icon">🧭</div>
+            <h3>La tabla de enrutado no ha cargado</h3>
+            <p>Sale de <code>METHOD.md</code> §7. Si el fichero no está en la raíz del motor,
+               esta sección se queda vacía en vez de inventarse una tabla.</p></div>`}
+      </div>
+    </section>`;
+}
+
+window.setRoutingQuery = function (v) {
+  STATE.routingQuery = v;
+  const box = document.querySelector("#sec-routing .routing-table");
+  const cnt = document.querySelector("#sec-routing .routing-count");
+  if (!box) return renderView();
+  // ⚠️ Se repinta sólo la tabla: un `renderView()` completo por cada tecla pierde el foco
+  // del campo y el cursor salta al principio, que es la manera clásica de hacer un
+  // buscador inservible.
+  const { rows } = mdTable(docSection("METHOD", "7. Routing table"));
+  const q = v.toLowerCase().trim();
+  const shown = q ? rows.filter(r => r.join(" ").toLowerCase().includes(q)) : rows;
+  if (cnt) cnt.textContent = `${shown.length} de ${rows.length}`;
+  box.querySelectorAll(".routing-row").forEach(el => el.remove());
+  box.insertAdjacentHTML("beforeend", shown.length ? shown.map(r => `
+    <div class="routing-row">
+      <span class="routing-have">${inline(r[0])}</span>
+      <span class="routing-goes">${inline(r[1])}</span>
+    </div>`).join("") : `
+    <div class="routing-row routing-none">
+      <span>Nada encaja con «${esc(v)}».</span>
+      <span>Y si algo no encaja en ninguna fila, <strong>lo que está mal es la estructura,
+            no el elemento</strong>.</span>
+    </div>`);
+};
+
 // WORKFLOW DETAILS RENDERER
 // ─────────────────────────────────────────────────────────────────────────────
 function renderWorkflowDetail(type) {
@@ -1163,7 +1256,10 @@ function renderWorkflowDetail(type) {
           </div>
 
           <div class="callout tip" style="margin-top: 14px; padding: 10px 14px;">
-            <strong>Regla clave:</strong> Los axiomas son append-only; nada se reescribe, solo se superpone (AX-1).
+            <strong>Regla clave:</strong> Un axioma retirado <strong>sale del fichero entero</strong> y el log
+            registra a dónde fue: el hueco en la numeración es la traza (<code>AX-31</code>). Lo append-only
+            son los <em>Records</em> — logs, ledger y decisiones —, no los documentos Standing, que se
+            reescriben para seguir siendo verdad.
           </div>
         </div>
       `;
@@ -2924,22 +3020,40 @@ if (document.readyState === "loading") {
 }
 
 async function loadModel() {
+  // ⛔ Fetch y render se atrapan POR SEPARADO. Juntos, un `ReferenceError` dentro de una
+  // vista salía por pantalla como «No se pudo conectar con el servidor» — y con eso el
+  // fallo real (`SKILL_ICONS is not defined`) mandaba a mirar la red, el adaptador y el
+  // puerto, que estaban perfectos. Un diagnóstico que apunta al sitio equivocado cuesta
+  // más que no dar ninguno.
+  let modelData;
   try {
     const res = await fetch("/api/model");
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    const modelData = await res.json();
+    modelData = await res.json();
+  } catch (err) {
+    STATE.error = `No se pudo conectar con el servidor: ${err.message}`;
+    STATE.errorKind = "red";
+    renderView();
+    return;
+  }
+  try {
     STATE.error = null;
+    STATE.errorKind = null;
     ingestModel(modelData);
     restoreRouteFromUrl();
     renderView();
-    if (STATE.trace === undefined) loadTrace();
-    // ⚠️ La doctrina se carga una vez: son ficheros del propio motor, no estado vivo, y
-    // volver a pedirlos en cada latido gastaría una petición por segundo para nada.
-    if (STATE.doctrine === undefined) loadDoctrine();
   } catch (err) {
-    STATE.error = `No se pudo conectar con el servidor: ${err.message}`;
+    STATE.error = err.message;
+    STATE.errorKind = "vista";
+    STATE.errorWhere = STATE.currentView;
+    STATE.errorStack = String(err.stack || "").split("\n").slice(0, 4).join("\n");
     renderView();
+    return;
   }
+  if (STATE.trace === undefined) loadTrace();
+  // ⚠️ La doctrina se carga una vez: son ficheros del propio motor, no estado vivo, y
+  // volver a pedirlos en cada latido gastaría una petición por segundo para nada.
+  if (STATE.doctrine === undefined) loadDoctrine();
 }
 
 function renderCheatSheet(container) {
@@ -3735,81 +3849,261 @@ function renderInbox(container) {
   `;
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// EL ÁGORA — las skills, y los roles entre ellas
+//
+// ⛔ `SKILL_ICONS` se usaba aquí y no estaba definida en ninguna parte. Con la lista vacía
+// el `.map` no llega a correr y la vista parece sana; en cuanto la instancia declara sus
+// skills, la primera tarjeta lanza un `ReferenceError` y la vista entera desaparece. Por
+// eso el icono de una skill se DERIVA de cómo el modelo la alcanza, que es un dato que sí
+// existe, en vez de salir de una tabla escrita a mano que hay que mantener en paralelo.
+//
+// ⚠️ Y `unclear` ya no se convierte en `request`. El parser distingue expresamente lo que
+// pudo probar de lo que no — su propio comentario dice que una clasificación segura y
+// equivocada es peor que una que admite no saber — y la vista anterior tiraba esa
+// distinción, presentando como capacidad invocable cualquier cosa que no supo leer.
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Las tres maneras en que un modelo alcanza una skill, según `AGENTS.md` §4, más la
+// cuarta que es no haberlo podido determinar.
+const STOAS = {
+  event: {
+    greek: "ΚΑΙΡΟΣ", name: "La ocasión",
+    glyph: "◷", tone: "tone-olive",
+    rule: "Su descripción nombra <strong>un momento</strong>. El modelo lo reconoce y <strong>lo dice</strong>; el operador la invoca.",
+    warn: "Una ocasión nombrada en prosa es una señal para hablar, no un permiso para actuar."
+  },
+  request: {
+    greek: "ΚΛΗΣΙΣ", name: "La llamada",
+    glyph: "✋", tone: "tone-aegean",
+    rule: "Su descripción nombra <strong>una petición</strong>. El modelo la ofrece cuando lo que se pidió encaja con lo que hace.",
+    warn: null
+  },
+  locked: {
+    greek: "ΚΛΕΙΣ", name: "Bajo llave",
+    glyph: "🔒", tone: "tone-gold",
+    rule: "<code>disable-model-invocation: true</code>. El operador la llama por su nombre y nadie más.",
+    warn: "Su descripción sale del contexto entera: es donde se guarda lo que sólo él debe poder alcanzar."
+  },
+  unclear: {
+    greek: "ΑΔΗΛΟΝ", name: "Sin determinar",
+    glyph: "?", tone: "tone-ink",
+    rule: "El parser <strong>no pudo probar</strong> cómo se alcanza esta skill, y lo dice en vez de adivinarlo.",
+    warn: "Cada una de éstas es una descripción que hay que reescribir, no un fallo del lector."
+  }
+};
+const STOA_ORDER = ["event", "request", "locked", "unclear"];
+
+// Los auditores comparten un contrato (`skills/audit/`), y saberlo cambia cómo se leen:
+// no son cuatro roles sueltos sino uno con cuatro departamentos.
+const IS_AUDITOR = n => /auditor$|^audit$/.test(n);
+
 function renderSkills(container) {
-  const filterType = STATE.skillFilterType || "ALL";
-  const searchTxt = (STATE.skillSearch || "").toLowerCase().trim();
-
-  const enrichedSkills = STATE.skills.map(s => ({
+  const q = (STATE.skillSearch || "").toLowerCase().trim();
+  const all = (STATE.skills || []).map(s => ({
     ...s,
-    icon: SKILL_ICONS[s.title] || "⚡",
-    classification: classifySkill(s)
+    stoa: STOAS[s.trigger] ? s.trigger : "unclear",
+    auditor: IS_AUDITOR(s.title)
   }));
+  const focus = STATE.skillFilterType && STATE.skillFilterType !== "ALL" ? STATE.skillFilterType : null;
+  const match = s => !q || [s.title, s.summary, s.when, s.evidence]
+    .some(v => (v || "").toLowerCase().includes(q));
+  const inStoa = k => all.filter(s => s.stoa === k && match(s));
 
-  const eventCount = enrichedSkills.filter(s => s.classification.type === "event").length;
-  const reqCount = enrichedSkills.filter(s => s.classification.type === "request").length;
-  const lockedCount = enrichedSkills.filter(s => s.classification.type === "locked").length;
-
-  let filtered = enrichedSkills.filter(s => {
-    if (filterType !== "ALL" && s.classification.type !== filterType) return false;
-    if (searchTxt) {
-      const matchTitle = s.title.toLowerCase().includes(searchTxt);
-      const matchSummary = (s.summary || "").toLowerCase().includes(searchTxt);
-      const matchWhen = (s.when || "").toLowerCase().includes(searchTxt);
-      if (!matchTitle && !matchSummary && !matchWhen) return false;
-    }
-    return true;
-  });
+  if (!all.length) {
+    container.innerHTML = `
+      <div class="view-header"><div class="view-title-group">
+        <h1><span>🏺</span> El Ágora</h1>
+        <p class="view-subtitle">Las skills de la empresa, y los roles entre ellas.</p>
+      </div></div>
+      <div class="empty-state"><div class="empty-icon">🏺</div>
+        <h3>El ágora está vacía</h3>
+        <p>Ninguna fuente del adaptador declara <code>kind: "skills"</code>, así que no hay
+           descripciones que leer. Es un adaptador sin esa fuente, no una empresa sin skills.</p>
+      </div>`;
+    return;
+  }
 
   container.innerHTML = `
     <div class="view-header">
       <div class="view-title-group">
-        <h1><span>⚡</span> Skills & Organigrama de Agentes</h1>
-        <p class="view-subtitle">Catálogo de capacidades especializadas y roles de auditoría de MLabs</p>
+        <h1><span>🏺</span> El Ágora</h1>
+        <p class="view-subtitle">
+          Las skills de la empresa, agrupadas por <strong>cómo las alcanza el modelo</strong> —
+          que es lo que decide su forma, y es independiente de si son roles.
+        </p>
+      </div>
+      <div class="header-stats-bar">
+        <span class="spec-pill"><strong>${all.length}</strong> skills</span>
+        <span class="spec-pill"><strong>${all.filter(s => s.auditor).length}</strong> auditores</span>
+        ${inStoa("unclear").length ? `<span class="spec-pill tone-ink" style="border-color:var(--gold-border);color:var(--gold-deep);background:var(--gold-bg)">
+          <strong>${all.filter(s => s.stoa === "unclear").length}</strong> sin determinar</span>` : ""}
       </div>
     </div>
 
-    <!-- SKILLS STATS HUD -->
-    <div class="skills-stats-hud">
-      <div class="skill-stat-chip ${filterType === 'ALL' ? 'active' : ''}" onclick="updateSkillFilter('ALL')">
-        <span class="stat-count">${enrichedSkills.length}</span>
-        <span class="stat-name">Todas las Skills</span>
+    <!-- LOS DOS EJES, QUE NO SON EL MISMO -->
+    <div class="agora-axes">
+      <div class="axis-card">
+        <span class="axis-greek">ΑΡΧΩΝ</span>
+        <strong>Un rol es una skill con un log y un criterio de despido.</strong>
+        <span>Eso es todo, y va de rendir cuentas. Su criterio y su vigencia viven en el
+          registro de contratación de la centralita, fuera de la vista del propio rol.</span>
       </div>
-      <div class="skill-stat-chip ${filterType === 'event' ? 'active' : ''}" onclick="updateSkillFilter('event')">
-        <span class="stat-count" style="color: var(--emerald);">${eventCount}</span>
-        <span class="stat-name">🔔 Roles de Evento</span>
-      </div>
-      <div class="skill-stat-chip ${filterType === 'request' ? 'active' : ''}" onclick="updateSkillFilter('request')">
-        <span class="stat-count" style="color: var(--purple);">${reqCount}</span>
-        <span class="stat-name">🛠️ Capacidades</span>
-      </div>
-      <div class="skill-stat-chip ${filterType === 'locked' ? 'active' : ''}" onclick="updateSkillFilter('locked')">
-        <span class="stat-count" style="color: var(--amber);">${lockedCount}</span>
-        <span class="stat-name">🔒 Gobernanza</span>
+      <div class="axis-arrow">⇄ independientes</div>
+      <div class="axis-card">
+        <span class="axis-greek">ΜΟΡΦΗ</span>
+        <strong>La forma de una descripción decide otra cosa: cómo la alcanza el modelo.</strong>
+        <span>Un rol puede nombrar una petición, y una skill sin log ni criterio puede nombrar
+          una ocasión. Confundir los dos ejes es lo que llena la vista de roles inventados.</span>
       </div>
     </div>
 
-    <!-- SKILLS TOOLBAR -->
-    <div class="view-toolbar" style="margin-top: 16px;">
-      <div class="toolbar-group search-group" style="flex: 1;">
-        <input type="text" id="skillSearchInput" class="custom-input" placeholder="Buscar skill por nombre, objetivo, condición de uso..." value="${esc(STATE.skillSearch || '')}" oninput="updateSkillSearch(this.value)">
+    <div class="view-toolbar agora-toolbar">
+      <div class="toolbar-group search-group" style="flex:1">
+        <input type="text" class="custom-input" placeholder="Buscar por nombre, objetivo, condición o la frase que la clasificó…"
+               value="${esc(STATE.skillSearch || "")}" oninput="updateSkillSearch(this.value)">
       </div>
       <div class="toolbar-group">
-        <span class="tag-pill">${filtered.length} skills mostradas</span>
+        <button class="chip-filter ${!focus ? "active" : ""}" onclick="updateSkillFilter('ALL')">todas</button>
+        ${STOA_ORDER.filter(k => all.some(s => s.stoa === k)).map(k => `
+          <button class="chip-filter ${focus === k ? "active" : ""} ${STOAS[k].tone}"
+                  onclick="updateSkillFilter('${k}')">${STOAS[k].glyph} ${STOAS[k].name}</button>`).join("")}
       </div>
     </div>
 
-    <!-- SKILLS CARDS GRID -->
-    <div class="skills-enhanced-grid">
-      ${filtered.length ? filtered.map(renderEnhancedSkillCard).join("") : `
-        <div class="empty-state" style="grid-column: 1 / -1;">
-          <div class="empty-icon">⚡</div>
-          <h3>No hay skills que coincidan</h3>
-          <p>Prueba a buscar con otro término o selecciona 'Todas las Skills'.</p>
-        </div>
-      `}
-    </div>
-  `;
+    ${STOA_ORDER.filter(k => !focus || focus === k).map(k => {
+      const list = inStoa(k);
+      if (!list.length && (focus !== k)) return "";
+      const st = STOAS[k];
+      return `
+        <section class="stoa ${st.tone}">
+          <header class="stoa-head">
+            <div class="stoa-columns" aria-hidden="true">
+              ${"<span></span>".repeat(7)}
+            </div>
+            <div class="stoa-plate">
+              <span class="stoa-greek">${st.greek}</span>
+              <h2>${st.glyph} ${st.name}</h2>
+              <span class="stoa-n">${list.length}</span>
+            </div>
+            <p class="stoa-rule">${st.rule}</p>
+            ${st.warn ? `<p class="stoa-warn">⚠️ ${st.warn}</p>` : ""}
+          </header>
+
+          <div class="stoa-floor">
+            ${list.length ? list.map(sk => `
+              <article class="persona ${sk.auditor ? "persona-auditor" : ""}" onclick="openSkill('${esc(sk.title)}')">
+                <header class="persona-top">
+                  <span class="persona-glyph">${st.glyph}</span>
+                  <h3>${esc(sk.title)}</h3>
+                  ${sk.auditor ? `<span class="persona-tag" title="Los auditores comparten un contrato en skills/audit/">auditor</span>` : ""}
+                </header>
+                <p class="persona-sum">${inline(sk.summary || "")}</p>
+                ${sk.when ? `<p class="persona-when">${inline(cut(sk.when, 190))}</p>` : ""}
+                <footer class="persona-foot">
+                  ${sk.evidence
+                    ? `<span class="persona-ev" title="La frase de su propia descripción por la que quedó clasificada aquí. Se lee, no se adivina.">
+                         “${esc(cutText(sk.evidence, 90))}”</span>`
+                    : `<span class="persona-ev persona-ev-none">su descripción no dio ninguna frase que la clasificara</span>`}
+                  <span class="persona-go">leer entera →</span>
+                </footer>
+              </article>`).join("") : `
+              <div class="stoa-empty">Ninguna skill llega al modelo por esta vía${q ? " con esa búsqueda" : ""}.</div>`}
+          </div>
+        </section>`;
+    }).join("")}`;
 }
+
+// Igual que `cut`, pero devuelve texto plano: va dentro de un atributo y de comillas.
+function cutText(t, max) {
+  const s = String(t || "").replace(/\s+/g, " ").trim();
+  return s.length <= max ? s : s.slice(0, max).replace(/\s\S*$/, "") + "…";
+}
+
+// ── una skill, entera ────────────────────────────────────────────────────────
+window.openSkill = async function (name) {
+  STATE.skillOpen = { name, loading: true };
+  STATE.currentView = "skill";
+  renderView();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  try {
+    const d = await api("GET", `/api/skill?name=${encodeURIComponent(name)}`);
+    STATE.skillOpen = { name, ...d, loading: false };
+  } catch (e) {
+    STATE.skillOpen = { name, error: e.message, loading: false };
+  }
+  if (STATE.currentView === "skill") renderView();
+};
+
+function renderSkillPage(container) {
+  const o = STATE.skillOpen || {};
+  const meta = (STATE.skills || []).find(s => s.title === o.name);
+  const st = STOAS[meta && STOAS[meta.trigger] ? meta.trigger : "unclear"];
+  container.innerHTML = `
+    <div class="desk-plate clause-plate ${st.tone}">
+      <button class="crumb-link" onclick="navigateTo('skills')">🏺 Ágora</button>
+      <span class="crumb-sep">›</span>
+      <span class="crumb-here">${esc(o.name || "")}</span>
+      ${o.file ? `<span class="clause-file"><code>${esc(o.file)}</code></span>` : ""}
+    </div>
+
+    <header class="clause-hero ${st.tone}">
+      <div class="clause-hero-mark">
+        <span class="clause-greek">${st.greek}</span>
+        <span class="clause-id">${st.glyph}</span>
+      </div>
+      <div class="clause-hero-main">
+        <h1>${esc(o.name || "")}</h1>
+        ${meta ? `<blockquote class="clause-epigraph">${inline(meta.summary || "")}</blockquote>` : ""}
+        <p class="clause-objective-note">
+          <strong>${st.name}.</strong> ${st.rule}
+          ${meta && meta.evidence
+            ? ` Clasificada por esta frase de su propia descripción: <em>“${esc(meta.evidence)}”</em>.`
+            : " Ninguna frase de su descripción permitió clasificarla."}
+        </p>
+      </div>
+    </header>
+
+    <div class="clause-grid">
+      <section class="doc-reader">
+        ${o.loading ? `<div class="loading-state"><div class="spinner"></div><p>Leyendo <code>${esc(o.name)}</code>…</p></div>`
+          : o.error ? `<div class="empty-state"><div class="empty-icon">🏺</div>
+              <h3>No se pudo leer</h3><p>${esc(o.error)}</p></div>`
+          : renderMarkdownBody(o.body || "")}
+      </section>
+      <aside class="clause-rail">
+        ${o.siblings && o.siblings.length ? `
+          <div class="rail-panel">
+            <div class="rail-head"><strong>Ficheros que la acompañan</strong></div>
+            <p class="rail-note" style="margin-top:0">Una skill que trae más que su
+               <code>SKILL.md</code> guarda ahí lo que no cabe en una descripción.</p>
+            ${o.siblings.map(f => `
+              <button class="clause-jump ${st.tone}" onclick="toggleSibling('${esc(f.name)}')">
+                <span class="cj-id">📄</span><span class="cj-title">${esc(f.name)}</span>
+                <span class="cj-n">${Math.round(f.body.length / 1024)} KB</span>
+              </button>
+              <div class="sibling-body" id="sib-${esc(f.name.replace(/\W/g, "_"))}" hidden>
+                ${renderMarkdownBody(f.body)}
+              </div>`).join("")}
+          </div>` : ""}
+        <div class="rail-panel">
+          <div class="rail-head"><strong>Las otras de esta estoa</strong></div>
+          ${(STATE.skills || []).filter(s => s.title !== o.name &&
+              (STOAS[s.trigger] ? s.trigger : "unclear") === (meta && STOAS[meta.trigger] ? meta.trigger : "unclear"))
+            .map(s => `
+              <button class="clause-jump ${st.tone}" onclick="openSkill('${esc(s.title)}')">
+                <span class="cj-id">${st.glyph}</span><span class="cj-title">${esc(s.title)}</span>
+              </button>`).join("") || `<p class="rail-note" style="margin-top:0">Es la única.</p>`}
+        </div>
+      </aside>
+    </div>`;
+}
+
+window.toggleSibling = function (name) {
+  const el = document.getElementById("sib-" + name.replace(/\W/g, "_"));
+  if (el) el.hidden = !el.hidden;
+};
+
 
 function showToast(msg) {
   const toast = document.getElementById("toast");
@@ -5158,27 +5452,23 @@ const DOC_META = {
 // El orden de lectura que `AGENTS.md` §1 declara, y que no es el alfabético.
 const DOC_ORDER = ["PHILOSOPHY", "AXIOMS", "AGENTS", "METHOD", "FLOW", "README"];
 
-function renderStructuralFiles() {
+function renderStructuralFiles(collapsed) {
   const docs = D().docs;
   const have = id => docs.find(d => d.id === id);
-  const philosophy = { id: "PHILOSOPHY", words: null, sections: D().clauses.length };
-  const axioms = { id: "AXIOMS", words: null, sections: D().axioms.length };
   const rows = DOC_ORDER.map(id => {
     const d = have(id);
     const meta = DOC_META[id] || {};
+    const own = id === "PHILOSOPHY" || id === "AXIOMS";
     const inner = id === "PHILOSOPHY" ? `${D().clauses.length} cláusulas`
                 : id === "AXIOMS" ? `${D().axioms.length} axiomas`
                 : d ? `${d.outline.length} secciones` : "—";
-    const words = d ? `${d.words.toLocaleString("es")} palabras` :
-                  id === "PHILOSOPHY" || id === "AXIOMS" ? "" : "no encontrado";
-    // Philosophy and axioms have their own pages; the rest open in the reader.
+    const words = d ? `${d.words.toLocaleString("es")} palabras` : own ? "" : "no encontrado";
     const go = id === "PHILOSOPHY" ? `openClause('PH-0')`
-             : id === "AXIOMS" ? `navigateTo('dashboard')`
-             : `openDoc('${id}')`;
+             : id === "AXIOMS" ? `navigateTo('dashboard')` : `openDoc('${id}')`;
     const goLabel = id === "PHILOSOPHY" ? "abrir el frontón →"
                   : id === "AXIOMS" ? "ver los checks →" : "leer entero →";
     return `
-      <button class="stele ${meta.tone || ""}" onclick="${go}" ${!d && !["PHILOSOPHY","AXIOMS"].includes(id) ? "disabled" : ""}>
+      <button class="stele ${meta.tone || ""}" onclick="${go}" ${!d && !own ? "disabled" : ""}>
         <span class="stele-top">
           <span class="stele-icon">${meta.icon || "📄"}</span>
           <span class="stele-greek">${meta.greek || ""}</span>
@@ -5196,20 +5486,133 @@ function renderStructuralFiles() {
 
   return `
     <section class="doc-section" id="sec-structure">
-      <div class="section-head"><h2><span class="num">02</span> Los ficheros que gobiernan</h2></div>
-      <p class="section-lead">
-        Tres niveles y nada puede difuminarlos. Se leen en este orden — <strong>filosofía</strong>,
-        para qué; <strong>axiomas</strong>, las reglas que se derivan; <strong>este mapa</strong>,
-        quién hace qué; y luego <strong>el método</strong>, que es el que se usa todos los días.
-        Todo lo de esta página se lee de esos ficheros: no hay copia.
-      </p>
-      <div class="stelae">${rows}</div>
-      ${D().problems && D().problems.length ? `
-        <div class="callout callout-warning"><span class="callout-icon">⚠️</span>
-          <div class="callout-content"><strong>La doctrina cargó con incidencias.</strong>
-          ${D().problems.map(p => `<div><code>${esc(p.file || "")}</code> — ${esc(p.why || "")}</div>`).join("")}</div>
-        </div>` : ""}
+      <div class="section-head" onclick="toggleOverviewSection('sec-structure')">
+        <h2><span class="num">03</span> <span class="sec-greek">ΣΤΗΛΑΙ</span> Los ficheros troncales</h2>
+        <button class="section-toggle">${collapsed ? "▶ Desplegar" : "▼ Plegar"}</button>
+      </div>
+      <div class="section-body ${collapsed ? "collapsed" : ""}">
+        <p class="section-lead">
+          Se leen en este orden: <strong>filosofía</strong>, para qué → <strong>axiomas</strong>,
+          las reglas que se derivan → <strong>este mapa</strong>, quién hace qué →
+          <strong>el método</strong>, que es el que se usa todos los días → <strong>la forma</strong>
+          que toma el trabajo. Cada uno abre su página entera con índice.
+        </p>
+        <div class="stelae">${rows}</div>
+
+        ${renderNesting()}
+        ${renderCloseLadder()}
+
+        ${D().problems && D().problems.length ? `
+          <div class="callout callout-warning"><span class="callout-icon">⚠️</span>
+            <div class="callout-content"><strong>La doctrina cargó con incidencias.</strong>
+            ${D().problems.map(x => `<div><code>${esc(x.file || "")}</code> — ${esc(x.why || "")}</div>`).join("")}</div>
+          </div>` : ""}
+      </div>
     </section>`;
+}
+
+// El anidamiento que declara `FLOW.md`. ⚠️ Los cinco niveles y sus glosas se escriben aquí
+// porque `FLOW.md` los dibuja en un bloque de código ASCII, que no es una estructura que se
+// pueda leer sin adivinar. Es la única transcripción que queda en esta página, y va marcada.
+const NESTING = [
+  ["project",   "proyecto",  "un repositorio soberano, con su propio ciclo de vida"],
+  ["block",     "bloque",    "propuesto por adelantado — la forma del trabajo"],
+  ["sub-block", "sub-bloque","definido al llegar, no antes. <strong>Y un sub-bloque es una tarea</strong>"],
+  ["plan",      "plan",      "cómo se hace esa tarea · sus subtareas"],
+  ["item",      "item",      "y los items engendran items, que se escriben en el acto"]
+];
+
+function renderNesting() {
+  const flow = D().docs.find(d => d.id === "FLOW");
+  return `
+    <div class="sub-block-pair">
+      <div class="sub-panel">
+        <div class="sub-panel-head">
+          <span class="sub-greek">ΜΟΡΦΗ</span>
+          <h3>La forma que toma el trabajo</h3>
+          ${flow ? `<button class="inline-link" onclick="openDoc('FLOW')">FLOW.md →</button>` : ""}
+        </div>
+        <div class="nesting">
+          ${NESTING.map(([en, es, gloss], i) => `
+            <div class="nest-row" style="--depth:${i}">
+              <span class="nest-rail" aria-hidden="true"></span>
+              <span class="nest-name">${es}<code>${en}</code></span>
+              <span class="nest-gloss">${gloss}</span>
+            </div>`).join("")}
+        </div>
+        <p class="sub-note">
+          <strong>Cada sub-bloque es una tarea; no toda tarea es un sub-bloque.</strong> Una tarea
+          que llega entera entra en la cola sin bloque encima — y <em>la cola es una lista o no es
+          una cola</em>.
+        </p>
+        <p class="sub-note sub-note-warn">
+          ⚠️ Este esquema es la única transcripción que queda en la portada: <code>FLOW.md</code>
+          lo dibuja en un bloque ASCII y eso no se puede leer sin adivinar. Si cambias el
+          anidamiento, esta caja hay que cambiarla a mano.
+        </p>
+      </div>
+
+      <div class="sub-panel">
+        <div class="sub-panel-head">
+          <span class="sub-greek">ΤΕΛΟΣ</span>
+          <h3>Los cuatro destinos de un item</h3>
+        </div>
+        <div class="dest-grid">
+          ${Object.entries(OUTCOMES).map(([k, o]) => `
+            <div class="dest-cell ${o.cls}">
+              <span class="dest-icon">${o.icon}</span>
+              <strong>${o.label}</strong>
+              <span>${o.hint}</span>
+            </div>`).join("")}
+        </div>
+        <p class="sub-note">
+          Un item, al llegarle su turno, se va por una de esas cuatro y <strong>ninguna otra</strong>.
+          Un tachado sin destino es un <em>cierre fallido</em>, y el parser lo reporta como tal.
+        </p>
+        <p class="sub-note">
+          <strong>Un estado no es un destino</strong>, y los dos conjuntos tienen tamaños
+          distintos: una <em>tarea</em> lleva uno de cinco estados
+          (<code>pending · active · paused · cancelled · done</code>); un <em>item</em> se va con
+          uno de estos cuatro.
+        </p>
+      </div>
+    </div>`;
+}
+
+// El orden del cierre, leído de `METHOD.md` §2. El orden ES el contenido: el paso 3
+// (la auditoría) tiene que ir antes del 4 (cerrar el plan), o el auditor lee un fichero
+// vacío creyendo que ha leído el razonamiento.
+function renderCloseLadder() {
+  const sec = docSection("METHOD", "2. The loop");
+  const steps = [];
+  for (let i = 0; i < sec.length; i++) {
+    const m = sec[i].match(/^(\d+b?)\.\s+(.*)$/);
+    if (!m) continue;
+    let body = m[2];
+    for (let j = i + 1; j < sec.length && /^\s{2,}\S/.test(sec[j]); j++) body += " " + sec[j].trim();
+    steps.push({ n: m[1], text: body });
+  }
+  if (!steps.length) return "";
+  return `
+    <div class="sub-panel close-panel">
+      <div class="sub-panel-head">
+        <span class="sub-greek">ΚΛΕΙΣΙΣ</span>
+        <h3>Cerrar una tarea — y el orden es el contenido</h3>
+        <button class="inline-link" onclick="openDoc('METHOD')">METHOD.md §2 →</button>
+      </div>
+      <ol class="close-ladder">
+        ${steps.map(st => `
+          <li class="close-step">
+            <span class="close-n">${esc(st.n)}</span>
+            <div class="close-text">${expandable(st.text)}</div>
+          </li>`).join("")}
+      </ol>
+      <p class="sub-note">
+        Leído de <code>METHOD.md</code> §2 en vivo: ${steps.length} pasos. La auditoría va
+        <strong>antes</strong> de cerrar el plan, siempre — al revés, el auditor lee un fichero en
+        blanco creyendo que ha leído el razonamiento de la ronda.
+      </p>
+    </div>`;
 }
 
 function renderRefusals() {
@@ -5533,4 +5936,49 @@ function renderDashboard(container) {
         </div>
       </div>
     </section>`;
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+// LEER UNA SECCIÓN CONCRETA DE UN FICHERO TRONCAL
+//
+// ⛔ La portada enseña la tabla de enrutado y el orden del cierre. Ninguna de las dos se
+// teclea aquí: se sacan de `METHOD.md` por su encabezado, así que cambiar el método cambia
+// la portada. Copiarlas sería exactamente lo que le pasó a la filosofía — una segunda copia
+// con aspecto de autoridad que deriva sin que nada lo diga (`AX-20`).
+// ═════════════════════════════════════════════════════════════════════════════
+
+function docBody(id) {
+  return (D().docs.find(d => d.id === id) || {}).body || "";
+}
+
+// Las líneas bajo un encabezado, hasta el siguiente del mismo nivel o superior.
+function docSection(id, headingPrefix) {
+  const lines = docBody(id).split("\n");
+  const norm = s => s.toLowerCase().replace(/[`*]/g, "").trim();
+  const want = norm(headingPrefix);
+  let start = -1, level = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^(#{1,6})\s+(.*)$/);
+    if (!m) continue;
+    if (start === -1 && norm(m[2]).startsWith(want)) { start = i + 1; level = m[1].length; continue; }
+    if (start !== -1 && m[1].length <= level) return lines.slice(start, i);
+  }
+  return start === -1 ? [] : lines.slice(start);
+}
+
+// La primera tabla markdown de un bloque de líneas, como filas de celdas.
+// ⚠️ Devuelve la cabecera aparte: leer por posición es lo que hace que una columna
+// insertada mueva todos los campos en silencio, y aquí la cabecera es el contrato.
+function mdTable(lines) {
+  const rows = [];
+  let header = null;
+  for (const ln of lines) {
+    const t = ln.trim();
+    if (!t.startsWith("|")) { if (rows.length) break; else continue; }
+    if (/^\|[\s:|-]+\|$/.test(t)) continue;
+    const cells = t.replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+    if (!header) header = cells; else rows.push(cells);
+  }
+  return { header, rows };
 }
