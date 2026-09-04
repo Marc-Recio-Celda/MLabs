@@ -131,8 +131,13 @@ const CHEATSHEET_DATA = [
         desc: "Verify workspace integrity and release allowlist in seconds.",
         cmds: [
           { label: "Check git status", code: "git status -s && git branch -vv", hint: "Shell" },
-          { label: "Run release gate", code: "tools/gate.sh", hint: "Shell" },
-          { label: "Verify allowlist", code: "git ls-files | sort", hint: "Shell" }
+          { label: "Run the gate", code: "bash tools/gate.sh --denylist <the instance's denylist>", hint: "Shell*" },
+          { label: "Axiom citations resolve", code: "bash tools/axiom-refs.sh AXIOMS.md MLabs $(git ls-files)", hint: "Shell" },
+          { label: "Clause citations resolve", code: "bash tools/clause-refs.sh PHILOSOPHY.md $(git ls-files)", hint: "Shell" },
+          { label: "Roles have log and criterion", code: "bash tools/roles-check.sh --skills skills --logs <the instance's logs dir>", hint: "Shell*" },
+          { label: "Same prose in two files", code: "bash tools/dup-prose.sh PHILOSOPHY.md AXIOMS.md AGENTS.md METHOD.md FLOW.md", hint: "Shell" },
+          { label: "Every check test", code: "bash tools/tests/run.sh", hint: "Shell" },
+          { label: "Model parses, nothing dropped", code: "python3 interface/model/parse.py --adapter <the instance's adapter>", hint: "Shell*" }
         ]
       }
     ]
@@ -3005,7 +3010,12 @@ function renderCheatSheet(container) {
     <div class="view-header">
       <div class="view-title-group">
         <h1><span>📖</span> CheatSheet & Atajos Rápidos ⭐</h1>
-        <p class="view-subtitle">Chuleta interactiva para copiar comandos de sesión, worktrees y Claude Code en 1 clic</p>
+        <p class="view-subtitle">
+          Comandos para copiar de un clic. <span class="cs-key"><span class="cs-hint hint-Shell">Shell</span>
+          va a la terminal</span> · <span class="cs-key"><span class="cs-hint hint-Prompt">Prompt</span>
+          va a Claude</span> · <span class="cs-key"><span class="cs-hint hint-Shell2">Shell*</span>
+          necesita una ruta que sólo tu instancia conoce — sustitúyela antes de ejecutar</span>
+        </p>
       </div>
     </div>
 
@@ -3021,20 +3031,30 @@ function renderCheatSheet(container) {
       </div>
 
       <div class="cs-groups-grid">
-        ${catData.groups.map(g => `
+        ${catData.groups.map((g, gIdx) => `
           <div class="cs-group-card">
             <div class="cs-group-header">
               <h3>${esc(g.title)}</h3>
               <p>${esc(g.desc)}</p>
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px;">
-              ${g.cmds.map((cmd, cIdx) => `
-                <div class="cs-cmd-row" id="cmdRow_${curCat}_${cIdx}" data-code="${esc(cmd.code)}" onclick="copyRowCommand(this)">
+              ${g.cmds.map((cmd, cIdx) => {
+                // ⚠️ El id llevaba sólo el índice DENTRO del grupo, así que dos grupos de la
+                // misma pestaña generaban `cmdRow_session_0` dos veces — y el aviso de
+                // «copiado» se encendía en la primera fila con ese id, no en la pulsada.
+                const rowId = `cmdRow_${curCat}_${gIdx}_${cIdx}`;
+                // ⛔ El `hint` existía en los datos y no se pintaba en ningún sitio, así que
+                // no había manera de saber si un comando va a la terminal o a Claude. Un
+                // prompt pegado en bash no hace nada y no dice por qué.
+                const kind = cmd.hint === "Prompt" ? "Prompt" : cmd.hint === "Shell*" ? "Shell2" : "Shell";
+                return `
+                <div class="cs-cmd-row" id="${rowId}" data-code="${esc(cmd.code)}" onclick="copyRowCommand(this)">
                   <span class="cs-cmd-label">${esc(cmd.label)}</span>
+                  <span class="cs-hint hint-${kind}">${esc(cmd.hint || "Shell")}</span>
                   <code class="cs-cmd-code">${esc(cmd.code)}</code>
                   <button class="cs-cmd-copy-btn">Copiar 📋</button>
-                </div>
-              `).join("")}
+                </div>`;
+              }).join("")}
             </div>
           </div>
         `).join("")}
