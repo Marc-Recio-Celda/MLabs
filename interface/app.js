@@ -676,6 +676,10 @@ function syncUrlHash() {
     if (tab === "guide" && activeDoc) {
       hash += `?doc=${encodeURIComponent(activeDoc)}`;
     }
+  } else if (view === "clause") {
+    hash = `#/clause/${encodeURIComponent(STATE.clauseId || "")}`;
+  } else if (view === "doc") {
+    hash = `#/doc/${encodeURIComponent(STATE.docId || "")}`;
   } else if (view === "desk") {
     hash = `#/desk/${encodeURIComponent(STATE.deskCardId || "")}`;
   } else if (view === "cockpit") {
@@ -754,6 +758,12 @@ function restoreRouteFromUrl() {
       STATE.guideActiveDoc = STATE.guideActiveDoc || {};
       STATE.guideActiveDoc[STATE.selectedProject] = decodeURIComponent(params.get("doc"));
     }
+  } else if (mainView === "clause") {
+    STATE.currentView = "clause";
+    if (segments[1]) STATE.clauseId = decodeURIComponent(segments[1]);
+  } else if (mainView === "doc") {
+    STATE.currentView = "doc";
+    if (segments[1]) STATE.docId = decodeURIComponent(segments[1]);
   } else if (mainView === "desk") {
     STATE.currentView = "desk";
     if (segments[1]) STATE.deskCardId = decodeURIComponent(segments[1]);
@@ -896,6 +906,9 @@ function renderView() {
     case "project-detail": renderProjectDetailPage(main); break;
     case "cockpit": renderOffice(main); break;
     case "desk": renderDesk(main); break;
+    case "clause": renderClause(main); break;
+    case "doc": renderDoc(main); break;
+    case "dashboard": renderDashboard(main); break;
     case "cheatsheet": renderCheatSheet(main); break;
     case "inbox": renderInbox(main); break;
     case "ideas": renderIdeas(main); break;
@@ -951,104 +964,9 @@ function renderOverview(container) {
         <div class="section-body ${isCollapsed('sec-governance') ? 'is-collapsed' : ''}">
 
           <!-- ── PANEL SUPERIOR: Filosofía Inmutable ── -->
-          <div class="gov-philosophy-panel">
-            <div class="gov-panel-header">
-              <div class="gov-panel-title">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                  <span class="gov-level-badge badge-vine">NIVEL 1 · PÚBLICO &amp; INMUTABLE</span>
-                  <span class="gov-file-tag">PHILOSOPHY.md</span>
-                </div>
-                <h3>Los Seis Principios Rectores</h3>
-              </div>
-              <p class="gov-panel-subtitle">La brújula rectora que rige todas las decisiones técnicas y <strong>rompe todo empate de diseño</strong>. Modificable casi nunca; sólo por el operador.</p>
-            </div>
+          ${renderPediment()}
+          ${renderRefusals()}
 
-            <div class="gov-principles-grid">
-              <div class="gov-principle-card">
-                <div class="gov-principle-card-head">
-                  <span class="principle-badge">PH-0</span>
-                  <h4 class="principle-title">El horizonte largo es la premisa</h4>
-                </div>
-                <p class="principle-desc">Todo se construye para lo siguiente, no solo para hoy. Diseña para 3× a 10× el volumen actual. Lo que se aprende una vez no se vuelve a aprender desde cero.</p>
-                <div class="principle-rule-box">
-                  <span class="rule-kicker">REGLA DE ORO</span>
-                  <span class="rule-text">Solución que sólo escala hoy es postergación.</span>
-                </div>
-              </div>
-
-              <div class="gov-principle-card">
-                <div class="gov-principle-card-head">
-                  <span class="principle-badge">PH-2</span>
-                  <h4 class="principle-title">El aprendizaje se compra con productividad</h4>
-                </div>
-                <p class="principle-desc">Donde la velocidad y la comprensión chocan, <strong>gana la comprensión</strong>. Un atajo que el operador no entiende no es velocidad: es deuda con intereses.</p>
-                <div class="principle-rule-box">
-                  <span class="rule-kicker">REGLA DE ORO</span>
-                  <span class="rule-text">Cero atajos ciegos; entendimiento primero.</span>
-                </div>
-              </div>
-
-              <div class="gov-principle-card">
-                <div class="gov-principle-card-head">
-                  <span class="principle-badge">PH-3</span>
-                  <h4 class="principle-title">Nada se pierde</h4>
-                </div>
-                <p class="principle-desc">Sin datos no hay análisis. Un dato perdido jamás se recupera. Esto cubre entradas, razonamiento, alternativas y <strong>los descartes con su motivo</strong>.</p>
-                <div class="principle-rule-box">
-                  <span class="rule-kicker">REGLA DE ORO</span>
-                  <span class="rule-text">Registrar es barato; reconstruir es imposible.</span>
-                </div>
-              </div>
-
-              <div class="gov-principle-card">
-                <div class="gov-principle-card-head">
-                  <span class="principle-badge">PH-4</span>
-                  <h4 class="principle-title">Cero cajas negras</h4>
-                </div>
-                <p class="principle-desc">Toda decisión es trazable a su origen y razonamiento. Un sistema cuyo dueño no puede explicarlo no puede ser corregido por él. El valor vive en los artefactos en disco.</p>
-                <div class="principle-rule-box">
-                  <span class="rule-kicker">REGLA DE ORO</span>
-                  <span class="rule-text">La herramienta es intercambiable; el estado es sagrado.</span>
-                </div>
-              </div>
-
-              <div class="gov-principle-card">
-                <div class="gov-principle-card-head">
-                  <span class="principle-badge">PH-1</span>
-                  <h4 class="principle-title">El trabajo es modular</h4>
-                </div>
-                <p class="principle-desc">Cada pieza es dueña de su propio ciclo de vida y versión. El acoplamiento se paga en cada cambio; la separación una sola vez. Fronteras por <strong>propietario primero</strong>.</p>
-                <div class="principle-rule-box">
-                  <span class="rule-kicker">REGLA DE ORO</span>
-                  <span class="rule-text">Nunca agrupar por temática; separar por dueño.</span>
-                </div>
-              </div>
-
-              <div class="gov-principle-card">
-                <div class="gov-principle-card-head">
-                  <span class="principle-badge">PH-5</span>
-                  <h4 class="principle-title">La atención es el recurso escaso</h4>
-                </div>
-                <p class="principle-desc">Todo se registra; casi nada se carga en memoria a la vez. <strong>Un único frente activo (▶)</strong>. El coste crítico no es el disco, sino lo que hay que retener en la cabeza.</p>
-                <div class="principle-rule-box">
-                  <span class="rule-kicker">REGLA DE ORO</span>
-                  <span class="rule-text">Un solo frente a la vez; cero dispersión.</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="callout danger" style="margin-top: 18px;">
-              <div class="callout-title"><span>🛡️</span> Lo que esta empresa rechaza formalmente (PHILOSOPHY §Refusals)</div>
-              <div class="grid-2" style="margin-top: 8px; gap: 10px;">
-                <div><strong>🚫 Acumulación:</strong> Curación estricta; sólo se guarda lo que se va a usar.</div>
-                <div><strong>🚫 Complacencia:</strong> El sistema existe para preparar a su operador, no para darle la razón.</div>
-                <div><strong>🚫 Optimización vacía:</strong> Nada entra por estética; debe desbloquear trabajo real.</div>
-                <div><strong>🚫 Roles muertos:</strong> Todo rol sin hallazgos útiles se retira por contrato N/K.</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- ── PANEL INFERIOR: Axiomas + NEXUS lado a lado ── -->
           <div class="gov-bottom-row">
             <!-- NIVEL 2: AXIOMAS -->
             <div class="gov-bottom-card gov-card-axioms">
@@ -1057,20 +975,23 @@ function renderOverview(container) {
                 <span class="gov-file-tag">AXIOMS.md · AGENTS.md · METHOD.md</span>
               </div>
               <h3 class="gov-bottom-title">Axiomas y Reglas Deterministas</h3>
-              <p class="gov-bottom-desc">Reglas técnicas verificables que implementan la filosofía. Gobiernan la orquestación de roles, invariantes de seguridad, checks automáticos y contratos de despido N/K.</p>
+              <p class="gov-bottom-desc">Las reglas que implementan la filosofía y no se violan nunca. Cada fila nombra
+                la cláusula que sirve y su check — y <strong>los tres estados del check no se suman jamás en un solo
+                número</strong>, porque una columna que junta <em>un comando que corre</em> con <em>un aviso que se lee</em>
+                sólo puede subir. Los tres, por separado, están en el <button class="inline-link" onclick="navigateTo('dashboard')">dashboard</button>.</p>
               
               <div class="gov-stat-grid">
                 <div class="gov-stat-box">
-                  <span class="gov-stat-val">30</span>
-                  <span class="gov-stat-lbl">Axiomas Activos</span>
+                  <span class="gov-stat-val">${D().axioms.length || "—"}</span>
+                  <span class="gov-stat-lbl">Axiomas en vigor</span>
                 </div>
                 <div class="gov-stat-box">
-                  <span class="gov-stat-val">10</span>
-                  <span class="gov-stat-lbl">Invariantes Gate</span>
+                  <span class="gov-stat-val">${D().axioms.filter(a => a.check_state === "$").length || "—"}</span>
+                  <span class="gov-stat-lbl">Con check que corre</span>
                 </div>
                 <div class="gov-stat-box">
-                  <span class="gov-stat-val">4</span>
-                  <span class="gov-stat-lbl">Roles Auditados</span>
+                  <span class="gov-stat-val">${D().axioms.filter(a => a.check_state === "owed").length || "0"}</span>
+                  <span class="gov-stat-lbl">Checks en deuda</span>
                 </div>
               </div>
 
@@ -1120,6 +1041,8 @@ function renderOverview(container) {
 
         </div>
       </section>
+
+      ${renderStructuralFiles()}
 
       <!-- SECCIÓN 03: FLUJOS DE TRABAJO -->
       <section class="doc-section" id="sec-workflows">
@@ -3010,6 +2933,9 @@ async function loadModel() {
     restoreRouteFromUrl();
     renderView();
     if (STATE.trace === undefined) loadTrace();
+    // ⚠️ La doctrina se carga una vez: son ficheros del propio motor, no estado vivo, y
+    // volver a pedirlos en cada latido gastaría una petición por segundo para nada.
+    if (STATE.doctrine === undefined) loadDoctrine();
   } catch (err) {
     STATE.error = `No se pudo conectar con el servidor: ${err.message}`;
     renderView();
@@ -4825,56 +4751,786 @@ const MAILBOX_STATE = {
 };
 
 function renderMailboxPanel() {
-  const f = STATE.mailboxFilter || "abiertas";
   const all = STATE.mailbox || [];
-  const shown = f === "todas" ? all
-    : all.filter(e => ["open", "pending"].includes(e.state));
-  const byState = s => all.filter(e => e.state === s).length;
+  const fState = STATE.mailboxFilter || "abiertas";
+  const fDest = STATE.mailboxDest || "TODOS";
+
+  // Los casilleros son los destinos que la propia centralita ha escrito. ⚠️ No una lista
+  // fija: un destino nuevo en el vocabulario aparece aquí solo, y uno que deja de usarse
+  // desaparece — que es lo que separa un casillero de una etiqueta inventada por la vista.
+  const dests = [...new Set(all.map(e => e.destination).filter(Boolean))].sort();
+  const inState = e => fState === "todas" || ["open", "pending"].includes(e.state);
+  const shown = all.filter(e => inState(e) && (fDest === "TODOS" || e.destination === fDest));
+  const nOpen = all.filter(e => ["open", "pending"].includes(e.state)).length;
 
   return `
-    <div class="mailbox-panel">
-      <div class="mailbox-head">
-        <div>
-          <h2><span>📬</span> Buzón <span class="tag-pill tag-live">${shown.length}</span></h2>
-          <p class="mailbox-sub">Agente → operador. Lo que un agente encontró, propuso o cruzó y
-             todavía no está integrado. <strong>Nadie vacía la cola que llena</strong> (<code>AX-15</code>):
-             estas entradas las enrutas tú.</p>
+    <div class="post-office">
+      <!-- LA VENTANILLA -->
+      <div class="po-counter">
+        <div class="po-counter-sign">
+          <span class="po-sign-icon">✉</span>
+          <div>
+            <h2>Buzón</h2>
+            <span class="po-sign-sub">agente → operador</span>
+          </div>
         </div>
-        <div class="mailbox-filters">
-          <button class="chip-filter ${f === "abiertas" ? "active" : ""}" onclick="setMailboxFilter('abiertas')">
-            Sin cerrar (${byState("open") + byState("pending")})
-          </button>
-          <button class="chip-filter ${f === "todas" ? "active" : ""}" onclick="setMailboxFilter('todas')">
-            Todas (${all.length})
-          </button>
+        <p class="po-blurb">
+          Lo que un agente encontró, propuso o cruzó y todavía no está integrado.
+          <strong>Nadie vacía la cola que llena</strong> (<code>AX-15</code>): estas entradas
+          las enrutas tú, y por eso llegan con un destino <em>propuesto</em>, no decidido.
+        </p>
+        <div class="po-tally">
+          <span class="po-tally-n">${nOpen}</span>
+          <span class="po-tally-l">sin cerrar<br>de ${all.length}</span>
         </div>
       </div>
 
-      ${shown.length ? shown.map(e => {
-        const s = MAILBOX_STATE[e.state] || MAILBOX_STATE.open;
-        return `
-          <article class="mb-card ${s.cls}">
-            <header class="mb-top">
-              <span class="mb-state ${s.cls}">${s.icon} ${s.label}</span>
-              <span class="mb-dest" title="Destino declarado por quien la escribió">→ ${esc(e.destination)}</span>
-              <span class="tag-pill tag-project">${esc(e.project)}</span>
-            </header>
-            <h3 class="mb-title">${inline(e.title)}</h3>
-            ${e.body ? `<div class="mb-body">${renderMarkdownBody(e.body)}</div>`
-                     : `<p class="mb-nobody">— sin cuerpo: la entrada se escribió solo con su cabecera —</p>`}
-            <footer class="mb-foot">
-              ${renderOrigin(e.author, e.origin_inferred)}
-              ${renderDate(e.date, e.date_inferred)}
-              ${e.file ? `<span class="tag-pill mb-file"><code>${esc(e.file)}${e.line ? `:${e.line}` : ""}</code></span>` : ""}
-            </footer>
-          </article>`;
-      }).join("") : `
-        <div class="empty-state">
-          <div class="empty-icon">📭</div><h3>Buzón vacío</h3>
-          <p>Un buzón que entra lleno y sale lleno significa que la sesión no cerró nada
-             (<code>METHOD.md</code> §4). Éste está limpio.</p>
-        </div>`}
+      <!-- LOS CASILLEROS -->
+      <div class="pigeonholes">
+        <button class="hole ${fDest === "TODOS" ? "hole-on" : ""}" onclick="setMailboxDest('TODOS')">
+          <span class="hole-slot"><span class="hole-stack" style="--n:${Math.min(all.filter(inState).length, 5)}"></span></span>
+          <span class="hole-label">todo</span>
+          <span class="hole-n">${all.filter(inState).length}</span>
+        </button>
+        ${dests.map(d => {
+          const n = all.filter(e => inState(e) && e.destination === d).length;
+          return `
+            <button class="hole ${fDest === d ? "hole-on" : ""} ${n ? "" : "hole-empty"}"
+                    onclick="setMailboxDest('${esc(d)}')" title="Destino propuesto: ${esc(d)}">
+              <span class="hole-slot"><span class="hole-stack" style="--n:${Math.min(n, 5)}"></span></span>
+              <span class="hole-label">${esc(d)}</span>
+              <span class="hole-n">${n}</span>
+            </button>`;
+        }).join("")}
+        <div class="hole-sep"></div>
+        <button class="chip-filter ${fState === "abiertas" ? "active" : ""}" onclick="setMailboxFilter('abiertas')">
+          sin cerrar
+        </button>
+        <button class="chip-filter ${fState === "todas" ? "active" : ""}" onclick="setMailboxFilter('todas')">
+          incluir cerradas (${all.length})
+        </button>
+      </div>
+
+      <!-- EL CORREO -->
+      <div class="po-mail">
+        ${shown.length ? shown.map(e => {
+          const s = MAILBOX_STATE[e.state] || MAILBOX_STATE.open;
+          const [y, mo, d] = String(e.date || "").split("-");
+          return `
+            <article class="letter ${s.cls} ${["open","pending"].includes(e.state) ? "letter-airmail" : ""}">
+              <div class="letter-franking">
+                <!-- EL SELLO. Su dibujo es el destino propuesto. -->
+                <div class="stamp" title="Destino propuesto: ${esc(e.destination)}">
+                  <span class="stamp-dest">${esc(e.destination)}</span>
+                  <span class="stamp-value">${esc(e.project)}</span>
+                </div>
+                <!-- EL MATASELLOS. Lleva la fecha, que es lo que un matasellos lleva. -->
+                <div class="postmark" aria-hidden="true">
+                  <span class="pm-ring"></span>
+                  <span class="pm-day">${esc(d || "··")}</span>
+                  <span class="pm-mon">${esc(mo || "··")}</span>
+                  <span class="pm-year">${esc(y || "····")}</span>
+                </div>
+              </div>
+
+              <div class="letter-body">
+                <div class="letter-from">
+                  <span class="lf-k">De</span>
+                  <span class="lf-v">${esc(e.author)}</span>
+                  ${e.origin_inferred ? `<span class="lf-inf" title="Inferido, no escrito en el fichero">inferido</span>` : ""}
+                  <span class="lf-sep">·</span>
+                  <span class="lf-k">Para</span>
+                  <span class="lf-v">operador</span>
+                </div>
+
+                <h3 class="letter-subject">${inline(e.title)}</h3>
+
+                ${e.body ? `<div class="letter-text">${renderMarkdownBody(e.body)}</div>`
+                         : `<p class="letter-empty">— la carta llegó sin cuerpo: sólo la cabecera —</p>`}
+
+                <div class="letter-foot">
+                  <span class="letter-ref" title="Dónde está exactamente"><code>${esc(e.file || "")}${e.line ? `:${e.line}` : ""}</code></span>
+                  <span class="cuno cuno-${e.state}">${s.label}</span>
+                </div>
+              </div>
+            </article>`;
+        }).join("") : `
+          <div class="po-empty">
+            <div class="po-empty-mark">✉</div>
+            <h3>${fDest === "TODOS" ? "No hay correo sin cerrar" : `El casillero «${esc(fDest)}» está vacío`}</h3>
+            <p>Un buzón que entra lleno y sale lleno significa que la sesión no cerró nada
+               (<code>METHOD.md</code> §4).</p>
+          </div>`}
+      </div>
     </div>`;
 }
 
+window.setMailboxDest = function (d) { STATE.mailboxDest = d; renderView(); };
+
 window.setMailboxFilter = function (v) { STATE.mailboxFilter = v; renderView(); };
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+// DOCTRINA — la filosofía, los axiomas y los ficheros estructurales
+//
+// ⛔ Nothing here is transcribed. `/api/doctrine` parses MLabs' own files and this layer
+// paints what comes back, so the page cannot state a clause the file does not. The build
+// before this one hard-coded six clauses: it named `PH-0` as something it had stopped
+// being, described `PH-1` as a clause that was never written, omitted `PH-6` entirely, and
+// printed "30 axiomas activos" against a real 34. Every one of those looked authoritative.
+// `AX-20` names the duplicate and `AX-36` names the hand-typed count.
+// ═════════════════════════════════════════════════════════════════════════════
+
+async function loadDoctrine() {
+  try {
+    const d = await api("GET", "/api/doctrine");
+    const of = k => (d.entities || []).filter(e => e.kind === k);
+    STATE.doctrine = {
+      clauses:  of("clause"),
+      axioms:   of("axiom"),
+      coverage: of("coverage"),
+      refusals: of("refusal"),
+      docs:     of("doc"),
+      problems: d.problems || [],
+      root: d.root
+    };
+  } catch (e) {
+    // ⚠️ A doctrine that will not load says so. The alternative is a page that quietly
+    // falls back to a copy, which is the failure this whole layer exists to remove.
+    STATE.doctrine = { error: e.message, clauses: [], axioms: [], coverage: [],
+                       refusals: [], docs: [], problems: [] };
+  }
+  if (["overview", "clause", "doc", "dashboard"].includes(STATE.currentView)) renderView();
+}
+
+const D = () => STATE.doctrine || { clauses: [], axioms: [], coverage: [], refusals: [], docs: [] };
+const clauseOf = id => D().clauses.find(c => c.id === id) || null;
+const axiomsOf = id => D().axioms.filter(a => (a.serves || []).includes(id));
+const coverageOf = id => D().coverage.find(c => c.id === id) || null;
+
+// Los estados del check, que `AXIOMS.md` prohíbe expresamente sumar como uno solo.
+const CHECKS = {
+  "$":    { icon: "▶", label: "ejecutable", cls: "chk-run",
+            hint: "un comando que corre hoy y devuelve un veredicto — y puede bajar" },
+  owed:   { icon: "⊘", label: "en deuda", cls: "chk-owed",
+            hint: "hay check nombrado y no corre: AX-7 roto, declarado" },
+  none:   { icon: "·", label: "sin check", cls: "chk-none",
+            hint: "el vacío honesto" }
+};
+
+// Una cláusula, un color. ⚠️ Es vocabulario, no adorno: el mismo color identifica la
+// cláusula en el frontón, en su columna, en su página y en el dashboard.
+const CLAUSE_TONE = {
+  "PH-0": "tone-gold", "PH-1": "tone-aegean", "PH-2": "tone-olive",
+  "PH-3": "tone-terracotta", "PH-4": "tone-grape", "PH-5": "tone-ink",
+  "PH-6": "tone-cyan"
+};
+
+// El título griego de cada cláusula. ⚠️ Es decoración tipográfica y NO una traducción:
+// el nombre que manda es el del fichero, que se pinta al lado en todas partes.
+const CLAUSE_GREEK = {
+  "PH-0": "ΔΙΑΜΟΝΗ", "PH-1": "ΑΥΞΗΣΙΣ", "PH-2": "ΑΝΤΟΧΗ", "PH-3": "ΜΝΗΜΗ",
+  "PH-4": "ΑΡΧΗ", "PH-5": "ΠΡΟΣΟΧΗ", "PH-6": "ΜΕΤΡΟΝ"
+};
+
+// El cuerpo de una cláusula lleva marcadores que son estructura, no énfasis: `⛔` es un
+// límite y `⚠️` una trampa. Se separan para que la página los pueda tratar distinto.
+function clauseParts(body) {
+  const out = { lead: [], stops: [], warns: [] };
+  for (const para of String(body || "").split(/\n\s*\n/)) {
+    const t = para.trim();
+    if (!t) continue;
+    if (t.startsWith("⛔")) out.stops.push(t);
+    else if (t.startsWith("⚠️")) out.warns.push(t);
+    else out.lead.push(t);
+  }
+  return out;
+}
+
+// ───────────────────────────────────────────────── el frontón y las columnas
+function renderPediment() {
+  const ph0 = clauseOf("PH-0");
+  if (!ph0) {
+    return `<div class="empty-state"><div class="empty-icon">🏛️</div>
+      <h3>La doctrina no ha cargado</h3>
+      <p>${esc(D().error || "PHILOSOPHY.md no está en la raíz del motor.")}
+         Esta página se lee de los ficheros; no lleva copia.</p></div>`;
+  }
+  const cls = D().clauses.filter(c => !c.objective);
+  return `
+    <section class="temple">
+      <svg class="pediment" viewBox="0 0 1000 132" preserveAspectRatio="none" aria-hidden="true">
+        <!-- ⚠️ El frontón es adorno y nada más: quítalo y la portada sigue diciendo lo
+             mismo, porque todo el texto vive en las columnas y en la placa. -->
+        <defs>
+          <linearGradient id="marble" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fbf8ef"/><stop offset="1" stop-color="#e9e2d1"/>
+          </linearGradient>
+        </defs>
+        <polygon points="500,4 998,116 2,116" fill="url(#marble)" stroke="#c2b79c" stroke-width="2"/>
+        <rect x="0" y="116" width="1000" height="16" fill="#efe9da" stroke="#cfc4a8" stroke-width="1.5"/>
+        <polygon points="500,26 946,112 54,112" fill="none" stroke="#d5cab0" stroke-width="1.4"/>
+        <circle cx="500" cy="80" r="13" fill="none" stroke="#c8bda2" stroke-width="1.8"/>
+        <circle cx="500" cy="80" r="5" fill="#dfd6bf"/>
+      </svg>
+
+      <div class="architrave">
+        <div class="ph0-plate tone-gold">
+          <span class="ph0-greek">${CLAUSE_GREEK["PH-0"]}</span>
+          <span class="ph0-id">PH-0 · ${esc(ph0.title)}</span>
+          <blockquote class="ph0-slogan">${inline(ph0.epigraph || "")}</blockquote>
+          <p class="ph0-gloss">
+            Esto es <strong>para lo que existe la empresa</strong>. Ningún axioma la sirve
+            directamente: la sirven las cláusulas, y cada una cierra una manera concreta de
+            perderla.
+          </p>
+        </div>
+      </div>
+
+      <div class="colonnade">
+        ${cls.map(c => {
+          const cov = coverageOf(c.id);
+          const ax = axiomsOf(c.id);
+          const runnable = ax.filter(a => a.check_state === "$").length;
+          return `
+            <button class="column ${CLAUSE_TONE[c.id] || ""}" onclick="openClause('${c.id}')"
+                    title="${esc(c.epigraph || c.title)}">
+              <span class="capital"></span>
+              <span class="shaft">
+                <span class="col-greek">${CLAUSE_GREEK[c.id] || ""}</span>
+                <span class="col-id">${c.id}</span>
+                <span class="col-title">${esc(c.title)}</span>
+                ${c.epigraph ? `<span class="col-epigraph">${esc(c.epigraph)}</span>` : ""}
+              </span>
+              <span class="base">
+                <span class="base-n">${cov ? esc(cov.count) : ax.length}</span>
+                <span class="base-l">axioma${ax.length === 1 ? "" : "s"}${runnable ? ` · ${runnable} con check` : ""}</span>
+              </span>
+            </button>`;
+        }).join("")}
+      </div>
+      <div class="stylobate"></div>
+    </section>`;
+}
+
+// ───────────────────────────────────────────────── una cláusula, entera
+function renderClause(container) {
+  const c = clauseOf(STATE.clauseId);
+  if (!c) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🏛️</div>
+      <h3>Cláusula no encontrada</h3>
+      <p>${esc(STATE.clauseId || "")} no está en <code>PHILOSOPHY.md</code>.</p>
+      <button class="btn-retry" onclick="navigateTo('overview')">Volver a la portada</button></div>`;
+    return;
+  }
+  const tone = CLAUSE_TONE[c.id] || "";
+  const parts = clauseParts(c.body);
+  const ax = axiomsOf(c.id);
+  const cov = coverageOf(c.id);
+  const byCheck = s => ax.filter(a => a.check_state === s);
+  const others = D().clauses.filter(x => !x.objective && x.id !== c.id);
+
+  container.innerHTML = `
+    <div class="desk-plate clause-plate ${tone}">
+      <button class="crumb-link" onclick="navigateTo('overview')">🏛️ Portada</button>
+      <span class="crumb-sep">›</span>
+      <span class="crumb-here">${c.id} · ${esc(c.title)}</span>
+      <span class="clause-file"><code>PHILOSOPHY.md:${c.line}</code></span>
+    </div>
+
+    <header class="clause-hero ${tone}">
+      <div class="clause-hero-mark">
+        <span class="clause-greek">${CLAUSE_GREEK[c.id] || ""}</span>
+        <span class="clause-id">${c.id}</span>
+      </div>
+      <div class="clause-hero-main">
+        <h1>${esc(c.title)}</h1>
+        ${c.epigraph ? `<blockquote class="clause-epigraph">${inline(c.epigraph)}</blockquote>` : ""}
+        ${c.objective ? `<p class="clause-objective-note">
+            Ésta no es una cláusula: es <strong>el objetivo</strong>. Las demás existen para
+            protegerla, y por eso ningún axioma la sirve directamente.</p>` : ""}
+      </div>
+    </header>
+
+    <div class="clause-grid">
+      <section class="clause-body">
+        ${parts.lead.map(t => `<div class="clause-para">${renderMarkdownBody(t)}</div>`).join("")}
+        ${parts.warns.map(t => `
+          <div class="callout callout-warning"><span class="callout-icon">⚠️</span>
+            <div class="callout-content">${inline(t.replace(/^⚠️\s*/, ""))}</div></div>`).join("")}
+        ${parts.stops.map(t => `
+          <div class="callout callout-danger"><span class="callout-icon">⛔</span>
+            <div class="callout-content">${inline(t.replace(/^⛔\s*/, ""))}</div></div>`).join("")}
+
+        <div class="clause-axioms">
+          <div class="clause-axioms-head">
+            <h2>Axiomas que la sirven</h2>
+            <span class="tag-pill tag-live">${ax.length}</span>
+            ${cov && cov.count !== String(ax.length) ? `
+              <span class="cov-mismatch" title="La tabla de cobertura de AXIOMS.md y las filas leídas no dan el mismo número">
+                ⚠️ la tabla de cobertura dice ${esc(cov.count)}
+              </span>` : ""}
+          </div>
+          ${ax.length ? `
+            <div class="check-summary">
+              ${Object.entries(CHECKS).map(([k, m]) => `
+                <span class="chk-pill ${m.cls}" title="${m.hint}">
+                  ${m.icon} ${byCheck(k).length} ${m.label}
+                </span>`).join("")}
+            </div>
+            <div class="axiom-list">
+              ${ax.map(a => renderAxiomRow(a, c.id)).join("")}
+            </div>` : `
+            <p class="clause-zero">
+              ${c.objective
+                ? "Cero, por diseño. <code>PH-0</code> la sirven las cláusulas, no los axiomas — y una tabla de cobertura que esperase una regla aquí reportaría un hueco que no existe."
+                : "Ninguno. Una cláusula sin axioma detrás es un valor sin dientes."}
+            </p>`}
+        </div>
+      </section>
+
+      <aside class="clause-rail">
+        <div class="rail-panel">
+          <div class="rail-head"><strong>Las otras cláusulas</strong></div>
+          ${others.map(o => `
+            <button class="clause-jump ${CLAUSE_TONE[o.id] || ""}" onclick="openClause('${o.id}')">
+              <span class="cj-id">${o.id}</span>
+              <span class="cj-title">${esc(o.title)}</span>
+              <span class="cj-n">${axiomsOf(o.id).length}</span>
+            </button>`).join("")}
+        </div>
+        <div class="rail-panel">
+          <div class="rail-head"><strong>Los tres niveles</strong></div>
+          <ol class="levels-list">
+            <li><strong>Filosofía</strong><em>para qué existe · rompe todo empate</em></li>
+            <li><strong>Axiomas</strong><em>las reglas que la implementan · nunca se violan</em></li>
+            <li><strong>Decisiones</strong><em>con autor, fecha y razón · viven en la centralita</em></li>
+          </ol>
+          <p class="rail-note">Los mismos tres niveles se repiten un piso más abajo dentro de
+             cada proyecto, con su propio auditor.</p>
+        </div>
+      </aside>
+    </div>`;
+}
+
+function renderAxiomRow(a, highlightClause) {
+  const m = CHECKS[a.check_state] || CHECKS.none;
+  return `
+    <article class="axiom-row ${m.cls}">
+      <div class="axiom-row-head">
+        <span class="axiom-id">${esc(a.id)}</span>
+        <span class="axiom-status ${a.status === "in-force" ? "st-force" : "st-proposed"}">
+          ${a.status === "in-force" ? "🟢 en vigor" : "🟡 propuesto"}
+        </span>
+        <span class="chk-pill ${m.cls}" title="${m.hint}">${m.icon} ${m.label}</span>
+        <span class="axiom-serves">
+          ${(a.serves || []).map(s => `
+            <button class="serves-chip ${s === highlightClause ? "is-here" : ""} ${CLAUSE_TONE[s] || ""}"
+                    onclick="event.stopPropagation(); openClause('${s}')">${s}</button>`).join("")}
+        </span>
+      </div>
+      <div class="axiom-text">${inline(a.text)}</div>
+      ${a.check && a.check !== "—" ? `<div class="axiom-check">${inline(a.check)}</div>` : ""}
+    </article>`;
+}
+
+// ───────────────────────────────────────────────── los ficheros estructurales
+const DOC_META = {
+  PHILOSOPHY: { icon: "🏛️", greek: "ΛΟΓΟΣ", tone: "tone-gold",
+    q: "¿Para qué existe esta empresa y qué rechaza?",
+    role: "Nivel 1. Rompe todo empate. Cambia casi nunca, y sólo el operador." },
+  AXIOMS: { icon: "⚖️", greek: "ΝΟΜΟΣ", tone: "tone-aegean",
+    q: "¿Qué reglas no se violan nunca?",
+    role: "Nivel 2. Una regla por fila, con la cláusula que sirve y su check." },
+  AGENTS: { icon: "🗺️", greek: "ΤΑΞΙΣ", tone: "tone-olive",
+    q: "¿Quién hace qué, y en qué ocasión?",
+    role: "La orquestación: los roles, los invariantes y la regla de contratar y despedir." },
+  METHOD: { icon: "🔁", greek: "ΟΔΟΣ", tone: "tone-terracotta",
+    q: "¿Cómo fluye el trabajo, de verdad, cada día?",
+    role: "El bucle, las dos colas y la tabla de enrutado. Es el que se usa a diario." },
+  FLOW: { icon: "🧬", greek: "ΜΟΡΦΗ", tone: "tone-grape",
+    q: "¿Qué forma tiene el trabajo?",
+    role: "El anidamiento y los estados. Es el fichero a cambiar para otro flujo de trabajo." },
+  README: { icon: "🚪", greek: "ΠΥΛΗ", tone: "tone-cyan",
+    q: "¿Por dónde entra alguien que llega de cero?",
+    role: "La puerta de entrada pública del repositorio." }
+};
+// El orden de lectura que `AGENTS.md` §1 declara, y que no es el alfabético.
+const DOC_ORDER = ["PHILOSOPHY", "AXIOMS", "AGENTS", "METHOD", "FLOW", "README"];
+
+function renderStructuralFiles() {
+  const docs = D().docs;
+  const have = id => docs.find(d => d.id === id);
+  const philosophy = { id: "PHILOSOPHY", words: null, sections: D().clauses.length };
+  const axioms = { id: "AXIOMS", words: null, sections: D().axioms.length };
+  const rows = DOC_ORDER.map(id => {
+    const d = have(id);
+    const meta = DOC_META[id] || {};
+    const inner = id === "PHILOSOPHY" ? `${D().clauses.length} cláusulas`
+                : id === "AXIOMS" ? `${D().axioms.length} axiomas`
+                : d ? `${d.outline.length} secciones` : "—";
+    const words = d ? `${d.words.toLocaleString("es")} palabras` :
+                  id === "PHILOSOPHY" || id === "AXIOMS" ? "" : "no encontrado";
+    // Philosophy and axioms have their own pages; the rest open in the reader.
+    const go = id === "PHILOSOPHY" ? `openClause('PH-0')`
+             : id === "AXIOMS" ? `navigateTo('dashboard')`
+             : `openDoc('${id}')`;
+    const goLabel = id === "PHILOSOPHY" ? "abrir el frontón →"
+                  : id === "AXIOMS" ? "ver los checks →" : "leer entero →";
+    return `
+      <button class="stele ${meta.tone || ""}" onclick="${go}" ${!d && !["PHILOSOPHY","AXIOMS"].includes(id) ? "disabled" : ""}>
+        <span class="stele-top">
+          <span class="stele-icon">${meta.icon || "📄"}</span>
+          <span class="stele-greek">${meta.greek || ""}</span>
+        </span>
+        <span class="stele-name">${id}.md</span>
+        <span class="stele-q">${esc(meta.q || "")}</span>
+        <span class="stele-role">${esc(meta.role || "")}</span>
+        <span class="stele-foot">
+          <span class="stele-n">${inner}</span>
+          ${words ? `<span class="stele-w">${words}</span>` : ""}
+          <span class="stele-go">${goLabel}</span>
+        </span>
+      </button>`;
+  }).join("");
+
+  return `
+    <section class="doc-section" id="sec-structure">
+      <div class="section-head"><h2><span class="num">02</span> Los ficheros que gobiernan</h2></div>
+      <p class="section-lead">
+        Tres niveles y nada puede difuminarlos. Se leen en este orden — <strong>filosofía</strong>,
+        para qué; <strong>axiomas</strong>, las reglas que se derivan; <strong>este mapa</strong>,
+        quién hace qué; y luego <strong>el método</strong>, que es el que se usa todos los días.
+        Todo lo de esta página se lee de esos ficheros: no hay copia.
+      </p>
+      <div class="stelae">${rows}</div>
+      ${D().problems && D().problems.length ? `
+        <div class="callout callout-warning"><span class="callout-icon">⚠️</span>
+          <div class="callout-content"><strong>La doctrina cargó con incidencias.</strong>
+          ${D().problems.map(p => `<div><code>${esc(p.file || "")}</code> — ${esc(p.why || "")}</div>`).join("")}</div>
+        </div>` : ""}
+    </section>`;
+}
+
+function renderRefusals() {
+  const r = D().refusals;
+  if (!r.length) return "";
+  return `
+    <section class="frieze">
+      <div class="frieze-head">
+        <span class="frieze-greek">ΟΥΚ</span>
+        <h2>Lo que esta empresa rechaza</h2>
+      </div>
+      <div class="frieze-rows">
+        ${r.map(x => `
+          <div class="frieze-row">
+            <span class="frieze-mark">✕</span>
+            <div><strong>${esc(x.title)}</strong><span>${inline(x.body)}</span></div>
+          </div>`).join("")}
+      </div>
+    </section>`;
+}
+
+// ───────────────────────────────────────────────── el lector de documentos
+function renderDoc(container) {
+  const d = D().docs.find(x => x.id === STATE.docId);
+  if (!d) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📄</div>
+      <h3>Documento no cargado</h3>
+      <p>${esc(STATE.docId || "")} no está en la raíz del motor.</p>
+      <button class="btn-retry" onclick="navigateTo('overview')">Volver a la portada</button></div>`;
+    return;
+  }
+  const meta = DOC_META[d.id] || {};
+  container.innerHTML = `
+    <div class="desk-plate clause-plate ${meta.tone || ""}">
+      <button class="crumb-link" onclick="navigateTo('overview')">🏛️ Portada</button>
+      <span class="crumb-sep">›</span>
+      <span class="crumb-here">${esc(d.id)}.md</span>
+      <span class="clause-file"><code>${d.lines} líneas · ${d.words.toLocaleString("es")} palabras</code></span>
+    </div>
+
+    <header class="clause-hero ${meta.tone || ""}">
+      <div class="clause-hero-mark">
+        <span class="clause-greek">${meta.greek || ""}</span>
+        <span class="clause-id">${meta.icon || "📄"}</span>
+      </div>
+      <div class="clause-hero-main">
+        <h1>${esc(d.title)}</h1>
+        <blockquote class="clause-epigraph">${esc(meta.q || "")}</blockquote>
+        <p class="clause-objective-note">${esc(meta.role || "")}</p>
+      </div>
+    </header>
+
+    <div class="clause-grid">
+      <section class="doc-reader">${renderMarkdownBody(d.body)}</section>
+      <aside class="clause-rail">
+        <div class="rail-panel">
+          <div class="rail-head"><strong>En este documento</strong></div>
+          <nav class="doc-toc">
+            ${d.outline.map((o, i) => `
+              <button class="toc-item toc-l${o.level}" onclick="scrollToHeading(${i})">
+                ${esc(o.title)}
+              </button>`).join("")}
+          </nav>
+        </div>
+        <div class="rail-panel">
+          <div class="rail-head"><strong>Los otros</strong></div>
+          ${DOC_ORDER.filter(x => x !== d.id && D().docs.find(y => y.id === x)).map(x => `
+            <button class="clause-jump ${DOC_META[x]?.tone || ""}" onclick="openDoc('${x}')">
+              <span class="cj-id">${DOC_META[x]?.icon || "📄"}</span>
+              <span class="cj-title">${x}.md</span>
+            </button>`).join("")}
+        </div>
+      </aside>
+    </div>`;
+}
+
+window.scrollToHeading = function (i) {
+  const reader = document.querySelector(".doc-reader");
+  if (!reader) return;
+  const hs = reader.querySelectorAll("h1, h2, h3");
+  if (hs[i]) hs[i].scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
+window.openClause = function (id) {
+  STATE.clauseId = id;
+  STATE.currentView = "clause";
+  renderView();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+window.openDoc = function (id) {
+  STATE.docId = id;
+  STATE.currentView = "doc";
+  renderView();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// DASHBOARD — PH-6
+//
+// ⛔ Every tile here declares which of `PH-6`'s two purposes it serves — **steer**, a
+// decision changes when it moves, or **prove**, evidence for someone with no reason to
+// believe us. A number that serves neither is a dashboard, and a dashboard is
+// accumulation wearing a chart. That sentence is the clause's, and it is the standard this
+// page is held to rather than a decoration on it.
+//
+// ⚠️ Encoding note. The three check states are NOT three identities — they are one ordinal
+// scale of *how enforced a rule is*: it runs (`$`) → it is named and does not run (`⊘`) →
+// there is none (`—`). Painted as a categorical trio, good-vs-serious measured ΔE 5.6 under
+// protanopia and good-vs-critical ΔE 4.1 under deuteranopia: the classic red/green pair,
+// unreadable for the readers who most need the signal. One hue, light→dark, validated
+// against this page's own surface (`#f2efe6`), and every segment carries its icon and its
+// number as well as its colour.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const ENFORCE = {
+  "$":  { step: "#2c4527", label: "corre",     icon: "▶", ink: "#fbfaf5",
+          hint: "un comando que se ejecuta hoy y devuelve un veredicto — y puede bajar" },
+  owed: { step: "#66875c", label: "en deuda",  icon: "⊘", ink: "#fbfaf5",
+          hint: "hay check nombrado y no corre: AX-7 roto, y declarado" },
+  none: { step: "#94ab8a", label: "sin check", icon: "·", ink: "#14231b",
+          hint: "no hay check — el vacío honesto, ni bueno ni malo por sí solo" }
+};
+const ENFORCE_ORDER = ["$", "owed", "none"];
+
+// Un dato es una medida cuando lleva su denominador y de dónde se leyó (`AX-36`).
+function metric({ id, purpose, title, n, of, unit, source, bad, note, tone }) {
+  const pct = of ? Math.round(n / of * 100) : null;
+  return `
+    <article class="metric ${tone || ""}">
+      <header class="metric-head">
+        <span class="metric-purpose purpose-${purpose}" title="${
+          purpose === "steer" ? "Para gobernar: cuando se mueve, cambia una decisión"
+                              : "Para probar: es evidencia para quien no tiene motivos para creernos"}">
+          ${purpose === "steer" ? "gobernar" : "probar"}
+        </span>
+        <h3>${esc(title)}</h3>
+      </header>
+      <div class="metric-figure">
+        <span class="metric-n">${n}</span>
+        ${of ? `<span class="metric-of">de ${of}</span>` : ""}
+        ${unit ? `<span class="metric-unit">${esc(unit)}</span>` : ""}
+        ${pct !== null ? `<span class="metric-pct">${pct}%</span>` : ""}
+      </div>
+      ${of ? `<div class="metric-bar" role="img" aria-label="${n} de ${of}">
+                <div class="metric-bar-fill" style="width:${pct}%"></div>
+              </div>` : ""}
+      ${note ? `<p class="metric-note">${inline(note)}</p>` : ""}
+      <footer class="metric-foot">
+        <span class="metric-bad" title="La dirección mala. Una medida que no puede moverse hacia ella es un marcador, no una medida.">↓ mal: ${esc(bad)}</span>
+        <span class="metric-src" title="Medido del registro, nunca recordado">${esc(source)}</span>
+      </footer>
+    </article>`;
+}
+
+function renderDashboard(container) {
+  const ax = D().axioms;
+  const clauses = D().clauses.filter(c => !c.objective);
+  const total = ax.length;
+  const by = s => ax.filter(a => a.check_state === s).length;
+  const runnable = by("$"), owed = by("owed"), none = by("none");
+
+  // Filas del gráfico: una por cláusula, segmentadas por cuánto se hace cumplir.
+  const rows = clauses.map(c => {
+    const mine = axiomsOf(c.id);
+    const seg = ENFORCE_ORDER.map(k => ({ k, n: mine.filter(a => a.check_state === k).length }));
+    return { id: c.id, title: c.title, total: mine.length, seg,
+             cov: coverageOf(c.id), enforced: seg[0].n };
+  });
+  const widest = Math.max(1, ...rows.map(r => r.total));
+
+  // ⚠️ Los axiomas que sirven a dos cláusulas cuentan en las dos, así que las filas suman
+  // más que el total. Decirlo es parte de la medida; callarlo la invalida.
+  const rowSum = rows.reduce((s, r) => s + r.total, 0);
+
+  // Lo que el registro vivo puede responder hoy, sin instrumentar nada más.
+  const mbAll = STATE.mailbox || [];
+  const mbOpen = mbAll.filter(e => ["open", "pending"].includes(e.state)).length;
+  const plan = STATE.livePlan || [];
+  const planRouted = plan.filter(i => i.struck || i.outcome).length;
+  const planDiscarded = plan.filter(i => i.outcome === "discarded").length;
+  const tasks = STATE.tasks || [];
+  const tasksWithProject = tasks.filter(t => t.project && t.project !== "cross").length;
+  const probs = (STATE.problems || []).length;
+  const covMismatch = rows.filter(r => r.cov && r.cov.count !== String(r.total));
+
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>📐</span> Dashboard <span class="clause-chip tone-cyan" onclick="openClause('PH-6')">PH-6 · Measurement</span></h1>
+        <p class="view-subtitle">
+          Cada medida declara <strong>a cuál de los dos propósitos sirve</strong> —
+          <em>gobernar</em>, si al moverse cambia una decisión, o <em>probar</em>, si es evidencia
+          para quien no tiene motivos para creernos. Todo lo de aquí se lee del registro; nada se
+          recuerda.
+        </p>
+      </div>
+    </div>
+
+    <section class="dash-block">
+      <div class="dash-block-head">
+        <h2>Hasta dónde se hacen cumplir las reglas</h2>
+        <p>Un axioma sin check es una regla que nadie comprueba. Ésta es la medida que más
+           fácilmente se disfraza: la exactitud de un check puede mantenerse perfecta mientras su
+           cobertura se hunde, y sólo el denominador lo enseña.</p>
+      </div>
+
+      <div class="metric-row">
+        ${metric({ purpose: "prove", title: "Axiomas con check que se ejecuta",
+                   n: runnable, of: total, source: "AXIOMS.md · columna Check",
+                   bad: "baja al añadir axiomas sin check",
+                   note: "La única de las tres que **puede bajar**, y por eso es la que se mira." })}
+        ${metric({ purpose: "steer", title: "Checks en deuda", n: owed, of: total,
+                   source: "AXIOMS.md · marca `⊘`", tone: "metric-warn",
+                   bad: "sube",
+                   note: "`AX-7` roto **y declarado**. Cada uno es una deuda con dirección." })}
+        ${metric({ purpose: "prove", title: "Axiomas sin check ninguno", n: none, of: total,
+                   source: "AXIOMS.md · marca `—`",
+                   bad: "sube",
+                   note: "El vacío honesto. No es un fallo por sí solo — es el techo de lo que hoy se puede verificar." })}
+      </div>
+
+      <figure class="chart">
+        <figcaption class="chart-title">Axiomas por cláusula, según cuánto se hacen cumplir</figcaption>
+        <div class="chart-legend">
+          ${ENFORCE_ORDER.map(k => `
+            <span class="lg-item" title="${ENFORCE[k].hint}">
+              <span class="lg-swatch" style="background:${ENFORCE[k].step}"></span>
+              <span class="lg-icon">${ENFORCE[k].icon}</span> ${ENFORCE[k].label}
+            </span>`).join("")}
+        </div>
+        <div class="chart-rows">
+          ${rows.map(r => `
+            <div class="chart-row">
+              <button class="cr-label ${CLAUSE_TONE[r.id] || ""}" onclick="openClause('${r.id}')"
+                      title="Abrir ${r.id} · ${esc(r.title)}">
+                <span class="cr-id">${r.id}</span>
+                <span class="cr-title">${esc(r.title)}</span>
+              </button>
+              <div class="cr-track">
+                ${r.seg.filter(s => s.n).map(s => `
+                  <span class="cr-seg" style="width:${s.n / widest * 100}%; background:${ENFORCE[s.k].step}; color:${ENFORCE[s.k].ink}"
+                        title="${r.id} · ${s.n} ${ENFORCE[s.k].label} — ${ENFORCE[s.k].hint}">
+                    ${s.n >= 2 ? `<span class="cr-seg-n">${ENFORCE[s.k].icon} ${s.n}</span>` : ""}
+                  </span>`).join("")}
+              </div>
+              <span class="cr-total">${r.total}</span>
+            </div>`).join("")}
+        </div>
+        <figcaption class="chart-note">
+          Las filas suman <strong>${rowSum}</strong> y los axiomas son <strong>${total}</strong>:
+          uno que sirve a dos cláusulas cuenta en las dos. Leído de
+          <code>AXIOMS.md</code> fila a fila, no de la tabla de cobertura.
+          ${covMismatch.length ? `
+            <span class="chart-flag">⚠️ ${covMismatch.length} cláusula${covMismatch.length > 1 ? "s no cuadran" : " no cuadra"}
+              con la tabla de cobertura: ${covMismatch.map(r => `${r.id} (tabla ${esc(r.cov.count)}, filas ${r.total})`).join(" · ")}.
+              La tabla se regenera, nunca se transcribe (<code>AX-2</code>).</span>`
+            : `<span class="chart-ok">✓ Cuadra con la tabla de cobertura de <code>AXIOMS.md</code> en las ${rows.length} cláusulas.</span>`}
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="dash-block">
+      <div class="dash-block-head">
+        <h2>El registro vivo</h2>
+        <p>Lo que la centralita conectada puede responder ahora mismo. Si no hay adaptador, estas
+           medidas salen a cero — y un cero aquí significa <em>no medido</em>, no <em>bien</em>.</p>
+      </div>
+      <div class="metric-row">
+        ${metric({ purpose: "steer", title: "Buzón sin cerrar", n: mbOpen, of: mbAll.length || 0,
+                   source: "MAILBOX.md", bad: "sube y se queda",
+                   tone: mbOpen > 0 ? "metric-warn" : "",
+                   note: "Un buzón que entra lleno y sale lleno significa que la sesión no cerró nada." })}
+        ${metric({ purpose: "steer", title: "Items del plan enrutados", n: planRouted, of: plan.length,
+                   source: "PLAN.md", bad: "se estanca con el plan abierto",
+                   note: "Un item tachado sin destino es un cierre fallido y el parser lo reporta." })}
+        ${metric({ purpose: "prove", title: "Items descartados **con su motivo**",
+                   n: planDiscarded, of: plan.length, source: "PLAN.md · destino `discarded`",
+                   bad: "cae a cero — un registro sin descartes es un registro sin auditar",
+                   note: "La cuenta poco favorecedora es **parte** de la medida, no un apéndice." })}
+        ${metric({ purpose: "prove", title: "Tareas con `project:` propio",
+                   n: tasksWithProject, of: tasks.length, source: "TASKS.md",
+                   bad: "baja", note: "El campo del que dependen todos los filtros y que nada más puede inferir." })}
+        ${metric({ purpose: "steer", title: "Entradas que el parser no supo colocar", n: probs,
+                   source: "/api/model · problems", bad: "sube", tone: probs ? "metric-warn" : "",
+                   note: "Un parser que descarta lo que no entiende convierte un registro sin pérdidas en uno con ellas, sin decirlo." })}
+      </div>
+    </section>
+
+    <section class="dash-block">
+      <div class="dash-block-head">
+        <h2>Lo que todavía no se mide</h2>
+        <p>Nombrado aquí en lugar de omitido. <strong>Un hueco declarado es una deuda con
+           dirección; un hueco callado es una métrica que nadie echa de menos.</strong></p>
+      </div>
+      <div class="gap-list">
+        ${[
+          ["Hallazgos de auditoría aceptados sobre propuestos",
+           "Necesita que cada auditoría escriba su resultado como registro, no como prosa en el informe de sesión."],
+          ["Coste de atención por tarea",
+           "`PH-5` dice que se mide, no que se sienta. Falta el dato: qué se cargó para hacer lo siguiente."],
+          ["Decisiones retomadas",
+           "Una decisión que vuelve como debate abierta es la señal de que su porqué no se escribió."],
+          ["Vida media de una entrada de buzón",
+           "Cuánto tarda en enrutarse. Necesita fecha de entrada y de salida; hoy sólo hay la de entrada."],
+          ["Qué medida no ha cambiado nunca una decisión",
+           "`PH-6` retira medidas con la misma facilidad con la que las añade, y ésta es la pregunta que lo hace."]
+        ].map(([t, why]) => `
+          <div class="gap-row">
+            <span class="gap-mark">○</span>
+            <div><strong>${esc(t)}</strong><span>${inline(why)}</span></div>
+          </div>`).join("")}
+      </div>
+      <div class="callout callout-note">
+        <span class="callout-icon">🧊</span>
+        <div class="callout-content">
+          <strong>Este panel está a medias a propósito.</strong> Sólo se pinta lo que sale del
+          registro tal como está hoy. Cuando una medida nueva tenga su dato escrito en el momento
+          en que ocurre — que es lo que <code>PH-6</code> exige y <code>PH-3</code> paga —
+          entra aquí; hasta entonces vive en la lista de arriba.
+        </div>
+      </div>
+    </section>`;
+}

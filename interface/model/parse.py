@@ -25,7 +25,8 @@ import re
 import sys
 from pathlib import Path
 
-KINDS = ("compass", "plan", "queue", "park", "record", "standing", "skills", "records")
+KINDS = ("compass", "plan", "queue", "park", "record", "standing", "skills", "records",
+         "philosophy", "axioms", "doc")
 
 
 # The board's id grammar, in ONE place. ⛔ Never copy it. A second copy diverges, and a
@@ -944,7 +945,118 @@ def parse_records(path, text):
     return [r], []
 
 
-PARSERS = {"records": parse_records, "skills": parse_skills, "queue": parse_queue, "park": parse_park, "compass": parse_compass,
+# ------------------------------------------------------- the structural files
+#
+# ⛔ These read MLabs' OWN documents — the philosophy, the axioms, the method — and they
+# exist so no view ever transcribes them. A page that retypes a clause is a second copy of
+# a fact with no winner (`AX-20`), and it drifts silently: the first build of this
+# interface described `PH-0` as something it stopped being, invented a clause that was
+# never there, and omitted `PH-6` entirely — while looking authoritative.
+
+def parse_philosophy(path, text):
+    """Clauses. `PH-0` is the objective; the rest are ways of losing it."""
+    ents, probs, lines = [], [], text.splitlines()
+    heads = [(i, m) for i, l in enumerate(lines)
+             if (m := re.match(r"^##\s+(?P<id>PH-\d+)\s+·\s+(?P<title>.+?)\s*$", l))]
+    # ⛔ Una cláusula acaba en el SIGUIENTE `##` de cualquier tipo, no en el siguiente
+    # `## PH-n`. La última no tiene otra cláusula detrás, así que con la segunda regla se
+    # tragaba todo lo que viniera después — «What this company refuses» y «How the levels
+    # are used» salían dentro de `PH-6` como si fueran suyos.
+    allheads = [i for i, l in enumerate(lines) if l.startswith("## ")]
+    for k, (i, m) in enumerate(heads):
+        stop = next((j for j in allheads if j > i), len(lines))
+        # A trailing `---` belongs to the file, not to the last clause.
+        while stop > i and lines[stop - 1].strip() in ("", "---"):
+            stop -= 1
+        body = lines[i + 1:stop]
+        # The epigraph is the blockquote that opens a clause, when it has one. Not every
+        # clause does, and inventing one for those that do not is writing philosophy.
+        epigraph = None
+        j = 0
+        while j < len(body) and not body[j].strip():
+            j += 1
+        if j < len(body) and body[j].startswith(">"):
+            quote = []
+            while j < len(body) and body[j].startswith(">"):
+                quote.append(body[j].lstrip("> ").strip())
+                j += 1
+            epigraph = clean(" ".join(quote))
+        rest = "\n".join(body[j:]).strip()
+        # `⛔ **Where it stops**` is the boundary between this clause and its neighbour, and
+        # it is the paragraph a reader needs most — so it is a field, not prose in the middle.
+        bound = re.search(r"^⛔\s+\*\*Where it stops.*", rest, re.M)
+        ents.append({"kind": "clause", "id": m.group("id"), "line": i + 1,
+                     "title": clean(m.group("title")), "epigraph": epigraph,
+                     "body": rest,
+                     "boundary": rest[bound.start():].strip() if bound else None,
+                     "objective": m.group("id") == "PH-0"})
+    if not ents:
+        probs.append(Problem(path, 1, "a philosophy file with no `## PH-n ·` clause in it"))
+    # What the company refuses, which is philosophy and not decoration.
+    ref = re.search(r"^## What this company refuses\s*\n(.*?)(?=\n## |\Z)", text, re.S | re.M)
+    if ref:
+        for b in re.finditer(r"^- \*\*(?P<t>.+?)\*\*\s*(?P<b>.*?)(?=\n- \*\*|\Z)",
+                             ref.group(1), re.S | re.M):
+            ents.append({"kind": "refusal", "line": 0, "project": None,
+                         "title": clean(b.group("t")).rstrip("."),
+                         "body": clean(b.group("b"))[:600]})
+    return ents, probs
+
+
+def parse_axioms(path, text):
+    """Rows, keyed by header name, plus the coverage table read as its own fact."""
+    ents, probs, lines = [], [], text.splitlines()
+    section = None
+    for i, line in enumerate(lines):
+        h = re.match(r"^##\s+(?P<id>PH-\d+)\s+·\s+(?P<title>.+?)\s*$", line)
+        if h:
+            section = h.group("id")
+            continue
+        if not line.strip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        row = header_of(lines, i)
+        if not row or len(row) != len(cells):
+            continue
+        g = dict(zip(row, cells))
+        # ⛔ By header NAME. The `Check` column moved once already, and a positional reader
+        # would have shown every axiom's `Serves` list in the column that decides whether
+        # the rule is enforced — plausibly, and wrongly.
+        aid = re.match(r"^\*\*(AX-\d+)\*\*$", g.get("ID", "") or "")
+        if aid:
+            check = g.get("Check", "") or ""
+            state = ("$" if check.startswith("`$`") else
+                     "owed" if check.startswith("`⊘`") else "none")
+            ents.append({"kind": "axiom", "id": aid.group(1), "line": i + 1,
+                         "status": "in-force" if "🟢" in g.get("Status", "") else "proposed",
+                         "text": g.get("Axiom", ""),
+                         "serves": re.findall(r"PH-\d+", g.get("Serves", "")),
+                         "check": check, "check_state": state, "section": section})
+            continue
+        cov = re.match(r"^`(PH-\d+)`$", g.get("Clause", "") or "")
+        if cov:
+            ents.append({"kind": "coverage", "id": cov.group(1), "line": i + 1,
+                         "axioms": re.findall(r"AX-\d+", g.get("Axioms", "")),
+                         "count": clean(g.get("Count", ""))})
+    if not ents:
+        probs.append(Problem(path, 1, "an axioms file with no `AX-n` row in it"))
+    return ents, probs
+
+
+def parse_doc(path, text):
+    """A structural document, whole, with its outline. The view renders the markdown."""
+    lines = text.splitlines()
+    outline = [{"level": len(m.group(1)), "title": clean(m.group(2)), "line": i + 1}
+               for i, l in enumerate(lines)
+               if (m := re.match(r"^(#{1,3})\s+(.+?)\s*$", l))]
+    title = outline[0]["title"] if outline and outline[0]["level"] == 1 else Path(path).stem
+    return [{"kind": "doc", "id": Path(path).stem, "line": 1, "title": title,
+             "outline": outline[1:], "body": text,
+             "words": len(text.split()), "lines": len(lines)}], []
+
+
+PARSERS = {"philosophy": parse_philosophy, "axioms": parse_axioms, "doc": parse_doc,
+           "records": parse_records, "skills": parse_skills, "queue": parse_queue, "park": parse_park, "compass": parse_compass,
            "plan": parse_plan, "standing": parse_standing, "record": lambda p, t: ([], [])}
 
 

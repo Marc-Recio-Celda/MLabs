@@ -5202,3 +5202,526 @@ input[type="text"]:focus, textarea:focus {
     radial-gradient(circle at 34% 30%, rgba(255,255,255,.95) 0 20%, transparent 46%),
     radial-gradient(circle at 50% 50%, #b9bfba 0 58%, rgba(0,0,0,.4) 100%);
 }
+
+/* ==========================================================================
+   PORTADA GRIEGA · CLÁUSULAS · DOCUMENTOS · CORREOS · DASHBOARD
+   ========================================================================== */
+
+/* Un tono por cláusula. ⚠️ Es vocabulario: el mismo color la identifica en el frontón,
+   en su columna, en su página y en el dashboard — y en ningún sitio codifica un dato. */
+.tone-gold       { --ct: #a07a1e; --ctbg: rgba(198,154,62,.13); }
+.tone-aegean     { --ct: #2b6f8c; --ctbg: rgba(43,111,140,.12); }
+.tone-olive      { --ct: #52713f; --ctbg: rgba(82,113,63,.13); }
+.tone-terracotta { --ct: #a8522c; --ctbg: rgba(168,82,44,.12); }
+.tone-grape      { --ct: #6d4a7c; --ctbg: rgba(109,74,124,.12); }
+.tone-ink        { --ct: #3a4c42; --ctbg: rgba(58,76,66,.10); }
+.tone-cyan       { --ct: #2b7a8c; --ctbg: rgba(43,122,140,.12); }
+
+/* ── el templo ───────────────────────────────────────────────────────── */
+.temple { margin: 0 0 24px; }
+.pediment {
+  display: block; width: 100%; height: 96px; margin-bottom: -1px;
+  filter: drop-shadow(0 2px 5px rgba(20,35,27,.13));
+}
+@media (max-width: 780px) { .pediment { height: 62px; } }
+
+.architrave {
+  background: linear-gradient(180deg, #f8f4e9, #efe9da);
+  border: 1px solid #cfc4a8; border-top: none;
+  padding: 22px 26px 24px; text-align: center;
+}
+.ph0-plate { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ph0-greek {
+  font-size: 12px; letter-spacing: .42em; font-weight: 700;
+  color: var(--ct); opacity: .8; padding-left: .42em;
+}
+.ph0-id {
+  font-size: 12.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ph0-slogan {
+  margin: 2px 0 0; max-width: 720px; border: none; padding: 0;
+  font-size: 22px; line-height: 1.42; font-weight: 600; font-style: italic;
+  color: var(--ink);
+}
+.ph0-slogan::before, .ph0-slogan::after { content: "—"; color: var(--ct); margin: 0 .5em; font-style: normal; }
+.ph0-gloss { margin: 4px 0 0; max-width: 640px; font-size: 12.5px; line-height: 1.6; color: var(--ink-muted); }
+
+.colonnade {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 0;
+  background: linear-gradient(180deg, #efe9da, #e7e0cd);
+  border-left: 1px solid #cfc4a8; border-right: 1px solid #cfc4a8;
+}
+@media (max-width: 1080px) { .colonnade { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 620px)  { .colonnade { grid-template-columns: repeat(2, 1fr); } }
+
+.column {
+  display: flex; flex-direction: column; align-items: stretch;
+  background: none; border: none; padding: 0 5px 0; cursor: pointer;
+  font-family: inherit; text-align: center;
+}
+.capital {
+  height: 13px; margin: 0 -1px;
+  background: linear-gradient(180deg, #fbf8ef, #e4dcc6);
+  border: 1px solid #cabfa3; border-bottom: none;
+  border-radius: 3px 3px 0 0;
+}
+.shaft {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 14px 9px 16px;
+  background:
+    repeating-linear-gradient(90deg, rgba(120,104,72,.13) 0 1px, transparent 1px 11px),
+    linear-gradient(180deg, #fbf8ef, #f1ebdc);
+  border-left: 1px solid #d8cfb6; border-right: 1px solid #d8cfb6;
+  transition: background .16s ease;
+}
+.column:hover .shaft { background:
+    repeating-linear-gradient(90deg, rgba(120,104,72,.10) 0 1px, transparent 1px 11px),
+    linear-gradient(180deg, #fffdf7, var(--ctbg)); }
+.col-greek {
+  font-size: 9.5px; letter-spacing: .24em; font-weight: 700; color: var(--ct);
+  opacity: .85; padding-left: .24em;
+}
+.col-id { font-size: 11px; font-weight: 800; color: var(--ink-muted); letter-spacing: .05em; }
+.col-title { font-size: 14px; font-weight: 700; line-height: 1.28; color: var(--ink); }
+.col-epigraph {
+  font-size: 10.5px; line-height: 1.45; font-style: italic; color: var(--ink-muted);
+  margin-top: 2px;
+}
+.base {
+  display: flex; flex-direction: column; gap: 1px; padding: 7px 4px 8px; margin: 0 -1px;
+  background: linear-gradient(180deg, #e9e1cd, #dbd2b9);
+  border: 1px solid #cabfa3; border-radius: 0 0 3px 3px;
+}
+.base-n { font-size: 15px; font-weight: 800; color: var(--ct); }
+.base-l { font-size: 9px; letter-spacing: .04em; color: var(--ink-muted); }
+.stylobate {
+  height: 14px; border-radius: 0 0 var(--radius-md) var(--radius-md);
+  background: linear-gradient(180deg, #d5cbb0, #c3b899);
+  border: 1px solid #b8ac8c; border-top: none;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── el friso de los rechazos ────────────────────────────────────────── */
+.frieze {
+  margin: 22px 0 0; padding: 16px 20px 14px;
+  background: var(--paper-card); border: 1px solid var(--line);
+  border-left: 4px solid var(--rust); border-radius: var(--radius-md);
+}
+.frieze-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.frieze-greek { font-size: 11px; letter-spacing: .34em; font-weight: 700; color: var(--rust); }
+.frieze-head h2 { margin: 0; font-size: 15px; }
+.frieze-rows { display: grid; gap: 9px; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+.frieze-row { display: flex; gap: 9px; align-items: flex-start; }
+.frieze-mark { color: var(--rust); font-weight: 800; }
+.frieze-row strong { display: block; font-size: 13px; color: var(--ink); }
+.frieze-row span { font-size: 12.5px; line-height: 1.55; color: var(--ink-soft); }
+
+/* ── las estelas (ficheros estructurales) ────────────────────────────── */
+.section-lead { font-size: 13.5px; line-height: 1.65; color: var(--ink-soft); max-width: 860px; margin: 0 0 16px; }
+.stelae { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(275px, 1fr)); }
+.stele {
+  display: flex; flex-direction: column; gap: 7px; text-align: left; cursor: pointer;
+  padding: 16px 17px 13px; font-family: inherit;
+  background: linear-gradient(180deg, #fbf8ef, #f2ece0);
+  border: 1px solid #d3c9ae; border-top: 4px solid var(--ct);
+  border-radius: 4px 4px var(--radius-md) var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform .14s ease, box-shadow .14s ease;
+}
+.stele:hover:not([disabled]) { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.stele[disabled] { opacity: .45; cursor: not-allowed; }
+.stele-top { display: flex; align-items: center; justify-content: space-between; }
+.stele-icon { font-size: 19px; }
+.stele-greek { font-size: 9.5px; letter-spacing: .26em; font-weight: 700; color: var(--ct); opacity: .8; }
+.stele-name { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--ink); }
+.stele-q { font-size: 13px; font-weight: 600; line-height: 1.42; color: var(--ct); }
+.stele-role { font-size: 11.5px; line-height: 1.5; color: var(--ink-muted); flex: 1; }
+.stele-foot {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  padding-top: 8px; border-top: 1px dashed var(--line-subtle);
+  font-size: 10.5px; color: var(--ink-muted);
+}
+.stele-n { font-weight: 700; color: var(--ink-soft); }
+.stele-w { font-family: var(--font-mono); }
+.stele-go { margin-left: auto; font-weight: 600; color: var(--ct); }
+
+/* ── la página de una cláusula ───────────────────────────────────────── */
+.clause-plate {
+  min-height: 0; padding: 0; margin-bottom: 16px;
+  border-bottom: 2px solid var(--ct); padding-bottom: 10px;
+}
+.clause-plate .crumb-link { background: var(--ctbg); border-color: var(--ct); color: var(--ct); }
+.clause-plate .crumb-link:hover { background: var(--ct); color: #fff; }
+.clause-plate .crumb-here { color: var(--ink); text-shadow: none; }
+.clause-plate .crumb-sep { color: var(--ink-disabled); }
+.clause-file { margin-left: auto; font-size: 11px; color: var(--ink-muted); }
+
+.clause-hero {
+  display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap;
+  padding: 22px 24px; margin-bottom: 20px;
+  background: linear-gradient(150deg, #fbf8ef, var(--ctbg));
+  border: 1px solid #d3c9ae; border-left: 5px solid var(--ct);
+  border-radius: var(--radius-lg);
+}
+.clause-hero-mark {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  min-width: 96px; padding: 10px 12px;
+  background: var(--paper-elevated); border: 1px solid var(--ct); border-radius: var(--radius-md);
+}
+.clause-greek { font-size: 10.5px; letter-spacing: .24em; font-weight: 700; color: var(--ct); padding-left: .24em; }
+.clause-id { font-size: 21px; font-weight: 800; color: var(--ink); }
+.clause-hero-main { flex: 1 1 380px; }
+.clause-hero-main h1 { margin: 0 0 8px; font-size: 27px; font-weight: 800; color: var(--ink); }
+.clause-epigraph {
+  margin: 0; padding: 0 0 0 14px; border-left: 3px solid var(--ct);
+  font-size: 15px; font-style: italic; line-height: 1.5; color: var(--ink-soft);
+}
+.clause-objective-note { margin: 10px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--ink-muted); }
+
+.clause-grid { display: grid; grid-template-columns: minmax(0,1fr) 290px; gap: 22px; align-items: start; }
+@media (max-width: 1150px) { .clause-grid { grid-template-columns: minmax(0,1fr); } }
+.clause-body, .doc-reader {
+  background: var(--paper-card); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); padding: 22px 26px;
+}
+.clause-para { font-size: 14px; line-height: 1.72; color: var(--ink-soft); margin-bottom: 14px; }
+.clause-para strong { color: var(--ink); }
+
+.clause-axioms { margin-top: 22px; padding-top: 18px; border-top: 2px solid var(--line); }
+.clause-axioms-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.clause-axioms-head h2 { margin: 0; font-size: 16px; }
+.cov-mismatch {
+  font-size: 11px; padding: 2px 8px; border-radius: var(--radius-full);
+  background: var(--gold-bg); color: var(--gold-deep); border: 1px solid var(--gold-border);
+}
+.clause-zero { font-size: 13px; line-height: 1.65; color: var(--ink-muted); }
+.check-summary { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+.chk-pill {
+  font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: var(--radius-full);
+  border: 1px solid currentColor;
+}
+.chk-run  { color: #2c4527; background: rgba(44,69,39,.10); }
+.chk-owed { color: #7a5a1c; background: var(--gold-bg); }
+.chk-none { color: var(--ink-muted); background: var(--paper-subtle); }
+
+.axiom-list { display: flex; flex-direction: column; gap: 10px; }
+.axiom-row {
+  padding: 12px 15px; background: var(--paper-elevated);
+  border: 1px solid var(--line); border-left: 3px solid currentColor;
+  border-radius: var(--radius-md);
+}
+.axiom-row-head { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 7px; }
+.axiom-id {
+  font-family: var(--font-mono); font-size: 12.5px; font-weight: 700; color: var(--ink);
+  background: var(--paper-code); padding: 1px 7px; border-radius: var(--radius-sm);
+}
+.axiom-status { font-size: 10.5px; color: var(--ink-muted); }
+.axiom-serves { margin-left: auto; display: flex; gap: 4px; }
+.serves-chip {
+  font-size: 10px; font-weight: 700; font-family: var(--font-mono); cursor: pointer;
+  padding: 2px 7px; border-radius: var(--radius-full);
+  background: var(--ctbg); color: var(--ct); border: 1px solid var(--ct);
+}
+.serves-chip.is-here { background: var(--ct); color: #fff; }
+.axiom-text { font-size: 13px; line-height: 1.62; color: var(--ink-soft); }
+.axiom-text strong { color: var(--ink); }
+.axiom-check {
+  margin-top: 8px; padding: 7px 10px; background: var(--paper-subtle);
+  border-radius: var(--radius-sm); font-size: 11.5px; line-height: 1.55; color: var(--ink-muted);
+}
+.axiom-check code { font-size: 11px; }
+
+.clause-jump {
+  display: flex; align-items: center; gap: 8px; width: 100%; cursor: pointer;
+  padding: 7px 10px; margin-bottom: 5px; font-family: inherit; text-align: left;
+  background: var(--paper-elevated); border: 1px solid var(--line);
+  border-left: 3px solid var(--ct); border-radius: var(--radius-sm);
+}
+.clause-jump:hover { background: var(--ctbg); }
+.cj-id { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ct); }
+.cj-title { font-size: 12.5px; color: var(--ink); flex: 1; }
+.cj-n { font-size: 11px; font-family: var(--font-mono); color: var(--ink-muted); }
+.levels-list { margin: 0; padding-left: 18px; }
+.levels-list li { margin-bottom: 8px; font-size: 12.5px; }
+.levels-list strong { display: block; color: var(--ink); }
+.levels-list em { font-size: 11.5px; font-style: normal; color: var(--ink-muted); }
+.clause-chip {
+  font-size: 11px; font-weight: 700; cursor: pointer; margin-left: 8px;
+  padding: 3px 10px; border-radius: var(--radius-full);
+  background: var(--ctbg); color: var(--ct); border: 1px solid var(--ct);
+}
+.inline-link {
+  background: none; border: none; padding: 0; cursor: pointer; font: inherit;
+  color: var(--vine); text-decoration: underline; text-underline-offset: 2px;
+}
+
+.doc-toc { display: flex; flex-direction: column; max-height: 52vh; overflow-y: auto; }
+.toc-item {
+  background: none; border: none; cursor: pointer; text-align: left; font-family: inherit;
+  padding: 5px 8px; font-size: 12px; color: var(--ink-soft); border-radius: var(--radius-sm);
+  border-left: 2px solid transparent;
+}
+.toc-item:hover { background: var(--ctbg); color: var(--ct); border-left-color: var(--ct); }
+.toc-l3 { padding-left: 20px; font-size: 11.5px; color: var(--ink-muted); }
+.doc-reader h1 { font-size: 22px; margin-top: 0; }
+.doc-reader h2 { font-size: 17px; margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line-subtle); }
+.doc-reader h3 { font-size: 14.5px; margin-top: 18px; }
+.doc-reader p { font-size: 13.5px; line-height: 1.72; color: var(--ink-soft); }
+.doc-reader li { font-size: 13.5px; line-height: 1.65; color: var(--ink-soft); }
+
+/* ── LA OFICINA DE CORREOS ───────────────────────────────────────────── */
+.post-office { margin-bottom: 26px; }
+
+.po-counter {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  padding: 18px 22px; margin-bottom: 14px;
+  background: linear-gradient(165deg, #f7f2e6, #ece4d2);
+  border: 1px solid #cfc2a4; border-bottom: 4px solid #8a6a44;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.po-counter-sign { display: flex; align-items: center; gap: 12px; }
+.po-sign-icon {
+  width: 44px; height: 44px; display: grid; place-items: center; font-size: 22px;
+  background: var(--accent-cyan); color: #fff; border-radius: 50%;
+  box-shadow: inset 0 -2px 5px rgba(0,0,0,.18);
+}
+.po-counter-sign h2 { margin: 0; font-size: 20px; letter-spacing: .02em; }
+.po-sign-sub {
+  font-size: 10.5px; letter-spacing: .10em; text-transform: uppercase;
+  color: var(--ink-muted); font-family: var(--font-mono);
+}
+.po-blurb { flex: 1 1 340px; margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--ink-soft); }
+.po-tally {
+  display: flex; align-items: center; gap: 9px; padding: 8px 14px;
+  background: var(--paper-elevated); border: 1px dashed var(--border-medium);
+  border-radius: var(--radius-md);
+}
+.po-tally-n { font-size: 26px; font-weight: 800; color: var(--accent-cyan); }
+.po-tally-l { font-size: 10px; line-height: 1.3; color: var(--ink-muted); }
+
+/* Los casilleros. Cada uno enseña cuánto correo tiene sin abrirlo. */
+.pigeonholes { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.hole {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer;
+  padding: 6px 8px 7px; font-family: inherit;
+  background: linear-gradient(180deg, #e6dcc6, #d8ccb0);
+  border: 1px solid #b9ab8b; border-radius: 4px;
+  box-shadow: inset 0 2px 5px rgba(70,50,25,.16);
+  transition: background .14s ease, transform .14s ease;
+}
+.hole:hover { transform: translateY(-2px); }
+.hole-on { background: linear-gradient(180deg, #fbf8ef, #efe7d5); box-shadow: inset 0 0 0 2px var(--accent-cyan); }
+.hole-empty { opacity: .5; }
+.hole-slot {
+  width: 56px; height: 26px; display: flex; align-items: flex-end; justify-content: center;
+  background: #4a3f2e; border-radius: 2px;
+  box-shadow: inset 0 3px 6px rgba(0,0,0,.55);
+  overflow: hidden;
+}
+/* El fajo de cartas: una raya por carta, hasta cinco. */
+.hole-stack {
+  width: 44px; height: calc(var(--n, 0) * 3.4px);
+  background: repeating-linear-gradient(180deg, #fbf8ef 0 2.4px, #cbbfa4 2.4px 3.4px);
+  border-radius: 1px;
+}
+.hole-label {
+  font-size: 9.5px; font-family: var(--font-mono); letter-spacing: .03em;
+  color: var(--ink-soft); max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hole-n { font-size: 12px; font-weight: 800; color: var(--ink); }
+.hole-sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
+
+/* La carta. */
+.po-mail { display: flex; flex-direction: column; gap: 14px; }
+.letter {
+  position: relative; display: flex; gap: 16px; align-items: flex-start;
+  padding: 16px 18px;
+  background:
+    linear-gradient(180deg, #fdfcf7, #f7f4ea);
+  border: 1px solid #d5cbb2; border-radius: 3px;
+  box-shadow: 1px 3px 9px rgba(60,45,20,.14);
+}
+/* El borde de correo aéreo, sólo en lo que sigue abierto. */
+.letter-airmail::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 3px;
+  padding: 4px;
+  background: repeating-linear-gradient(45deg,
+    #b5623a 0 9px, #fdfcf7 9px 18px, #2b6f8c 18px 27px, #fdfcf7 27px 36px);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: .55;
+}
+.letter > * { position: relative; }
+
+.letter-franking { flex: 0 0 auto; position: relative; width: 96px; }
+/* El sello, con su dentado. */
+.stamp {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  width: 88px; height: 100px; padding: 8px 6px; text-align: center;
+  background: linear-gradient(160deg, #f3ece0, #e2d7c2);
+  border: 1px solid #c3b79c;
+  /* el dentado */
+  --perf:
+    radial-gradient(circle at 50% 0, transparent 3.6px, #000 4px) 0 0/11px 8px repeat-x,
+    radial-gradient(circle at 50% 100%, transparent 3.6px, #000 4px) 0 100%/11px 8px repeat-x,
+    radial-gradient(circle at 0 50%, transparent 3.6px, #000 4px) 0 0/8px 11px repeat-y,
+    radial-gradient(circle at 100% 50%, transparent 3.6px, #000 4px) 100% 0/8px 11px repeat-y,
+    linear-gradient(#000 0 0) 50% 50%/calc(100% - 16px) calc(100% - 16px) no-repeat;
+  -webkit-mask: var(--perf);
+          mask: var(--perf);
+}
+.stamp-dest {
+  font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--grape); line-height: 1.2;
+}
+.stamp-value {
+  font-size: 9px; font-family: var(--font-mono); color: var(--ink-muted);
+  padding-top: 3px; border-top: 1px solid #cdc0a5;
+}
+/* El matasellos, encima del sello y mordiendo la carta. */
+.postmark {
+  position: absolute; top: 62px; left: 52px; width: 58px; height: 58px;
+  display: grid; place-items: center; align-content: center;
+  color: rgba(43,111,140,.72); transform: rotate(-11deg); pointer-events: none;
+}
+.pm-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 2px solid currentColor; box-shadow: inset 0 0 0 2px transparent, 0 0 0 2px transparent;
+}
+.pm-ring::after {
+  content: ""; position: absolute; inset: 4px; border-radius: 50%; border: 1px solid currentColor;
+}
+.pm-day  { font-size: 15px; font-weight: 800; line-height: 1; font-family: var(--font-mono); }
+.pm-mon  { font-size: 9px; letter-spacing: .16em; font-family: var(--font-mono); }
+.pm-year { font-size: 8.5px; font-family: var(--font-mono); opacity: .85; }
+
+.letter-body { flex: 1; min-width: 0; }
+.letter-from {
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+  padding-bottom: 7px; margin-bottom: 8px; border-bottom: 1px dashed #d5cbb2;
+  font-size: 11.5px;
+}
+.lf-k { font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-disabled); }
+.lf-v { font-family: var(--font-mono); font-weight: 600; color: var(--ink-soft); }
+.lf-inf {
+  font-size: 9px; padding: 0 5px; border-radius: var(--radius-full);
+  background: var(--gold-bg); color: var(--gold-deep); border: 1px solid var(--gold-border);
+}
+.lf-sep { color: var(--ink-disabled); }
+.letter-subject { margin: 0 0 8px; font-size: 15.5px; font-weight: 700; line-height: 1.4; color: var(--ink); }
+.letter-text { font-size: 13px; line-height: 1.68; color: var(--ink-soft); }
+.letter-text > *:first-child { margin-top: 0; }
+.letter-text > *:last-child { margin-bottom: 0; }
+.letter-text p { margin: 0 0 9px; }
+.letter-empty { margin: 0 0 9px; font-size: 12px; font-style: italic; color: var(--ink-disabled); }
+.letter-foot {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 11px; padding-top: 9px; border-top: 1px dashed #d5cbb2;
+}
+.letter-ref { font-size: 10.5px; color: var(--ink-muted); }
+/* El cuño de estado: tinta, torcido, y siempre con su palabra. */
+.cuno {
+  margin-left: auto; padding: 3px 12px; transform: rotate(-3deg);
+  font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  border: 2.5px solid currentColor; border-radius: 3px; opacity: .82;
+}
+.cuno-open     { color: #2f6b3c; }
+.cuno-pending  { color: #8a6418; }
+.cuno-resolved { color: var(--ink-muted); opacity: .6; }
+.cuno-archived { color: var(--ink-disabled); opacity: .55; }
+
+.po-empty { text-align: center; padding: 40px 20px; color: var(--ink-muted); }
+.po-empty-mark { font-size: 44px; opacity: .35; }
+.po-empty h3 { margin: 8px 0 6px; font-size: 16px; color: var(--ink-soft); }
+.po-empty p { font-size: 12.5px; margin: 0; }
+
+/* ── DASHBOARD (PH-6) ────────────────────────────────────────────────── */
+.dash-block { margin-bottom: 30px; }
+.dash-block-head { margin-bottom: 14px; }
+.dash-block-head h2 { margin: 0 0 4px; font-size: 18px; }
+.dash-block-head p { margin: 0; font-size: 12.5px; line-height: 1.62; color: var(--ink-muted); max-width: 780px; }
+
+.metric-row { display: grid; gap: 13px; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); }
+.metric {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 14px 16px 11px;
+  background: var(--paper-card); border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+.metric-warn { border-color: var(--gold-border); background: linear-gradient(180deg, var(--paper-card), var(--gold-bg)); }
+.metric-head { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.metric-head h3 { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.35; color: var(--ink); }
+/* El propósito es obligatorio: una medida que no sirve a ninguno de los dos es un adorno. */
+.metric-purpose {
+  font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: var(--radius-full); white-space: nowrap;
+}
+.purpose-steer { background: var(--vine-bg); color: var(--vine-deep); border: 1px solid var(--vine-border); }
+.purpose-prove { background: var(--accent-cyan-bg); color: var(--accent-cyan); border: 1px solid var(--ice-blue-border); }
+.metric-figure { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.metric-n { font-size: 30px; font-weight: 800; line-height: 1; color: var(--ink); }
+/* El denominador va pegado al número, nunca en una nota al pie:
+   *57 aceptados* es un número; *57 de 64* es una medida. */
+.metric-of { font-size: 14px; font-weight: 600; color: var(--ink-muted); }
+.metric-unit { font-size: 12px; color: var(--ink-muted); }
+.metric-pct { margin-left: auto; font-size: 13px; font-family: var(--font-mono); color: var(--ink-soft); }
+.metric-bar { height: 6px; background: var(--paper-subtle); border-radius: var(--radius-full); overflow: hidden; }
+.metric-bar-fill { height: 100%; background: #66875c; border-radius: var(--radius-full); }
+.metric-note { margin: 0; font-size: 11.5px; line-height: 1.55; color: var(--ink-soft); }
+.metric-foot {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  padding-top: 8px; margin-top: auto; border-top: 1px dashed var(--line-subtle);
+  font-size: 10px; color: var(--ink-disabled);
+}
+.metric-bad { color: var(--rust); }
+.metric-src { margin-left: auto; font-family: var(--font-mono); }
+
+/* El gráfico. Una fila por cláusula, segmentada por cuánto se hace cumplir. */
+.chart {
+  margin: 18px 0 0; padding: 18px 20px 14px;
+  background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg);
+}
+.chart-title { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.chart-legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0 16px; }
+.lg-item { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ink-soft); }
+.lg-swatch { width: 12px; height: 12px; border-radius: 2px; }
+.lg-icon { font-family: var(--font-mono); }
+.chart-rows { display: flex; flex-direction: column; gap: 9px; }
+.chart-row { display: grid; grid-template-columns: 190px minmax(0,1fr) 30px; gap: 12px; align-items: center; }
+@media (max-width: 720px) { .chart-row { grid-template-columns: 120px minmax(0,1fr) 26px; } }
+.cr-label {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0; cursor: pointer;
+  background: none; border: none; padding: 0; font-family: inherit; text-align: left;
+  border-left: 3px solid var(--ct); padding-left: 9px;
+}
+.cr-label:hover .cr-title { color: var(--ct); }
+.cr-id { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; color: var(--ct); }
+.cr-title { font-size: 12.5px; color: var(--ink); line-height: 1.3; }
+/* 2px de superficie entre segmentos: sin ese hueco dos pasos contiguos se leen como uno. */
+.cr-track { display: flex; gap: 2px; height: 26px; }
+.cr-seg {
+  display: grid; place-items: center; min-width: 3px; border-radius: 2px;
+  transition: filter .12s ease;
+}
+.cr-seg:first-child { border-radius: 4px 2px 2px 4px; }
+.cr-seg:last-child { border-radius: 2px 4px 4px 2px; }
+.cr-seg:hover { filter: brightness(1.12); }
+.cr-seg-n { font-size: 10.5px; font-weight: 700; font-family: var(--font-mono); white-space: nowrap; }
+.cr-total { font-size: 12.5px; font-family: var(--font-mono); font-weight: 700; color: var(--ink-soft); text-align: right; }
+.chart-note {
+  margin-top: 14px; padding-top: 11px; border-top: 1px dashed var(--line-subtle);
+  font-size: 11.5px; line-height: 1.6; color: var(--ink-muted);
+}
+.chart-flag { display: block; margin-top: 5px; color: var(--gold-deep); }
+.chart-ok { display: block; margin-top: 5px; color: var(--vine-deep); }
+
+.gap-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.gap-row {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px;
+  background: var(--paper-card); border: 1px dashed var(--border-medium); border-radius: var(--radius-md);
+}
+.gap-mark { color: var(--ink-disabled); font-size: 14px; }
+.gap-row strong { display: block; font-size: 13px; color: var(--ink); }
+.gap-row span { font-size: 12px; line-height: 1.55; color: var(--ink-muted); }

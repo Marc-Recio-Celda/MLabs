@@ -122,6 +122,44 @@ def stamp(adapter):
     return str(hash("|".join(bits)))
 
 
+DOCTRINE_ROOT = Path(os.environ.get("MLABS_DOCTRINE_ROOT", HERE.parent))
+
+# Which file answers which question, and the kind that reads it. The three levels of
+# `AGENTS.md` §1 in the order a newcomer meets them.
+DOCTRINE = [
+    ("philosophy", "PHILOSOPHY.md", "philosophy"),
+    ("axioms",     "AXIOMS.md",     "axioms"),
+    ("agents",     "AGENTS.md",     "doc"),
+    ("method",     "METHOD.md",     "doc"),
+    ("flow",       "FLOW.md",       "doc"),
+    ("readme",     "README.md",     "doc"),
+]
+
+
+def doctrine():
+    """The structural files, parsed. A missing one is reported, never invented."""
+    if not model:
+        return {"entities": [], "problems": [{"why": f"the model failed to load: {_MODEL_ERROR}"}]}
+    entities, problems = [], []
+    for label, name, kind in DOCTRINE:
+        f = DOCTRINE_ROOT / name
+        if not f.is_file():
+            problems.append({"file": str(f), "line": 0,
+                             "why": f"the structural file {name} is not at the engine's root"})
+            continue
+        try:
+            ents, probs = model.PARSERS[kind](f, f.read_text(encoding="utf-8"))
+        except Exception as e:                    # a broken file loses its own page, never
+            problems.append({"file": name, "line": 0, "why": str(e)})   # the whole view
+            continue
+        for e in ents:
+            e["source"] = label
+            e["file"] = name
+        entities += ents
+        problems += [dict(x) for x in probs]
+    return {"root": str(DOCTRINE_ROOT), "entities": entities, "problems": problems}
+
+
 def make_handler(adapter):
     class Handler(http.server.BaseHTTPRequestHandler):
         def _send(self, code, body, ctype="application/json"):
@@ -165,6 +203,17 @@ def make_handler(adapter):
                         self._send(200, {"entities": [], "problems": [{"why": str(e)}]})
                 else:
                     self._send(200, {"entities": [], "standalone": True})
+            elif path == "/api/doctrine":
+                # ⛔ MLabs' own structural files, parsed rather than transcribed. The
+                # engine ships INSIDE this repository, so `HERE.parent` is a structural
+                # fact and not the guess `find_default_adapter` refuses to make: it is
+                # the engine's own root, never an operations centre.
+                #
+                # ⚠️ The alternative was a copy of the philosophy inside the page, and
+                # that copy had already drifted — describing a clause that no longer said
+                # what the page claimed, and omitting one entirely, while looking
+                # authoritative. `AX-20` names that failure and this endpoint is the fix.
+                self._send(200, doctrine())
             elif path == "/api/trace":
                 # What this session has written, so a confirmation is something the operator
                 # can read back rather than a toast that has already faded.
