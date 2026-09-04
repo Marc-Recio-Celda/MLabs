@@ -222,112 +222,16 @@ function generateProjectRamifiedWorkflow(pName, decCount, pState, projectTasks =
     });
   }
 
-  // Fallback for projects without explicit blocks defined in state.md
-  const b0Decs = decIds.slice(0, Math.max(1, Math.min(6, Math.floor(decIds.length / 3))));
-  const b1Decs = decIds.slice(b0Decs.length, Math.max(b0Decs.length + 1, Math.min(decIds.length, Math.floor((decIds.length * 2) / 3))));
-  const b2Decs = decIds.slice(b0Decs.length + b1Decs.length);
-
-  const phaseTitle = pState?.phase_summary || pState?.current_phase || "Fase de Integración y Ejecución";
-  const nextActionDesc = pState?.next_action || "Progreso de las tareas prioritarias del roadmap";
-
-  return [
-    {
-      id: "B0",
-      title: "Definición, Arquitectura y Acuerdos de Cartridge",
-      status: "completed",
-      statusLabel: "✓ Listo",
-      summary: "Estructura base del proyecto, definición de límites de scope, invariantes y decisiones fundacionales.",
-      decisions: b0Decs,
-      subblocks: [
-        {
-          id: "B0.1",
-          title: "Establecimiento del Cartridge y Definición Soberana",
-          status: "completed",
-          desc: "Fijación de objetivos medibles del MVP, entregables y criterios de éxito.",
-          tasks: []
-        },
-        {
-          id: "B0.2",
-          title: "Auditoría de Entorno, Esquemas y Dependencias",
-          status: "completed",
-          desc: "Verificación de compatibilidad y contratos de comunicación externa.",
-          tasks: closedTasks.slice(0, 1)
-        }
-      ]
-    },
-    {
-      id: "B1",
-      title: `Desarrollo e Integración · ${esc(phaseTitle)}`,
-      status: "active",
-      statusLabel: "▶ En Curso",
-      summary: `Bloque en vuelo activo guiado por la acción inmediata: ${esc(nextActionDesc)}`,
-      decisions: b1Decs.length ? b1Decs : (decIds.slice(0, 2)),
-      subblocks: [
-        {
-          id: "B1.1",
-          title: "Implementación de Módulos Core y Adaptadores",
-          status: "completed",
-          desc: "Estructuración de componentes principales y sincronización de servicios.",
-          tasks: closedTasks.slice(1)
-        },
-        {
-          id: "B1.2",
-          title: "Acción Siguiente Inmediata (Next Action en Vuelo)",
-          status: "active",
-          desc: nextActionDesc,
-          tasks: openTasks
-        }
-      ]
-    },
-    {
-      id: "B2",
-      title: "Persistencia, Endpoints y Extensión Funcional",
-      status: "pending",
-      statusLabel: "⏳ Pendiente",
-      summary: "Ampliación de funcionalidades, persistencia de datos estructurados y pruebas de integración.",
-      decisions: b2Decs,
-      subblocks: [
-        {
-          id: "B2.1",
-          title: "Ampliación de Esquemas y Modelos de Datos",
-          status: "pending",
-          desc: "Preparación de estructuras y capas de acceso seguro.",
-          tasks: []
-        },
-        {
-          id: "B2.2",
-          title: "Integración de Vistas y Consumo de Servicios",
-          status: "pending",
-          desc: "Visualización y renderizado reactivo de entidades.",
-          tasks: []
-        }
-      ]
-    },
-    {
-      id: "B3",
-      title: "Validación, Auditoría de Cierre y Release",
-      status: "pending",
-      statusLabel: "⏳ Pendiente",
-      summary: "Comprobación de invariantes, auditoría mediante project-auditor y preparación de entrega.",
-      decisions: [],
-      subblocks: [
-        {
-          id: "B3.1",
-          title: "Paso de Gates de Auditoría y Verificación de Diff",
-          status: "pending",
-          desc: "Validación de higiene técnica, cero leaks y despersonalización.",
-          tasks: []
-        },
-        {
-          id: "B3.2",
-          title: "Sincronización de Estado en Presente Indicativo",
-          status: "pending",
-          desc: "Actualización de state.md y registro inmutable de decisiones.",
-          tasks: []
-        }
-      ]
-    }
-  ];
+  // ⛔ Aquí había un fallback que INVENTABA cuatro bloques cuando el `state.md` no
+  // declaraba ninguno: títulos escritos a mano, estados fijados a `completed`, y las
+  // decisiones del proyecto repartidas entre ellos por `slice(bIdx*2, …)` — es decir,
+  // atribuidas a bloques que no existen, por posición. Salía una hoja de ruta completa
+  // con su barra de progreso, indistinguible de una leída del fichero.
+  //
+  // ⚠️ Y lo que un lector hace con eso es creérselo. Un vacío honesto se puede rellenar;
+  // una ficción con aspecto de dato hay que descubrirla primero. Sin bloques declarados,
+  // esto devuelve cero bloques y la vista dice por qué.
+  return [];
 }
 
 // Ingest typed model from server
@@ -532,7 +436,9 @@ function ingestModel(model) {
     const workflow = generateProjectRamifiedWorkflow(name, decCount, pState, projectTasks, projectDecs);
     const completedBlocks = workflow.filter(b => b.status === "completed").length;
     const totalBlocks = workflow.length;
-    const progress = totalBlocks ? Math.round((completedBlocks / totalBlocks) * 100) : 75;
+    // ⚠️ Era `: 75`. Un proyecto sin bloques declarados enseñaba un 75 % de avance que no
+    // salía de ningún sitio. `null` es «no medido», y la vista lo pinta como tal.
+    const progress = totalBlocks ? Math.round((completedBlocks / totalBlocks) * 100) : null;
 
     let rawLastUpdated = pState?.last_updated || "";
     let integratedThrough = pState?.integrated_through || "";
@@ -582,6 +488,7 @@ function ingestModel(model) {
       // ⚠️ the release gate CANNOT see it unless that word is on the instance's denylist,
       // which is why the list is derived from disk (`tools/denylist-coverage.sh`) rather
       // than remembered.
+      icon: pState?.icon || null,
       lab: pState?.lab || (pState ? getProjectLab(pState) : "Workspaces"),
       workflow
     };
@@ -1305,7 +1212,9 @@ function renderWorkflowDetail(type) {
           </div>
 
           <div class="callout tip" style="margin-top: 14px; padding: 10px 14px;">
-            <strong>Regla clave:</strong> Estructurar primero para crear sobre una base modular clara; auditar coherencia y wikilinks antes de dar por cerrado (PH-0, PH-4).
+            <strong>Regla clave:</strong> Estructurar primero, sobre fronteras dibujadas por dueño y no por temática
+            (<code>PH-1</code>); y auditar coherencia y wikilinks antes de dar por cerrado, porque cada afirmación
+            arrastra su evidencia (<code>PH-4</code>).
           </div>
         </div>
       `;
@@ -1477,19 +1386,15 @@ window.jumpToSection = function(sectionId) {
   }
 };
 
-window.openSkillInCatalog = function(skillName) {
-  STATE.currentView = "skills";
-  document.querySelectorAll(".nav-item").forEach(btn => {
-    btn.classList.toggle("active", btn.getAttribute("data-view") === "skills");
-  });
-  renderView();
-  setTimeout(() => {
-    const searchInput = document.getElementById("skillSearchInput");
-    if (searchInput) {
-      searchInput.value = skillName;
-      searchInput.dispatchEvent(new Event("input"));
-    }
-  }, 100);
+// ⚠️ Buscaba `#skillSearchInput`, un id que el Ágora ya no tiene: el botón navegaba y
+// luego no encontraba el campo, dejando la vista sin filtrar y sin decir nada. Un enlace a
+// una skill concreta debe abrir esa skill, no dejar al lector buscándola en una lista.
+window.openSkillInCatalog = function (skillName) {
+  if ((STATE.skills || []).some(s => s.title === skillName)) return window.openSkill(skillName);
+  // Si esa skill no está declarada por el adaptador, se va al Ágora con la búsqueda puesta
+  // — que es lo más cerca que se puede llegar, y se ve por qué.
+  STATE.skillSearch = skillName;
+  navigateTo("skills");
 };
 
 
@@ -1558,10 +1463,18 @@ function renderProjectsHub(container) {
 }
 
 function renderLabSection(labName, projects) {
-  const isPersonal = labName.toLowerCase().includes("proj");
-  const icon = isPersonal ? "💼" : "🔬";
-  const badgeLabel = isPersonal ? "Lab Personal & Operaciones" : "Lab de Investigación & Genómica";
-  const badgeClass = isPersonal ? "tag-purple" : "tag-live";
+  // ⛔ Aquí se etiquetaba cada laboratorio con una de dos frases fijas, elegida según si su
+  // nombre contenía «proj». Ninguna salía de ningún fichero: eran afirmaciones sobre el
+  // dominio de trabajo de alguien, inventadas por la vista — y una de ellas nombraba una
+  // disciplina científica concreta, incrustada en un motor que `interface:AX-1` obliga a ser
+  // genérico. Una fuga que el gate sólo habría visto si esa palabra estuviera en la denylist
+  // de la instancia, y las palabras que uno inventa no suelen estar en ella.
+  //
+  // Un laboratorio es una carpeta. Lo único que la vista sabe es su nombre, así que es lo
+  // único que dice.
+  const icon = "🏛️";
+  const badgeLabel = "agrupación por carpeta";
+  const badgeClass = "tag-pill";
   const totalDecs = projects.reduce((acc, p) => acc + (p.decisionsCount || 0), 0);
 
   return `
@@ -1574,7 +1487,8 @@ function renderLabSection(labName, projects) {
               <h2 class="lab-title">${esc(labName)}</h2>
               <span class="tag-pill ${badgeClass}">${esc(badgeLabel)}</span>
             </div>
-            <p class="lab-subtitle">Entorno de proyectos y operaciones soberanas asociadas a ${esc(labName)}</p>
+            <p class="lab-subtitle">Los proyectos que viven bajo <code>${esc(labName)}</code>. El agrupamiento
+            es el de las carpetas: la interfaz no sabe nada más sobre este laboratorio, y no lo inventa.</p>
           </div>
         </div>
         <div class="lab-stats-pills">
@@ -1598,15 +1512,20 @@ function renderLabSection(labName, projects) {
               ${inline(p.definition)}
             </p>
 
-            <div class="progress-section">
-              <div class="progress-labels">
-                <span>Progreso de Bloques</span>
-                <strong>${p.completedBlocks}/${p.totalBlocks} (${p.progress}%)</strong>
-              </div>
-              <div class="progress-bar-track">
-                <div class="progress-bar-fill" style="width: ${p.progress}%;"></div>
-              </div>
-            </div>
+            ${p.progress === null ? `
+              <div class="progress-section progress-none"
+                   title="El state.md de este proyecto no declara bloques. Una barra aquí sería un número inventado.">
+                <span>Bloques — <strong>sin declarar</strong> en su <code>state.md</code></span>
+              </div>` : `
+              <div class="progress-section">
+                <div class="progress-labels">
+                  <span>Progreso de bloques</span>
+                  <strong>${p.completedBlocks}/${p.totalBlocks} (${p.progress}%)</strong>
+                </div>
+                <div class="progress-bar-track">
+                  <div class="progress-bar-fill" style="width: ${p.progress}%;"></div>
+                </div>
+              </div>`}
 
             <div class="card-meta-row">
               <span class="meta-item">📜 ${p.decisionsCount} decisiones</span>
@@ -1735,7 +1654,8 @@ function renderProjectDetailPage(container) {
 
         <!-- SPECS HUD (BLOQUES, DECISIONES, TAREAS, NEXT ACTION) -->
         <div class="specs" style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.12);">
-          <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>🗺️ Bloques:</strong> ${proj.completedBlocks}/${proj.totalBlocks} (${proj.progress}%)</span>
+          <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>🗺️ Bloques:</strong> ${
+            proj.progress === null ? "sin declarar" : `${proj.completedBlocks}/${proj.totalBlocks} (${proj.progress}%)`}</span>
           <span class="spec-pill" onclick="setProjectSubtab('decisions')"><strong>📜 Decisiones:</strong> ${liveDecs.length} Vivas (${projectDecs.length} Totales)</span>
           <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>📋 Tareas:</strong> ${projectTasks.length} (${activeTasks.length} Activas)</span>
           <span class="spec-pill active-pill" onclick="setProjectSubtab('state')"><strong>🎯 Next Action:</strong> ${inline(proj.nextAction.slice(0, 52))}...</span>
@@ -1777,6 +1697,25 @@ function renderProjectSubtabContent(proj, tab, projectTasks, projectDecs) {
 // ── TAB 1: WORKFLOW RAMIFICADO (Bloques, Subbloques y Log de Tareas) ──
 function renderProjectWorkflowTab(proj, projectTasks, projectDecs) {
   const workflow = proj.workflow || [];
+
+  // ⚠️ Sin bloques declarados esta pestaña enseñaba cuatro inventados. Ahora dice qué falta
+  // y dónde se arregla, que es lo único que la interfaz sabe de verdad.
+  if (!workflow.length) {
+    return `
+      <div class="empty-state">
+        <div class="empty-icon">🗺️</div>
+        <h3>Este proyecto no declara bloques</h3>
+        <p>Su <code>state.md</code> no lleva la lista de bloques, así que aquí no hay hoja de
+           ruta que enseñar — y <strong>inventarla es peor que no tenerla</strong>, porque un
+           lector no puede distinguir una hoja generada de una leída.</p>
+        <p class="empty-hint">Se arregla escribiendo los bloques en el <code>state.md</code> del
+           proyecto, o invocando <code>redefine-project</code>, que es la skill que existe para
+           volver a alinear la definición con lo que el trabajo se ha convertido.</p>
+        ${projectTasks.length ? `<p class="empty-hint">Mientras tanto, tiene
+           <strong>${projectTasks.length}</strong> tarea${projectTasks.length === 1 ? "" : "s"}
+           en la cola, que sí están declaradas.</p>` : ""}
+      </div>`;
+  }
 
   return `
     <div class="doc-section">
@@ -2565,16 +2504,18 @@ function renderProjectReposTab(proj) {
 }
 
 
-function getProjectIcon(name) {
-  if (!name) return "📦";
-  const n = name.toLowerCase();
-  if (n.includes("doc") || n.includes("md") || n.includes("format") || n.includes("paper")) return "📖";
-  if (n.includes("bio") || n.includes("gene") || n.includes("omics") || n.includes("viz") || n.includes("catalogue") || n.includes("plant")) return "🔬";
-  if (n.includes("folio") || n.includes("web") || n.includes("site") || n.includes("app")) return "💼";
-  if (n.includes("face") || n.includes("system") || n.includes("cockpit") || n.includes("matrix")) return "⚙️";
-  if (n.includes("trade") || n.includes("finance") || n.includes("stock") || n.includes("market")) return "📈";
-  if (n.includes("drop") || n.includes("file") || n.includes("cloud") || n.includes("sync")) return "💧";
-  return "📦";
+// ⛔ Esto era un mapa de palabra-clave a icono, y entre sus palabras había términos que
+// sólo pueden venir de mirar los nombres reales de los proyectos de una instancia. Eso es
+// exactamente lo que `interface:AX-1` prohíbe: el motor es público y genérico, y no puede
+// saber nada de la centralita de nadie. Además adivinaba mal la mayoría de las veces.
+//
+// ⚠️ Y el gate no lo habría visto: sólo mira nombres que estén en la denylist de la
+// instancia, y una palabra que la propia interfaz inventa no está en ninguna lista.
+//
+// Un proyecto puede DECLARAR su icono en su `state.md`. Si no lo declara, lleva el neutro.
+function getProjectIcon(nameOrState) {
+  const declared = nameOrState && typeof nameOrState === "object" ? nameOrState.icon : null;
+  return declared || "📦";
 }
 
 // ── TAB 7: GUÍA DE USO & README VISUAL ──
@@ -2668,7 +2609,7 @@ function renderProjectGuideTab(proj) {
       <div class="proj-guide-hero">
         <div class="guide-hero-top">
           <div class="guide-hero-title-group">
-            <div class="guide-hero-icon">${getProjectIcon(proj.name)}</div>
+            <div class="guide-hero-icon">${getProjectIcon(proj)}</div>
             <div>
               <h3 class="guide-hero-title">${esc(proj.name)}</h3>
               <div style="font-size: 12px; color: var(--gold, #d8b26a); font-family: var(--font-mono); margin-top: 2px;">

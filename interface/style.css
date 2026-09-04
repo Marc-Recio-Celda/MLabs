@@ -5990,3 +5990,12 @@ input[type="text"]:focus, textarea:focus {
 .propylaea .specs .spec-pill:hover { border-color: var(--vine); color: var(--vine-deep); }
 .propylaea .specs .spec-pill.active-pill,
 .propylaea .specs .spec-pill.active-pill strong { color: #4a3a10; }
+
+/* Un proyecto sin bloques declarados no lleva barra: una barra es una medida, y aquí no
+   hay nada medido. El hueco se nombra en su sitio. */
+.progress-none {
+  padding: 8px 11px; background: var(--paper-subtle); border: 1px dashed var(--border-medium);
+  border-radius: var(--radius-sm); font-size: 11.5px; color: var(--ink-muted);
+}
+.progress-none strong { color: var(--ink-soft); }
+.empty-hint { font-size: 12.5px; line-height: 1.6; color: var(--ink-muted); max-width: 560px; margin: 8px auto 0; }
