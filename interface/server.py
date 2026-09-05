@@ -16,8 +16,11 @@ import importlib
 import mimetypes
 import json
 import os
+import re
 import socketserver
+import subprocess
 import sys
+import urllib.parse
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -34,6 +37,14 @@ except Exception as e:                       # the engine can serve a page witho
     _MODEL_ERROR = e
 else:
     _MODEL_ERROR = None
+
+try:
+    import write as writer
+except Exception as e:                       # ⚠️ a missing writer disables writing and
+    writer = None                            # says so; it never degrades to pretending
+    _WRITER_ERROR = e                        # a write happened (which is what the stub
+else:                                        # endpoints below used to do).
+    _WRITER_ERROR = None
 
 # ⛔ Defined ONCE, in the model. A second copy here diverges, and then the same adapter is
 # valid or invalid depending on whether an import succeeded — with nothing in the output
@@ -114,6 +125,110 @@ def stamp(adapter):
     return str(hash("|".join(bits)))
 
 
+DOCTRINE_ROOT = Path(os.environ.get("MLABS_DOCTRINE_ROOT", HERE.parent))
+
+# Which file answers which question, and the kind that reads it. The three levels of
+# `AGENTS.md` §1 in the order a newcomer meets them.
+DOCTRINE = [
+    ("philosophy", "PHILOSOPHY.md", "philosophy"),
+    ("axioms",     "AXIOMS.md",     "axioms"),
+    ("agents",     "AGENTS.md",     "doc"),
+    ("method",     "METHOD.md",     "doc"),
+    ("flow",       "FLOW.md",       "doc"),
+    ("readme",     "README.md",     "doc"),
+]
+
+
+def doctrine():
+    """The structural files, parsed. A missing one is reported, never invented."""
+    if not model:
+        return {"entities": [], "problems": [{"why": f"the model failed to load: {_MODEL_ERROR}"}]}
+    entities, problems = [], []
+    for label, name, kind in DOCTRINE:
+        f = DOCTRINE_ROOT / name
+        if not f.is_file():
+            problems.append({"file": str(f), "line": 0,
+                             "why": f"the structural file {name} is not at the engine's root"})
+            continue
+        try:
+            ents, probs = model.PARSERS[kind](f, f.read_text(encoding="utf-8"))
+        except Exception as e:                    # a broken file loses its own page, never
+            problems.append({"file": name, "line": 0, "why": str(e)})   # the whole view
+            continue
+        for e in ents:
+            e["source"] = label
+            e["file"] = name
+        entities += ents
+        problems += [dict(x) for x in probs]
+    return {"root": str(DOCTRINE_ROOT), "entities": entities, "problems": problems}
+
+
+def recent_lines(adapter):
+    """Rangos de líneas cambiadas hoy, por fichero del registro.
+
+    Dos fuentes, unidas: lo que está sin commitear (`git diff HEAD`) y lo que entró en los
+    commits de hoy (`git log --since=midnight -p`). ⛔ Se leen las cabeceras de hunk, no el
+    contenido: `@@ -a,b +c,d @@` dice exactamente qué líneas del fichero NUEVO cambiaron, que
+    es lo único que hace falta para cruzarlo con la línea de cada entrada.
+    """
+    root = adapter.get("root")
+    if not root or not Path(root).is_dir():
+        return {}
+    out = {}
+    try:
+        top = subprocess.run(["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, timeout=5)
+        if top.returncode != 0:
+            return {}                     # no es un repositorio; no es un error
+        for args in (["diff", "HEAD", "--unified=0"],
+                     ["log", "--since=midnight", "-p", "--unified=0"]):
+            r = subprocess.run(["git", "-C", str(root), *args],
+                               capture_output=True, text=True, timeout=15)
+            if r.returncode != 0:
+                continue
+            current = None
+            for ln in r.stdout.splitlines():
+                if ln.startswith("+++ b/"):
+                    current = ln[6:].strip()
+                elif ln.startswith("@@") and current:
+                    m = re.search(r"\+(\d+)(?:,(\d+))?", ln)
+                    if m:
+                        start = int(m.group(1))
+                        n = int(m.group(2) or 1)
+                        out.setdefault(current, []).append([start, start + max(n, 1) - 1])
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    return out
+
+
+def one_skill(adapter, name):
+    """Un SKILL.md entero y los ficheros que lo acompañan.
+
+    ⚠️ Los 19 SKILL.md de este repositorio suman 120 KB. Mandarlos en cada `/api/model`
+    multiplicaría por veinte una respuesta que se pide cada dos segundos, para enseñar como
+    mucho uno. Se pide el que se va a leer.
+    """
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name or ""):
+        return {"error": "nombre de skill no válido"}
+    for src in adapter.get("sources", []):
+        if src.get("kind") != "skills":
+            continue
+        root = Path(adapter["root"])
+        sroot = (root / src["root"]).resolve() if src.get("root") else root
+        for f in sorted(sroot.glob(src.get("glob", ""))):
+            if f.parent.name != name and f.stem != name:
+                continue
+            siblings = []
+            for sib in sorted(f.parent.iterdir()):
+                if sib.is_file() and sib != f and sib.suffix in (".md", ".txt"):
+                    siblings.append({"name": sib.name,
+                                     "body": sib.read_text(encoding="utf-8", errors="replace")})
+            return {"name": name, "file": str(f.relative_to(sroot)),
+                    "body": f.read_text(encoding="utf-8", errors="replace"),
+                    "siblings": siblings}
+    return {"error": f"ninguna fuente de skills declarada contiene {name!r}"}
+
+
 def make_handler(adapter):
     class Handler(http.server.BaseHTTPRequestHandler):
         def _send(self, code, body, ctype="application/json"):
@@ -157,6 +272,37 @@ def make_handler(adapter):
                         self._send(200, {"entities": [], "problems": [{"why": str(e)}]})
                 else:
                     self._send(200, {"entities": [], "standalone": True})
+            elif path == "/api/skill":
+                # ⛔ Se pide por NOMBRE y se resuelve contra la fuente que el adaptador ya
+                # declara. Un cliente que pudiera nombrar una ruta leería cualquier fichero
+                # que el servidor alcance; uno que nombra una skill sólo alcanza las que la
+                # instancia ha declarado. Es la misma regla que gobierna la escritura.
+                name = urllib.parse.parse_qs(
+                    self.path.split("?", 1)[1] if "?" in self.path else "").get("name", [""])[0]
+                self._send(200, one_skill(adapter, name))
+            elif path == "/api/recent":
+                # Qué bloques del registro se han tocado hoy, leído de git. ⚠️ Es un EXTRA
+                # sobre el estado que la entrada declara, nunca su sustituto: el estado
+                # sobrevive a un recargado y cuenta lo que enrutó otro agente; esto sólo dice
+                # «esto se movió hoy». Si el árbol no es un repositorio, devuelve vacío y la
+                # vista no enseña la marca — degradar en silencio es correcto aquí porque la
+                # información es un adorno, no un dato del que dependa nada.
+                self._send(200, {"lines": recent_lines(adapter)})
+            elif path == "/api/doctrine":
+                # ⛔ MLabs' own structural files, parsed rather than transcribed. The
+                # engine ships INSIDE this repository, so `HERE.parent` is a structural
+                # fact and not the guess `find_default_adapter` refuses to make: it is
+                # the engine's own root, never an operations centre.
+                #
+                # ⚠️ The alternative was a copy of the philosophy inside the page, and
+                # that copy had already drifted — describing a clause that no longer said
+                # what the page claimed, and omitting one entirely, while looking
+                # authoritative. `AX-20` names that failure and this endpoint is the fix.
+                self._send(200, doctrine())
+            elif path == "/api/trace":
+                # What this session has written, so a confirmation is something the operator
+                # can read back rather than a toast that has already faded.
+                self._send(200, {"events": writer.read_journal(adapter) if writer else []})
             elif path == "/api/stamp":
                 self._send(200, {"stamp": stamp(adapter)})
             else:
@@ -174,23 +320,104 @@ def make_handler(adapter):
                 else:
                     self._send(404, f"Not found: {path}", "text/plain")
 
+        # ⛔ The routes below used to answer `{"status": "ok"}` and touch nothing. That is
+        # worse than no write layer at all: the interface reported success, the operator
+        # believed the entry was filed, and `PH-3` was broken by the one component built to
+        # uphold it. Every route here writes through `model/write.py` or fails out loud.
+        def _writable(self):
+            if writer is None:
+                self._send(503, {"status": "error",
+                                 "msg": f"the write layer failed to load: {_WRITER_ERROR}"})
+                return None
+            if not adapter.get("path"):
+                self._send(409, {"status": "error",
+                                 "msg": "no adapter is connected, so there is no file to "
+                                        "write to. Start the server with --adapter."})
+                return None
+            return adapter
+
+        def _wrote(self, kind, result, echo=None):
+            writer.record(adapter, {"kind": kind, **result, **(echo or {})})
+            self._send(200, {"status": "ok", "kind": kind, **result})
+
         def do_POST(self):
             path = self.path.split("?", 1)[0]
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
             try:
                 payload = json.loads(body)
             except Exception:
                 payload = {}
 
-            if path == "/api/task":
-                self._send(200, {"status": "ok", "msg": "Task recorded", "data": payload})
-            elif path == "/api/idea":
-                self._send(200, {"status": "ok", "msg": "Idea recorded", "data": payload})
-            elif path == "/api/scratchpad":
-                self._send(200, {"status": "ok", "msg": "Scratchpad saved"})
-            else:
+            # ⛔ `/api/mailbox` y `/api/idea` están RETIRADOS por decisión del operador: la
+            # libreta y el parque se editan a mano. Se responde 409 con el motivo en vez de
+            # 404, porque un endpoint que desaparece sin decir por qué es el que alguien
+            # vuelve a añadir dentro de un mes. ⚠️ `write.append_mailbox` y `append_idea`
+            # siguen existiendo como biblioteca y con sus pruebas: lo retirado es la puerta,
+            # no la capacidad — el día que se decida lo contrario, vuelve a abrirse aquí.
+            RETIRED = {
+                "/api/mailbox": "la libreta",
+                "/api/idea": "el parque de ideas",
+            }
+            if path in RETIRED:
+                self._send(409, {"status": "retired",
+                                 "msg": f"{RETIRED[path]} se edita a mano, por decisión del "
+                                        f"operador. Esta interfaz no escribe en él."})
+                return
+
+            routes = {
+                "/api/task": ("task", lambda a: writer.append_task(
+                    a, title=payload.get("title", ""), project=payload.get("project", "cross"),
+                    why=payload.get("why", ""), status=payload.get("status", "⬜"),
+                    author=payload.get("author", "operator"))),
+                "/api/plan/item": ("plan-item", lambda a: writer.append_plan_item(
+                    a, text_=payload.get("text", ""), section=payload.get("section") or None,
+                    ordered=payload.get("ordered", True),
+                    author=payload.get("author", "operator"))),
+            }
+            if path not in routes:
                 self._send(404, "Endpoint not found", "text/plain")
+                return
+            a = self._writable()
+            if a is None:
+                return
+            kind, run = routes[path]
+            if not str(payload.get("title") or payload.get("text") or "").strip():
+                self._send(400, {"status": "error", "msg": "an entry with no text"})
+                return
+            try:
+                self._wrote(kind, run(a))
+            except writer.WriteError as e:
+                self._send(400, {"status": "error", "msg": str(e)})
+            except OSError as e:
+                self._send(500, {"status": "error", "msg": f"could not write: {e}"})
+
+        def do_PATCH(self):
+            path = self.path.split("?", 1)[0]
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
+            try:
+                payload = json.loads(body)
+            except Exception:
+                payload = {}
+            if path != "/api/plan/item":
+                self._send(404, "Endpoint not found", "text/plain")
+                return
+            a = self._writable()
+            if a is None:
+                return
+            try:
+                self._wrote("plan-route", writer.route_plan_item(
+                    a, line=payload.get("line"), expect=payload.get("expect", ""),
+                    outcome=payload.get("outcome", "")))
+            except writer.Conflict as e:
+                # 409, not 400: the caller's edit is fine and its view is stale. The office
+                # reloads and retries; a 400 would tell it the request itself was wrong.
+                self._send(409, {"status": "stale", "msg": str(e)})
+            except writer.WriteError as e:
+                self._send(400, {"status": "error", "msg": str(e)})
+            except OSError as e:
+                self._send(500, {"status": "error", "msg": f"could not write: {e}"})
 
         def log_message(self, *args):
             pass

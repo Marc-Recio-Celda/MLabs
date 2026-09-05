@@ -25,7 +25,12 @@ import re
 import sys
 from pathlib import Path
 
-KINDS = ("compass", "plan", "queue", "park", "record", "standing", "skills", "records")
+# Los cinco de `FLOW.md`. ⚠️ Se escriben una vez: dos listas de estados es la manera de
+# que una vista acepte un sexto que ninguna regla contempla.
+FLOW_STATES = ("pending", "active", "paused", "cancelled", "done")
+
+KINDS = ("compass", "plan", "queue", "park", "record", "standing", "skills", "records",
+         "philosophy", "axioms", "doc")
 
 
 # The board's id grammar, in ONE place. ⛔ Never copy it. A second copy diverges, and a
@@ -48,21 +53,60 @@ HEADING_SHAPE = re.compile(r"^###\s+[`*]*([A-Za-z0-9._-]+)[`*]*\s*[·–-]")
 
 
 class Problem(dict):
-    def __init__(self, path, line, why, text=""):
-        super().__init__(path=str(path), line=line, why=why, text=text.strip()[:120])
+    """Un hallazgo, y **de qué clase** es.
+
+    ⛔ Dos clases, y confundirlas manda a buscar al sitio equivocado:
+
+      `unplaceable` — el texto no se pudo convertir en entidad. Es la regla 2 de
+                      `GRAMMAR.md`: nada se salta, y lo que no se coloca se reporta.
+      `contract`    — la entidad EXISTE y le falta un campo declarado (`AX-46`,
+                      `project:`, el suelo del muro). Se colocó perfectamente; está
+                      incompleta.
+
+    ⚠️ El reporte decía «N entries could not be placed» para las dos, así que una entrada
+    a la que le faltaba `**Asks**` se anunciaba como un fallo de parseo — y quien lo lee
+    se va a mirar la gramática en vez del campo que falta.
+    """
+
+    def __init__(self, path, line, why, text="", kind="unplaceable"):
+        super().__init__(path=str(path), line=line, why=why,
+                         text=text.strip()[:120], kind=kind)
 
 
 # ---------------------------------------------------------------- field readers
 
+# A field key: bolded, and either opening the line or following a `·` separator. ⚠️ Anything
+# looser reads `**bold**` inside a value as a new field and truncates the value before it.
+FIELD_KEY = re.compile(r"(?:(?<=^)|(?<=·\s))\*\*(?P<k>[A-Za-z][\w ’'-]*?):?\*\*:?\s*")
+
+
 def kv_block(lines, start):
-    """`**Field:** value` and `> **Field:** value` lines following a header."""
+    """`**Field:** value` lines following a header, **several fields to a line**.
+
+    ⚠️ THIS READ ONE FIELD PER LINE AND TOOK THE REST OF THE LINE AS ITS VALUE. The task list
+    writes `**project:** `x` · **from** `MAILBOX` · **Closes:** …` on one line, so `project` came
+    back carrying the two fields after it — **48 of 60 tasks, 49 distinct values of a field whose
+    vocabulary is four** — while `parse_queue`'s own *"a queue entry with no `project:`"* check
+    reported **zero problems**, because the field was not empty, merely wrong. A filter nobody can
+    see is broken is the failure `AX-7` names.
+
+    A key is `**Name**` or `**Name:**` at the start of the line or just after a `·`; anything else
+    bolded belongs to a value. Each value runs to the next key.
+    """
     out = {}
     for raw in lines[start:]:
         if raw.startswith("#"):
             break
-        m = re.match(r"^>?\s*\*\*(?P<k>[A-Za-z][\w ’'-]*):?\*\*[: ]\s*(?P<v>.+?)\s*$", raw)
-        if m:
-            out[m.group("k").strip().lower().replace(" ", "_")] = m.group("v").strip()
+        s = raw.strip()
+        if s.startswith(">"):
+            s = s[1:].strip()
+        hits = list(FIELD_KEY.finditer(s))
+        if not hits or hits[0].start() != 0:
+            continue
+        for n, m in enumerate(hits):
+            end = hits[n + 1].start() if n + 1 < len(hits) else len(s)
+            v = re.sub(r"[·|,;]\s*$", "", s[m.end():end].strip()).strip()
+            out[m.group("k").strip().lower().replace(" ", "_")] = v
     return out
 
 
@@ -154,6 +198,18 @@ def clean(s):
 
 # ------------------------------------------------------------------- per kind
 
+# Los cuatro de `AX-46` sobre una ENTRADA DE BUZÓN, y no son los mismos nombres que los del
+# muro a propósito: una entrada llega **para ser enrutada**, no comprometida. `Sheet` y
+# «committed» no significan nada todavía, y `Asks` — qué juicio te pide — es justamente el
+# campo que distingue una entrada de una tarea.
+#     **Serves**  el objetivo al que sirve      · qué es
+#     **What**    qué pasa, en prosa            · qué está pasando
+#     **Asks**    qué juicio se te pide         · qué se decide
+#     **Affects** qué se mueve si se mueve      · qué se mueve
+MAIL_AX46 = {"serves": "Serves", "what": "What", "asks": "Asks", "affects": "Affects"}
+MAIL_FIELD = re.compile(r"^\*\*(?P<k>Serves|What|Asks|Affects)\*\*\s*(?P<v>.*)$", re.M)
+
+
 def parse_queue(path, text):
     """Mailbox and task list. Both are `###` headers; their field sets differ."""
     ents, probs, lines = [], [], text.splitlines()
@@ -167,10 +223,31 @@ def parse_queue(path, text):
                      r"\((?P<author>[^,]+),\s*(?P<date>\d{4}-\d{2}-\d{2})\)\s*$", head)
         if m:
             f = {k: clean(v) for k, v in m.groupdict().items()}
-            ents.append({"kind": "mailbox-entry", "id": None, "line": i + 1, **f})
+            # ⛔ The body is the entry. An earlier version read the header only, so every
+            # argument an agent wrote — the cost, the evidence, the thing the operator has
+            # to weigh — was dropped in silence while `Nothing unplaceable.` printed
+            # underneath. That is the failure rule 2 of `GRAMMAR.md` exists to prevent, and
+            # it is invisible precisely because the entry still appears, with a title.
+            body, k = [], i + 1
+            while k < len(lines) and not lines[k].startswith("### "):
+                body.append(lines[k])
+                k += 1
+            raw = "\n".join(body).strip()
+            # Los cuatro campos se leen del cuerpo; lo que sobra sigue siendo prosa. ⚠️ Así una
+            # entrada escrita antes de `AX-46` se sigue leyendo entera y sale reportada, en vez
+            # de dejar de parsear — un contrato nuevo que rompe lo ya escrito no se adopta.
+            fields46 = {k: None for k in MAIL_AX46}
+            for fm in MAIL_FIELD.finditer(raw):
+                fields46[fm.group("k").lower()] = clean(fm.group("v"))
+            prose = MAIL_FIELD.sub("", raw).strip()
+            ents.append({"kind": "mailbox-entry", "id": None, "line": i + 1,
+                         "body": raw, "prose": prose, **fields46, **f})
             continue
 
-        m = re.match(r"^(?P<id>T\d+)\s*·\s*(?P<title>.+?)\s*(?P<status>[⬜🔨⛔🔴✅])?\s*$", head)
+        # ⚠️ `⚫` faltaba en el juego, así que una tarea cancelada no casaba su emoji, se
+        # quedaba sin `status` y salía como pendiente — cancelada por escrito y abierta en
+        # toda vista que lea este campo.
+        m = re.match(r"^(?P<id>T\d+)\s*·\s*(?P<title>.+?)\s*(?P<status>[⬜🔨⛔🔴✅⚫])?\s*$", head)
         if m:
             f = {k: clean(v) for k, v in m.groupdict().items() if v}
             fields = kv_block(lines, i + 1)
@@ -188,8 +265,33 @@ def parse_queue(path, text):
             # that only parses in one of two live formats reports two thirds as missing.
             wm = re.search(r"\*\*Why[.:]?\*\*\s*(?:\*\([^)]*\)\*)?[.:]?\s*(.+?)"
                            r"(?=\n\*\*[A-Z]|\n---|\Z)", blob, re.S)
+            # ⛔ Los estados de `FLOW.md` viven EN LA TAREA, y una instancia que los haya
+            # adoptado los escribe como `**state:** paused`. El emoji de la cabecera es el
+            # vocabulario anterior y sigue en los ficheros, así que se leen los dos y el
+            # declarado gana — ⚠️ pero NO se traduce el emoji a un estado de FLOW aquí: un
+            # ⬜ puede ser `pending` o `paused` y sólo la tarea sabe cuál. Inventar la
+            # equivalencia es exactamente lo que convierte un dato en una suposición.
+            declared = clean(fields.get("state", "")).lower()
+            state = declared if declared in FLOW_STATES else None
+            # ⚠️ A citation is an id, never a sentence. `**Board:** A5.1 · and it carries …` is
+            # how all three live ones are written, so the id is taken and the prose after it is
+            # not: a join key with commentary glued to it joins nothing.
+            bm = re.match(r"[`*]*([A-Z]{1,3}\d+\.\d+)", clean(fields.get("board", "")))
+            board_id = bm.group(1) if bm else ""
+            # ⚠️ `board`, `from` and `closes` were parsed and then thrown away here. `board` is
+            # the citation that joins the agenda to the map — the one thing you cannot see today
+            # is which sub-block a committed task belongs to — and it was **one dictionary key**
+            # away the whole time. Emitted whether or not the task carries them (`AX-24`): a task
+            # that arrived whole legitimately has no block above it (`FLOW.md`).
             ents.append({"kind": "task", "line": i + 1,
+                         "state": state,
+                         "plan": clean(fields.get("plan", "")) or None,
+                         "block": clean(fields.get("block", "")) or None,
+                         "sub_block": clean(fields.get("sub_block", "")) or None,
                          "project": clean(fields.get("project", "")),
+                         "board": board_id,
+                         "from": clean(fields.get("from", "")),
+                         "closes": clean(fields.get("closes", "")),
                          "author": clean(why.group("author")) if why else None,
                          "date": why.group("date") if why else None,
                          "why": clean(wm.group(1))[:600] if wm else None, **f})
@@ -201,7 +303,27 @@ def parse_queue(path, text):
         if not e.get("project"):
             probs.append(Problem(path, e["line"],
                                  "a queue entry with no `project:` — the field the filter "
-                                 "depends on and nothing else can infer", e.get("title", "")))
+                                 "depends on and nothing else can infer", e.get("title", ""),
+                                 kind="contract"))
+        # ⛔ `AX-46` sobre la entrada de buzón, y cada campo que falta se NOMBRA. Una entrada
+        # cerrada ya no se actúa sobre ella, así que no se le exige. ⚠️ El axioma está 🟡
+        # propuesto: esto reporta, no impide leer nada.
+        if e["kind"] == "mailbox-entry" and e.get("state") in ("open", "pending"):
+            for key, name in MAIL_AX46.items():
+                if not e.get(key):
+                    probs.append(Problem(path, e["line"],
+                                         f"mailbox entry `{e.get('title', '')}` carries no "
+                                         f"**{name}** — `AX-46` asks for all four, so the entry "
+                                         f"can be routed without the conversation that produced "
+                                         f"it", "", kind="contract"))
+        # ⚠️ AND ONE THAT IS PRESENT BUT NOT A PROJECT NAME. The empty case was the only one
+        # checked, so a `project:` carrying a whole sentence passed as filled — 48 of 60 tasks,
+        # reported as zero problems. **A check that only sees absence cannot see wrongness.**
+        elif " · " in e["project"] or len(e["project"]) > 40:
+            probs.append(Problem(path, e["line"],
+                                 "a `project:` that is not a project name — the filter reads it "
+                                 "whole, so anything after the name silently becomes a new value",
+                                 e["project"][:120]))
     return ents, probs
 
 
@@ -250,8 +372,176 @@ def parse_park(path, text):
     return ents, probs
 
 
+# The wall's task heading, and the grammar is deliberately rigid:
+#     ### <marker> `<project>` · <title>
+# ⚠️ The wall became blocks of prose on 2026-09-05 so a human could read it (`AX-46`, the four
+# fields), and THIS READER WAS NOT CHANGED IN THE SAME ACT — so the cockpit reported zero active
+# tasks over a board with three. That is the *two changes in one diff* failure, committed by the
+# session that had just written the rule against it: the shape changed and its reader did not.
+# ⛔ The marker is FIRST because that is the one field a reader scans for, and it is the one field
+# a regex can anchor on without knowing anything else about the line.
+WALL_TASK = re.compile(r"^###\s+(?P<marker>[▶⏸⬜✅✖⤴])\s+`(?P<project>[^`]+)`\s*·\s*(?P<title>.+?)\s*$")
+WALL_FIELD = re.compile(r"^\*\*(?P<k>Serves|Sheet|Why it is committed|What it affects|Drains|Returns when|Closed|Deferred)\*\*"
+                        r"\s*(?P<v>.*)$")
+# Los cuatro de `AX-46` sobre una tarea del muro, y el nombre de cada uno en el fichero.
+# ⛔ Se escribe UNA vez: la lista que valida y la lista que se lee tienen que ser la misma, o
+# un campo se exige y no se guarda — que es exactamente lo que pasaba.
+WALL_AX46 = {"serves": "Serves", "why": "Why it is committed", "affects": "What it affects"}
+MARKER_STATE = {"▶": "active", "⏸": "paused", "⬜": "pending", "✅": "done", "✖": "cancelled",
+                # ⤴ DEFERRED — `MLabs:FLOW.md`, 2026-09-05. It is the inverse of promotion and it
+                # is a TRANSITION, not one of the five states: the task left the wall and went back
+                # to its plan as a sub-block. It lives in the bin because *left the wall* is one
+                # question with one answer, and it is NOT terminal — the work is still intended.
+                # ⛔ Added in the SAME act as the wall and `FLOW.md`. The last time this file's
+                # grammar changed without its reader, the cockpit reported zero active over three;
+                # the comment above WALL_TASK is that incident and this line is the rule applied.
+                "⤴": "deferred"}
+# ⛔ `deferred` is deliberately NOT in FLOW_STATES: a task carries one of five states, and this is
+# how it stopped carrying any. Anything validating a task's state against that tuple must therefore
+# never see a deferred entry — which holds because deferred entries are always `in_bin`.
+DEFERRED_MARKER = "⤴"
+
+
+def parse_wall(path, text):
+    """Tasks, as blocks. Returns [] when the file holds none, so the table reader still runs."""
+    ents, probs, lines = [], [], text.splitlines()
+    cur = None
+    in_bin = False
+    for i, line in enumerate(lines):
+        if line.startswith("## "):
+            in_bin = "bin" in line.lower()
+        m = WALL_TASK.match(line)
+        if m:
+            # ⛔ `kind` is "front" and NOT "task", and the reason is the cockpit rather than the
+            # model. `app.js:339` builds the front panel from `kind === "front"` and `:466` builds
+            # the task list from `kind === "task"` reading `TASKS.md`. Emitting "task" here puts
+            # the wall into the wrong panel and empties the right one — the shape changed, and the
+            # view that reads it did not. **A vocabulary the model prefers is not worth a cockpit
+            # that renders nothing**; the wall's entities ARE what that panel has always called
+            # fronts. ⚠️ `state`, `marker`, `serves` and `sheet` ride alongside for whoever wants
+            # the newer words, and `described_in` mirrors `sheet` so the existing panel resolves.
+            cur = {"kind": "front", "row": "summary", "line": i + 1, "marker": m["marker"],
+                   "state": MARKER_STATE[m["marker"]],
+                   "active": m["marker"] == "▶" and not in_bin,
+                   "name": clean(m["title"]), "project": m["project"],
+                   "in_bin": in_bin, "serves": None, "sheet": None,
+                   "described_in": None, "affects": None, "why": None, "drains": None,
+                   "returns_when": None}
+            ents.append(cur)
+            continue
+        if cur is None:
+            continue
+        f = WALL_FIELD.match(line.strip())
+        if f:
+            k = f["k"]
+            v = clean(f["v"])
+            # ⛔ La cadena estaba rota: un `if cur.get("sheet")` se colaba entre los `elif`, así
+            # que `What it affects` sólo se guardaba **cuando la tarea no tenía `Sheet`**, y
+            # `Why it is committed` no se asignaba a ninguna parte — lo reconocía el patrón y se
+            # caía por el hueco. Dos de los cuatro campos que `AX-46` exige se perdían en
+            # silencio, y la tarea seguía dando por bueno el check porque el check sólo miraba
+            # `serves`. ⚠️ Un campo que se exige y no se guarda es peor que uno que no se exige:
+            # el fichero lo lleva, el lector no lo ve, y nada dice cuál de los dos falla.
+            if k == "Serves":
+                # Una línea de cabecera puede llevar VARIOS campos: `**Serves** x · **Sheet** y ·
+                # **Returns when** z`. ⛔ La versión anterior partía SÓLO por `**Sheet**` y metía
+                # todo lo que viniera detrás en `sheet`, así que un campo nuevo en esa misma línea
+                # se tragaba en silencio — y su check saltaba sobre un fichero CORRECTO.
+                # Lo encontró una plantada, no una lectura (`MLabs:AX-7`): el caso bien formado
+                # fue el que falló. Ahora parte por cualquiera de los nombres conocidos.
+                INLINE = ("Sheet", "Returns when", "Why it is committed", "What it affects",
+                          "Drains")
+                pat = r"·\s*\*\*(" + "|".join(re.escape(x) for x in INLINE) + r")\*\*"
+                parts = re.split(pat, f["v"])
+                cur["serves"] = clean(parts[0])
+                for name, val in zip(parts[1::2], parts[2::2]):
+                    key = {"Sheet": "sheet", "Returns when": "returns_when",
+                           "Why it is committed": "why", "What it affects": "affects",
+                           "Drains": "drains"}[name]
+                    cur[key] = clean(val)
+            elif k == "Sheet":
+                cur["sheet"] = v
+            elif k == "Why it is committed":
+                cur["why"] = v
+            elif k == "What it affects":
+                cur["affects"] = v
+            elif k == "Returns when":
+                # ⛔ Lo que traería de vuelta una tarea aplazada. `FLOW.md` lo exige: sin
+                # condición, aplazar es olvidar con pasos de más.
+                cur["returns_when"] = v
+            elif k == "Drains":
+                # Qué cola drena esta tarea, si drena alguna. `FLOW.md`: el estado de un drenaje
+                # se deriva de la cuenta, no se elige — y sin este campo no hay cuenta que mirar.
+                cur["drains"] = v
+            if cur.get("sheet"):
+                cur["described_in"] = cur["sheet"]
+    # ⛔ Every task carries the four fields (`MLabs:AX-46`) and a missing one is NAMED, never
+    # counted. "Four are short" does not say which four, and the whole point of the contract is
+    # that a reader can act on the answer.
+    # ⚠️ Se miraba SÓLO `serves`, así que una tarea sin `Why it is committed` ni `What it
+    # affects` pasaba limpia — y el check quedaba cumplido en un cuarto mientras el axioma pide
+    # los cuatro. Cada uno se nombra por separado: «a esta tarea le falta X» es accionable,
+    # «a cuatro tareas les falta algo» no lo es, y eso lo dice el propio check de `AX-46`.
+    for e in ents:
+        if e["in_bin"]:
+            continue
+        missing = [name for key, name in WALL_AX46.items() if not e.get(key)]
+        for name in missing:
+            probs.append(Problem(path, e["line"],
+                                 f"wall task `{e['name']}` carries no **{name}** — `AX-46` asks "
+                                 f"for all four, and an artefact that costs re-explaining has "
+                                 f"already failed `PH-4`", "", kind="contract"))
+    # ⛔ THE FLOOR, and it lives here rather than after the table reader because that is where it
+    # was and it never ran: `parse_wall` returns early on a wall, so a board with work and nothing
+    # active reported clean. Found by a plant, not by reading (`AX-7`).
+    # ⛔ DEFERRAL, two checks, and the second is the one that carries the rule.
+    # (a) ⤴ outside the bin is a task claiming to have left the wall while still on it.
+    # (b) `FLOW.md`: **a deferral names what would bring it back.** A deferral with no condition is
+    #     forgetting with extra steps — which is the failure mode of the whole idea, not an edge
+    #     case, so it is checked rather than trusted. The field is `**Returns when**`.
+    for e in ents:
+        if e["marker"] != DEFERRED_MARKER:
+            continue
+        if not e["in_bin"]:
+            probs.append(Problem(path, e["line"],
+                                 f"`{e['name']}` is marked ⤴ deferred and is not in the bin — "
+                                 f"deferral means the row LEFT the wall, so it is recorded there "
+                                 f"beside done and cancelled", "", kind="contract"))
+        if not e.get("returns_when"):
+            probs.append(Problem(path, e["line"],
+                                 f"`{e['name']}` is deferred and names no **Returns when** — a "
+                                 f"deferral that cannot say what would bring it back is a "
+                                 f"cancellation that has not admitted it", "", kind="contract"))
+    live = [e for e in ents if not e["in_bin"]]
+    # ⛔ Entries that are ALL in the bin means the live half stopped matching the grammar — the
+    # bin's ✅ headings kept parsing while the ▶/⬜ ones did not, so the board read as "two done
+    # tasks and no work" and reported clean. Found by the marker-removal plant, which is exactly
+    # the shape `AX-7` means by *plant against the format, not into it*.
+    if ents and not live:
+        probs.append(Problem(path, 0,
+                             f"the wall parsed {len(ents)} task(s) and every one is in the bin — "
+                             f"the live half is not matching `### <marker> `<project>` · <title>`",
+                             ""))
+    if live and not any(e["active"] for e in live):
+        probs.append(Problem(path, 0,
+                             f"the wall holds {len(live)} task(s) and none is active — the floor is "
+                             f"at least one `▶` whenever work is happening", "", kind="contract"))
+    return ents, probs
+
+
 def parse_compass(path, text):
-    """Fronts. The `▶` column is the marker; the board tables carry the rest."""
+    """Tasks or fronts. The wall's blocks first; the older `▶`-column tables if it holds none."""
+    wall_ents, wall_probs = parse_wall(path, text)
+    if wall_ents:
+        return wall_ents, wall_probs
+    # ⛔ A file that calls itself a wall and parses as zero tasks is BROKEN, not a table. Without
+    # this, dropping the markers turns a seven-task board into a two-row edges table and reports
+    # clean — a silent degradation, which is the class this whole file exists against. Planted.
+    if re.search(r"^#\s*\S*\s*WALL\b", text, re.M) or "task wall" in text[:400].lower():
+        return [], [Problem(path, 0,
+                            "this file declares itself the wall and parsed ZERO tasks — the "
+                            "heading grammar is `### <marker> `<project>` · <title>` and no line "
+                            "matched it", "")]
     ents, probs, lines = [], [], text.splitlines()
     project = None
     for i, line in enumerate(lines):
@@ -281,6 +571,13 @@ def parse_compass(path, text):
                     row_proj = re.search(r"\b([a-zA-Z0-9_\-]+):[A-Z0-9]", desc_in).group(1)
 
             ents.append({"kind": "front", "line": i + 1, "marker": cells[0],
+                         # ⚠️ Which table a row came from is a FACT the file states and the
+                         # view cannot recover: the summary table is the ranked queue, the
+                         # board tables are per-project detail about the same fronts. Left
+                         # untagged, every front appears twice on any board built from these
+                         # — once ranked and once not — and the duplicate looks like a
+                         # second front rather than a second mention.
+                         "row": "summary",
                          "active": cells[0] == "▶",
                          "name": fname,
                          "described_in": desc_in,
@@ -293,13 +590,30 @@ def parse_compass(path, text):
         elif project and cells[0] not in ("Front", "") and not cells[0].startswith("---"):
             g = dict(zip(row, cells)) if row and len(row) == len(cells) else {}
             ents.append({"kind": "front", "line": i + 1, "marker": None, "active": False,
+                         "row": "board",
                          "name": clean(g.get("Front", cells[0])),
                          "waits_on": clean(g.get("Waits on", cells[1] if len(cells) > 1 else "")),
                          "note": clean(g.get("Note", cells[2] if len(cells) > 2 else None)),
                          "project": project})
+    # ⚠️ `exactly one ▶` was the rule until 2026-09-05 and `M-135` retired it. It existed because
+    # there was ONE live plan file, so one task could hold the sheet — it was a statement about a
+    # scarce resource, not about attention. Each task now owns its sheet, nothing is contended, and
+    # several active tasks is a normal working day. ⛔ THE CHECK BLOCKED THE COCKPIT THE DAY THE
+    # DECISION LANDED: it reported an error over a board that was correct, which is worse than no
+    # check — a false alarm teaches the reader to stop reading the channel.
+    #
+    # What is still decidable, and it is the only thing: a board with work on it and NOTHING
+    # active. The new rule is a FLOOR — *if work is happening, at least one task is active* — and a
+    # static reader cannot know whether work is happening. It CAN see that the board holds tasks
+    # and none carries the marker, which is the state nobody meant to be in.
+    # ⛔ Several active is NOT reported, at any count. There is no ceiling by rule; the bound is
+    # the wall stating its active count and somebody reading it.
     active = [e for e in ents if e.get("active")]
-    if len(active) != 1:
-        probs.append(Problem(path, 0, f"the compass must hold exactly one `▶`; found {len(active)}"))
+    waiting = [e for e in ents if not e.get("active") and e.get("kind") in ("front", "task")]
+    if not active and waiting:
+        probs.append(Problem(path, 0,
+            f"the board holds {len(waiting)} task(s) and none is active — the floor is at least "
+            f"one `▶` whenever work is happening"))
     return ents, probs
 
 
@@ -342,26 +656,100 @@ def parse_plan(path, text):
     # item reported as *a failed close* — the mirror of a pattern that cannot match, and
     # just as useless: a check that fires when it should not is a check nobody reads.
     # Both forms are accepted; the schema's is canonical and the older one is history.
-    DEST = (r"(✅ *`?resolved`?|✅ *`?done`?|→ *`?TASKS[^`]*`?|→ *integrated"
-            r"|→ *`?MAILBOX[^`]*`?|→ *`?IDEAS[^`]*`?|→ *park|⚫|`?discarded`?)")
-    for i, line in enumerate(lines):
-        m = re.match(r"^(?P<n>\d+)\.\s+(?P<text>.+)$", line)
-        if not m:
-            continue
-        body = m.group("text")
-        j = i + 1
-        while j < len(lines) and lines[j].startswith("   ") and lines[j].strip():
-            body += " " + lines[j].strip()
-            j += 1
+    # ⚠️ `[^`]*` was `[^\x60]*` here and it is greedy: with no closing backtick on the line
+    # it ran to the end, so `→ MAILBOX` swallowed everything written after it — the item's
+    # author note among it. A destination is one token, so the tail is spelled as one.
+    DEST = (r"(✅ *`?resolved`?|✅ *`?done`?|→ *`?TASKS[\w./-]*`?|→ *integrated"
+            r"|→ *`?MAILBOX[\w./-]*`?|→ *`?IDEAS[\w./-]*`?|→ *park|⚫ *`?discarded`?"
+            r"|⚫|`?discarded`?)")
+
+    # Which of `FLOW.md`'s four a destination is. The view paints by outcome, so it needs
+    # the outcome and not the spelling — ⚠️ **and the spellings are what differ between two
+    # eras of the same file**, which is why the mapping lives here rather than in the view.
+    def outcome_of(dest):
+        if not dest:
+            return None
+        d = dest.lower()
+        if "discard" in d or "⚫" in d:
+            return "discarded"
+        if "mailbox" in d or "integrated" in d:
+            return "mailbox"
+        if "idea" in d or "park" in d:
+            return "ideas"
+        if "task" in d:
+            return "mailbox"
+        return "done"
+
+    # ⛔ A section is not decoration. `FLOW.md` nests the work and the operator asked for a
+    # sheet that shows it, so headings inside a plan group its items — and a group may be
+    # ORDERED (numbered, one after another) or UNORDERED (bulleted, no sequence implied).
+    # ⚠️ Forcing every item into one numbered run is what makes a plan read as a sequence
+    # that does not exist, and the operator then works it in that false order.
+    ORDER_WHY = "the order, and why this order"
+    section = subsection = None
+    in_order_why = False
+    seen = set()
+
+    def push(i, raw_index, body, ordered):
         struck = "~~" in body
         dest = re.search(DEST, body)
-        ents.append({"kind": "plan-item", "line": i + 1, "index": int(m.group("n")),
+        destination = clean(dest.group(0)) if dest else None
+        text = body
+        if destination:
+            # The destination is a field, so it leaves the text. Left in, the view prints
+            # it twice — once as prose and once as its own tag.
+            text = re.sub(DEST, "", text)
+        # An item written from the office carries who wrote it and when, in the same shape
+        # every other record in this method uses. Nothing new to learn, and nothing to
+        # migrate: an item without it simply has no author.
+        note = re.search(r"\*\(([^,)]+),\s*(\d{4}-\d{2}-\d{2})\)\*\s*$", text.strip())
+        if note:
+            text = text[:note.start()]
+        ents.append({"kind": "plan-item", "line": i + 1, "index": raw_index,
                      "project": plan_project,
-                     "struck": struck, "destination": clean(dest.group(0)) if dest else None,
-                     "text": clean(re.sub(r"~~", "", body))[:300]})
-        if struck and not dest:
+                     "section": section, "subsection": subsection, "ordered": ordered,
+                     "struck": struck, "destination": destination,
+                     "outcome": outcome_of(destination),
+                     "author": clean(note.group(1)) if note else None,
+                     "date": note.group(2) if note else None,
+                     "text": clean(re.sub(r"~~", "", text))[:300]})
+        if struck and not destination:
             probs.append(Problem(path, i + 1,
                                  "a struck plan item with no destination — a failed close", body))
+
+    for i, line in enumerate(lines):
+        h = re.match(r"^(?P<hashes>#{2,3})\s+(?P<h>.+?)\s*$", line)
+        if h:
+            head = clean(h.group("h"))
+            if len(h.group("hashes")) == 2:
+                section, subsection = head, None
+            else:
+                subsection = head
+            in_order_why = head.lower().startswith(ORDER_WHY)
+            if not in_order_why:
+                ents.append({"kind": "plan-section", "line": i + 1, "project": plan_project,
+                             "level": len(h.group("hashes")), "title": head,
+                             "section": section, "subsection": subsection})
+            continue
+        if in_order_why or i in seen:
+            continue
+
+        m = re.match(r"^(?P<n>\d+)\.\s+(?P<text>.+)$", line)
+        bullet = None if m else re.match(r"^[-*]\s+(?P<text>.+)$", line)
+        if not m and not bullet:
+            continue
+        body = (m or bullet).group("text")
+        j = i + 1
+        # A continuation is indented under its item. ⚠️ It must not swallow the NEXT item,
+        # which is why each consumed line is recorded: an indented `1.` is a nested item in
+        # some plans and a wrapped line in others, and only the marker tells them apart.
+        while j < len(lines) and lines[j].startswith("   ") and lines[j].strip():
+            if re.match(r"^\s+(?:\d+\.|[-*])\s+", lines[j]):
+                break
+            body += " " + lines[j].strip()
+            seen.add(j)
+            j += 1
+        push(i, int(m.group("n")) if m else None, body, ordered=bool(m))
     return ents, probs
 
 
@@ -374,10 +762,16 @@ def parse_standing(path, text, project_pattern=None):
     title = lines[first][2:].strip() if first >= 0 else path.stem
 
     project = None
+    # The owner a project sits under — a laboratory, a workspace. It is NOT a second field
+    # to maintain: the adapter's `project_from` already captures it from the path, and this
+    # only stops discarding it. Every queue entry inherits it through `project`, so the
+    # grouping is stated once, by where the cartridge lives, and never transcribed.
+    lab = None
     if project_pattern:
         m = re.search(project_pattern, str(path).replace("\\", "/"))
         if m:
             project = (m.groupdict().get("project") or (m.group(1) if m.groups() else None))
+            lab = m.groupdict().get("lab")
 
     # 1. Extract Phase Summary from blockquote
     phase_summary = ""
@@ -409,7 +803,7 @@ def parse_standing(path, text, project_pattern=None):
             elif what_lines and not l_strip:
                 break
 
-    # Fallback to definition.md if state.md has no What section
+    # Fallback to definition.md if the plan (`state.md` before `M-135`) has no What section
     if not what_lines:
         def_file = path.parent / "definition.md"
         if def_file.exists():
@@ -494,15 +888,42 @@ def parse_standing(path, text, project_pattern=None):
                     sub_id = sub_id_m.group(1)
                     # Validate subblock pattern e.g. A1.1, B8.2, S1.3, TR1.2
                     if SUBBLOCK_ID.match(sub_id):
-                        kind = parts[1] if len(parts) > 1 else ""
-                        what = parts[2] if len(parts) > 2 else ""
-                        status_str = parts[-1] if len(parts) >= 4 else ""
+                        # BY NAME, which is the rule `GRAMMAR.md` calls non-negotiable and which
+                        # `parse_compass` already obeys. ⚠️ THIS READER WAS POSITIONAL — `parts[1]`,
+                        # `parts[2]`, `parts[-1]`, never `parts[3]` — so the five-column board tables
+                        # lost their `Waits on` cell entirely: 125 of 198 sub-block rows are in one,
+                        # and 78 carry a real dependency. **That is the dependency graph an order of
+                        # work needs, and it was discarded without a word.**
+                        head = header_of(lines, i) or []
+                        g = dict(zip(head, parts)) if len(head) == len(parts) else None
+                        if g is None:
+                            probs.append(Problem(path, i + 1,
+                                "a board row whose cell count does not match its header — read by "
+                                f"position as a fallback ({len(parts)} cells, header {len(head)})",
+                                line))
+                            g = {}
+                            kind = parts[1] if len(parts) > 1 else ""
+                            what = parts[2] if len(parts) > 2 else ""
+                            status_str = parts[-1] if len(parts) >= 4 else ""
+                        else:
+                            kind = g.get("Kind", "")
+                            what = g.get("What", "")
+                            status_str = g.get("Status", "")
+                        # ⚠️ EMITTED WHETHER OR NOT THE TABLE HAS THE COLUMN (`AX-24`): a field that
+                        # may legitimately be empty is written empty, so a consumer can tell "no
+                        # dependency" from "this reader never looked".
+                        waits = clean(g.get("Waits on") or g.get("Waits On") or g.get("Depends On") or "")
                         current_block["subblocks"].append({
                             "id": sub_id,
                             "kind": kind,
                             "title": what.replace("**", "").replace("`", ""),
                             "desc": what.replace("**", "").replace("`", ""),
-                            "status": "completed" if "✅" in status_str else ("active" if any(s in status_str for s in ["🔨", "▶", "🔴", "open"]) else "pending")
+                            "waits_on": "" if waits in ("—", "-", "–") else waits,
+                            # ⚠️ `"open"` WAS IN THIS LIST AND IS A SUBSTRING, NOT A MARKER. It
+                            # matched any status cell whose prose contained the letters — 22 rows
+                            # painted `active` while their marker said ⬜. The markers are the
+                            # vocabulary; a word in a sentence is not one.
+                            "status": "completed" if "✅" in status_str else ("active" if any(s in status_str for s in ["🔨", "▶", "🔴"]) else "pending")
                         })
                     elif ID_LIKE.match(sub_id):
                         probs.append(Problem(path, i + 1, f"a sub-block id the grammar cannot place: {sub_id!r}", line))
@@ -578,7 +999,7 @@ def parse_standing(path, text, project_pattern=None):
             if len(parts) >= 2:
                 code_repo = parts[1].replace("`", "").split("—")[0].strip()
 
-    # Fallback to definition.md if not in state.md
+    # Fallback to definition.md if not in the plan (`state.md` before `M-135`)
     if (not code_repo or not remote_url) and (path.parent / "definition.md").exists():
         try:
             def_text = (path.parent / "definition.md").read_text(encoding="utf-8")
@@ -678,8 +1099,16 @@ def parse_standing(path, text, project_pattern=None):
         readme_type = "definition"
 
     architecture_content = ""
-    arch_file = path.parent / "architecture.md"
-    if arch_file.exists() and arch_file.is_file():
+    # ⚠️ RENAMED 2026-09-05 by `M-135`: `architecture.md` -> `axioms.md`. BOTH are resolved, new
+    # name first, because a tree is half migrated for most of a migration's life and an engine
+    # that only knows one name reports a whole department as absent rather than as moved.
+    # ⛔ This literal is engine code naming an instance file, which the adapter contract forbids
+    # (`interface:AX-1`): the engine is supposed to learn every path from `interface.json`. It is
+    # left here and declared rather than quietly fixed, because moving it into the adapter is a
+    # change to the source schema and that is its own decision, not a side effect of a rename.
+    arch_file = next((f for f in (path.parent / "axioms.md", path.parent / "architecture.md")
+                      if f.exists() and f.is_file()), None)
+    if arch_file is not None:
         try:
             architecture_content = arch_file.read_text(encoding="utf-8")
         except Exception:
@@ -755,6 +1184,7 @@ def parse_standing(path, text, project_pattern=None):
         "line": 1,
         "title": clean(title),
         "project": project,
+        "lab": lab,
         "definition": definition,
         "phase_summary": phase_summary,
         "code_repo": code_repo,
@@ -852,7 +1282,118 @@ def parse_records(path, text):
     return [r], []
 
 
-PARSERS = {"records": parse_records, "skills": parse_skills, "queue": parse_queue, "park": parse_park, "compass": parse_compass,
+# ------------------------------------------------------- the structural files
+#
+# ⛔ These read MLabs' OWN documents — the philosophy, the axioms, the method — and they
+# exist so no view ever transcribes them. A page that retypes a clause is a second copy of
+# a fact with no winner (`AX-20`), and it drifts silently: the first build of this
+# interface described `PH-0` as something it stopped being, invented a clause that was
+# never there, and omitted `PH-6` entirely — while looking authoritative.
+
+def parse_philosophy(path, text):
+    """Clauses. `PH-0` is the objective; the rest are ways of losing it."""
+    ents, probs, lines = [], [], text.splitlines()
+    heads = [(i, m) for i, l in enumerate(lines)
+             if (m := re.match(r"^##\s+(?P<id>PH-\d+)\s+·\s+(?P<title>.+?)\s*$", l))]
+    # ⛔ Una cláusula acaba en el SIGUIENTE `##` de cualquier tipo, no en el siguiente
+    # `## PH-n`. La última no tiene otra cláusula detrás, así que con la segunda regla se
+    # tragaba todo lo que viniera después — «What this company refuses» y «How the levels
+    # are used» salían dentro de `PH-6` como si fueran suyos.
+    allheads = [i for i, l in enumerate(lines) if l.startswith("## ")]
+    for k, (i, m) in enumerate(heads):
+        stop = next((j for j in allheads if j > i), len(lines))
+        # A trailing `---` belongs to the file, not to the last clause.
+        while stop > i and lines[stop - 1].strip() in ("", "---"):
+            stop -= 1
+        body = lines[i + 1:stop]
+        # The epigraph is the blockquote that opens a clause, when it has one. Not every
+        # clause does, and inventing one for those that do not is writing philosophy.
+        epigraph = None
+        j = 0
+        while j < len(body) and not body[j].strip():
+            j += 1
+        if j < len(body) and body[j].startswith(">"):
+            quote = []
+            while j < len(body) and body[j].startswith(">"):
+                quote.append(body[j].lstrip("> ").strip())
+                j += 1
+            epigraph = clean(" ".join(quote))
+        rest = "\n".join(body[j:]).strip()
+        # `⛔ **Where it stops**` is the boundary between this clause and its neighbour, and
+        # it is the paragraph a reader needs most — so it is a field, not prose in the middle.
+        bound = re.search(r"^⛔\s+\*\*Where it stops.*", rest, re.M)
+        ents.append({"kind": "clause", "id": m.group("id"), "line": i + 1,
+                     "title": clean(m.group("title")), "epigraph": epigraph,
+                     "body": rest,
+                     "boundary": rest[bound.start():].strip() if bound else None,
+                     "objective": m.group("id") == "PH-0"})
+    if not ents:
+        probs.append(Problem(path, 1, "a philosophy file with no `## PH-n ·` clause in it"))
+    # What the company refuses, which is philosophy and not decoration.
+    ref = re.search(r"^## What this company refuses\s*\n(.*?)(?=\n## |\Z)", text, re.S | re.M)
+    if ref:
+        for b in re.finditer(r"^- \*\*(?P<t>.+?)\*\*\s*(?P<b>.*?)(?=\n- \*\*|\Z)",
+                             ref.group(1), re.S | re.M):
+            ents.append({"kind": "refusal", "line": 0, "project": None,
+                         "title": clean(b.group("t")).rstrip("."),
+                         "body": clean(b.group("b"))[:600]})
+    return ents, probs
+
+
+def parse_axioms(path, text):
+    """Rows, keyed by header name, plus the coverage table read as its own fact."""
+    ents, probs, lines = [], [], text.splitlines()
+    section = None
+    for i, line in enumerate(lines):
+        h = re.match(r"^##\s+(?P<id>PH-\d+)\s+·\s+(?P<title>.+?)\s*$", line)
+        if h:
+            section = h.group("id")
+            continue
+        if not line.strip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        row = header_of(lines, i)
+        if not row or len(row) != len(cells):
+            continue
+        g = dict(zip(row, cells))
+        # ⛔ By header NAME. The `Check` column moved once already, and a positional reader
+        # would have shown every axiom's `Serves` list in the column that decides whether
+        # the rule is enforced — plausibly, and wrongly.
+        aid = re.match(r"^\*\*(AX-\d+)\*\*$", g.get("ID", "") or "")
+        if aid:
+            check = g.get("Check", "") or ""
+            state = ("$" if check.startswith("`$`") else
+                     "owed" if check.startswith("`⊘`") else "none")
+            ents.append({"kind": "axiom", "id": aid.group(1), "line": i + 1,
+                         "status": "in-force" if "🟢" in g.get("Status", "") else "proposed",
+                         "text": g.get("Axiom", ""),
+                         "serves": re.findall(r"PH-\d+", g.get("Serves", "")),
+                         "check": check, "check_state": state, "section": section})
+            continue
+        cov = re.match(r"^`(PH-\d+)`$", g.get("Clause", "") or "")
+        if cov:
+            ents.append({"kind": "coverage", "id": cov.group(1), "line": i + 1,
+                         "axioms": re.findall(r"AX-\d+", g.get("Axioms", "")),
+                         "count": clean(g.get("Count", ""))})
+    if not ents:
+        probs.append(Problem(path, 1, "an axioms file with no `AX-n` row in it"))
+    return ents, probs
+
+
+def parse_doc(path, text):
+    """A structural document, whole, with its outline. The view renders the markdown."""
+    lines = text.splitlines()
+    outline = [{"level": len(m.group(1)), "title": clean(m.group(2)), "line": i + 1}
+               for i, l in enumerate(lines)
+               if (m := re.match(r"^(#{1,3})\s+(.+?)\s*$", l))]
+    title = outline[0]["title"] if outline and outline[0]["level"] == 1 else Path(path).stem
+    return [{"kind": "doc", "id": Path(path).stem, "line": 1, "title": title,
+             "outline": outline[1:], "body": text,
+             "words": len(text.split()), "lines": len(lines)}], []
+
+
+PARSERS = {"philosophy": parse_philosophy, "axioms": parse_axioms, "doc": parse_doc,
+           "records": parse_records, "skills": parse_skills, "queue": parse_queue, "park": parse_park, "compass": parse_compass,
            "plan": parse_plan, "standing": parse_standing, "record": lambda p, t: ([], [])}
 
 
@@ -901,6 +1442,21 @@ def parse_adapter(adapter_path):
                     e["file"] = f.name
             entities += ents
             problems += probs
+    # The lab is a property of the PROJECT, so it is resolved once here and inherited, never
+    # written on an entry. A queue that carries `project:` can then be filtered by owner —
+    # several repositories under one lab are one front worked as many — without ~97 entries
+    # restating a fact the tree already states, and without a project that changes owner
+    # needing every one of its entries edited.
+    # ⚠️ NO LAB IS NAMED HERE. `interface/` is public and tracked, and the release gate greps
+    # it: a lab name in a comment is a leak the engine has no reason to carry, since the tree
+    # supplies every one of them at run time.
+    labs = {e["project"]: e["lab"] for e in entities
+            if e["kind"] == "project-state" and e.get("project") and e.get("lab")}
+    for e in entities:
+        # `cross` and `nexus` belong to no lab, and that is an answer, not a gap.
+        if e["kind"] != "project-state" and e.get("project") in labs:
+            e["lab"] = labs[e["project"]]
+
     assign_ids(entities)
     dupes = [e["id"] for e in entities if e["id"].rsplit("-", 1)[-1].isdigit()
              and not e["id"].rsplit("-", 1)[-1].startswith("0")]
@@ -928,16 +1484,33 @@ def main():
         with_project = sum(1 for e in v if e.get("project"))
         print(f"    {k:<15} {len(v):>4}   with project: {with_project}/{len(v)}")
 
-    print(f"\n  {len(r['problems'])} entries could not be placed. "
-          f"None was skipped:\n" if r["problems"] else "\n  Nothing unplaceable.\n")
-    for p in r["problems"]:
-        rel = p["path"]
-        if rel.startswith(r["root"]):
-            rel = rel[len(r["root"]):].lstrip("/")
-        loc = f"{rel}:{p['line']}" if p["line"] else rel
-        print(f"    {loc}\n        {p['why']}")
-        if p["text"]:
-            print(f"        {p['text']}")
+    # ⛔ Las dos clases se cuentan por separado y nunca se suman en un número. Un fichero
+    # con cero entradas sin colocar y ocho campos que faltan está sano de gramática y
+    # enfermo de contrato, y un solo «8 problemas» no dice cuál de las dos cosas mirar.
+    unplaceable = [p for p in r["problems"] if p.get("kind", "unplaceable") == "unplaceable"]
+    contract = [p for p in r["problems"] if p.get("kind") == "contract"]
+
+    def show(group, header):
+        print(header)
+        for p in group:
+            rel = p["path"]
+            if rel.startswith(r["root"]):
+                rel = rel[len(r["root"]):].lstrip("/")
+            loc = f"{rel}:{p['line']}" if p["line"] else rel
+            print(f"    {loc}\n        {p['why']}")
+            if p["text"]:
+                print(f"        {p['text']}")
+
+    if unplaceable:
+        show(unplaceable, f"\n  {len(unplaceable)} entr{'y' if len(unplaceable) == 1 else 'ies'} "
+                          f"could not be placed. None was skipped:\n")
+    else:
+        print("\n  Nothing unplaceable.\n")
+
+    if contract:
+        show(contract, f"\n  {len(contract)} entr{'y is' if len(contract) == 1 else 'ies are'} "
+                       f"placed but incomplete — a declared field is missing, and each is "
+                       f"named:\n")
     return 1 if r["problems"] else 0
 
 

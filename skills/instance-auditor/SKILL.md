@@ -24,10 +24,10 @@ instance's own checks and looking at what the live set actually contains.** That
 
 | In | Out |
 |---|---|
-| The instance's **own axiom department** | the company department, `PHILOSOPHY`, `METHOD`, the skills → `company-auditor` |
+| `99_SYSTEM/AXIOMS.md` — the instance department | the company department, `PHILOSOPHY`, `METHOD`, the skills → `company-auditor` |
 | Its **binding**, both halves | one project's cartridge → `project-auditor` |
 | The live set: `COMPASS` · `PLAN` · `MAILBOX` · `TASKS` · `IDEAS` — **their shape, never their contents** | what a project decided, and whether it was right |
-| Its scripts, its denylist, its half of the allowlist, its interface adapter | |
+| `99_SYSTEM/scripts/`, `denylist.txt`, the instance's half of the allowlist, `interface.json` | |
 | The three logs and the employee logs — as artefacts, including its own | |
 
 ⚠️ **It reads the live set's *shape*, not its judgement.** *This queue entry is misfiled* is a
@@ -70,4 +70,4 @@ logs stop measuring anything** — each looks productive and the pair found one 
 
 ## Dismissal
 
-Standing and criterion per `skills/audit/` — **log `IA-`**.
+Standing and criterion per `skills/audit/` — **`99_SYSTEM/logs/instance-auditor.md`**, prefix `IA-`.

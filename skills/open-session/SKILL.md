@@ -47,7 +47,7 @@ sub-block is reached; this file says only when.
 ## 5 · Close
 
 **The order is `METHOD.md` §2's, and its steps are numbered there.** ⛔ **Step 3 stands before step
-4: the audit reads the live plan, and only then does the plan close.** That ordering is the one a
+4: the audit reads the task's sheet, and only then does the sheet close.** That ordering is the one a
 close gets wrong silently — reversed, the auditor reads a file that no longer describes this round
 while believing it read the reasoning.
 
