@@ -18,6 +18,7 @@ import json
 import os
 import re
 import socketserver
+import subprocess
 import sys
 import urllib.parse
 from pathlib import Path
@@ -162,6 +163,44 @@ def doctrine():
     return {"root": str(DOCTRINE_ROOT), "entities": entities, "problems": problems}
 
 
+def recent_lines(adapter):
+    """Rangos de líneas cambiadas hoy, por fichero del registro.
+
+    Dos fuentes, unidas: lo que está sin commitear (`git diff HEAD`) y lo que entró en los
+    commits de hoy (`git log --since=midnight -p`). ⛔ Se leen las cabeceras de hunk, no el
+    contenido: `@@ -a,b +c,d @@` dice exactamente qué líneas del fichero NUEVO cambiaron, que
+    es lo único que hace falta para cruzarlo con la línea de cada entrada.
+    """
+    root = adapter.get("root")
+    if not root or not Path(root).is_dir():
+        return {}
+    out = {}
+    try:
+        top = subprocess.run(["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, timeout=5)
+        if top.returncode != 0:
+            return {}                     # no es un repositorio; no es un error
+        for args in (["diff", "HEAD", "--unified=0"],
+                     ["log", "--since=midnight", "-p", "--unified=0"]):
+            r = subprocess.run(["git", "-C", str(root), *args],
+                               capture_output=True, text=True, timeout=15)
+            if r.returncode != 0:
+                continue
+            current = None
+            for ln in r.stdout.splitlines():
+                if ln.startswith("+++ b/"):
+                    current = ln[6:].strip()
+                elif ln.startswith("@@") and current:
+                    m = re.search(r"\+(\d+)(?:,(\d+))?", ln)
+                    if m:
+                        start = int(m.group(1))
+                        n = int(m.group(2) or 1)
+                        out.setdefault(current, []).append([start, start + max(n, 1) - 1])
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    return out
+
+
 def one_skill(adapter, name):
     """Un SKILL.md entero y los ficheros que lo acompañan.
 
@@ -241,6 +280,14 @@ def make_handler(adapter):
                 name = urllib.parse.parse_qs(
                     self.path.split("?", 1)[1] if "?" in self.path else "").get("name", [""])[0]
                 self._send(200, one_skill(adapter, name))
+            elif path == "/api/recent":
+                # Qué bloques del registro se han tocado hoy, leído de git. ⚠️ Es un EXTRA
+                # sobre el estado que la entrada declara, nunca su sustituto: el estado
+                # sobrevive a un recargado y cuenta lo que enrutó otro agente; esto sólo dice
+                # «esto se movió hoy». Si el árbol no es un repositorio, devuelve vacío y la
+                # vista no enseña la marca — degradar en silencio es correcto aquí porque la
+                # información es un adorno, no un dato del que dependa nada.
+                self._send(200, {"lines": recent_lines(adapter)})
             elif path == "/api/doctrine":
                 # ⛔ MLabs' own structural files, parsed rather than transcribed. The
                 # engine ships INSIDE this repository, so `HERE.parent` is a structural

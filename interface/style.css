@@ -6098,3 +6098,152 @@ input[type="text"]:focus, textarea:focus {
 }
 .plan-flag.planned { background: var(--vine-bg); color: var(--vine-deep); border: 1px solid var(--vine-border); }
 .plan-flag.unplanned { background: var(--paper-subtle); color: var(--ink-muted); border: 1px dashed var(--border-medium); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   AX-46 · los cuatro campos, y la mesa de triaje
+   ⚠️ Verde y ámbar aquí son ESTADO, no identidad, y viajan siempre con su icono
+   (✓ / ○) y su rótulo de columna: el color no lleva significado él solo.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* El objetivo en la tarjeta del muro: visible sin gestos. Un dato que exige sobrevolar
+   cuesta un gesto más, que es la versión pequeña de costar una re-explicación. */
+.mural-serves {
+  display: flex; gap: 7px; align-items: baseline;
+  padding: 6px 9px; border-radius: var(--radius-sm);
+  background: var(--ocbg); border-left: 2px solid var(--oc);
+}
+.serves-k {
+  flex: 0 0 auto; font-size: 8.5px; font-weight: 700; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--oc);
+}
+.serves-v { font-size: 12px; line-height: 1.42; color: var(--ink); }
+.mural-serves.serves-missing { background: var(--paper-subtle); border-left-style: dashed; border-left-color: var(--border-medium); }
+.serves-missing .serves-k { color: var(--ink-disabled); }
+.serves-missing .serves-v { color: var(--ink-disabled); font-style: italic; }
+
+/* Los cuatro campos en la cabecera del despacho. Es lo primero que se lee al entrar. */
+.ax46 { margin: 10px 0 0; display: flex; flex-direction: column; gap: 1px; }
+.ax46-row {
+  display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 14px; align-items: baseline;
+  padding: 8px 12px; background: var(--paper-subtle);
+}
+.ax46-row:first-child { border-radius: var(--radius-md) var(--radius-md) 0 0; }
+.ax46-row:last-child { border-radius: 0 0 var(--radius-md) var(--radius-md); }
+@media (max-width: 620px) { .ax46-row { grid-template-columns: 1fr; gap: 2px; } }
+.ax46 dt {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ax46 dd { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink); }
+.ax46-row.ax46-missing { background: repeating-linear-gradient(135deg,
+  var(--paper-subtle) 0 6px, var(--paper-code) 6px 12px); }
+.ax46-gap { font-size: 12px; font-style: italic; color: var(--ink-muted); }
+.ax46-gap code { font-style: normal; font-size: 11px; }
+
+/* ── LA MESA DE TRIAJE ─────────────────────────────────────────────────── */
+.desk-work { display: flex; flex-direction: column; gap: 18px; }
+
+.bench {
+  background: var(--paper-card); border: 1px solid var(--line);
+  border-top: 4px solid var(--accent-cyan); border-radius: var(--radius-lg);
+  padding: 16px 18px 14px;
+  box-shadow: 0 6px 18px rgba(50, 30, 12, .22);
+}
+.bench-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 14px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.bench-title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.bench-greek { font-size: 10px; letter-spacing: .26em; font-weight: 700; color: var(--accent-cyan); }
+.bench-title h3 { margin: 0; font-size: 17px; color: var(--ink); }
+.bench-scope { font-size: 11px; font-family: var(--font-mono); color: var(--ink-muted); }
+.bench-meter { display: flex; flex-direction: column; gap: 4px; min-width: 210px; }
+.bench-bar { height: 8px; background: var(--paper-subtle); border-radius: var(--radius-full); overflow: hidden; }
+.bench-fill { height: 100%; background: var(--vine); border-radius: var(--radius-full); transition: width .3s ease; }
+.bench-n { font-size: 11.5px; color: var(--ink-muted); text-align: right; }
+.bench-n strong { font-size: 14px; color: var(--vine-deep); }
+
+.bench-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 1020px) { .bench-cols { grid-template-columns: 1fr; } }
+.bench-col { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.bench-col-head {
+  display: flex; align-items: center; gap: 8px;
+  padding-bottom: 7px; border-bottom: 2px solid var(--line-subtle);
+}
+.bench-col-head strong { font-size: 13px; color: var(--ink); }
+.bench-col-n {
+  margin-left: auto; font-size: 11.5px; font-family: var(--font-mono); font-weight: 700;
+  color: var(--ink-muted);
+}
+.bench-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+.dot-open { background: var(--gold); box-shadow: 0 0 0 2px var(--gold-bg); }
+.dot-done { background: var(--vine); box-shadow: 0 0 0 2px var(--vine-bg); }
+.bench-col-open .bench-col-head { border-bottom-color: var(--gold-border); }
+.bench-col-done .bench-col-head { border-bottom-color: var(--vine-border); }
+.bench-empty { margin: 0; font-size: 12px; line-height: 1.55; font-style: italic; color: var(--ink-disabled); }
+
+/* Una entrada en la mesa. La resuelta baja de peso; la abierta lo mantiene, porque es la
+   que pide algo. */
+.tri {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 11px 13px; border-radius: var(--radius-md);
+  background: var(--paper-elevated); border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+}
+.tri-done { border-left-color: var(--vine); background: var(--vine-bg); opacity: .82; }
+.tri-done:hover { opacity: 1; }
+.tri-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.tri-mark {
+  flex: 0 0 18px; width: 18px; height: 18px; display: grid; place-items: center;
+  border-radius: 50%; font-size: 10px; font-weight: 800;
+  background: var(--gold-bg); color: var(--gold-deep); border: 1px solid var(--gold-border);
+}
+.tri-done .tri-mark { background: var(--vine-bg); color: var(--vine-deep); border-color: var(--vine-border); }
+.tri-top h4 { margin: 0; font-size: 13.5px; font-weight: 700; line-height: 1.35; color: var(--ink); flex: 1 1 200px; }
+.tri-done .tri-top h4 { color: var(--ink-soft); }
+.tri-fresh {
+  font-size: 8.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 1px 6px; border-radius: var(--radius-full); cursor: help;
+  background: var(--accent-cyan-bg); color: var(--accent-cyan); border: 1px solid var(--ice-blue-border);
+}
+.tri-dest {
+  font-size: 10px; font-family: var(--font-mono); padding: 1px 7px; border-radius: var(--radius-sm);
+  background: var(--grape-bg); color: var(--grape); border: 1px solid var(--grape-border);
+}
+.tri-serves { display: flex; gap: 7px; align-items: baseline; }
+.tri-k {
+  flex: 0 0 auto; font-size: 8.5px; font-weight: 700; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--ink-muted);
+}
+.tri-v { font-size: 11.5px; line-height: 1.45; color: var(--ink-soft); }
+.tri-what { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--ink-soft); }
+.tri-prose { font-style: italic; color: var(--ink-muted); }
+
+/* Lo que te pide decidir es la única cosa accionable de una entrada abierta, así que es lo
+   único que lleva realce dentro de la tarjeta. */
+.tri-asks {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 7px 10px; border-radius: var(--radius-sm);
+  background: var(--gold-bg); border: 1px solid var(--gold-border);
+}
+.tri-asks-k {
+  font-size: 8.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--gold-deep);
+}
+.tri-asks-v { font-size: 12.5px; line-height: 1.5; color: var(--ink); }
+.tri-foot {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  padding-top: 6px; border-top: 1px dashed var(--line-subtle);
+  font-size: 10px; color: var(--ink-disabled);
+}
+.tri-affects { color: var(--ink-muted); }
+.tri-src { margin-left: auto; font-family: var(--font-mono); }
+.tri-gap {
+  width: 100%; font-size: 9.5px; cursor: help;
+  color: var(--rust); font-style: italic;
+}
+.bench-note {
+  margin: 14px 0 0; padding-top: 11px; border-top: 1px dashed var(--line-subtle);
+  font-size: 11.5px; line-height: 1.6; color: var(--ink-muted);
+}

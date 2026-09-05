@@ -53,8 +53,24 @@ HEADING_SHAPE = re.compile(r"^###\s+[`*]*([A-Za-z0-9._-]+)[`*]*\s*[·–-]")
 
 
 class Problem(dict):
-    def __init__(self, path, line, why, text=""):
-        super().__init__(path=str(path), line=line, why=why, text=text.strip()[:120])
+    """Un hallazgo, y **de qué clase** es.
+
+    ⛔ Dos clases, y confundirlas manda a buscar al sitio equivocado:
+
+      `unplaceable` — el texto no se pudo convertir en entidad. Es la regla 2 de
+                      `GRAMMAR.md`: nada se salta, y lo que no se coloca se reporta.
+      `contract`    — la entidad EXISTE y le falta un campo declarado (`AX-46`,
+                      `project:`, el suelo del muro). Se colocó perfectamente; está
+                      incompleta.
+
+    ⚠️ El reporte decía «N entries could not be placed» para las dos, así que una entrada
+    a la que le faltaba `**Asks**` se anunciaba como un fallo de parseo — y quien lo lee
+    se va a mirar la gramática en vez del campo que falta.
+    """
+
+    def __init__(self, path, line, why, text="", kind="unplaceable"):
+        super().__init__(path=str(path), line=line, why=why,
+                         text=text.strip()[:120], kind=kind)
 
 
 # ---------------------------------------------------------------- field readers
@@ -182,6 +198,18 @@ def clean(s):
 
 # ------------------------------------------------------------------- per kind
 
+# Los cuatro de `AX-46` sobre una ENTRADA DE BUZÓN, y no son los mismos nombres que los del
+# muro a propósito: una entrada llega **para ser enrutada**, no comprometida. `Sheet` y
+# «committed» no significan nada todavía, y `Asks` — qué juicio te pide — es justamente el
+# campo que distingue una entrada de una tarea.
+#     **Serves**  el objetivo al que sirve      · qué es
+#     **What**    qué pasa, en prosa            · qué está pasando
+#     **Asks**    qué juicio se te pide         · qué se decide
+#     **Affects** qué se mueve si se mueve      · qué se mueve
+MAIL_AX46 = {"serves": "Serves", "what": "What", "asks": "Asks", "affects": "Affects"}
+MAIL_FIELD = re.compile(r"^\*\*(?P<k>Serves|What|Asks|Affects)\*\*\s*(?P<v>.*)$", re.M)
+
+
 def parse_queue(path, text):
     """Mailbox and task list. Both are `###` headers; their field sets differ."""
     ents, probs, lines = [], [], text.splitlines()
@@ -204,8 +232,16 @@ def parse_queue(path, text):
             while k < len(lines) and not lines[k].startswith("### "):
                 body.append(lines[k])
                 k += 1
+            raw = "\n".join(body).strip()
+            # Los cuatro campos se leen del cuerpo; lo que sobra sigue siendo prosa. ⚠️ Así una
+            # entrada escrita antes de `AX-46` se sigue leyendo entera y sale reportada, en vez
+            # de dejar de parsear — un contrato nuevo que rompe lo ya escrito no se adopta.
+            fields46 = {k: None for k in MAIL_AX46}
+            for fm in MAIL_FIELD.finditer(raw):
+                fields46[fm.group("k").lower()] = clean(fm.group("v"))
+            prose = MAIL_FIELD.sub("", raw).strip()
             ents.append({"kind": "mailbox-entry", "id": None, "line": i + 1,
-                         "body": "\n".join(body).strip(), **f})
+                         "body": raw, "prose": prose, **fields46, **f})
             continue
 
         # ⚠️ `⚫` faltaba en el juego, así que una tarea cancelada no casaba su emoji, se
@@ -267,7 +303,19 @@ def parse_queue(path, text):
         if not e.get("project"):
             probs.append(Problem(path, e["line"],
                                  "a queue entry with no `project:` — the field the filter "
-                                 "depends on and nothing else can infer", e.get("title", "")))
+                                 "depends on and nothing else can infer", e.get("title", ""),
+                                 kind="contract"))
+        # ⛔ `AX-46` sobre la entrada de buzón, y cada campo que falta se NOMBRA. Una entrada
+        # cerrada ya no se actúa sobre ella, así que no se le exige. ⚠️ El axioma está 🟡
+        # propuesto: esto reporta, no impide leer nada.
+        if e["kind"] == "mailbox-entry" and e.get("state") in ("open", "pending"):
+            for key, name in MAIL_AX46.items():
+                if not e.get(key):
+                    probs.append(Problem(path, e["line"],
+                                         f"mailbox entry `{e.get('title', '')}` carries no "
+                                         f"**{name}** — `AX-46` asks for all four, so the entry "
+                                         f"can be routed without the conversation that produced "
+                                         f"it", "", kind="contract"))
         # ⚠️ AND ONE THAT IS PRESENT BUT NOT A PROJECT NAME. The empty case was the only one
         # checked, so a `project:` carrying a whole sentence passed as filled — 48 of 60 tasks,
         # reported as zero problems. **A check that only sees absence cannot see wrongness.**
@@ -333,7 +381,12 @@ def parse_park(path, text):
 # ⛔ The marker is FIRST because that is the one field a reader scans for, and it is the one field
 # a regex can anchor on without knowing anything else about the line.
 WALL_TASK = re.compile(r"^###\s+(?P<marker>[▶⏸⬜✅✖])\s+`(?P<project>[^`]+)`\s*·\s*(?P<title>.+?)\s*$")
-WALL_FIELD = re.compile(r"^\*\*(?P<k>Serves|Sheet|Why it is committed|What it affects)\*\*\s*(?P<v>.*)$")
+WALL_FIELD = re.compile(r"^\*\*(?P<k>Serves|Sheet|Why it is committed|What it affects|Drains)\*\*"
+                        r"\s*(?P<v>.*)$")
+# Los cuatro de `AX-46` sobre una tarea del muro, y el nombre de cada uno en el fichero.
+# ⛔ Se escribe UNA vez: la lista que valida y la lista que se lee tienen que ser la misma, o
+# un campo se exige y no se guarda — que es exactamente lo que pasaba.
+WALL_AX46 = {"serves": "Serves", "why": "Why it is committed", "affects": "What it affects"}
 MARKER_STATE = {"▶": "active", "⏸": "paused", "⬜": "pending", "✅": "done", "✖": "cancelled"}
 
 
@@ -360,7 +413,7 @@ def parse_wall(path, text):
                    "active": m["marker"] == "▶" and not in_bin,
                    "name": clean(m["title"]), "project": m["project"],
                    "in_bin": in_bin, "serves": None, "sheet": None,
-                   "described_in": None, "affects": None}
+                   "described_in": None, "affects": None, "why": None, "drains": None}
             ents.append(cur)
             continue
         if cur is None:
@@ -369,30 +422,47 @@ def parse_wall(path, text):
         if f:
             k = f["k"]
             v = clean(f["v"])
+            # ⛔ La cadena estaba rota: un `if cur.get("sheet")` se colaba entre los `elif`, así
+            # que `What it affects` sólo se guardaba **cuando la tarea no tenía `Sheet`**, y
+            # `Why it is committed` no se asignaba a ninguna parte — lo reconocía el patrón y se
+            # caía por el hueco. Dos de los cuatro campos que `AX-46` exige se perdían en
+            # silencio, y la tarea seguía dando por bueno el check porque el check sólo miraba
+            # `serves`. ⚠️ Un campo que se exige y no se guarda es peor que uno que no se exige:
+            # el fichero lo lleva, el lector no lo ve, y nada dice cuál de los dos falla.
             if k == "Serves":
-                # one line may carry `**Serves** x · **Sheet** y`
+                # una línea puede llevar `**Serves** x · **Sheet** y`
                 parts = re.split(r"·\s*\*\*Sheet\*\*", f["v"])
                 cur["serves"] = clean(parts[0])
                 if len(parts) > 1:
                     cur["sheet"] = clean(parts[1])
-                    cur["described_in"] = cur["sheet"]
             elif k == "Sheet":
                 cur["sheet"] = v
-            if cur.get("sheet"):
-                cur["described_in"] = cur["sheet"]
+            elif k == "Why it is committed":
+                cur["why"] = v
             elif k == "What it affects":
                 cur["affects"] = v
+            elif k == "Drains":
+                # Qué cola drena esta tarea, si drena alguna. `FLOW.md`: el estado de un drenaje
+                # se deriva de la cuenta, no se elige — y sin este campo no hay cuenta que mirar.
+                cur["drains"] = v
+            if cur.get("sheet"):
+                cur["described_in"] = cur["sheet"]
     # ⛔ Every task carries the four fields (`MLabs:AX-46`) and a missing one is NAMED, never
     # counted. "Four are short" does not say which four, and the whole point of the contract is
     # that a reader can act on the answer.
+    # ⚠️ Se miraba SÓLO `serves`, así que una tarea sin `Why it is committed` ni `What it
+    # affects` pasaba limpia — y el check quedaba cumplido en un cuarto mientras el axioma pide
+    # los cuatro. Cada uno se nombra por separado: «a esta tarea le falta X» es accionable,
+    # «a cuatro tareas les falta algo» no lo es, y eso lo dice el propio check de `AX-46`.
     for e in ents:
         if e["in_bin"]:
             continue
-        for field in ("serves",):
-            if not e.get(field):
-                probs.append(Problem(path, e["line"],
-                                     f"wall task `{e['name']}` carries no **{field.title()}** — "
-                                     f"`AX-46` asks what objective it serves", ""))
+        missing = [name for key, name in WALL_AX46.items() if not e.get(key)]
+        for name in missing:
+            probs.append(Problem(path, e["line"],
+                                 f"wall task `{e['name']}` carries no **{name}** — `AX-46` asks "
+                                 f"for all four, and an artefact that costs re-explaining has "
+                                 f"already failed `PH-4`", "", kind="contract"))
     # ⛔ THE FLOOR, and it lives here rather than after the table reader because that is where it
     # was and it never ran: `parse_wall` returns early on a wall, so a board with work and nothing
     # active reported clean. Found by a plant, not by reading (`AX-7`).
@@ -409,7 +479,7 @@ def parse_wall(path, text):
     if live and not any(e["active"] for e in live):
         probs.append(Problem(path, 0,
                              f"the wall holds {len(live)} task(s) and none is active — the floor is "
-                             f"at least one `▶` whenever work is happening", ""))
+                             f"at least one `▶` whenever work is happening", "", kind="contract"))
     return ents, probs
 
 
@@ -1368,16 +1438,33 @@ def main():
         with_project = sum(1 for e in v if e.get("project"))
         print(f"    {k:<15} {len(v):>4}   with project: {with_project}/{len(v)}")
 
-    print(f"\n  {len(r['problems'])} entries could not be placed. "
-          f"None was skipped:\n" if r["problems"] else "\n  Nothing unplaceable.\n")
-    for p in r["problems"]:
-        rel = p["path"]
-        if rel.startswith(r["root"]):
-            rel = rel[len(r["root"]):].lstrip("/")
-        loc = f"{rel}:{p['line']}" if p["line"] else rel
-        print(f"    {loc}\n        {p['why']}")
-        if p["text"]:
-            print(f"        {p['text']}")
+    # ⛔ Las dos clases se cuentan por separado y nunca se suman en un número. Un fichero
+    # con cero entradas sin colocar y ocho campos que faltan está sano de gramática y
+    # enfermo de contrato, y un solo «8 problemas» no dice cuál de las dos cosas mirar.
+    unplaceable = [p for p in r["problems"] if p.get("kind", "unplaceable") == "unplaceable"]
+    contract = [p for p in r["problems"] if p.get("kind") == "contract"]
+
+    def show(group, header):
+        print(header)
+        for p in group:
+            rel = p["path"]
+            if rel.startswith(r["root"]):
+                rel = rel[len(r["root"]):].lstrip("/")
+            loc = f"{rel}:{p['line']}" if p["line"] else rel
+            print(f"    {loc}\n        {p['why']}")
+            if p["text"]:
+                print(f"        {p['text']}")
+
+    if unplaceable:
+        show(unplaceable, f"\n  {len(unplaceable)} entr{'y' if len(unplaceable) == 1 else 'ies'} "
+                          f"could not be placed. None was skipped:\n")
+    else:
+        print("\n  Nothing unplaceable.\n")
+
+    if contract:
+        show(contract, f"\n  {len(contract)} entr{'y is' if len(contract) == 1 else 'ies are'} "
+                       f"placed but incomplete — a declared field is missing, and each is "
+                       f"named:\n")
     return 1 if r["problems"] else 0
 
 

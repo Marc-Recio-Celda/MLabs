@@ -341,6 +341,12 @@ function ingestModel(model) {
     project: e.project || "cross",
     state: e.state || "open",
     destination: e.destination || "inbox",
+    // Los cuatro de `AX-46`. `prose` es lo que sobra del cuerpo una vez sacados.
+    serves: e.serves || null,
+    what: e.what || null,
+    asks: e.asks || null,
+    affects: e.affects || null,
+    prose: e.prose || "",
     body: e.body || "",
     line: e.line,
     file: e.file || "",
@@ -3001,6 +3007,7 @@ async function loadModel() {
   // ⚠️ La doctrina se carga una vez: son ficheros del propio motor, no estado vivo, y
   // volver a pedirlos en cada latido gastaría una petición por segundo para nada.
   if (STATE.doctrine === undefined) loadDoctrine();
+  loadRecent();
 }
 
 function renderCheatSheet(container) {
@@ -3653,6 +3660,118 @@ function cutText(t, max) {
   return s.length <= max ? s : s.slice(0, max).replace(/\s\S*$/, "") + "…";
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// LA MESA DE TRIAJE — sólo en una tarea que declara qué cola drena
+//
+// ⛔ Aparece únicamente si la tarea escribe `**Drains** mailbox`. Enseñar treinta entradas
+// ajenas mientras arreglas un bug es la saturación que esta vista existe para evitar, y una
+// tarea que no drena nada no tiene nada que hacer con el buzón.
+//
+// ⚠️ Verde es `resolved`/`archived` — el estado que el fichero declara, no lo que este
+// navegador recuerda haber hecho. Una sesión que se recarga sigue viendo lo mismo, y lo que
+// enrutó otro agente también cuenta. La marca de «tocada hoy» viene de git y es un extra:
+// si el árbol no es un repo, simplemente no aparece.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const MAIL_DONE = ["resolved", "archived"];
+
+function renderTriageBench(card) {
+  const drains = String(card.drains || "").toLowerCase();
+  if (!drains.includes("mailbox") && !drains.includes("buzón") && !drains.includes("buzon")) return "";
+
+  const all = STATE.mailbox || [];
+  const scoped = all.filter(e =>
+    card.project === "cross" || !card.project || e.project === card.project || e.project === "cross");
+  const done = scoped.filter(e => MAIL_DONE.includes(e.state));
+  const open = scoped.filter(e => !MAIL_DONE.includes(e.state));
+  const pct = scoped.length ? Math.round(done.length / scoped.length * 100) : 0;
+  const touched = STATE.recentLines || {};
+
+  const entry = (e, resolved) => {
+    const isNew = (touched[e.file] || []).some(([a, b]) => e.line >= a && e.line <= b);
+    const miss = [["serves", "Serves"], ["what", "What"], ["asks", "Asks"], ["affects", "Affects"]]
+      .filter(([k]) => !e[k]).map(([, n]) => n);
+    return `
+      <article class="tri ${resolved ? "tri-done" : "tri-open"}">
+        <header class="tri-top">
+          <span class="tri-mark">${resolved ? "✓" : "○"}</span>
+          <h4>${inline(e.title)}</h4>
+          ${isNew ? `<span class="tri-fresh" title="Su bloque cambió en el trabajo sin commitear o en los commits de hoy — leído de git, no recordado por el navegador.">tocada hoy</span>` : ""}
+          <span class="tri-dest" title="Destino propuesto por quien la escribió">→ ${esc(e.destination)}</span>
+        </header>
+
+        ${e.serves ? `
+          <div class="tri-serves">
+            <span class="tri-k">sirve a</span>
+            <span class="tri-v">${inline(e.serves)}</span>
+          </div>` : ""}
+
+        ${e.what ? `<p class="tri-what">${inline(cut(e.what, 260))}</p>`
+                 : e.prose ? `<p class="tri-what tri-prose">${inline(cut(e.prose, 220))}</p>` : ""}
+
+        ${!resolved && e.asks ? `
+          <div class="tri-asks">
+            <span class="tri-asks-k">te pide decidir</span>
+            <span class="tri-asks-v">${inline(e.asks)}</span>
+          </div>` : ""}
+
+        <footer class="tri-foot">
+          ${e.affects ? `<span class="tri-affects" title="Qué se mueve si se mueve">${inline(cut(e.affects, 90))}</span>` : ""}
+          <span class="tri-src"><code>${esc(e.file || "")}${e.line ? `:${e.line}` : ""}</code></span>
+          ${miss.length ? `
+            <span class="tri-gap" title="AX-46 pide los cuatro campos y a ésta le faltan. Nombrados, no contados: se sabe cuáles.">
+              faltan ${miss.join(" · ")}
+            </span>` : ""}
+        </footer>
+      </article>`;
+  };
+
+  return `
+    <section class="bench">
+      <header class="bench-head">
+        <div class="bench-title">
+          <span class="bench-greek">ΔΙΑΛΟΓΗ</span>
+          <h3>Mesa de triaje</h3>
+          <span class="bench-scope">${esc(card.project || "cross")} · ${scoped.length} entrada${scoped.length === 1 ? "" : "s"}</span>
+        </div>
+        <div class="bench-meter" role="img" aria-label="${done.length} de ${scoped.length} enrutadas">
+          <div class="bench-bar"><div class="bench-fill" style="width:${pct}%"></div></div>
+          <span class="bench-n"><strong>${done.length}</strong> de ${scoped.length} enrutadas</span>
+        </div>
+      </header>
+
+      <div class="bench-cols">
+        <div class="bench-col bench-col-open">
+          <div class="bench-col-head">
+            <span class="bench-dot dot-open"></span>
+            <strong>Por resolver</strong>
+            <span class="bench-col-n">${open.length}</span>
+          </div>
+          ${open.length ? open.map(e => entry(e, false)).join("") : `
+            <p class="bench-empty">Ninguna. Un buzón que entra lleno y sale lleno significa que la
+               sesión no cerró nada — éste no es el caso.</p>`}
+        </div>
+
+        <div class="bench-col bench-col-done">
+          <div class="bench-col-head">
+            <span class="bench-dot dot-done"></span>
+            <strong>Resueltas</strong>
+            <span class="bench-col-n">${done.length}</span>
+          </div>
+          ${done.length ? done.map(e => entry(e, true)).join("") : `
+            <p class="bench-empty">Todavía ninguna en este filtro.</p>`}
+        </div>
+      </div>
+
+      <p class="bench-note">
+        El verde sale del <strong>estado que la entrada declara</strong> en <code>MAILBOX.md</code>,
+        no de lo que este navegador recuerde: sobrevive a un recargado y cuenta también lo que
+        enrutó otro agente. <strong>Nadie vacía la cola que llena</strong> — el destino que trae
+        cada entrada es una propuesta, y confirmarla es tuyo.
+      </p>
+    </section>`;
+}
+
 // ── una skill, entera ────────────────────────────────────────────────────────
 window.openSkill = async function (name) {
   STATE.skillOpen = { name, loading: true };
@@ -4077,7 +4196,11 @@ function officeCards() {
       id: f.id || f.name, title: f.name, project: f.project || "cross",
       marker: f.marker, active: Boolean(f.active),
       moves_when: f.moves_when || "", described_in: f.described_in || "",
-      why: "", taskId: null, status: null, sources: ["compass"], line: f.line
+      // Los cuatro de `AX-46` sobre la tarea, que es lo que hace que la tarjeta se lea sin
+      // la conversación que la produjo: a qué sirve, qué pasa, y qué se mueve.
+      declared: f.state || null, serves: f.serves || null, affects: f.affects || null,
+      drains: f.drains || null, planId: f.sheet || null,
+      why: f.why || "", taskId: null, status: null, sources: ["compass"], line: f.line
     });
   }
   for (const f of STATE.fronts.filter(f => f.row === "board")) {
@@ -4086,6 +4209,10 @@ function officeCards() {
     if (c) {
       c.waits_on = f.waits_on || c.waits_on || "";
       c.note = f.note || c.note || "";
+      c.serves = c.serves || f.serves || null;
+      c.affects = c.affects || f.affects || null;
+      c.drains = c.drains || f.drains || null;
+      c.why = c.why || f.why || "";
       if (!c.sources.includes("board")) c.sources.push("board");
     } else {
       cards.set(key(f.name), {
@@ -4433,16 +4560,38 @@ function renderOffice(container) {
               ${c.project ? `<span class="tag-pill tag-project">${esc(c.project)}</span>` : ""}
             </header>
             <h3 class="mural-title">${inline(c.title)}</h3>
-            ${(c.why || c.moves_when || c.waits_on) ? `
+
+            <!-- El objetivo NO se esconde. AX-46 pide que el artefacto se lea sin la
+                 conversacion que lo produjo, y una tarjeta que hay que sobrevolar para saber a
+                 que sirve no cumple eso: cuesta un gesto mas, que es la version pequena de
+                 costar una re-explicacion. -->
+            ${c.serves ? `
+              <div class="mural-serves" title="AX-46 · el objetivo al que sirve esta tarea">
+                <span class="serves-k">sirve a</span>
+                <span class="serves-v">${cut(c.serves, 130)}</span>
+              </div>`
+            : `<div class="mural-serves serves-missing" title="AX-46 pide los cuatro campos, y este falta. Se escribe en el muro como **Serves**.">
+                <span class="serves-k">sirve a</span>
+                <span class="serves-v">— sin declarar —</span>
+              </div>`}
+
+            <!-- La descripcion y el alcance sí se abren al pasar por encima: son el detalle,
+                 y el detalle de nueve tarjetas a la vez es la saturacion que hay que evitar. -->
+            ${(c.why || c.affects || c.moves_when || c.waits_on) ? `
               <div class="mural-extra">
-                ${c.why ? `<p class="mural-why"><strong>Why.</strong> ${cut(c.why, 320)}</p>` : ""}
+                ${c.why ? `<p class="mural-why">${cut(c.why, 300)}</p>` : ""}
+                ${c.affects ? `
+                  <div class="mural-cond">
+                    <span class="cond-k">toca</span>
+                    <span class="cond-v">${cut(c.affects, 190)}</span>
+                  </div>` : ""}
                 ${(c.moves_when || c.waits_on) ? `
                   <div class="mural-cond">
                     <span class="cond-k">${c.waits_on ? "espera" : "avanza cuando"}</span>
-                    <span class="cond-v">${cut(c.moves_when || c.waits_on, 220)}</span>
+                    <span class="cond-v">${cut(c.moves_when || c.waits_on, 190)}</span>
                   </div>` : ""}
               </div>
-              <div class="mural-peek">pasa el ratón para leerla entera</div>` : ""}
+              <div class="mural-peek">pasa el ratón para el detalle</div>` : ""}
             ${pct !== null ? `
               <div class="mural-progress" title="${sheet.live ? "PLAN.md en vivo" : `plan ${esc(sheet.id || "")}`}">
                 <div class="mural-bar"><div class="mural-fill" style="width:${pct}%"></div></div>
@@ -4539,12 +4688,33 @@ function renderDesk(container) {
           ${card.taskId ? `<span class="tag-pill tag-purple">${esc(card.taskId)}</span>` : ""}
           ${card.described_in ? `<span class="tag-pill"><code>${esc(card.described_in)}</code></span>` : ""}
         </div>
-        ${card.why ? `<div class="desk-why"><strong>Why.</strong> ${expandable(card.why)}</div>` : ""}
-        ${(card.moves_when || card.waits_on) ? `
-          <div class="desk-cond">
-            <span class="cond-k">${card.waits_on ? "espera a" : "avanza cuando"}</span>
-            <span class="cond-v">${inline(card.moves_when || card.waits_on)}</span>
-          </div>` : ""}
+
+        <!-- Los cuatro campos de AX-46, en la cabecera y en este orden: a que sirve, que pasa,
+             que toca. Es lo primero que se lee al entrar, porque es lo que responde a "que
+             estoy haciendo aqui" sin abrir nada mas. Un campo que falta se nombra en su sitio
+             en vez de desaparecer: un hueco declarado se rellena, uno callado no. -->
+        <dl class="ax46">
+          <div class="ax46-row ${card.serves ? "" : "ax46-missing"}">
+            <dt>Sirve a</dt>
+            <dd>${card.serves ? inline(card.serves)
+              : `<span class="ax46-gap">sin declarar — se escribe en el muro como <code>**Serves**</code></span>`}</dd>
+          </div>
+          <div class="ax46-row ${card.why ? "" : "ax46-missing"}">
+            <dt>Qué pasa</dt>
+            <dd>${card.why ? expandable(card.why)
+              : `<span class="ax46-gap">sin declarar — <code>**Why it is committed**</code></span>`}</dd>
+          </div>
+          <div class="ax46-row ${card.affects ? "" : "ax46-missing"}">
+            <dt>Qué toca</dt>
+            <dd>${card.affects ? inline(card.affects)
+              : `<span class="ax46-gap">sin declarar — <code>**What it affects**</code></span>`}</dd>
+          </div>
+          ${(card.moves_when || card.waits_on) ? `
+            <div class="ax46-row">
+              <dt>${card.waits_on ? "Espera a" : "Avanza cuando"}</dt>
+              <dd>${inline(card.moves_when || card.waits_on)}</dd>
+            </div>` : ""}
+        </dl>
       </div>
       ${isLive ? `
         <div class="desk-hero-stats">
@@ -4561,7 +4731,9 @@ function renderDesk(container) {
     </div>
 
     <div class="desk-grid">
-      <section class="desk-plan"><div class="desk-screen">
+      <section class="desk-work">
+      ${renderTriageBench(card)}
+      <div class="desk-plan"><div class="desk-screen">
         ${sheet ? `
           ${!isLive ? `
             <div class="sheet-banner ${m.cls}">
@@ -4651,7 +4823,7 @@ function renderDesk(container) {
                     la ata a su registro sin depender de que los títulos se parezcan.</span>
             </div>
           </div>`}
-      </div></section>
+      </div></div></section>
 
       <aside class="desk-rail">
         <div class="rail-panel">
@@ -4988,6 +5160,16 @@ window.setMailboxFilter = function (v) { STATE.mailboxFilter = v; renderView(); 
 // printed "30 axiomas activos" against a real 34. Every one of those looked authoritative.
 // `AX-20` names the duplicate and `AX-36` names the hand-typed count.
 // ═════════════════════════════════════════════════════════════════════════════
+
+// Qué se ha tocado hoy, de git. ⚠️ Falla en silencio a propósito: es una marca de ayuda
+// sobre un dato que ya está completo sin ella, así que un árbol que no es repositorio da una
+// vista igual de correcta, sólo sin la marca.
+async function loadRecent() {
+  try {
+    const d = await api("GET", "/api/recent");
+    STATE.recentLines = d.lines || {};
+  } catch (_) { STATE.recentLines = {}; }
+}
 
 async function loadDoctrine() {
   try {
