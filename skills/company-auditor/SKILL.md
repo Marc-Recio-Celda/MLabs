@@ -162,4 +162,4 @@ three decision identifiers, or an axiom with a zero count. Its verdict line is c
 
 ## Dismissal
 
-Standing and criterion per `skills/audit/` — **log `CA-`**.
+Standing and criterion per `skills/audit/` — **`99_SYSTEM/logs/company-auditor.md`**, prefix `CA-`.
