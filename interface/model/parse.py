@@ -25,6 +25,10 @@ import re
 import sys
 from pathlib import Path
 
+# Los cinco de `FLOW.md`. ⚠️ Se escriben una vez: dos listas de estados es la manera de
+# que una vista acepte un sexto que ninguna regla contempla.
+FLOW_STATES = ("pending", "active", "paused", "cancelled", "done")
+
 KINDS = ("compass", "plan", "queue", "park", "record", "standing", "skills", "records",
          "philosophy", "axioms", "doc")
 
@@ -199,7 +203,19 @@ def parse_queue(path, text):
             # that only parses in one of two live formats reports two thirds as missing.
             wm = re.search(r"\*\*Why[.:]?\*\*\s*(?:\*\([^)]*\)\*)?[.:]?\s*(.+?)"
                            r"(?=\n\*\*[A-Z]|\n---|\Z)", blob, re.S)
+            # ⛔ Los cinco estados de `FLOW.md` viven EN LA TAREA, y una instancia que los
+            # haya adoptado los escribe como `**state:** paused`. El emoji de la cabecera es
+            # el vocabulario anterior y sigue en los ficheros, así que se leen los dos y el
+            # declarado gana — ⚠️ pero NO se traduce el emoji a un estado de FLOW aquí: un
+            # ⬜ puede ser `pending` o `paused` y sólo la tarea sabe cuál. Inventar la
+            # equivalencia es exactamente lo que convierte un dato en una suposición.
+            declared = clean(fields.get("state", "")).lower()
+            state = declared if declared in FLOW_STATES else None
             ents.append({"kind": "task", "line": i + 1,
+                         "state": state,
+                         "plan": clean(fields.get("plan", "")) or None,
+                         "block": clean(fields.get("block", "")) or None,
+                         "sub_block": clean(fields.get("sub_block", "")) or None,
                          "project": clean(fields.get("project", "")),
                          "author": clean(why.group("author")) if why else None,
                          "date": why.group("date") if why else None,

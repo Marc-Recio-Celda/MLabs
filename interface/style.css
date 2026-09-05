@@ -6011,3 +6011,36 @@ input[type="text"]:focus, textarea:focus {
 .hint-Shell2 { color: var(--gold-deep);   background: var(--gold-bg); }
 .hint-Prompt { color: var(--grape);       background: var(--grape-bg); }
 .cs-key { display: inline-flex; align-items: center; gap: 5px; margin-right: 4px; }
+
+/* Una hoja que no es la viva se lee, no se escribe. El cartel lo dice antes de que alguien
+   busque los botones de enrutado y no los encuentre. */
+.sheet-banner {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 15px; margin-bottom: 14px;
+  background: var(--ocbg); border: 1px solid var(--oc);
+  border-left: 4px solid var(--oc); border-radius: var(--radius-md);
+}
+.sheet-banner-icon { font-size: 17px; color: var(--oc); }
+.sheet-banner strong { display: block; font-size: 13px; color: var(--ink); margin-bottom: 3px; }
+.sheet-banner span { font-size: 12px; line-height: 1.55; color: var(--ink-soft); }
+.sheet-banner .btn-quick { margin-left: auto; white-space: nowrap; align-self: center; }
+
+/* Los dos estados terminales. No salen al mural, pero si llegan no pueden pintarse como
+   una tarea abierta. */
+.st-terminal { --oc: var(--rust);        --ocbg: var(--rust-bg); }
+.st-done     { --oc: var(--vine-deep);   --ocbg: var(--vine-bg); }
+
+/* Dos nombres para el mismo trabajo. No se fusionan: se señalan, porque una fusión
+   equivocada esconde una tarea y un tablero al que le falta trabajo es el peor de los dos. */
+.twin-flag {
+  font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: 1px 6px; border-radius: var(--radius-full); cursor: help;
+  background: var(--gold-bg); color: var(--gold-deep); border: 1px solid var(--gold-border);
+}
+
+/* Un filtro que sólo puede dar cero es ruido. Los dos estados terminales se explican
+   en una línea en vez de ocupar dos botones muertos. */
+.filter-note {
+  font-size: 10.5px; font-style: italic; color: var(--ink-disabled); cursor: help;
+  padding-left: 4px; align-self: center;
+}

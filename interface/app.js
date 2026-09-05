@@ -10,8 +10,6 @@ const STORAGE_KEYS = {
 
 let STATE = {
   activeFront: null,
-  cockpitSelectedFrontId: null,
-  cockpitFilterProj: "ALL",
   fronts: [],
   projects: [],
   tasks: [],
@@ -390,6 +388,12 @@ function ingestModel(model) {
     id: e.id_raw || e.id || "T",
     title: e.title || "",
     project: e.project || "cross",
+    // Los cinco de `FLOW.md`, si la tarea los declara. `status` es el emoji del
+    // vocabulario anterior y sigue conviviendo: ninguno se deriva del otro.
+    state: e.state || null,
+    plan: e.plan || null,
+    block: e.block || null,
+    sub_block: e.sub_block || null,
     status: e.status || "⬜",
     why: e.why || "",
     author: e.author || e.origin || "Operator",
@@ -596,17 +600,18 @@ function syncUrlHash() {
   } else if (view === "desk") {
     hash = `#/desk/${encodeURIComponent(STATE.deskCardId || "")}`;
   } else if (view === "cockpit") {
+    // ⚠️ Guardaba `front=` y `filter=` del cockpit, que ya no lee nadie. Ahora guarda los
+    // filtros que la Oficina usa de verdad, así que un recargado no te devuelve al mural
+    // entero cuando estabas mirando un proyecto.
     hash = `#/cockpit`;
     const params = [];
-    if (STATE.cockpitSelectedFrontId) {
-      params.push(`front=${encodeURIComponent(STATE.cockpitSelectedFrontId)}`);
+    if (STATE.officeFilterProj && STATE.officeFilterProj !== "ALL") {
+      params.push(`proyecto=${encodeURIComponent(STATE.officeFilterProj)}`);
     }
-    if (STATE.cockpitFilterProj && STATE.cockpitFilterProj !== "ALL") {
-      params.push(`filter=${encodeURIComponent(STATE.cockpitFilterProj)}`);
+    if (STATE.officeFilterState && STATE.officeFilterState !== "ALL") {
+      params.push(`estado=${encodeURIComponent(STATE.officeFilterState)}`);
     }
-    if (params.length) {
-      hash += `?${params.join("&")}`;
-    }
+    if (params.length) hash += `?${params.join("&")}`;
   } else if (view === "cheatsheet") {
     hash = `#/cheatsheet`;
     if (STATE.activeCsTab && STATE.activeCsTab !== "session") {
@@ -691,12 +696,8 @@ function restoreRouteFromUrl() {
     if (segments[1]) STATE.deskCardId = decodeURIComponent(segments[1]);
   } else if (mainView === "cockpit") {
     STATE.currentView = "cockpit";
-    if (params.has("front")) {
-      STATE.cockpitSelectedFrontId = decodeURIComponent(params.get("front"));
-    }
-    if (params.has("filter")) {
-      STATE.cockpitFilterProj = decodeURIComponent(params.get("filter"));
-    }
+    if (params.has("proyecto")) STATE.officeFilterProj = decodeURIComponent(params.get("proyecto"));
+    if (params.has("estado")) STATE.officeFilterState = decodeURIComponent(params.get("estado"));
   } else if (mainView === "cheatsheet") {
     STATE.currentView = "cheatsheet";
     if (params.has("tab")) {
@@ -3107,341 +3108,12 @@ function findPlanForFront(front) {
   return null;
 }
 
-function renderCockpit(container) {
-  const allProjects = Array.from(new Set(STATE.fronts.map(f => f.project).filter(Boolean))).sort();
-  const filterProj = STATE.cockpitFilterProj || "ALL";
-  
-  const filteredFronts = filterProj === "ALL" 
-    ? STATE.fronts 
-    : STATE.fronts.filter(f => f.project && f.project.toLowerCase() === filterProj.toLowerCase());
+// ⛔ Aquí vivía `renderCockpit`, 335 líneas que ya no llamaba nadie desde que `cockpit`
+// enruta a `renderOffice`. Se va entera: una copia muerta del render vivo es la que sigue
+// contestando cuando alguien la resucita sin mirar, y mientras tanto la mantiene nadie.
+// `findPlanForFront` NO se va — la usa `planForCard`, que es lo que devolvió al Despacho
+// la capacidad de enseñar la hoja de una tarea en pausa.
 
-  // Determine selected front
-  let selectedFront = null;
-  if (STATE.cockpitSelectedFrontId) {
-    selectedFront = STATE.fronts.find(f => f.id === STATE.cockpitSelectedFrontId || f.name === STATE.cockpitSelectedFrontId);
-  }
-  if (!selectedFront) {
-    selectedFront = STATE.activeFront || filteredFronts[0] || STATE.fronts[0] || null;
-  }
-
-  // Check if selected front is the active flight
-  const isActiveFlight = Boolean(selectedFront && (selectedFront.active || (STATE.activeFront && selectedFront.id === STATE.activeFront.id)));
-  
-  // Check if there is a persistent plan for this front
-  const persistentPlan = !isActiveFlight ? findPlanForFront(selectedFront) : null;
-
-  // Live plan stats
-  const totalLive = STATE.livePlan.length;
-  const completedLive = STATE.livePlan.filter(p => p.struck).length;
-  const pendingLive = totalLive - completedLive;
-  const livePct = totalLive ? Math.round((completedLive / totalLive) * 100) : 0;
-
-  // Active front stats
-  const activeCount = STATE.fronts.filter(f => f.active).length;
-  const pausedCount = STATE.fronts.filter(f => f.marker === "⏸").length;
-  const queueCount = STATE.fronts.length - activeCount - pausedCount;
-
-  container.innerHTML = `
-    <div class="view-header">
-      <div class="view-title-group">
-        <h1><span>🧭</span> Operations Cockpit & Live Flight</h1>
-        <p class="view-subtitle">Supervisión en tiempo real de la brújula de frentes (COMPASS) y planes en vuelo (PLAN.md)</p>
-      </div>
-      <div class="header-stats-bar">
-        <span class="spec-pill active-pill" onclick="selectCockpitFront('${STATE.activeFront?.id || ''}')" style="cursor: pointer;" title="Ir al Frente Activo">
-          <strong>⚡ En Vuelo:</strong> ${activeCount} (▶)
-        </span>
-        <span class="spec-pill" style="border-color: var(--gold-border); color: #8a6418; background: var(--gold-bg);">
-          <strong>⏸ En Pausa:</strong> ${pausedCount}
-        </span>
-        <span class="spec-pill">
-          <strong>⏳ En Cola:</strong> ${queueCount}
-        </span>
-      </div>
-    </div>
-
-    <div class="cockpit-grid">
-      <!-- LEFT COLUMN: SCHEDULE COMPASS / FRENTES EN COLA -->
-      <div class="cockpit-column-left">
-        <div class="cockpit-panel schedule-queue-panel">
-          <div class="panel-header">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <h2><span>🎯</span> Frentes en Cola (COMPASS)</h2>
-              <span class="tag-pill tag-live">${filteredFronts.length}</span>
-            </div>
-          </div>
-
-          <!-- Project Filter Chips -->
-          <div class="cockpit-filter-chips">
-            <button class="chip-filter ${filterProj === 'ALL' ? 'active' : ''}" onclick="setCockpitFilter('ALL')">
-              Todos (${STATE.fronts.length})
-            </button>
-            ${allProjects.map(proj => {
-              const count = STATE.fronts.filter(f => f.project === proj).length;
-              return `
-                <button class="chip-filter ${filterProj.toLowerCase() === proj.toLowerCase() ? 'active' : ''}" onclick="setCockpitFilter('${esc(proj)}')">
-                  ${esc(proj)} (${count})
-                </button>
-              `;
-            }).join("")}
-          </div>
-
-          <!-- Fronts List -->
-          <div class="cockpit-fronts-list">
-            ${filteredFronts.length ? filteredFronts.map((f) => {
-              const isSelected = selectedFront && (selectedFront.id === f.id || (selectedFront.name === f.name && selectedFront.line === f.line));
-              const isAct = Boolean(f.active);
-              const isPaused = f.marker === "⏸";
-              const isOrdinal = f.marker && /^\d+$/.test(f.marker);
-
-              let markerBadge = "";
-              if (isAct) {
-                markerBadge = `<span class="front-marker-badge marker-active" title="Frente Activo Único">▶</span>`;
-              } else if (isPaused) {
-                markerBadge = `<span class="front-marker-badge marker-paused" title="Frente en Pausa">⏸</span>`;
-              } else if (isOrdinal) {
-                markerBadge = `<span class="front-marker-badge marker-ordinal" title="Prioridad en Cola">${esc(f.marker)}</span>`;
-              } else {
-                markerBadge = `<span class="front-marker-badge marker-subtle">·</span>`;
-              }
-
-              return `
-                <div class="cockpit-front-card ${isSelected ? 'selected' : ''} ${isAct ? 'is-active-flight' : ''} ${isPaused ? 'is-paused-front' : ''}"
-                     onclick="selectCockpitFront('${esc(f.id || f.name)}')">
-                  <div class="front-card-top">
-                    ${markerBadge}
-                    <div class="front-card-title-group">
-                      <strong class="front-card-title">${inline(f.name)}</strong>
-                      ${f.project ? `<span class="tag-pill tag-project">${esc(f.project)}</span>` : ''}
-                    </div>
-                  </div>
-
-                  ${(f.moves_when || f.waits_on) ? `
-                    <div class="front-card-condition">
-                      <span class="condition-icon">${isPaused ? '⏸' : '⏳'}</span>
-                      <span class="condition-text">${expandable(f.moves_when || f.waits_on || '')}</span>
-                    </div>
-                  ` : ''}
-
-                  <div class="front-card-footer">
-                    <span class="front-status-indicator">
-                      ${isAct ? '<span class="status-dot pulse-dot"></span> Plan en vuelo activo' : 
-                        isPaused ? '<span class="status-dot paused-dot"></span> Frente en pausa' : 
-                        '<span class="status-dot queue-dot"></span> En espera de turno'}
-                    </span>
-                    <span class="select-arrow">${isSelected ? '●' : '→'}</span>
-                  </div>
-                </div>
-              `;
-            }).join("") : `
-              <div class="empty-state">
-                <p>No hay frentes registrados para el filtro <strong>${esc(filterProj)}</strong>.</p>
-              </div>
-            `}
-          </div>
-        </div>
-      </div>
-
-      <!-- RIGHT COLUMN: DETAILED PLAN VIEW -->
-      <div class="cockpit-column-right">
-        ${selectedFront ? `
-          <div class="cockpit-panel plan-detail-panel">
-            <!-- FRONT HERO HEADER -->
-            <div class="plan-detail-hero ${isActiveFlight ? 'hero-active-flight' : selectedFront.marker === '⏸' ? 'hero-paused-flight' : 'hero-queue-flight'}">
-              <div class="plan-hero-top-row">
-                <div class="hero-status-badges">
-                  ${isActiveFlight ? `
-                    <span class="tag-pill tag-live-glow"><span class="pulse-dot"></span> ▶ FRENTE ACTIVO EN VUELO</span>
-                  ` : selectedFront.marker === "⏸" ? `
-                    <span class="tag-pill tag-paused-gold">⏸ FRENTE EN PAUSA</span>
-                  ` : `
-                    <span class="tag-pill tag-queue-purple">⏳ EN COLA ${selectedFront.marker ? `#${selectedFront.marker}` : ''}</span>
-                  `}
-                  ${selectedFront.project ? `<span class="tag-pill tag-project-hero">${esc(selectedFront.project)}</span>` : ''}
-                </div>
-                ${selectedFront.described_in ? `
-                  <button class="btn-copy-ref" onclick="copyToClipboard('${esc(selectedFront.described_in)}', 'Ubicación copiada', event)">
-                    <span>📁 Copiar ubicación</span>
-                  </button>
-                ` : ''}
-              </div>
-
-              <h2 class="plan-hero-title">${inline(selectedFront.name)}</h2>
-
-              ${(selectedFront.moves_when || selectedFront.waits_on) ? `
-                <div class="hero-condition-banner">
-                  <span class="condition-banner-label">AVANZA CUANDO:</span>
-                  <span class="condition-banner-val">${inline(selectedFront.moves_when || selectedFront.waits_on || "—")}</span>
-                </div>
-              ` : ''}
-
-              ${selectedFront.described_in ? `
-                <div class="hero-location-row">
-                  <span class="loc-label">Definido en:</span>
-                  <code>${esc(selectedFront.described_in)}</code>
-                </div>
-              ` : ''}
-            </div>
-
-            <!-- PLAN BODY / CONTENT -->
-            ${isActiveFlight ? `
-              <!-- ACTIVE LIVE FLIGHT (PLAN.md) -->
-              <div class="live-plan-section">
-                <div class="section-title-row">
-                  <div class="section-title-left">
-                    <h3><span>📋</span> Plan de Vuelo Activo (PLAN.md)</h3>
-                    ${STATE.livePlanMeta?.task ? `<span class="tag-pill tag-live">${esc(STATE.livePlanMeta.task)}</span>` : ''}
-                  </div>
-                  <div class="section-stats-pills">
-                    <span class="mini-stat-pill done-pill">✓ ${completedLive} resueltos</span>
-                    <span class="mini-stat-pill inflight-pill">⚡ ${pendingLive} pendientes</span>
-                  </div>
-                </div>
-
-                <!-- Progress Bar -->
-                <div class="plan-progress-wrapper">
-                  <div class="plan-progress-bar">
-                    <div class="plan-progress-fill" style="width: ${livePct}%;"></div>
-                  </div>
-                  <span class="plan-progress-pct">${livePct}%</span>
-                </div>
-
-                <!-- Order Why Card (if present) -->
-                ${STATE.livePlanMeta?.order_why ? `
-                  <div class="order-why-card">
-                    <div class="order-why-header">
-                      <span class="order-why-icon">🧠</span>
-                      <strong>Razón de la secuencia (Order Why)</strong>
-                      <span class="order-why-badge">PH-3 / AX-11</span>
-                    </div>
-                    <div class="order-why-body">
-                      ${inline(STATE.livePlanMeta.order_why)}
-                    </div>
-                  </div>
-                ` : ''}
-
-                <!-- Plan Items List -->
-                <div class="plan-items-container">
-                  ${STATE.livePlan.length ? STATE.livePlan.map(item => `
-                    <div class="plan-item-row ${item.struck ? 'completed' : 'in-progress'}">
-                      <div class="plan-idx-circle ${item.struck ? 'idx-done' : 'idx-active'}">
-                        ${item.struck ? '✓' : item.index}
-                      </div>
-                      <div class="plan-text-content">
-                        ${expandable(item.text, "plan-text")}
-                      </div>
-                      ${item.destination ? `
-                        <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'dest-discarded' : 'dest-resolved'}">
-                          ${esc(item.destination)}
-                        </span>
-                      ` : `<span class="dest-tag dest-inflight"><span class="dot-spin"></span> en curso</span>`}
-                    </div>
-                  `).join("") : `
-                    <div class="empty-state">
-                      <div class="empty-icon">⚡</div>
-                      <h3>Plan despejado</h3>
-                      <p>PLAN.md está listo para recibir el siguiente sub-bloque de trabajo.</p>
-                    </div>
-                  `}
-                </div>
-
-                <div class="live-sync-notice">
-                  <span>⚡ Sincronización en tiempo real activa (<code>/api/stamp</code> cada 2.0s). Edita <code>PLAN.md</code> o invoca la skill <code>current-plan</code> para actualizar instantáneamente.</span>
-                </div>
-              </div>
-            ` : persistentPlan ? `
-              <!-- PERSISTENT HISTORICAL / PAUSED PLAN -->
-              <div class="persistent-plan-section">
-                <div class="section-title-row">
-                  <div class="section-title-left">
-                    <h3><span>📜</span> Plan Registrado (${esc(persistentPlan.id)})</h3>
-                    <span class="tag-pill ${persistentPlan.status === 'active' ? 'tag-live' : persistentPlan.status === 'paused' ? 'tag-paused-gold' : 'tag-done'}">
-                      ${esc(persistentPlan.status.toUpperCase())}
-                    </span>
-                  </div>
-                  <div class="section-stats-pills">
-                    ${persistentPlan.date ? `<span class="mini-stat-pill">📅 ${esc(persistentPlan.date)}</span>` : ''}
-                    ${persistentPlan.closed_on ? `<span class="mini-stat-pill done-pill">🔒 Cerrado: ${esc(persistentPlan.closed_on)}</span>` : ''}
-                  </div>
-                </div>
-
-                ${persistentPlan.order_why ? `
-                  <div class="order-why-card">
-                    <div class="order-why-header">
-                      <span class="order-why-icon">🧠</span>
-                      <strong>Razón de la secuencia (Order Why)</strong>
-                    </div>
-                    <div class="order-why-body">
-                      ${inline(persistentPlan.order_why)}
-                    </div>
-                  </div>
-                ` : ''}
-
-                <div class="plan-items-container">
-                  ${persistentPlan.items.length ? persistentPlan.items.map(item => `
-                    <div class="plan-item-row ${item.status === 'done' ? 'completed' : ''}">
-                      <div class="plan-idx-circle ${item.status === 'done' ? 'idx-done' : 'idx-active'}">
-                        ${item.status === 'done' ? '✓' : item.index}
-                      </div>
-                      <div class="plan-text-content">
-                        ${expandable(item.text, "plan-text")}
-                      </div>
-                      ${item.destination ? `
-                        <span class="dest-tag ${/discarded|⚫/.test(item.destination) ? 'dest-discarded' : 'dest-resolved'}">
-                          ${esc(item.destination)}
-                        </span>
-                      ` : `<span class="dest-tag dest-inflight">en curso</span>`}
-                    </div>
-                  `).join("") : `<div class="empty-state"><p>No hay subtareas registradas en este plan.</p></div>`}
-                </div>
-              </div>
-            ` : selectedFront.marker === "⏸" ? `
-              <!-- PAUSED FRONT EXPLANATION -->
-              <div class="front-state-card paused-state-card">
-                <div class="state-card-icon">⏸</div>
-                <h3>Frente Congelado / En Pausa</h3>
-                <p class="state-card-desc">
-                  Este frente está pausado intencionalmente para no competir por foco con el frente activo único (▶).
-                </p>
-                <div class="state-detail-box">
-                  <strong>Motivo de pausa / Reanudación:</strong>
-                  <p>${inline(selectedFront.moves_when || "Requiere confirmación antes de reanudar.")}</p>
-                </div>
-                <div class="state-guidance-box">
-                  <span>💡 Para reanudar este frente, selecciona el frente en <code>COMPASS.md</code> y abre su plan con la skill <code>current-plan</code>.</span>
-                </div>
-              </div>
-            ` : `
-              <!-- QUEUED FRONT WAITING -->
-              <div class="front-state-card queued-state-card">
-                <div class="state-card-icon">🎯</div>
-                <h3>Frente en Cola de Espera</h3>
-                <p class="state-card-desc">
-                  Este frente está programado en la brújula COMPASS. No tiene un plan activo instanciado todavía.
-                </p>
-                <div class="state-detail-box">
-                  <strong>Condición de avance:</strong>
-                  <p>${inline(selectedFront.moves_when || selectedFront.waits_on || "Secuenciado en el orden de trabajo.")}</p>
-                </div>
-                <div class="state-guidance-box">
-                  <span>💡 Cuando este frente pase a ser el activo (▶), se generará su plan de vuelo mediante la skill <code>current-plan</code>.</span>
-                </div>
-              </div>
-            `}
-          </div>
-        ` : `
-          <div class="empty-state">
-            <div class="empty-icon">🧭</div>
-            <h3>Selecciona un Frente</h3>
-            <p>Elige un frente de la columna izquierda para inspeccionar su plan y estado detallado.</p>
-          </div>
-        `}
-      </div>
-    </div>
-  `;
-  // Auto-scroll plan container to the last completed item
-  autoScrollPlanContainer(true);
-}
 
 function renderDecisions(container) {
   const allProjects = [...new Set(STATE.decisions.map(d => d.project).filter(Boolean))].sort();
@@ -4226,18 +3898,8 @@ window.reopenTask = function(taskId) {
   showToast(`Tarea ${taskId} reabierta como pendiente ⬜`);
 };
 
-window.selectCockpitFront = function(frontId) {
-  STATE.cockpitSelectedFrontId = frontId;
-  renderView();
-};
-
 window.selectCsTab = function(cat) {
   STATE.activeCsTab = cat;
-  renderView();
-};
-
-window.setCockpitFilter = function(proj) {
-  STATE.cockpitFilterProj = proj;
   renderView();
 };
 
@@ -4391,6 +4053,19 @@ function normaliseTitle(s) {
     .replace(/[`*_~]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// Parecido por raíces: se cortan las palabras a cinco letras para que «migrar» y
+// «migración» cuenten como la misma, y se ignoran las cortas, que son partículas. Es
+// deliberadamente tosco: sólo tiene que ser bastante bueno para levantar una bandera.
+function titleRoots(t) {
+  return new Set(normaliseTitle(t).split(" ").filter(w => w.length >= 4).map(w => w.slice(0, 5)));
+}
+function similarTitles(a, b) {
+  const A = titleRoots(a), B = titleRoots(b);
+  if (A.size < 2 || B.size < 2) return false;
+  const shared = [...A].filter(w => B.has(w)).length;
+  return shared / Math.min(A.size, B.size) >= 0.8;
+}
+
 function officeCards() {
   const cards = new Map();
   const key = t => normaliseTitle(t);
@@ -4428,14 +4103,35 @@ function officeCards() {
       c => key(c.title).includes(k) || k.includes(key(c.title)));
     if (hit) {
       hit.taskId = t.id; hit.why = t.why || hit.why; hit.status = t.status;
+      hit.declared = t.state || hit.declared; hit.planId = t.plan || hit.planId;
+      hit.block = t.block || hit.block; hit.subBlock = t.sub_block || hit.subBlock;
       if (!hit.sources.includes("tasks")) hit.sources.push("tasks");
     } else {
       cards.set(k, {
         id: t.id, title: t.title, project: t.project || "cross", marker: null,
         active: false, moves_when: "", described_in: t.file || "", why: t.why || "",
-        taskId: t.id, status: t.status, sources: ["tasks"], line: t.line
+        taskId: t.id, status: t.status, declared: t.state || null, planId: t.plan || null,
+        block: t.block || null, subBlock: t.sub_block || null,
+        sources: ["tasks"], line: t.line
       });
     }
+  }
+
+  // ⚠️ `cancelled` y `done` son terminales: salen de la cola, que es la vista sobre los
+  // otros tres. Una tarjeta terminal en el mural es un tablero que nunca se vacía.
+  for (const [k, c] of [...cards]) if (["done", "cancelled"].includes(c.declared)) cards.delete(k);
+
+  // ⚠️ Dos nombres para el mismo trabajo dan dos tarjetas, y la fusión por título sólo
+  // acierta cuando uno contiene al otro: «Migración del parser a records» y «Migrar el
+  // parser a records» no se tocan. Lo que NO se hace es fusionarlas por parecido — una
+  // fusión equivocada **esconde una tarea**, y un tablero al que le falta trabajo es peor
+  // que uno que enseña dos veces el mismo. Se marcan, y el operador decide.
+  // ⚠️ La primera versión cortaba en cuanto una tarjeta ya tenía gemela, así que con tres
+  // nombres del mismo trabajo la tercera se quedaba fuera — y una bandera que no aparece
+  // sobre el caso peor es la que menos sirve. Una tarjeta puede parecerse a varias.
+  const list = [...cards.values()];
+  for (const a of list) {
+    a.twins = list.filter(b => b !== a && similarTitles(a.title, b.title)).map(b => b.title);
   }
 
   const rank = c => c.active ? 0 : c.marker === "⏸" ? 3 : /^\d+$/.test(c.marker || "") ? 1 : 2;
@@ -4448,15 +4144,77 @@ function officeCards() {
 // The five states of `FLOW.md`, derived rather than stored — ⚠️ a second place holding
 // "what is happening now" is the thing that rule exists to prevent.
 function cardState(c) {
+  // ⛔ El estado lo declara la TAREA (`FLOW.md`: «las cinco viven en la tarea»). El marcador
+  // del compás es una vista sobre eso, no la fuente — y sólo se usa cuando la tarea no lo
+  // dice, que es el caso de una instancia que aún no ha migrado el vocabulario.
+  if (c.declared) return c.declared;
   if (c.active) return "active";
   if (c.marker === "⏸") return "paused";
   return "pending";
 }
+
+// ⛔ Toda tarea lleva su hoja desde que existe. La activa la tiene en el `PLAN.md` en vivo;
+// las demás, en su registro de plan — y una `paused` la tiene **llena y con items
+// tachados**, que es lo que `FLOW.md` llama «lo que hace barato cambiar de tarea: la hoja
+// se conserva y se ve, así que reanudar cuesta leer y no reconstruir».
+//
+// ⚠️ El Despacho dejó de buscarla cuando sustituyó al cockpit, así que toda tarea que no
+// fuera la del `▶` salía vacía aunque su plan estuviera en disco — cobrando exactamente la
+// reconstrucción que esa regla existe para evitar.
+function planForCard(c) {
+  if (!c) return null;
+  if (c.active) {
+    return { live: true, items: STATE.livePlan || [], sections: STATE.planSections || [],
+             meta: STATE.livePlanMeta || null, id: STATE.livePlanMeta?.plan_id || null };
+  }
+  const byId = c.planId && (STATE.plans || []).find(p =>
+    String(p.id).toLowerCase() === String(c.planId).toLowerCase());
+  const rec = byId || findPlanForFront({
+    name: c.title, described_in: c.described_in, moves_when: c.moves_when, waits_on: c.waits_on
+  });
+  if (!rec) return null;
+  return {
+    live: false, id: rec.id, meta: rec, sections: [],
+    // El registro de plan trae otra forma; se normaliza a la del plan en vivo para que la
+    // misma función pinte las dos. Dos renderizadores para dos formas del mismo item es
+    // como uno de los dos se queda atrás.
+    items: (rec.items || []).map(it => ({
+      index: it.index, line: null, text: it.text || "",
+      struck: it.status === "done" || Boolean(it.destination),
+      destination: it.destination || "",
+      outcome: outcomeOfDestination(it.destination),
+      section: null, subsection: null, ordered: true,
+      author: null, date: it.completed_at || null
+    }))
+  };
+}
+
+// La misma clasificación que hace el parser, para los destinos que llegan de un registro.
+function outcomeOfDestination(d) {
+  if (!d) return null;
+  const t = String(d).toLowerCase();
+  if (t.includes("discard") || t.includes("⚫")) return "discarded";
+  if (t.includes("mailbox") || t.includes("integrated") || t.includes("task")) return "mailbox";
+  if (t.includes("idea") || t.includes("park")) return "ideas";
+  return "done";
+}
+// Los cinco de `FLOW.md`, y son cinco. ⚠️ `cancelled` y `done` son terminales y no salen
+// al mural — pero existen aquí porque una tarjeta puede llegar con uno de ellos y pintarla
+// como «en cola» sería decir que sigue abierta.
 const STATE_META = {
-  active:  { label: "activa",   icon: "▶", cls: "st-active" },
-  paused:  { label: "en pausa", icon: "⏸", cls: "st-paused" },
-  pending: { label: "en cola",  icon: "○", cls: "st-pending" }
+  active:    { label: "activa",     icon: "▶", cls: "st-active",
+               hint: "es la del ▶. Su hoja es el PLAN.md en vivo" },
+  paused:    { label: "en pausa",   icon: "⏸", cls: "st-paused",
+               hint: "ha estado activa: su hoja está llena y se conserva, por eso reanudarla cuesta leer" },
+  pending:   { label: "en cola",    icon: "○", cls: "st-pending",
+               hint: "abierta y nunca activa todavía. Su hoja existe y puede estar vacía" },
+  paused_r:  { label: "en pausa",   icon: "⏸", cls: "st-paused", hint: "" },
+  cancelled: { label: "cancelada",  icon: "✕", cls: "st-terminal",
+               hint: "terminal: sale de la cola" },
+  done:      { label: "hecha",      icon: "✓", cls: "st-done",
+               hint: "terminal: sale de la cola" }
 };
+delete STATE_META.paused_r;
 
 // ───────────────────────────────────────────────── the plan, in sections
 //
@@ -4498,7 +4256,7 @@ function renderPlanItem(item, editable) {
           ${item.line ? `<span class="pi-line" title="Línea en PLAN.md">L${item.line}</span>` : ""}
         </div>
       </div>
-      ${!routed && editable ? `
+      ${!routed && editable && item.line ? `
         <div class="pi-route" title="Dale su destino — los cuatro de FLOW.md">
           ${Object.entries(OUTCOMES).map(([k, o]) => `
             <button class="pi-route-btn ${o.cls}" title="${o.label} — ${o.hint}"
@@ -4566,21 +4324,35 @@ function renderOffice(container) {
 
     ${count("active") !== 1 ? `
       <div class="office-warning">
-        <strong>⚠️ Hay ${count("active")} tareas marcadas <code>▶</code>.</strong>
-        <span><code>FLOW.md</code> regla 4: varias tareas pueden estar abiertas, pero exactamente
-        una está <code>active</code>. ${count("active") === 0
-          ? "Ninguna lo está, así que el <code>▶</code> no señala nada."
-          : "Dos activas son dos frentes, y entonces el <code>▶</code> no es uno."}</span>
+        <strong>⚠️ ${count("active") === 0 ? "Ninguna tarea está <code>active</code>."
+                                           : `Hay ${count("active")} tareas <code>active</code>.`}</strong>
+        <span>
+          Que <strong>varias estén abiertas a la vez es lo normal</strong> — <code>FLOW.md</code>
+          regla 4 lo permite expresamente, y ahora mismo hay ${cards.length} en el mural. Lo que
+          tiene que ser una es la <code>active</code>:
+          ${count("active") === 0
+            ? "sin ninguna, el <code>▶</code> no señala nada y no hay hoja en vuelo."
+            : "dos <code>active</code> son dos frentes, y entonces el <code>▶</code> no es uno."}
+          Las demás se quedan en <code>paused</code>, que es lo que hace barato cambiar: su hoja
+          se conserva y se ve.
+        </span>
       </div>` : ""}
 
     <div class="office-filters">
       <div class="filter-row">
         <span class="filter-label">Estado</span>
         <button class="chip-filter ${fs === "ALL" ? "active" : ""}" onclick="setOfficeFilter('state','ALL')">Todas (${cards.length})</button>
-        ${Object.entries(STATE_META).map(([k, m]) => `
-          <button class="chip-filter ${fs === k ? "active" : ""} ${m.cls}" onclick="setOfficeFilter('state','${k}')">
+        ${["active", "paused", "pending"].map(k => {
+          const m = STATE_META[k];
+          return `
+          <button class="chip-filter ${fs === k ? "active" : ""} ${m.cls}" onclick="setOfficeFilter('state','${k}')"
+                  title="${m.hint}">
             ${m.icon} ${m.label} (${count(k)})
-          </button>`).join("")}
+          </button>`;
+        }).join("")}
+        <span class="filter-note" title="FLOW.md: cancelled y done son terminales — dejan la cola, que es la vista sobre los otros tres.">
+          ✕ ✓ las terminales dejan el tablero
+        </span>
       </div>
       <div class="filter-row">
         <span class="filter-label">Proyecto</span>
@@ -4598,7 +4370,10 @@ function renderOffice(container) {
         const m = STATE_META[st];
         // The plan belongs to the task. Only the active one has the live sheet; the rest
         // show what their sheet holds when the instance keeps one per task.
-        const items = c.active ? STATE.livePlan : [];
+        // ⛔ Antes era `c.active ? STATE.livePlan : []`, así que toda tarjeta que no fuera
+        // la del ▶ decía «sin plan abierto todavía» aunque su hoja estuviera en disco.
+        const sheet = planForCard(c);
+        const items = sheet ? sheet.items : [];
         const routed = items.filter(i => i.struck || i.outcome).length;
         const pct = items.length ? Math.round(routed / items.length * 100) : null;
         return `
@@ -4621,12 +4396,19 @@ function renderOffice(container) {
               </div>
               <div class="mural-peek">pasa el ratón para leerla entera</div>` : ""}
             ${pct !== null ? `
-              <div class="mural-progress">
+              <div class="mural-progress" title="${sheet.live ? "PLAN.md en vivo" : `plan ${esc(sheet.id || "")}`}">
                 <div class="mural-bar"><div class="mural-fill" style="width:${pct}%"></div></div>
-                <span class="mural-pct">${routed}/${items.length} enrutados</span>
-              </div>` : `<div class="mural-noplan">sin plan abierto todavía</div>`}
+                <span class="mural-pct">${routed}/${items.length}${sheet.live ? " · en vivo" : ""}</span>
+              </div>` : `
+              <div class="mural-noplan" title="Toda tarea lleva su hoja desde que existe; ésta está vacía o no se ha encontrado su registro.">
+                hoja vacía
+              </div>`}
             <footer class="mural-foot">
               ${c.taskId ? `<span class="tag-pill tag-purple">${esc(c.taskId)}</span>` : ""}
+              ${c.twins && c.twins.length ? `
+                <span class="twin-flag" title="Se parece${c.twins.length > 1 ? "n" : ""} mucho a ésta: ${c.twins.map(t => `«${esc(t)}»`).join(" · ")}. Si son el mismo trabajo, unifica el título o declara **plan:** con el mismo id. La interfaz no las fusiona sola porque una fusión equivocada esconde una tarea, y a un tablero al que le falta trabajo no se le nota.">
+                  ⧉ ${c.twins.length === 1 ? "posible duplicada" : `${c.twins.length} posibles duplicadas`}
+                </span>` : ""}
               ${c.sources.map(s => `<span class="src-chip src-${s}">${s}</span>`).join("")}
               <span class="mural-go">abrir despacho →</span>
             </footer>
@@ -4649,9 +4431,15 @@ function renderDesk(container) {
 
   const st = cardState(card);
   const m = STATE_META[st];
-  const isLive = card.active;
-  const items = isLive ? STATE.livePlan : [];
-  const sections = isLive ? (STATE.planSections || []) : [];
+  // ⛔ Aquí estaba la regresión. Era `isLive ? STATE.livePlan : []`, y `findPlanForFront`
+  // —que ya existía y el cockpit anterior sí llamaba— dejó de usarse: toda tarea que no
+  // fuera la del ▶ enseñaba un cartel de «en pausa» y ninguna hoja, aunque su plan
+  // estuviera en disco. Reanudarla costaba reconstruirla, que es justo lo que el estado
+  // `paused` existe para evitar.
+  const sheet = planForCard(card);
+  const isLive = Boolean(sheet && sheet.live);
+  const items = sheet ? sheet.items : [];
+  const sections = sheet ? (sheet.sections || []) : [];
   const groups = planTree(items, sections);
   const routed = items.filter(i => i.struck || i.outcome).length;
   const pct = items.length ? Math.round(routed / items.length * 100) : 0;
@@ -4726,12 +4514,24 @@ function renderDesk(container) {
 
     <div class="desk-grid">
       <section class="desk-plan"><div class="desk-screen">
-        ${isLive ? `
-          ${STATE.livePlanMeta?.order_why ? `
+        ${sheet ? `
+          ${!isLive ? `
+            <div class="sheet-banner ${m.cls}">
+              <span class="sheet-banner-icon">${m.icon}</span>
+              <div>
+                <strong>Hoja conservada${sheet.id ? ` · <code>${esc(sheet.id)}</code>` : ""}</strong>
+                <span>${st === "paused"
+                  ? "Esta tarea ha estado activa y su hoja se guarda tal cual la dejaste — con sus items tachados y sus destinos. Reanudarla cuesta leer, no reconstruir."
+                  : "Se lee de su registro de plan. Sólo la tarea del <code>▶</code> escribe en el <code>PLAN.md</code> en vivo, así que aquí no hay botones de enrutado."}</span>
+              </div>
+              ${STATE.activeFront ? `<button class="btn-quick out-done" onclick="navigateTo('cockpit')">ver la activa →</button>` : ""}
+            </div>` : ""}
+          ${sheet.meta?.order_why ? `
             <div class="order-why-card">
               <div class="order-why-header"><span class="order-why-icon">🧠</span>
-                <strong>El orden, y por qué este orden</strong></div>
-              <div class="order-why-body">${inline(STATE.livePlanMeta.order_why)}</div>
+                <strong>El orden, y por qué este orden</strong>
+                ${!isLive && sheet.id ? `<span class="order-why-badge">${esc(sheet.id)}</span>` : ""}</div>
+              <div class="order-why-body">${inline(sheet.meta.order_why)}</div>
             </div>` : ""}
 
           ${groups.length ? groups.map(g => {
@@ -4746,16 +4546,19 @@ function renderDesk(container) {
                 <span class="sec-count">${gr}/${g.items.length}</span>
               </div>
               <div class="plan-section-items">
-                ${g.items.map(i => renderPlanItem(i, true)).join("")}
+                ${g.items.map(i => renderPlanItem(i, isLive)).join("")}
               </div>
             </div>`;
           }).join("") : `
             <div class="empty-state"><div class="empty-icon">📋</div>
               <h3>El plan está vacío</h3>
               <p>Esta tarea tiene su hoja desde que existe (<code>FLOW.md</code>), pero nadie la ha
-                 planificado todavía. Escribe abajo el primer item, o invoca <code>current-plan</code>.</p>
+                 planificado todavía. ${isLive
+                   ? "Escribe abajo el primer item, o invoca <code>current-plan</code>."
+                   : "Se planifica con <code>current-plan</code>."}</p>
             </div>`}
 
+          ${isLive ? `
           <!-- CAPTURA EN VIVO -->
           <div class="capture-box">
             <div class="capture-head">
@@ -4779,23 +4582,25 @@ function renderDesk(container) {
               <button class="btn-quick out-mailbox" onclick="captureTo('mailbox')" title="Va al buzón para debatirlo">📬 buzón</button>
               <button class="btn-quick out-ideas" onclick="captureTo('ideas')" title="Interesante, pero no ahora">💡 idea</button>
             </div>
-          </div>
+          </div>` : ""}
         ` : `
           <div class="front-state-card ${st === "paused" ? "paused-state-card" : "queued-state-card"}">
             <div class="state-card-icon">${m.icon}</div>
-            <h3>${st === "paused" ? "Tarea en pausa" : "Tarea en cola"}</h3>
+            <h3>Sin hoja que enseñar</h3>
             <p class="state-card-desc">
-              ${st === "paused"
-                ? "Su hoja se conserva tal cual estaba: <code>paused</code> es lo que hace barato cambiar de tarea, porque reanudarla cuesta leer y no reconstruir (<code>FLOW.md</code>)."
-                : "Está en la brújula y todavía no es la activa. Su hoja existe y está vacía."}
+              Toda tarea lleva una desde que existe (<code>FLOW.md</code>), así que esto significa
+              una de dos: <strong>está vacía porque nadie la ha planificado</strong>, o
+              <strong>su registro de plan no se ha encontrado</strong> — y la interfaz no puede
+              distinguirlo desde fuera.
             </p>
             <div class="state-detail-box">
               <strong>${card.waits_on ? "Espera a" : "Condición de avance"}:</strong>
               <p>${inline(card.moves_when || card.waits_on || "Secuenciada en el orden de trabajo.")}</p>
             </div>
             <div class="state-guidance-box">
-              <span>💡 El plan en vivo pertenece a la tarea marcada <code>▶</code>. Mueve el <code>▶</code>
-                    en <code>COMPASS</code> para trabajar ésta, y su hoja se abre aquí.</span>
+              <span>💡 Se planifica con <code>current-plan</code>. Si crees que su plan existe,
+                    comprueba que la tarea declare <code>**plan:**</code> con su id — es lo que
+                    la ata a su registro sin depender de que los títulos se parezcan.</span>
             </div>
           </div>`}
       </div></section>
