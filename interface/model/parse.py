@@ -207,11 +207,7 @@ def clean(s):
 #     **Asks**    qué juicio se te pide         · qué se decide
 #     **Affects** qué se mueve si se mueve      · qué se mueve
 MAIL_AX46 = {"serves": "Serves", "what": "What", "asks": "Asks", "affects": "Affects"}
-# ⛔ `[\s\S]*?` y no `.*`: el valor sigue hasta el siguiente campo o el final del cuerpo,
-# porque una prosa que se lee ocupa más de una línea. Cortarla por el salto entrega media
-# frase con aspecto de frase entera, que es peor que no leerla.
-MAIL_FIELD = re.compile(r"^\*\*(?P<k>Serves|What|Asks|Affects)\*\*[ \t]*(?P<v>[\s\S]*?)"
-                        r"(?=\n\*\*(?:Serves|What|Asks|Affects)\*\*|\n\s*\n|\Z)", re.M)
+MAIL_FIELD = re.compile(r"^\*\*(?P<k>Serves|What|Asks|Affects)\*\*\s*(?P<v>.*)$", re.M)
 
 
 def parse_queue(path, text):
@@ -242,8 +238,7 @@ def parse_queue(path, text):
             # de dejar de parsear — un contrato nuevo que rompe lo ya escrito no se adopta.
             fields46 = {k: None for k in MAIL_AX46}
             for fm in MAIL_FIELD.finditer(raw):
-                val = clean(" ".join(fm.group("v").split())).lstrip("—–-").strip()
-                fields46[fm.group("k").lower()] = val or None
+                fields46[fm.group("k").lower()] = clean(fm.group("v"))
             prose = MAIL_FIELD.sub("", raw).strip()
             ents.append({"kind": "mailbox-entry", "id": None, "line": i + 1,
                          "body": raw, "prose": prose, **fields46, **f})
@@ -385,14 +380,26 @@ def parse_park(path, text):
 # session that had just written the rule against it: the shape changed and its reader did not.
 # ⛔ The marker is FIRST because that is the one field a reader scans for, and it is the one field
 # a regex can anchor on without knowing anything else about the line.
-WALL_TASK = re.compile(r"^###\s+(?P<marker>[▶⏸⬜✅✖])\s+`(?P<project>[^`]+)`\s*·\s*(?P<title>.+?)\s*$")
-WALL_FIELD = re.compile(r"^\*\*(?P<k>Serves|Sheet|Why it is committed|What it affects|Drains)\*\*"
+WALL_TASK = re.compile(r"^###\s+(?P<marker>[▶⏸⬜✅✖⤴])\s+`(?P<project>[^`]+)`\s*·\s*(?P<title>.+?)\s*$")
+WALL_FIELD = re.compile(r"^\*\*(?P<k>Serves|Sheet|Why it is committed|What it affects|Drains|Returns when|Closed|Deferred)\*\*"
                         r"\s*(?P<v>.*)$")
 # Los cuatro de `AX-46` sobre una tarea del muro, y el nombre de cada uno en el fichero.
 # ⛔ Se escribe UNA vez: la lista que valida y la lista que se lee tienen que ser la misma, o
 # un campo se exige y no se guarda — que es exactamente lo que pasaba.
 WALL_AX46 = {"serves": "Serves", "why": "Why it is committed", "affects": "What it affects"}
-MARKER_STATE = {"▶": "active", "⏸": "paused", "⬜": "pending", "✅": "done", "✖": "cancelled"}
+MARKER_STATE = {"▶": "active", "⏸": "paused", "⬜": "pending", "✅": "done", "✖": "cancelled",
+                # ⤴ DEFERRED — `MLabs:FLOW.md`, 2026-09-05. It is the inverse of promotion and it
+                # is a TRANSITION, not one of the five states: the task left the wall and went back
+                # to its plan as a sub-block. It lives in the bin because *left the wall* is one
+                # question with one answer, and it is NOT terminal — the work is still intended.
+                # ⛔ Added in the SAME act as the wall and `FLOW.md`. The last time this file's
+                # grammar changed without its reader, the cockpit reported zero active over three;
+                # the comment above WALL_TASK is that incident and this line is the rule applied.
+                "⤴": "deferred"}
+# ⛔ `deferred` is deliberately NOT in FLOW_STATES: a task carries one of five states, and this is
+# how it stopped carrying any. Anything validating a task's state against that tuple must therefore
+# never see a deferred entry — which holds because deferred entries are always `in_bin`.
+DEFERRED_MARKER = "⤴"
 
 
 def parse_wall(path, text):
@@ -400,10 +407,7 @@ def parse_wall(path, text):
     ents, probs, lines = [], [], text.splitlines()
     cur = None
     in_bin = False
-    eaten = set()
     for i, line in enumerate(lines):
-        if i in eaten:
-            continue
         if line.startswith("## "):
             in_bin = "bin" in line.lower()
         m = WALL_TASK.match(line)
@@ -421,7 +425,8 @@ def parse_wall(path, text):
                    "active": m["marker"] == "▶" and not in_bin,
                    "name": clean(m["title"]), "project": m["project"],
                    "in_bin": in_bin, "serves": None, "sheet": None,
-                   "described_in": None, "affects": None, "why": None, "drains": None}
+                   "described_in": None, "affects": None, "why": None, "drains": None,
+                   "returns_when": None}
             ents.append(cur)
             continue
         if cur is None:
@@ -429,24 +434,7 @@ def parse_wall(path, text):
         f = WALL_FIELD.match(line.strip())
         if f:
             k = f["k"]
-            # ⛔ Un campo se lee hasta el SIGUIENTE campo o el siguiente bloque, no hasta el
-            # final de la línea. Los campos reales ocupan varias líneas —así se escribe una
-            # prosa que se lee— y cortarlos por el salto entregaba media frase con aspecto de
-            # frase entera: «…so it is active while its queue is non-empty and». ⚠️ Eso es
-            # peor que no leer el campo: quien lo mira no tiene forma de saber que le falta
-            # la mitad, y `AX-46` existe justamente para que el artefacto se lea entero.
-            parts = [f["v"]]
-            j = i + 1
-            while j < len(lines):
-                nxt = lines[j].strip()
-                if not nxt or nxt.startswith("#") or WALL_FIELD.match(nxt) or WALL_TASK.match(lines[j]):
-                    break
-                parts.append(nxt)
-                eaten.add(j)
-                j += 1
-            # ⚠️ Un guión de apertura es puntuación, no contenido: `**Serves** — texto` y
-            # `**Serves** texto` son el mismo campo escrito de dos maneras.
-            v = clean(" ".join(parts)).lstrip("—–-").strip()
+            v = clean(f["v"])
             # ⛔ La cadena estaba rota: un `if cur.get("sheet")` se colaba entre los `elif`, así
             # que `What it affects` sólo se guardaba **cuando la tarea no tenía `Sheet`**, y
             # `Why it is committed` no se asignaba a ninguna parte — lo reconocía el patrón y se
@@ -455,17 +443,32 @@ def parse_wall(path, text):
             # `serves`. ⚠️ Un campo que se exige y no se guarda es peor que uno que no se exige:
             # el fichero lo lleva, el lector no lo ve, y nada dice cuál de los dos falla.
             if k == "Serves":
-                # una línea puede llevar `**Serves** x · **Sheet** y`
-                halves = re.split(r"·\s*\*\*Sheet\*\*", v)
-                cur["serves"] = clean(halves[0])
-                if len(halves) > 1:
-                    cur["sheet"] = clean(halves[1])
+                # Una línea de cabecera puede llevar VARIOS campos: `**Serves** x · **Sheet** y ·
+                # **Returns when** z`. ⛔ La versión anterior partía SÓLO por `**Sheet**` y metía
+                # todo lo que viniera detrás en `sheet`, así que un campo nuevo en esa misma línea
+                # se tragaba en silencio — y su check saltaba sobre un fichero CORRECTO.
+                # Lo encontró una plantada, no una lectura (`MLabs:AX-7`): el caso bien formado
+                # fue el que falló. Ahora parte por cualquiera de los nombres conocidos.
+                INLINE = ("Sheet", "Returns when", "Why it is committed", "What it affects",
+                          "Drains")
+                pat = r"·\s*\*\*(" + "|".join(re.escape(x) for x in INLINE) + r")\*\*"
+                parts = re.split(pat, f["v"])
+                cur["serves"] = clean(parts[0])
+                for name, val in zip(parts[1::2], parts[2::2]):
+                    key = {"Sheet": "sheet", "Returns when": "returns_when",
+                           "Why it is committed": "why", "What it affects": "affects",
+                           "Drains": "drains"}[name]
+                    cur[key] = clean(val)
             elif k == "Sheet":
                 cur["sheet"] = v
             elif k == "Why it is committed":
                 cur["why"] = v
             elif k == "What it affects":
                 cur["affects"] = v
+            elif k == "Returns when":
+                # ⛔ Lo que traería de vuelta una tarea aplazada. `FLOW.md` lo exige: sin
+                # condición, aplazar es olvidar con pasos de más.
+                cur["returns_when"] = v
             elif k == "Drains":
                 # Qué cola drena esta tarea, si drena alguna. `FLOW.md`: el estado de un drenaje
                 # se deriva de la cuenta, no se elige — y sin este campo no hay cuenta que mirar.
@@ -491,6 +494,24 @@ def parse_wall(path, text):
     # ⛔ THE FLOOR, and it lives here rather than after the table reader because that is where it
     # was and it never ran: `parse_wall` returns early on a wall, so a board with work and nothing
     # active reported clean. Found by a plant, not by reading (`AX-7`).
+    # ⛔ DEFERRAL, two checks, and the second is the one that carries the rule.
+    # (a) ⤴ outside the bin is a task claiming to have left the wall while still on it.
+    # (b) `FLOW.md`: **a deferral names what would bring it back.** A deferral with no condition is
+    #     forgetting with extra steps — which is the failure mode of the whole idea, not an edge
+    #     case, so it is checked rather than trusted. The field is `**Returns when**`.
+    for e in ents:
+        if e["marker"] != DEFERRED_MARKER:
+            continue
+        if not e["in_bin"]:
+            probs.append(Problem(path, e["line"],
+                                 f"`{e['name']}` is marked ⤴ deferred and is not in the bin — "
+                                 f"deferral means the row LEFT the wall, so it is recorded there "
+                                 f"beside done and cancelled", "", kind="contract"))
+        if not e.get("returns_when"):
+            probs.append(Problem(path, e["line"],
+                                 f"`{e['name']}` is deferred and names no **Returns when** — a "
+                                 f"deferral that cannot say what would bring it back is a "
+                                 f"cancellation that has not admitted it", "", kind="contract"))
     live = [e for e in ents if not e["in_bin"]]
     # ⛔ Entries that are ALL in the bin means the live half stopped matching the grammar — the
     # bin's ✅ headings kept parsing while the ▶/⬜ ones did not, so the board read as "two done

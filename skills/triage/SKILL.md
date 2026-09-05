@@ -10,7 +10,7 @@ cannot be skipped, the one delegated case, and what a queue looks like when the 
 **Below is how a pass is actually worked.**
 
 ## Occasion
-- a `notebook/` sheet or `MAILBOX.md` has accumulated entries, or the compass names a triage.
+- a `93_Notebook/` sheet or `MAILBOX.md` has accumulated entries, or the compass names a triage.
 - An agent's findings need integrating.
 
 ---
@@ -23,7 +23,7 @@ mixing them is what made the mailbox expensive in the first place.
 
 | | **Stage 1 · the notebook drain** | **Stage 2 · the mailbox triage** |
 |---|---|---|
-| Reads | `notebook/*.md` — one-line notes across every sheet, nothing adjudicated | `MAILBOX.md` — entries that already survived stage 1 |
+| Reads | `93_Notebook/*.md` — one-line notes across every sheet, nothing adjudicated | `MAILBOX.md` — entries that already survived stage 1 |
 | Asks | *what kind of thing is this?* | *what is the right destination, and does the claim still hold?* |
 | Outcomes | **applied** · → mailbox · → tasks · **discarded** | the destination vocabulary in §5 |
 | Costs | minutes. Most notes end **discarded** and that is information | judgement. This is the expensive one and it should stay expensive |

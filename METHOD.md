@@ -266,7 +266,7 @@ lapse.
 | `PLAN.md` | Live plan | **the active task's plan sheet** — a view, since every task carries its own |
 | `MAILBOX.md` | Queue | agent → operator, every project |
 | `TASKS.md` | Queue | operator → agent, every project |
-| `notebook/ideas.md` | Park | deliberately not done, with the reason, every project |
+| `93_Notebook/ideas.md` | Park | deliberately not done, with the reason, every project |
 
 Named literally because AX-21 requires it: *"the central file for that kind"* is not a path, and
 an agent that has to guess has already failed the cold start.
@@ -456,7 +456,7 @@ regenerates** (AX-20), and it is read as current for as long as nobody compares 
 | Something *you* delivered, including what leaves no commit | Work log, one line, citing an artefact |
 | Something an agent found while doing something else | `MAILBOX.md`, one line, no investigating, no fixing (AX-25) |
 | Something that needs executing | `TASKS.md`, with its why |
-| Something interesting with no commitment | a `notebook/` sheet — one line while fresh. It reaches the park through the mailbox, carrying the decision that parked it |
+| Something interesting with no commitment | a `93_Notebook/` sheet — one line while fresh. It reaches the park through the mailbox, carrying the decision that parked it |
 | Committed, sequenced, but not started | `TASKS.md`, with `blocked_by:` naming what must land first. The sequence is a graph over the tasks, never a second document |
 | Anything going into a queue or a park | The central file for that kind, **with `project:` filled in** |
 | What you are doing right now | `PLAN.md` |

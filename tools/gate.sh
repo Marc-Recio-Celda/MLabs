@@ -184,7 +184,7 @@ fi
 #
 #     The line is now: **the system folder and the knowledge domains are STRUCTURE and may
 #     be named; `98_PROJECTS` is the operator's WORK and may not.** A skill may say
-#     `99_SYSTEM/notebook/README.md` because that path is the same on every instance built
+#     `93_Notebook/README.md` because that path is the same on every instance built
 #     from this method. Nothing may say `98_PROJECTS/…` because what is under it is one
 #     person's projects, and their names are the leak. (The operator, 2026-09-05: *"MLabs debe
 #     permitir referenciar los archivos de nexus, a no ser que sean trabajos míos, eso sigue
