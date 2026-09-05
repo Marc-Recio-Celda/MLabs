@@ -37,11 +37,25 @@ confusion this role exists to catch, seen from inside.**
 | --------------------------- | -------------------------------------------------------------------------------------- |
 | The three levels            | `PHILOSOPHY.md` · any `AXIOMS.md`, in any department · any project's `architecture.md` |
 | The method and the bindings | `METHOD.md` · any `AGENTS.md` and its `CLAUDE.md` pointer · `PURPOSE.md`               |
-| What executes               | any `skills/*/SKILL.md` · anything under `tools/` · **anything under `interface/`**    |
+| What executes               | anything under `tools/` · **anything under `interface/`**                              |
 | What guards the boundary    | the allowlist (`.gitignore`) · the denylist · the router                               |
 
 **Not structural — and this half is the whole point:** the live set (`COMPASS` · `PLAN` · `MAILBOX`
-· `TASKS` · `IDEAS`) · the three logs · notes in the knowledge domains · code, data and content.
+· `TASKS` · `IDEAS` · the notebook) · the three logs · notes in the knowledge domains · code, data
+and content · **and, since 2026-09-05, `skills/*/SKILL.md`.**
+
+⚠️ **Skills came off the structural list on the operator's ruling** — *"las skills no son ni mucho
+menos archivos estructurales, aunque haya que cambiarlas con cuidado"* — and the reasoning holds up
+against what actually protects them. A skill is a **procedure**, not a rule: it says how a job is
+worked, and getting it wrong costs one badly-worked job, not a corpus that no longer means what it
+says. **What guards a skill against the one failure that would be structural — an `AX-1` leak — is
+`tools/gate.sh`, which runs at every commit and fired on exactly that the day the skills were
+rewritten.** An audit round is not what was catching it.
+
+⛔ **Not structural is not *edit freely*.** *"Aunque haya que cambiarlas con cuidado"* is the
+operator's own qualifier and it stays: a skill still carries its verification as a prediction, still
+declares what it does not do, and a change to one is still read before it is trusted. **What changed
+is who reviews it, not whether it is reviewed.**
 
 ⚠️ **The second list is what keeps this occasion from being permanent** (`skills/audit/`).
 

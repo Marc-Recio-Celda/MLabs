@@ -14,7 +14,18 @@ root is the instance's, declared in its binding.**
 
 ## The procedure
 
-**1. Copy the template.** The cartridge is copied, never typed (`MLabs:AX-26`). Copy it whole, then
+**0. Create `<project>/nexus/` — the folder, before any file.** ⛔ **Step 1 copies into it; it does
+not create it.** ⚠️ **This step exists because the rule below was stated once, in the preamble, and
+the files were written one level up anyway** — reported by the operator 2026-09-05 across a whole
+the projects root (`98_PROJECTS/`). **A constraint named in a preamble and absent from the step it constrains is a
+convention, not a rule**, and this is the same shape as every *published check that cannot match* in
+this company's log. The fix is the same one every time: put it where it fires.
+
+**Check, before step 1:** `test -d <project>/nexus && echo ok` → `ok`. A project directory with no
+`nexus/` is an incomplete creation, and `build-nexus` reports it whoever made it.
+
+**1. Copy the template.** The cartridge is copied, never typed (`MLabs:AX-26`). Copy it whole **into
+`<project>/nexus/`**, then
 substitute every placeholder — the project's name, its path, its own `AX-n` series — in one pass.
 **A placeholder that survives the copy is a defect, not a to-do.**
 
