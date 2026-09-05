@@ -21,7 +21,14 @@ the projects root (`98_PROJECTS/`). **A constraint named in a preamble and absen
 convention, not a rule**, and this is the same shape as every *published check that cannot match* in
 this company's log. The fix is the same one every time: put it where it fires.
 
-**Check, before step 1:** `test -d <project>/nexus && echo ok` → `ok`. A project directory with no
+**Check, before step 1:** `test -d <project>/nexus && echo ok` → `ok`.
+
+⚠️ **The cartridge's file names changed 2026-09-05 (`M-135`) and this skill was rewritten with
+them:** `state.md` → **`plan.md`** (it was 53 % plan and 5.5 % present-tense, measured across ten
+cartridges) and `architecture.md` → **`axioms.md`** (it holds rules, and the two departments above
+it were already called what they are). ⛔ **A cartridge opened today carries the new names.** A
+cartridge that still has the old ones is *not migrated*, which `coherence.py` reports as such — never
+as missing. A project directory with no
 `nexus/` is an incomplete creation, and `build-nexus` reports it whoever made it.
 
 **1. Copy the template.** The cartridge is copied, never typed (`MLabs:AX-26`). Copy it whole **into
@@ -33,7 +40,7 @@ substitute every placeholder — the project's name, its path, its own `AX-n` se
 own directory holds its code and its data, and `nexus/` holds what governs them.
 
 **The cartridge's files and what each holds are `MLabs:METHOD.md` §2's.** What this procedure adds
-is **when two of them are created at all**: `architecture.md` and `skills/` **open with their first
+is **when two of them are created at all**: `axioms.md` and `skills/` **open with their first
 entry and never as an empty container.**
 
 **2. Fill `definition.md`, and purpose comes before mechanism.** ⛔ **What this project is for, and
@@ -43,7 +50,7 @@ success criteria · constraints · data available. **Then, in its own section, w
 not.** The negative half is written now, while the boundary is still visible to the author: **it
 keeps scope from arriving unannounced, and no later pass can reconstruct it** (`MLabs:AX-4`).
 
-**3. Open `architecture.md` — the project's own axiom department.** It opens with at least one rule
+**3. Open `axioms.md` — the project's own axiom department.** It opens with at least one rule
 or it is not opened at all; **an empty axiom file reads as *this project has no constraints*.** Each
 entry is numbered in the project's own series, bare inside this file and anchored the moment it is
 cited anywhere else (`MLabs:AX-31`), and each names the clause it serves. Which rules belong here is
@@ -54,10 +61,10 @@ own header (`MLabs:AX-2`); every entry carries author, date, reasoning and **wha
 (`MLabs:AX-24`). **The first entry is the one that created the project:** why it exists, and what
 shape was rejected for it.
 
-**5. Open `state.md` and `Decision_Log.md` as live documents.** Both state their present and
+**5. Open `plan.md` and `Decision_Log.md` as live documents.** Both state their present and
 neither carries a changelog (`MLabs:AX-41`).
 
-- `state.md` — current position, what it waits on, and the active risks with the fallback agreed
+- `plan.md` — current position, what it waits on, and the active risks with the fallback agreed
   for each, all of it against `METHOD.md` §2 step 1b's test. ⚠️ **`next action` is a required field,
   not a courtesy** — a state file without one is a project whose next move lives in somebody's head,
   and `interface/model/parse.py` reports its absence by name.
@@ -124,10 +131,10 @@ trusting a clean run** (`MLabs:AX-7`).
 
 | # | Prediction |
 |---|---|
-| 1 | Listing the cartridge returns **step 1's four files**, plus `architecture.md` and `skills/` only where they have content, plus the agent contract only where step 6 leaves it there |
+| 1 | Listing the cartridge returns **step 1's four files**, plus `axioms.md` and `skills/` only where they have content, plus the agent contract only where step 6 leaves it there |
 | 2 | Searching the cartridge for the central queue and park filenames returns **nothing** |
 | 3 | Searching the cartridge for template placeholders returns **nothing** |
-| 4 | `architecture.md` holds ≥ 1 axiom; every one is bare, every foreign rule cited in it is anchored |
+| 4 | `axioms.md` holds ≥ 1 axiom; every one is bare, every foreign rule cited in it is anchored |
 | 5 | `Decision_Log.md` holds ≥ 1 entry, and its header states the field contract |
 | 6 | The compass holds exactly one `▶` across every project, and a row naming this one |
 | 7 | Every new queue or park entry carries `project:` — entry count and `project:` count match |

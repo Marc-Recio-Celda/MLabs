@@ -19,8 +19,8 @@ empties, a record someone edited, a plan that quietly became a backlog.
 |---|---|---|
 | **Record** | Append-only. Never edited, never deleted, grows forever. The receipt | Editing it destroys the only copy of what was true then |
 | **Queue** | Filled by one side, drained by the other; an item leaves when it is done (AX-15). **Not a stack and not first-in-first-out** — the order is the operator's to set and reset at any time; what a queue guarantees is that nothing leaves without a destination, never that things leave in the order they arrived | A queue that only grows stops saying what is left |
-| **Compass** | Tiny, rewritten in place, **one active front**. Read at every open, updated at every close | A compass with eight priorities never contradicts reality, so it is never corrected |
-| **Live plan** | **The active task's subtasks, rewritten continuously while the work happens.** Its lifecycle is the task's and `FLOW.md` rules 3 and 4 own it — this row does not restate them | A live plan that survives its task has become a backlog |
+| **Compass** | The wall. Rewritten in place, **read at every open and updated at every close**, holding every task and its state. ⛔ **Several tasks may be active; at least one is, whenever work is happening** | A board nobody states the active count of is a list of eight priorities that never contradicts reality, so it is never corrected |
+| **Plan sheet** | **One task's subtasks, rewritten while that task is worked.** One sheet per task, so several may be open at once; its lifecycle is the task's and `FLOW.md` owns it | A sheet that survives its task has become a backlog |
 | **Park** | No date, no commitment, no obligation to revisit | A park with dates is a task list nobody agreed to |
 | **Standing** | Rewritten in place; always states what is true *now* or what must hold. Never appended to, never emptied | A standing document that grows by accretion has become a record nobody can trust as current |
 
@@ -56,7 +56,7 @@ all **Standing**: each is rewritten to stay true, and none is ever a place thing
   active front, here is what it waits on, here is what is queued behind it — *shall we?* An
   opening with no intent is not an absence of instruction; it is an instruction to orient.
 
-Either way `COMPASS.md` names one active front `▶` and points at where that work is described;
+Either way `WALL.md` names every task and which of them carry the `▶` — **at least one whenever work is happening, and there may be several** — and points at where each is described;
 it describes none of it.
 
 **Open the active task's plan sheet — and plan it now if it is still empty.** The concrete
@@ -166,7 +166,7 @@ Two queues, running in opposite directions, and **neither side empties its own**
 - **Task list** — operator → agent. Work to execute, each task carrying **its why**, because an
   executor that does not know the purpose cannot refuse a task whose premise is false (AX-14).
 
-**And one capture file in front of both, which is not a third direction.** It is where anything the
+**And one capture folder in front of both, which is not a third direction.** It is where anything the
 operator or an agent thinks of lands as one line, before anyone has decided what it is. **It has no
 direction because nothing has been adjudicated yet** — that is what the first drain does, and it is
 the reason the file exists: it lets `AX-15` hold on both queues instead of the operator filling the
@@ -196,6 +196,21 @@ queue is in transit: it was written in order to be routed, and **the plan is the
 each entry went**. So the plan closes and stays (`FLOW.md` rule 3), while the mailbox ends empty —
 or with what is unresolved **named explicitly**, because a mailbox that goes in full and comes out
 full means the session closed nothing.
+
+### Promotion — how anything gets from a plan onto the wall
+
+**A sub-block is a piece of a plan; a task is a commitment.** They were the same thing until
+2026-09-05 and that is what produced two right answers to *what is pending*: the queue held what was
+committed, the boards held what existed, and nothing joined them. **A sub-block becomes a task when
+somebody decides it is time**, and only then does it appear on the wall with a sheet of its own.
+
+⛔ **The floor, and it is what bounds promotion: if work is happening, at least one task is active.**
+If none is, the agent says so and one is assigned — with its project, its plan and its objectives. A
+ready sub-block that nobody promotes is invisible from the wall, and this rule is checked by the act
+of working rather than by anyone remembering to look.
+
+⛔ **A draining task is `active` while its queue is non-empty**, `paused` only when it is empty. The
+state of a drain is derived from its count, never chosen.
 
 ⚠️ **Triage is scoped by filter, never "the whole mailbox".** One front triages one project, or
 one destination class — not thirty entries at once. That is not tidiness: a thirty-entry triage
@@ -261,7 +276,7 @@ an agent that has to guess has already failed the cold start.
 **Answered rather than deferred**, because a design that has not named its breaking point was designed for today. **Designed for ~10 projects and ~50
 open items across all queues.** The first thing to become manual is **triage**, and it breaks
 earlier than the rest: at roughly **25–30 open entries** a single triage stops fitting behind
-one active front, and the five-item audit cap turns it into six firings inside one front that
+the active tasks, and the five-item audit cap turns it into six firings inside one task that
 never closes. **The mitigation is structural and stated above — triage is scoped by
 filter, never taken whole** — which keeps the breaking point a property of the *unfiltered*
 pile rather than of the design. The second to go is reading: one file per kind is

@@ -9,6 +9,14 @@ description: Brings a project's definition and state back in line with what the 
 defined once, at its least informed moment, and then the work teaches things that never travel back
 into the definition. **Six months later the plan describes a project nobody is doing.**
 
+
+> ⚠️ **The cartridge's file names changed 2026-09-05 (`M-135`).** `state.md` → **`plan.md`**,
+> `architecture.md` → **`axioms.md`**, and a new **`objectives.md`** sits between the definition and
+> the plan: the definition holds the project's `PH-0` and barely moves, the objectives hold what is
+> being pursued now and evolve, the plan holds how they get met. ⛔ **This skill's `objectives.md`
+> half is NOT written yet** — ten cartridges have no objectives file and writing one is a judgement
+> about that project, not a template. `99_SYSTEM/MIGRATION-M135.md` row 7 is where that is tracked.
+
 ## Why it is a separate door from the audit
 
 **This skill decides what is true instead** — which is a **decision**, and decisions are the
@@ -69,7 +77,7 @@ still finds the string and reports no change.
 | Symptom | What it usually means |
 |---|---|
 | The blocks no longer describe the work | the plan was written before the shape was known, and the shape moved |
-| `state.md` is several decisions behind | nothing in the close touches it, so it decays silently |
+| `plan.md` is several decisions behind | nothing in the close touches it, so it decays silently |
 | The next action names something already done | the state is a photograph nobody re-took |
 | Opening the project and not recognising it | the definition describes an ancestor of this project |
 | A decision changed the scope and the definition never absorbed it | the log grew and the standing files did not |
@@ -79,8 +87,8 @@ judgement about what the project is *for*, and no symptom settles that.**
 
 ## The procedure
 
-**1. Read the whole cartridge, and the decisions last.** `definition.md` · `architecture.md` ·
-`state.md` · `Decision_Log.md`, plus the project's rows in the compass and the queue. **The decisions
+**1. Read the whole cartridge, and the decisions last.** `definition.md` · `axioms.md` ·
+`plan.md` · `Decision_Log.md`, plus the project's rows in the compass and the queue. **The decisions
 come last on purpose:** they are the record of what the project *learned*, and reading them first
 makes everything else look like it already agrees with them.
 
@@ -96,10 +104,10 @@ them is what makes redefinition feel like rewriting history:
 | **The definition was right and the work drifted** | the work wandered, the definition still names what is wanted | ⚠️ **not a redefinition.** Say so and stop — the fix is the work, and the operator decides |
 | **Both were right at different times** | the project genuinely changed purpose | a new iteration, with the old definition kept as the record of the first |
 
-**4. Rewrite the standing files, and only those.** `definition.md` and `state.md` are Standing — they
+**4. Rewrite the standing files, and only those.** `definition.md` and `plan.md` are Standing — they
 describe the present and are rewritten to stay true. ⚠️ **Rewritten is not re-created.** Every block
 id that existed before the rewrite exists after it, or appears in the fold table of the decision
-step 5 writes. `architecture.md` may gain an axiom or retire one — **which fires the saturation
+step 5 writes. `axioms.md` may gain an axiom or retire one — **which fires the saturation
 review.** ⚠️ **`Decision_Log.md` is a Record and is append-only: the redefinition is a new entry,
 never an edit.**
 
@@ -132,10 +140,10 @@ State these before rewriting anything, then run them:
 | 1 | Every claim of drift cites a file and line, or a decision identifier |
 | 2 | The decision log has exactly one new entry and no edited one — `git diff` shows additions only |
 | 3 | The new `definition.md` quotes what the old one said where it changed |
-| 4 | `state.md` answers *would this still be true if work stopped today?* on every line |
+| 4 | `plan.md` answers *would this still be true if work stopped today?* on every line |
 | 5 | Every compass row and queue entry the redefinition invalidated has left with a destination |
 | **5b** | **Every block id present before the rewrite is present after it, or named in the fold table of the new decision.** Run the `blocks()` diff above; **a non-empty result the decision does not explain is a failed redefinition, not a stylistic choice** |
-| 6 | The project's own `architecture.md` still holds — or an axiom was retired **explicitly**, with the saturation review that entails |
+| 6 | The project's own `axioms.md` still holds — or an axiom was retired **explicitly**, with the saturation review that entails |
 
 ## Retirement
 

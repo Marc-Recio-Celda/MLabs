@@ -95,6 +95,7 @@
 | **AX-43** | 🟢 | **What code can do, code does; the model is called only for what needs judgement.** ⛔ **A model call cannot be replayed, so it cannot be tested** — and it spends, every single time, the window that the judgement it was called for is going to need. | PH-4 · PH-5 | `—` |
 | **AX-6** | 🟢 | **A claim cites its evidence or it is an opinion, and the citation's form follows where the evidence came from** — from inside, the address it lives at, a file and line, or a command and its output; from outside, a source that can be fetched and versioned. **Every line of a log cites an artefact** or it is not written. | PH-4 | `—` |
 | **AX-46** | 🟡 | **A record of joint human–model work is readable without the conversation that produced it.** ⛔ Every artefact the operator is expected to act on — a queue entry, a task, a sub-block — carries **what it is · what is happening, in prose · what judgement is being asked for · what moves if it moves**, and an artefact that costs re-explaining has already failed `PH-4`. | PH-4 | `⊘` **owed, and the address is `interface/model/parse.py`**, which already parses these entries. It must **name** the entry missing a field — a count would say four are short and not which four |
+| **AX-47** | 🟡 | **A check names the rule it enforces, and a rule that is enforced in code says where.** ⛔ **A check that hard-codes a rule without citing it outlives the decision that retires the rule** — the decision fires nothing, the saturation review cannot see it, and the first symptom is a tool reporting an error over work that is correct. | PH-4 | `⊘` **owed.** The check is `grep` for a rule id in every file under `tools/` and `scripts/` that asserts one — and it cannot be written until *asserts a rule* is decidable, which is the honest reason it is `⊘` and not `$` |
 
 ## PH-5 · Attention
 
@@ -118,6 +119,13 @@
 ---
 
 ## Coverage — which clause each axiom serves
+
+> ⚠️ **`AX-47` is 🟡 and it was written from a live failure, not from a worry.** On 2026-09-05
+> `M-135` retired *exactly one active front*. **The cockpit then refused to render**, because
+> `parse.py` and `coherence.py` each carried the rule as a literal with no citation back — so the
+> decision that killed it reached neither. The rule had **no axiom row at all**: it lived in one
+> decision, two sentences of `METHOD.md`, and two hard-coded checks. ⛔ **A rule with no row is
+> invisible to the saturation review**, which is why superseding it changed nothing that mattered.
 
 > ⚠️ **`AX-46` is 🟡 and is deliberately absent from the coverage table below**, which counts what is
 > in force. A proposal that inflates its own clause's count is the failure `AX-44` names. It was

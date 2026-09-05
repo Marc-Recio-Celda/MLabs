@@ -360,9 +360,25 @@ def parse_compass(path, text):
                          "waits_on": clean(g.get("Waits on", cells[1] if len(cells) > 1 else "")),
                          "note": clean(g.get("Note", cells[2] if len(cells) > 2 else None)),
                          "project": project})
+    # ⚠️ `exactly one ▶` was the rule until 2026-09-05 and `M-135` retired it. It existed because
+    # there was ONE live plan file, so one task could hold the sheet — it was a statement about a
+    # scarce resource, not about attention. Each task now owns its sheet, nothing is contended, and
+    # several active tasks is a normal working day. ⛔ THE CHECK BLOCKED THE COCKPIT THE DAY THE
+    # DECISION LANDED: it reported an error over a board that was correct, which is worse than no
+    # check — a false alarm teaches the reader to stop reading the channel.
+    #
+    # What is still decidable, and it is the only thing: a board with work on it and NOTHING
+    # active. The new rule is a FLOOR — *if work is happening, at least one task is active* — and a
+    # static reader cannot know whether work is happening. It CAN see that the board holds tasks
+    # and none carries the marker, which is the state nobody meant to be in.
+    # ⛔ Several active is NOT reported, at any count. There is no ceiling by rule; the bound is
+    # the wall stating its active count and somebody reading it.
     active = [e for e in ents if e.get("active")]
-    if len(active) != 1:
-        probs.append(Problem(path, 0, f"the compass must hold exactly one `▶`; found {len(active)}"))
+    waiting = [e for e in ents if not e.get("active") and e.get("kind") in ("front", "task")]
+    if not active and waiting:
+        probs.append(Problem(path, 0,
+            f"the board holds {len(waiting)} task(s) and none is active — the floor is at least "
+            f"one `▶` whenever work is happening"))
     return ents, probs
 
 
@@ -552,7 +568,7 @@ def parse_standing(path, text, project_pattern=None):
             elif what_lines and not l_strip:
                 break
 
-    # Fallback to definition.md if state.md has no What section
+    # Fallback to definition.md if the plan (`state.md` before `M-135`) has no What section
     if not what_lines:
         def_file = path.parent / "definition.md"
         if def_file.exists():
@@ -748,7 +764,7 @@ def parse_standing(path, text, project_pattern=None):
             if len(parts) >= 2:
                 code_repo = parts[1].replace("`", "").split("—")[0].strip()
 
-    # Fallback to definition.md if not in state.md
+    # Fallback to definition.md if not in the plan (`state.md` before `M-135`)
     if (not code_repo or not remote_url) and (path.parent / "definition.md").exists():
         try:
             def_text = (path.parent / "definition.md").read_text(encoding="utf-8")
@@ -848,8 +864,16 @@ def parse_standing(path, text, project_pattern=None):
         readme_type = "definition"
 
     architecture_content = ""
-    arch_file = path.parent / "architecture.md"
-    if arch_file.exists() and arch_file.is_file():
+    # ⚠️ RENAMED 2026-09-05 by `M-135`: `architecture.md` -> `axioms.md`. BOTH are resolved, new
+    # name first, because a tree is half migrated for most of a migration's life and an engine
+    # that only knows one name reports a whole department as absent rather than as moved.
+    # ⛔ This literal is engine code naming an instance file, which the adapter contract forbids
+    # (`interface:AX-1`): the engine is supposed to learn every path from `interface.json`. It is
+    # left here and declared rather than quietly fixed, because moving it into the adapter is a
+    # change to the source schema and that is its own decision, not a side effect of a rename.
+    arch_file = next((f for f in (path.parent / "axioms.md", path.parent / "architecture.md")
+                      if f.exists() and f.is_file()), None)
+    if arch_file is not None:
         try:
             architecture_content = arch_file.read_text(encoding="utf-8")
         except Exception:
