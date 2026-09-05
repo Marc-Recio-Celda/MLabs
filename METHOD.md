@@ -24,12 +24,19 @@ empties, a record someone edited, a plan that quietly became a backlog.
 | **Park** | No date, no commitment, no obligation to revisit | A park with dates is a task list nobody agreed to |
 | **Standing** | Rewritten in place; always states what is true *now* or what must hold. Never appended to, never emptied | A standing document that grows by accretion has become a record nobody can trust as current |
 
-⚠️ **Two queues at different speeds, and the fast one reports rather than files.** An instance
-that runs a fast lane beside its deliberative queue **must not let the fast one file into the
-slow one**: its entries are trivial by construction, so every doubt becomes an entry, and the
-loop has no bound. **The drainer's channel back is its drain report** — what it did, what it
-could not do, and what the entry taught — read at the next open and answered by whoever holds
-the context.
+⚠️ **A queue may have a capture stage in front of it, and the two are not the same kind of thing.**
+An instance that gets more raw input than it can adjudicate puts a **one-line capture file** in
+front of its deliberative queue: anyone writes to it, an entry costs nothing, and **a note earns its
+fields on the way out rather than on the way in.** The failure this prevents is specific and was
+measured before it was fixed — a single queue with no cheap lane charges the expensive price for
+every entry, so the cheap thoughts stop being written down at all.
+
+⛔ **The capture stage reports; it does not file.** Its entries are trivial by construction, so
+every doubt becoming an entry would leave the loop with no bound. **The drainer's channel back is
+its drain report** — what it did, what it could not do, and what the entry taught — read at the next
+open and answered by whoever holds the context. ⚠️ **An instance that tries this as a lane for
+*execution* rather than for *capture* catches one shape of cheap thing and misses the rest**; that
+is a recorded failure, not a hypothesis.
 
 The three levels of governance sit above all six: philosophy, axioms, then decisions — and
 **decisions are Records.** A definition, a set of axioms, a state file and a sequenced plan are
@@ -158,6 +165,19 @@ Two queues, running in opposite directions, and **neither side empties its own**
   crossed. Every entry declares its destination from `skills/triage/`'s vocabulary, which is the mailbox entry's and not the plan item's.
 - **Task list** — operator → agent. Work to execute, each task carrying **its why**, because an
   executor that does not know the purpose cannot refuse a task whose premise is false (AX-14).
+
+**And one capture file in front of both, which is not a third direction.** It is where anything the
+operator or an agent thinks of lands as one line, before anyone has decided what it is. **It has no
+direction because nothing has been adjudicated yet** — that is what the first drain does, and it is
+the reason the file exists: it lets `AX-15` hold on both queues instead of the operator filling the
+one he also authorises the drain of.
+
+⛔ **A note leaves the capture file as one line and may not *arrive* anywhere as one.** Whatever is
+routed to either queue carries **title · description readable without its conversation · why it needs
+the operator's judgement · what it affects.** ⚠️ **This is the gate `AX-25` cannot be**: that axiom's
+value is *one line, do not go looking*, so it cannot also demand four fields. **The two fire at
+different moments** — one line when you cross it, four fields when it is routed — which makes the
+contract **one door rather than a plea at every one.**
 
 ⛔ **These are two directions, never two surfaces.** Whichever access point the operator works
 through can triage and can execute; **which one does which is his call, taken on the complexity of

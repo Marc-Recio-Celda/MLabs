@@ -94,6 +94,7 @@
 | **AX-22** | 🟢 | **Evidence comes before the argument**: run the command that would falsify a claim before anything is built on it. ⛔ **A check that could not run is reported as unrun, never as passed** — one that cannot verify and stays silent is indistinguishable from one whose checks passed. | PH-4 | `—` |
 | **AX-43** | 🟢 | **What code can do, code does; the model is called only for what needs judgement.** ⛔ **A model call cannot be replayed, so it cannot be tested** — and it spends, every single time, the window that the judgement it was called for is going to need. | PH-4 · PH-5 | `—` |
 | **AX-6** | 🟢 | **A claim cites its evidence or it is an opinion, and the citation's form follows where the evidence came from** — from inside, the address it lives at, a file and line, or a command and its output; from outside, a source that can be fetched and versioned. **Every line of a log cites an artefact** or it is not written. | PH-4 | `—` |
+| **AX-46** | 🟡 | **A record of joint human–model work is readable without the conversation that produced it.** ⛔ Every artefact the operator is expected to act on — a queue entry, a task, a sub-block — carries **what it is · what is happening, in prose · what judgement is being asked for · what moves if it moves**, and an artefact that costs re-explaining has already failed `PH-4`. | PH-4 | `⊘` **owed, and the address is `interface/model/parse.py`**, which already parses these entries. It must **name** the entry missing a field — a count would say four are short and not which four |
 
 ## PH-5 · Attention
 
@@ -117,6 +118,13 @@
 ---
 
 ## Coverage — which clause each axiom serves
+
+> ⚠️ **`AX-46` is 🟡 and is deliberately absent from the coverage table below**, which counts what is
+> in force. A proposal that inflates its own clause's count is the failure `AX-44` names. It was
+> written 2026-09-05 because `PH-4` — *a system whose owner cannot explain it cannot be corrected by
+> him* — had thirteen axioms and **not one about the legibility of the artefacts the owner reads**:
+> all thirteen are provenance, evidence, verification or tracking. `AX-6` gets you a claim that
+> **cites** its evidence, which makes it verifiable, not understandable.
 
 > ⚠️ **Regenerated, never transcribed** (`AX-2`). A clause at zero is a stated priority nothing
 > implements — **except `PH-0`, whose zero is the design** and whose reason is `PHILOSOPHY.md`'s to
