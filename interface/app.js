@@ -3634,9 +3634,28 @@ function cutText(t, max) {
 
 const MAIL_DONE = ["resolved", "archived"];
 
+// ⛔ La mesa estaba SÓLO detrás de `**Drains**`, y el muro real no escribe ese campo: la
+// tarea de triaje dice «it is a drain» en prosa. Resultado — la vista existía y no la veía
+// nadie, que es peor que no haberla hecho. Una puerta que los ficheros de verdad no abren
+// es una puerta cerrada.
+//
+// ⚠️ Así que hay DOS vías, y la vista dice por cuál entró. Declarado es exacto; inferido es
+// una conjetura sobre el texto, y una conjetura que no se anuncia es la clase de invención
+// que este proyecto lleva toda la semana quitando.
+function drainReason(card) {
+  const declared = String(card.drains || "");
+  if (/mailbox|buz[oó]n|notebook|libreta|inbox/i.test(declared)) {
+    return { how: "declarado", detail: declared };
+  }
+  const hay = [card.title, card.serves, card.why, card.affects].filter(Boolean).join(" · ");
+  const m = hay.match(/\b(mailbox|buz[oó]n|notebook|libreta|triage|triaje|drain|drena\w*)\b/i);
+  if (m) return { how: "inferido", detail: m[0], where: hay };
+  return null;
+}
+
 function renderTriageBench(card) {
-  const drains = String(card.drains || "").toLowerCase();
-  if (!drains.includes("mailbox") && !drains.includes("buzón") && !drains.includes("buzon")) return "";
+  const why = drainReason(card);
+  if (!why) return "";
 
   const all = STATE.mailbox || [];
   const scoped = all.filter(e =>
@@ -3648,8 +3667,12 @@ function renderTriageBench(card) {
 
   const entry = (e, resolved) => {
     const isNew = (touched[e.file] || []).some(([a, b]) => e.line >= a && e.line <= b);
-    const miss = [["serves", "Serves"], ["what", "What"], ["asks", "Asks"], ["affects", "Affects"]]
-      .filter(([k]) => !e[k]).map(([, n]) => n);
+    // ⚠️ Sólo sobre lo abierto. A una entrada cerrada no se le pide nada: ya se actuó sobre
+    // ella, y marcarle campos que faltan es ruido sobre trabajo terminado — el parser ya
+    // hace esa misma distinción, y la vista tenía que hacerla igual.
+    const miss = resolved ? [] :
+      [["serves", "Serves"], ["what", "What"], ["asks", "Asks"], ["affects", "Affects"]]
+        .filter(([k]) => !e[k]).map(([, n]) => n);
     return `
       <article class="tri ${resolved ? "tri-done" : "tri-open"}">
         <header class="tri-top">
@@ -3677,7 +3700,7 @@ function renderTriageBench(card) {
         <footer class="tri-foot">
           ${e.affects ? `<span class="tri-affects" title="Qué se mueve si se mueve">${inline(cut(e.affects, 90))}</span>` : ""}
           <span class="tri-src"><code>${esc(e.file || "")}${e.line ? `:${e.line}` : ""}</code></span>
-          ${miss.length ? `
+          ${miss.length && !resolved ? `
             <span class="tri-gap" title="AX-46 pide los cuatro campos y a ésta le faltan. Nombrados, no contados: se sabe cuáles.">
               faltan ${miss.join(" · ")}
             </span>` : ""}
@@ -3692,6 +3715,13 @@ function renderTriageBench(card) {
           <span class="bench-greek">ΔΙΑΛΟΓΗ</span>
           <h3>Mesa de triaje</h3>
           <span class="bench-scope">${esc(card.project || "cross")} · ${scoped.length} entrada${scoped.length === 1 ? "" : "s"}</span>
+          ${why.how === "inferido" ? `
+            <span class="bench-guess" title="Esta tarea no declara **Drains**. La mesa sale porque su texto nombra «${esc(why.detail)}». Escribe **Drains** mailbox en su bloque del muro y deja de ser una conjetura.">
+              ⚠ inferido de «${esc(why.detail)}»
+            </span>`
+          : `<span class="bench-declared" title="La tarea declara **Drains** ${esc(why.detail)}">
+              ✓ declarado
+            </span>`}
         </div>
         <div class="bench-meter" role="img" aria-label="${done.length} de ${scoped.length} enrutadas">
           <div class="bench-bar"><div class="bench-fill" style="width:${pct}%"></div></div>
@@ -3717,7 +3747,22 @@ function renderTriageBench(card) {
             <strong>Resueltas</strong>
             <span class="bench-col-n">${done.length}</span>
           </div>
-          ${done.length ? done.map(e => entry(e, true)).join("") : `
+          ${done.length ? (() => {
+            // ⚠️ Con treinta y cinco entradas, la columna de resueltas empuja lo abierto
+            // fuera de la pantalla — y lo abierto es lo que se trabaja. Se enseñan las
+            // últimas y el resto se despliega: plegar lo hecho es distinto de esconderlo,
+            // porque la cuenta sigue a la vista.
+            const CAP = 8;
+            const shownDone = STATE.benchAll ? done : done.slice(-CAP);
+            const hidden = done.length - shownDone.length;
+            return shownDone.map(e => entry(e, true)).join("") + (hidden > 0 ? `
+              <button class="bench-more" onclick="STATE.benchAll = true; renderView()">
+                ver las ${hidden} anteriores
+              </button>` : "") + (STATE.benchAll && done.length > CAP ? `
+              <button class="bench-more" onclick="STATE.benchAll = false; renderView()">
+                plegar
+              </button>` : "");
+          })() : `
             <p class="bench-empty">Todavía ninguna en este filtro.</p>`}
         </div>
       </div>

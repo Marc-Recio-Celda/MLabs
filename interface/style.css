@@ -6250,3 +6250,19 @@ input[type="text"]:focus, textarea:focus {
   background: var(--vine-bg); color: var(--vine-deep);
   border: 1px solid var(--vine-border); padding: 1px 8px; border-radius: var(--radius-full);
 }
+
+/* Por qué está esta mesa aquí. Declarado es exacto; inferido es una conjetura sobre el
+   texto, y una conjetura que no se anuncia es una invención. */
+.bench-declared, .bench-guess {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 1px 8px; border-radius: var(--radius-full); cursor: help;
+}
+.bench-declared { background: var(--vine-bg); color: var(--vine-deep); border: 1px solid var(--vine-border); }
+.bench-guess { background: var(--gold-bg); color: var(--gold-deep); border: 1px dashed var(--gold-border); }
+.bench-more {
+  align-self: flex-start; cursor: pointer; font-family: inherit;
+  padding: 5px 12px; font-size: 11.5px; font-weight: 600;
+  background: var(--paper-subtle); color: var(--ink-muted);
+  border: 1px dashed var(--border-medium); border-radius: var(--radius-full);
+}
+.bench-more:hover { background: var(--paper-code); color: var(--ink); }

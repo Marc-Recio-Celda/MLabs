@@ -207,7 +207,11 @@ def clean(s):
 #     **Asks**    qué juicio se te pide         · qué se decide
 #     **Affects** qué se mueve si se mueve      · qué se mueve
 MAIL_AX46 = {"serves": "Serves", "what": "What", "asks": "Asks", "affects": "Affects"}
-MAIL_FIELD = re.compile(r"^\*\*(?P<k>Serves|What|Asks|Affects)\*\*\s*(?P<v>.*)$", re.M)
+# ⛔ `[\s\S]*?` y no `.*`: el valor sigue hasta el siguiente campo o el final del cuerpo,
+# porque una prosa que se lee ocupa más de una línea. Cortarla por el salto entrega media
+# frase con aspecto de frase entera, que es peor que no leerla.
+MAIL_FIELD = re.compile(r"^\*\*(?P<k>Serves|What|Asks|Affects)\*\*[ \t]*(?P<v>[\s\S]*?)"
+                        r"(?=\n\*\*(?:Serves|What|Asks|Affects)\*\*|\n\s*\n|\Z)", re.M)
 
 
 def parse_queue(path, text):
@@ -238,7 +242,8 @@ def parse_queue(path, text):
             # de dejar de parsear — un contrato nuevo que rompe lo ya escrito no se adopta.
             fields46 = {k: None for k in MAIL_AX46}
             for fm in MAIL_FIELD.finditer(raw):
-                fields46[fm.group("k").lower()] = clean(fm.group("v"))
+                val = clean(" ".join(fm.group("v").split())).lstrip("—–-").strip()
+                fields46[fm.group("k").lower()] = val or None
             prose = MAIL_FIELD.sub("", raw).strip()
             ents.append({"kind": "mailbox-entry", "id": None, "line": i + 1,
                          "body": raw, "prose": prose, **fields46, **f})
@@ -395,7 +400,10 @@ def parse_wall(path, text):
     ents, probs, lines = [], [], text.splitlines()
     cur = None
     in_bin = False
+    eaten = set()
     for i, line in enumerate(lines):
+        if i in eaten:
+            continue
         if line.startswith("## "):
             in_bin = "bin" in line.lower()
         m = WALL_TASK.match(line)
@@ -421,7 +429,24 @@ def parse_wall(path, text):
         f = WALL_FIELD.match(line.strip())
         if f:
             k = f["k"]
-            v = clean(f["v"])
+            # ⛔ Un campo se lee hasta el SIGUIENTE campo o el siguiente bloque, no hasta el
+            # final de la línea. Los campos reales ocupan varias líneas —así se escribe una
+            # prosa que se lee— y cortarlos por el salto entregaba media frase con aspecto de
+            # frase entera: «…so it is active while its queue is non-empty and». ⚠️ Eso es
+            # peor que no leer el campo: quien lo mira no tiene forma de saber que le falta
+            # la mitad, y `AX-46` existe justamente para que el artefacto se lea entero.
+            parts = [f["v"]]
+            j = i + 1
+            while j < len(lines):
+                nxt = lines[j].strip()
+                if not nxt or nxt.startswith("#") or WALL_FIELD.match(nxt) or WALL_TASK.match(lines[j]):
+                    break
+                parts.append(nxt)
+                eaten.add(j)
+                j += 1
+            # ⚠️ Un guión de apertura es puntuación, no contenido: `**Serves** — texto` y
+            # `**Serves** texto` son el mismo campo escrito de dos maneras.
+            v = clean(" ".join(parts)).lstrip("—–-").strip()
             # ⛔ La cadena estaba rota: un `if cur.get("sheet")` se colaba entre los `elif`, así
             # que `What it affects` sólo se guardaba **cuando la tarea no tenía `Sheet`**, y
             # `Why it is committed` no se asignaba a ninguna parte — lo reconocía el patrón y se
@@ -431,10 +456,10 @@ def parse_wall(path, text):
             # el fichero lo lleva, el lector no lo ve, y nada dice cuál de los dos falla.
             if k == "Serves":
                 # una línea puede llevar `**Serves** x · **Sheet** y`
-                parts = re.split(r"·\s*\*\*Sheet\*\*", f["v"])
-                cur["serves"] = clean(parts[0])
-                if len(parts) > 1:
-                    cur["sheet"] = clean(parts[1])
+                halves = re.split(r"·\s*\*\*Sheet\*\*", v)
+                cur["serves"] = clean(halves[0])
+                if len(halves) > 1:
+                    cur["sheet"] = clean(halves[1])
             elif k == "Sheet":
                 cur["sheet"] = v
             elif k == "Why it is committed":
