@@ -349,17 +349,23 @@ def make_handler(adapter):
             except Exception:
                 payload = {}
 
+            # ⛔ `/api/mailbox` y `/api/idea` están RETIRADOS por decisión del operador: la
+            # libreta y el parque se editan a mano. Se responde 409 con el motivo en vez de
+            # 404, porque un endpoint que desaparece sin decir por qué es el que alguien
+            # vuelve a añadir dentro de un mes. ⚠️ `write.append_mailbox` y `append_idea`
+            # siguen existiendo como biblioteca y con sus pruebas: lo retirado es la puerta,
+            # no la capacidad — el día que se decida lo contrario, vuelve a abrirse aquí.
+            RETIRED = {
+                "/api/mailbox": "la libreta",
+                "/api/idea": "el parque de ideas",
+            }
+            if path in RETIRED:
+                self._send(409, {"status": "retired",
+                                 "msg": f"{RETIRED[path]} se edita a mano, por decisión del "
+                                        f"operador. Esta interfaz no escribe en él."})
+                return
+
             routes = {
-                "/api/mailbox": ("mailbox", lambda a: writer.append_mailbox(
-                    a, title=payload.get("title", ""), project=payload.get("project", "cross"),
-                    destination=payload.get("destination", "decision"),
-                    body=payload.get("body", ""), author=payload.get("author", "operator"),
-                    state=payload.get("state", "open"))),
-                "/api/idea": ("idea", lambda a: writer.append_idea(
-                    a, title=payload.get("title", ""), body=payload.get("body", ""),
-                    project=payload.get("project", "cross"),
-                    scope=payload.get("scope", "general"),
-                    author=payload.get("author", "operator"))),
                 "/api/task": ("task", lambda a: writer.append_task(
                     a, title=payload.get("title", ""), project=payload.get("project", "cross"),
                     why=payload.get("why", ""), status=payload.get("status", "⬜"),

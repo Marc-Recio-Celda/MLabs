@@ -4903,110 +4903,95 @@ input[type="text"]:focus, textarea:focus {
 .mural-go { margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--oc); }
 .office-mural .empty-state { grid-column: 1 / -1; background: var(--paper-elevated); border-radius: 3px; }
 
-/* ── el despacho: mesa, flexo y pantalla ─────────────────────────────
-   La luz cae desde arriba a la izquierda, que es donde está el flexo. */
-/* La franja de arriba: el flexo a la izquierda y la miga de pan a su lado, sobre la
-   madera. ⚠️ El flexo NECESITA su hueco — puesto encima del contenido tapaba el título,
-   que es exactamente lo que no puede hacer un adorno. */
+/* ── EL DESPACHO ──────────────────────────────────────────────────────
+   ⛔ Rediseñado. Antes había TRES marcos anidados —madera, bisel negro, pantalla— antes
+   de llegar a una línea de texto, más una veta marcada y un flexo dibujado compitiendo
+   entre sí. Cada uno era defendible solo; juntos, la decoración pesaba más que el
+   contenido, que es exactamente la saturación que esta vista existe para evitar.
+   Ahora es UN plano: una mesa clara con su luz, y encima el papel. El flexo se queda
+   como fuente de luz —el halo— y no como objeto dibujado. */
+
 .desk-plate {
   display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
-  min-height: 58px; margin-bottom: 14px;
+  min-height: 0; margin-bottom: 14px;
 }
-@media (min-width: 901px) { .desk-plate { padding-left: 124px; } }
 .crumb-link {
-  background: rgba(255, 246, 224, .12); border: 1px solid rgba(255, 240, 210, .22);
-  cursor: pointer; padding: 5px 10px; border-radius: var(--radius-sm);
-  font-size: 12.5px; font-weight: 600; color: #f6ead0;
+  background: rgba(255, 250, 238, .55); border: 1px solid rgba(120, 96, 60, .28);
+  cursor: pointer; padding: 5px 11px; border-radius: var(--radius-full);
+  font-size: 12.5px; font-weight: 600; color: #5c4a2c;
 }
-.crumb-link:hover { background: rgba(255, 246, 224, .24); color: #fff; }
-.crumb-sep { color: rgba(255, 240, 210, .55); }
-.crumb-here {
-  font-size: 14px; font-weight: 700; color: #fdf6e6;
-  text-shadow: 0 1px 2px rgba(40, 22, 8, .55);
-}
-.desk-plate .mural-state { background: rgba(255, 246, 224, .90); }
+.crumb-link:hover { background: #fffaf0; color: var(--ink); }
+.crumb-sep { color: rgba(92, 74, 44, .45); }
+.crumb-here { font-size: 14.5px; font-weight: 700; color: #3f3320; }
 
+/* La mesa: una superficie clara, con la luz cayendo desde arriba a la izquierda. */
 .desk-surface {
   position: relative; overflow: hidden;
-  padding: 24px 24px 30px; border-radius: var(--radius-lg);
-  border: 1px solid rgba(90, 62, 36, .35);
-  background-color: #9d7247;
+  padding: 22px 24px 26px; border-radius: var(--radius-lg);
+  border: 1px solid #d6c9ad;
+  background-color: #e8ddc4;
   background-image:
-    repeating-linear-gradient(92deg, rgba(70, 44, 22, .10) 0 2px, transparent 2px 9px),
-    repeating-linear-gradient(88deg, rgba(255, 232, 190, .07) 0 1px, transparent 1px 17px),
-    linear-gradient(165deg, #a97c4e, #966c42 60%, #85603a);
-  box-shadow: inset 0 3px 20px rgba(50, 30, 12, .32), var(--shadow-md);
-}
-/* El halo del flexo. Cae sobre la mesa, no sobre el texto: los paneles van encima. */
-.desk-surface::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse 620px 420px at 8% -6%, rgba(255, 226, 160, .42), transparent 70%);
+    repeating-linear-gradient(93deg, rgba(150, 122, 76, .05) 0 1px, transparent 1px 13px),
+    radial-gradient(ellipse 760px 480px at 12% -8%, rgba(255, 244, 214, .95), transparent 68%),
+    linear-gradient(168deg, #eee4cd, #e4d8bd 60%, #dccfb0);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), var(--shadow-sm);
 }
 .desk-surface > * { position: relative; z-index: 1; }
-.desk-lamp { position: absolute; top: -4px; left: 12px; z-index: 2; pointer-events: none; }
-@media (max-width: 900px) { .desk-lamp { display: none; } }
+/* El flexo ya no se dibuja: su luz es el halo del gradiente. Un objeto dibujado más era
+   el tercer elemento decorativo compitiendo por la misma mirada. */
+.desk-lamp { display: none; }
 
+/* La cabecera: papel sobre la mesa, y lo primero que se lee. */
 .desk-hero {
-  display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap;
-  padding: 18px 20px; margin: 0 0 20px 0;
-  background: var(--paper-card);
-  border: 1px solid rgba(90, 62, 36, .28);
-  border-left: 5px solid var(--oc); border-radius: var(--radius-md);
-  box-shadow: 0 6px 18px rgba(50, 30, 12, .28);
+  display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap;
+  padding: 20px 22px; margin: 0 0 18px 0;
+  background: var(--paper-elevated);
+  border: 1px solid var(--line); border-top: 3px solid var(--oc);
+  border-radius: var(--radius-md);
+  box-shadow: 0 3px 12px rgba(90, 70, 40, .13);
 }
-.desk-hero-main { flex: 1 1 360px; display: flex; flex-direction: column; gap: 10px; }
-.desk-title { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.25; color: var(--ink); }
+.desk-hero-main { flex: 1 1 420px; display: flex; flex-direction: column; gap: 12px; }
+.desk-title { margin: 0; font-size: 24px; font-weight: 800; line-height: 1.2; color: var(--ink); }
 .desk-hero-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .desk-why {
   padding: 10px 13px; background: var(--paper-subtle); border-radius: var(--radius-md);
   font-size: 13px; line-height: 1.55; color: var(--ink-soft);
 }
-.desk-why strong { color: var(--ink); }
 .desk-cond { display: flex; gap: 9px; align-items: baseline; font-size: 12.5px; }
 
-.desk-hero-stats { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.desk-ring {
-  width: 88px; height: 88px; border-radius: 50%; display: grid; place-items: center;
-  background: conic-gradient(var(--oc) calc(var(--pct) * 1%), var(--paper-subtle) 0);
-  position: relative;
+/* El contador: cuántos han salido y cuántos siguen abiertos. Es la pregunta que uno se
+   hace de verdad; un porcentaje no la responde. */
+.tally {
+  flex: 0 0 auto; display: flex; flex-direction: column; gap: 9px;
+  min-width: 210px; padding: 14px 16px;
+  background: var(--paper-subtle); border: 1px solid var(--line); border-radius: var(--radius-md);
 }
-.desk-ring::before {
-  content: ""; position: absolute; inset: 8px; border-radius: 50%; background: var(--paper-card);
-}
-.desk-ring-num { position: relative; font-size: 19px; font-weight: 800; color: var(--ink); }
-.desk-ring-lbl {
-  position: relative; font-size: 9px; text-transform: uppercase; letter-spacing: .07em;
-  color: var(--ink-muted); margin-top: -2px;
-}
-.desk-outcome-counts { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
+.tally-pair { display: flex; align-items: stretch; gap: 14px; }
+.tally-done, .tally-open { display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 1; }
+.tally-sep { width: 1px; background: var(--line); }
+.tally-n { font-size: 30px; font-weight: 800; line-height: 1; }
+.tally-done .tally-n { color: var(--vine-deep); }
+.tally-open .tally-n { color: var(--gold-deep); }
+.tally-l { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-muted); }
+.tally-bar { height: 6px; background: var(--paper-code); border-radius: var(--radius-full); overflow: hidden; }
+.tally-fill { height: 100%; background: var(--vine); border-radius: var(--radius-full); transition: width .3s ease; }
+.tally-out { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
 .oc {
   font-size: 11px; font-family: var(--font-mono); font-weight: 600;
-  padding: 2px 7px; border-radius: var(--radius-full);
+  padding: 1px 7px; border-radius: var(--radius-full);
   background: var(--ocbg); color: var(--oc); border: 1px solid var(--oc);
 }
-.oc-open { background: var(--paper-subtle); color: var(--ink-muted); border-color: var(--line); }
 
-.desk-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px 22px; align-items: start; }
+.desk-grid { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 18px; align-items: start; }
 @media (max-width: 1180px) { .desk-grid { grid-template-columns: minmax(0, 1fr); } }
 
-/* El plan vive en la pantalla: marco oscuro, superficie clara y su peana. */
-.desk-plan {
-  position: relative;
-  padding: 12px; border-radius: 10px; margin-bottom: 16px;
-  background: linear-gradient(180deg, #3c3a35, #2c2b27);
-  box-shadow: 0 10px 26px rgba(40, 24, 10, .40), inset 0 1px 0 rgba(255,255,255,.10);
+/* La hoja: papel, sin bisel ni peana. */
+.sheet {
+  background: var(--paper-elevated); border: 1px solid var(--line);
+  border-radius: var(--radius-md); padding: 18px 20px;
+  box-shadow: 0 3px 12px rgba(90, 70, 40, .13);
 }
-.desk-plan::after {
-  content: ""; position: absolute; left: 50%; bottom: -12px; width: 130px; height: 12px;
-  transform: translateX(-50%);
-  background: linear-gradient(180deg, #33322e, #22211e);
-  border-radius: 0 0 7px 7px;
-}
-.desk-screen {
-  background: var(--paper); border-radius: 5px; padding: 16px;
-  box-shadow: inset 0 0 22px rgba(90, 80, 55, .10);
-}
-.desk-screen > *:last-child { margin-bottom: 0; }
+.sheet > *:last-child { margin-bottom: 0; }
 
 /* ── el plan por secciones ───────────────────────────────────────────── */
 .plan-section {
@@ -5027,38 +5012,51 @@ input[type="text"]:focus, textarea:focus {
 .sec-count { margin-left: auto; font-size: 11.5px; font-family: var(--font-mono); color: var(--ink-muted); }
 .plan-section-items { display: flex; flex-direction: column; }
 
+/* Un item, y lo que más se ve de él es SI ESTÁ HECHO. `FLOW.md` lo dice literalmente:
+   «un registro lleva su estado y la vista lo pinta; el tachado no es un estado» — y un
+   tachado gris obliga a leer la línea entera para saber en qué grupo cae. Ahora lo dice
+   el color de la banda izquierda, el icono y el fondo, antes de leer una palabra. */
 .pi {
-  display: flex; align-items: flex-start; gap: 11px;
-  padding: 11px 15px; border-bottom: 1px solid var(--line-subtle);
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 11px 14px 11px 12px;
+  border-left: 4px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-subtle);
   transition: background .12s ease;
 }
 .pi:last-child { border-bottom: none; }
-.pi:hover { background: var(--paper-subtle); }
+.pi-open { border-left-color: var(--gold); background: var(--paper-elevated); }
+.pi-open:hover { background: var(--gold-bg); }
+.pi-routed { border-left-color: var(--oc); background: var(--ocbg); }
 .pi-marker {
   flex: 0 0 22px; width: 22px; height: 22px; display: grid; place-items: center;
-  border-radius: var(--radius-full); font-size: 11px; font-weight: 700;
-  background: var(--paper-subtle); color: var(--ink-muted); border: 1px solid var(--line);
+  border-radius: 50%; font-size: 11px; font-weight: 800;
+  background: var(--paper-card); color: var(--gold-deep); border: 1.5px solid var(--gold-border);
 }
-.pi-routed .pi-marker { background: var(--ocbg); color: var(--oc); border-color: var(--oc); }
+.pi-routed .pi-marker { background: var(--paper-elevated); color: var(--oc); border-color: var(--oc); }
 .pi-main { flex: 1; min-width: 0; }
+/* ⛔ Sin tachado. Un item hecho baja de peso y cambia de color; tacharlo además lo vuelve
+   ilegible justo cuando alguien quiere comprobar QUÉ se hizo. */
 .pi-text { font-size: 13.5px; line-height: 1.5; color: var(--ink); }
-.pi-routed .pi-text { color: var(--ink-muted); text-decoration: line-through; text-decoration-color: var(--oc); }
-.pi-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 4px; }
+.pi-routed .pi-text { color: var(--ink-soft); }
+.pi-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 5px; }
 .pi-outcome {
-  font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-  padding: 1px 7px; border-radius: var(--radius-full);
-  background: var(--ocbg); color: var(--oc); border: 1px solid var(--oc);
+  font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 1px 8px; border-radius: var(--radius-full);
+  background: var(--paper-elevated); color: var(--oc); border: 1px solid var(--oc);
 }
-.pi-author, .pi-line { font-size: 10.5px; font-family: var(--font-mono); color: var(--ink-disabled); }
-.pi-route { display: flex; gap: 3px; opacity: .35; transition: opacity .14s ease; }
+.pi-open .pi-outcome { background: var(--gold-bg); color: var(--gold-deep); border-color: var(--gold-border); }
+.pi-author, .pi-line { font-size: 10px; font-family: var(--font-mono); color: var(--ink-disabled); }
+/* Los cuatro destinos se ven siempre en un item abierto: esconderlos hasta el hover
+   convierte «dale su destino» en algo que hay que descubrir. */
+.pi-route { display: flex; gap: 4px; opacity: .62; transition: opacity .14s ease; }
 .pi:hover .pi-route { opacity: 1; }
 .pi-route-btn {
-  width: 27px; height: 27px; display: grid; place-items: center; cursor: pointer;
-  font-size: 13px; background: var(--paper-card);
-  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  width: 28px; height: 28px; display: grid; place-items: center; cursor: pointer;
+  font-size: 13px; background: var(--paper-elevated);
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
   transition: background .12s ease, border-color .12s ease, transform .12s ease;
 }
-.pi-route-btn:hover { background: var(--ocbg); border-color: var(--oc); transform: scale(1.12); }
+.pi-route-btn:hover { background: var(--ocbg); border-color: var(--oc); transform: scale(1.1); }
 
 /* ── captura en vivo ─────────────────────────────────────────────────── */
 .capture-box {
@@ -5180,10 +5178,10 @@ input[type="text"]:focus, textarea:focus {
 /* El raíl descansa sobre la madera, así que necesita su propia sombra para no
    flotar: los paneles del resto de la web viven sobre papel, no sobre mesa. */
 .desk-surface .rail-panel {
-  border-color: rgba(90, 62, 36, .28);
-  box-shadow: 0 6px 16px rgba(50, 30, 12, .26);
+  border-color: var(--line);
+  box-shadow: 0 3px 10px rgba(90, 70, 40, .11);
 }
-.desk-surface .capture-box { background: var(--paper-elevated); }
+.desk-surface .capture-box { background: var(--paper-card); }
 .desk-surface .front-state-card { background: var(--paper-card); }
 
 /* Las tres píldoras del encabezado de la Oficina llevan el color de su estado. Sin esto
@@ -6246,4 +6244,9 @@ input[type="text"]:focus, textarea:focus {
 .bench-note {
   margin: 14px 0 0; padding-top: 11px; border-top: 1px dashed var(--line-subtle);
   font-size: 11.5px; line-height: 1.6; color: var(--ink-muted);
+}
+
+.sec-count.sec-all {
+  background: var(--vine-bg); color: var(--vine-deep);
+  border: 1px solid var(--vine-border); padding: 1px 8px; border-radius: var(--radius-full);
 }

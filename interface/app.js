@@ -1794,14 +1794,7 @@ function renderProjectWorkflowTab(proj, projectTasks, projectDecs) {
                                   </div>
                                   ${renderDate(t.date, t.date_inferred)}
                                 </div>
-                                <p style="font-size: 12px; color: var(--ink-soft); margin: 4px 0 0;"><strong>Why:</strong> ${inline(t.why)}</p>
-                                <div class="task-actions-toolbar" style="margin-top: 8px;">
-                                  ${t.status !== '✅' && t.status !== '⚫' ? `
-                                    <button class="btn-task-action btn-task-complete" onclick="completeTask('${esc(t.id)}')"><span>✅</span> Completar</button>
-                                  ` : ''}
-                                  <button class="btn-task-action btn-task-comment" onclick="openCommentModal('${esc(t.id)}', '${esc(t.title)}')"><span>💬</span> Comentar</button>
-                                </div>
-                              </div>
+                                <p style="font-size: 12px; color: var(--ink-soft); margin: 4px 0 0;"><strong>Why:</strong> ${inline(t.why)}</p>                              </div>
                             `).join("")}
                           </div>
                         </div>
@@ -1839,17 +1832,7 @@ function renderProjectWorkflowTab(proj, projectTasks, projectDecs) {
                 </div>
                 <p style="font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin-top: 4px;">
                   <strong>Why:</strong> ${inline(t.why)}
-                </p>
-                <div class="task-actions-toolbar">
-                  ${t.status !== '✅' && t.status !== '⚫' ? `
-                    <button class="btn-task-action btn-task-complete" onclick="completeTask('${esc(t.id)}')"><span>✅</span> Completar</button>
-                  ` : ''}
-                  <button class="btn-task-action btn-task-comment" onclick="openCommentModal('${esc(t.id)}', '${esc(t.title)}')"><span>💬</span> Comentar (${t.comments ? t.comments.length : 0})</button>
-                  ${t.status !== '⚫' ? `
-                    <button class="btn-task-action btn-task-discard" onclick="openDiscardModal('${esc(t.id)}', '${esc(t.title)}')"><span>⚫</span> Descartar</button>
-                  ` : ''}
-                </div>
-              </div>
+                </p>              </div>
             `).join("")}
           </div>
         ` : `
@@ -3278,9 +3261,6 @@ function renderIdeas(container) {
         <h1><span>💡</span> Idea Park</h1>
         <p class="view-subtitle">Aparcamiento ordenado de ideas y mejoras futuras para preservar el foco (PH-3)</p>
       </div>
-      <button class="btn-hud-action btn-add-idea" onclick="openIdeaModal()">
-        <span>💡</span> <span>Aparcar Idea</span>
-      </button>
     </div>
 
     <div class="tickets-list">
@@ -3301,7 +3281,9 @@ function renderIdeas(container) {
         <div class="empty-state">
           <div class="empty-icon">💡</div>
           <h3>Parque de ideas despejado</h3>
-          <p>Utiliza el botón 'Aparcar Idea' para registrar mejoras sin interrumpir el frente activo.</p>
+          <p>El parque se edita a mano, por decisión del operador: esta vista lo lee y no escribe
+             en él. Una idea se aparca escribiendo una línea en <code>IDEAS.md</code> mientras está
+             fresca — y se expande sólo si sobrevive a una segunda lectura.</p>
         </div>
       `}
     </div>
@@ -3453,30 +3435,7 @@ function renderInbox(container) {
               ${renderOrigin(t.author, t.origin_inferred)}
               ${renderDate(t.date, t.date_inferred)}
               ${t.file ? `<span class="tag-pill" style="opacity: 0.7;"><code>${esc(t.file)}</code></span>` : ''}
-            </div>
-
-            <!-- TASK ACTIONS TOOLBAR -->
-            <div class="task-actions-toolbar">
-              ${!isDone && !isDiscarded ? `
-                <button class="btn-task-action btn-task-complete" onclick="completeTask('${esc(t.id)}')">
-                  <span>✅</span> Completar
-                </button>
-              ` : ''}
-              <button class="btn-task-action btn-task-comment" onclick="openCommentModal('${esc(t.id)}', '${esc(t.title)}')">
-                <span>💬</span> Comentar (${t.comments ? t.comments.length : 0})
-              </button>
-              ${!isDiscarded ? `
-                <button class="btn-task-action btn-task-discard" onclick="openDiscardModal('${esc(t.id)}', '${esc(t.title)}')">
-                  <span>⚫</span> Descartar
-                </button>
-              ` : ''}
-              ${isDone || isDiscarded ? `
-                <button class="btn-task-action" onclick="reopenTask('${esc(t.id)}')">
-                  <span>🔄</span> Reabrir
-                </button>
-              ` : ''}
-            </div>
-          </div>
+            </div>          </div>
         `;
       }).join("") : `
         <div class="empty-state">
@@ -3929,45 +3888,10 @@ function classifySkill(s) {
   };
 }
 
-window.completeTask = function(taskId) {
-  const task = STATE.tasks.find(t => t.id === taskId);
-  if (!task) return;
-  task.status = "✅";
-  persistTasksLocally();
-  renderView();
-  showToast(`Tarea ${taskId} marcada como completada ✅`);
-};
-
 window.copyRowCommand = function(el) {
   const code = el.getAttribute("data-code") || el.querySelector("code")?.textContent || "";
   if (!code) return;
   copyCommand(code, el.id);
-};
-
-window.openCommentModal = function(taskId, title) {
-  const modal = document.getElementById("commentModal");
-  const inputId = document.getElementById("commentTaskId");
-  const label = document.getElementById("commentTaskTitleLabel");
-  const textInput = document.getElementById("commentTextInput");
-  if (modal && inputId && label) {
-    inputId.value = taskId;
-    label.textContent = `Tarea: ${taskId} · ${title}`;
-    if (textInput) textInput.value = "";
-    modal.classList.add("active");
-  }
-};
-
-window.openDiscardModal = function(taskId, title) {
-  const modal = document.getElementById("discardModal");
-  const inputId = document.getElementById("discardTaskId");
-  const label = document.getElementById("discardTaskTitleLabel");
-  const reasonInput = document.getElementById("discardReasonInput");
-  if (modal && inputId && label) {
-    inputId.value = taskId;
-    label.textContent = `Tarea: ${taskId} · ${title}`;
-    if (reasonInput) reasonInput.value = "";
-    modal.classList.add("active");
-  }
 };
 
 // ⚠️ The two project selects were `<!-- populated dynamically -->` and nothing populated
@@ -3992,12 +3916,6 @@ function fillProjectSelect(id) {
   }
 }
 
-window.openIdeaModal = function() {
-  const modal = document.getElementById("ideaModal");
-  fillProjectSelect("ideaProject");
-  if (modal) modal.classList.add("active");
-};
-
 window.openTaskModal = function() {
   const modal = document.getElementById("taskModal");
   fillProjectSelect("taskProject");
@@ -4005,16 +3923,6 @@ window.openTaskModal = function() {
     updateTaskPreview();
     modal.classList.add("active");
   }
-};
-
-window.reopenTask = function(taskId) {
-  const task = STATE.tasks.find(t => t.id === taskId);
-  if (!task) return;
-  task.status = "⬜";
-  task.discardReason = null;
-  persistTasksLocally();
-  renderView();
-  showToast(`Tarea ${taskId} reabierta como pendiente ⬜`);
 };
 
 window.selectCsTab = function(cat) {
@@ -4054,10 +3962,6 @@ window.copyCommand = function(text, elementId) {
     showToast(`Comando copiado: ${text.slice(0, 40)}...`);
   });
 };
-
-function persistTasksLocally() {
-  localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(STATE.tasks));
-}
 
 window.retryLoad = () => {
   STATE.error = null;
@@ -4717,23 +4621,35 @@ function renderDesk(container) {
         </dl>
       </div>
       ${isLive ? `
-        <div class="desk-hero-stats">
-          <div class="desk-ring" style="--pct:${pct}">
-            <span class="desk-ring-num">${pct}%</span>
-            <span class="desk-ring-lbl">enrutado</span>
-          </div>
-          <div class="desk-outcome-counts">
-            ${Object.entries(OUTCOMES).map(([k, o]) =>
-              `<span class="oc ${o.cls}" title="${o.hint}">${o.icon} ${byOutcome(k)}</span>`).join("")}
-            <span class="oc oc-open" title="sin destino todavía">○ ${items.length - routed}</span>
-          </div>
-        </div>` : ""}
+        ${items.length ? `
+          <div class="tally">
+            <!-- ⚠️ Etiquetado. En una tarea de triaje esta cuenta convive con la de la mesa, y
+                 miden cosas distintas: aquí items del plan, allí entradas del buzón. Dos
+                 números grandes sin decir de qué son es la manera de leer el equivocado. -->
+            <span class="tally-what">items de esta hoja</span>
+            <div class="tally-pair">
+              <span class="tally-done">
+                <span class="tally-n">${routed}</span>
+                <span class="tally-l">hechos</span>
+              </span>
+              <span class="tally-sep"></span>
+              <span class="tally-open">
+                <span class="tally-n">${items.length - routed}</span>
+                <span class="tally-l">${items.length - routed === 1 ? "abierto" : "abiertos"}</span>
+              </span>
+            </div>
+            <div class="tally-bar"><div class="tally-fill" style="width:${pct}%"></div></div>
+            <div class="tally-out">
+              ${Object.entries(OUTCOMES).filter(([k]) => byOutcome(k)).map(([k, o]) =>
+                `<span class="oc ${o.cls}" title="${o.hint}">${o.icon} ${byOutcome(k)}</span>`).join("")}
+            </div>
+          </div>` : ""}` : ""}
     </div>
 
     <div class="desk-grid">
       <section class="desk-work">
       ${renderTriageBench(card)}
-      <div class="desk-plan"><div class="desk-screen">
+      <div class="sheet">
         ${sheet ? `
           ${!isLive ? `
             <div class="sheet-banner ${m.cls}">
@@ -4763,7 +4679,8 @@ function renderDesk(container) {
                 <span class="sec-kind" title="${g.ordered ? "los items van uno detrás de otro" : "sin orden: se pueden hacer en cualquier secuencia"}">
                   ${g.ordered ? "↓ en orden" : "⇄ sin orden"}
                 </span>
-                <span class="sec-count">${gr}/${g.items.length}</span>
+                <span class="sec-count ${gr === g.items.length ? "sec-all" : ""}"
+                      title="${gr} de ${g.items.length} con destino">${gr}/${g.items.length}</span>
               </div>
               <div class="plan-section-items">
                 ${g.items.map(i => renderPlanItem(i, isLive)).join("")}
@@ -4798,9 +4715,6 @@ function renderDesk(container) {
                 <input type="checkbox" id="captureOrdered" checked> lleva número
               </label>
               <button class="btn-submit" onclick="addPlanNote()">＋ Añadir al plan</button>
-              <span class="capture-sep">o directamente:</span>
-              <button class="btn-quick out-mailbox" onclick="captureTo('mailbox')" title="Va al buzón para debatirlo">📬 buzón</button>
-              <button class="btn-quick out-ideas" onclick="captureTo('ideas')" title="Interesante, pero no ahora">💡 idea</button>
             </div>
           </div>` : ""}
         ` : `
@@ -4823,7 +4737,7 @@ function renderDesk(container) {
                     la ata a su registro sin depender de que los títulos se parezcan.</span>
             </div>
           </div>`}
-      </div></div></section>
+      </div></section>
 
       <aside class="desk-rail">
         <div class="rail-panel">
@@ -4872,26 +4786,6 @@ window.addPlanNote = async function () {
   } catch (e) { reportWriteError(e); }
 };
 
-// The two shortcuts out of the capture box. ⚠️ They are NOT a fifth destination: an entry
-// that leaves for the mailbox or the park still gets written where that queue lives, and
-// the plan is where its passage is recorded — which is why the item is written too.
-window.captureTo = async function (where) {
-  const ta = document.getElementById("captureInput");
-  const text = (ta?.value || "").trim();
-  if (!text) { showToast("Escribe algo primero."); return; }
-  const cards = officeCards();
-  const card = cards.find(c => c.id === STATE.deskCardId) || cards.find(c => c.active);
-  const project = card?.project || "cross";
-  const title = text.split("\n")[0].slice(0, 90);
-  try {
-    const d = where === "mailbox"
-      ? await api("POST", "/api/mailbox", { title, project, destination: "decision", body: text })
-      : await api("POST", "/api/idea", { title, project, body: text, scope: "general" });
-    ta.value = "";
-    confirmWrite(d, where === "mailbox" ? "Enviado al buzón" : "Aparcado en ideas");
-  } catch (e) { reportWriteError(e); }
-};
-
 window.routePlanItem = async function (line, expect, outcome) {
   try {
     const d = await api("PATCH", "/api/plan/item", { line, expect, outcome });
@@ -4910,9 +4804,6 @@ function closeModal(id) {
   if (el) el.classList.remove("active");
 }
 window.closeTaskModal    = () => closeModal("taskModal");
-window.closeIdeaModal    = () => closeModal("ideaModal");
-window.closeCommentModal = () => closeModal("commentModal");
-window.closeDiscardModal = () => closeModal("discardModal");
 
 window.toggleScratchpad = function () {
   const d = document.getElementById("scratchpadDrawer");
@@ -4945,57 +4836,6 @@ window.handleCreateTask = async function (ev) {
   return false;
 };
 
-window.handleCreateIdea = async function (ev) {
-  ev.preventDefault();
-  const title = document.getElementById("ideaTitle")?.value.trim();
-  const project = document.getElementById("ideaProject")?.value;
-  const scope = document.getElementById("ideaScope")?.value.trim() || "general";
-  const body = document.getElementById("ideaBody")?.value.trim();
-  try {
-    const d = await api("POST", "/api/idea", { title, project, scope, body });
-    closeModal("ideaModal");
-    document.getElementById("ideaForm")?.reset();
-    confirmWrite(d, "Idea aparcada");
-  } catch (e) { reportWriteError(e); }
-  return false;
-};
-
-// A comment on a task is a delta the operator wants recorded against it — which is a
-// mailbox entry addressed at that task, not a field invented for the browser. ⚠️ The old
-// version kept them in `localStorage`, where no agent and no other machine can read them.
-window.handleSaveComment = async function (ev) {
-  ev.preventDefault();
-  const id = document.getElementById("commentTaskId")?.value;
-  const text = document.getElementById("commentTextInput")?.value.trim();
-  const task = STATE.tasks.find(t => t.id === id);
-  try {
-    const d = await api("POST", "/api/mailbox", {
-      title: `Nota sobre ${id} · ${task?.title || ""}`.slice(0, 120),
-      project: task?.project || "cross", destination: "task", body: text
-    });
-    closeModal("commentModal");
-    confirmWrite(d, `Nota sobre ${id} enviada al buzón`);
-  } catch (e) { reportWriteError(e); }
-  return false;
-};
-
-window.handleSaveDiscard = async function (ev) {
-  ev.preventDefault();
-  const id = document.getElementById("discardTaskId")?.value;
-  const reason = document.getElementById("discardReasonInput")?.value.trim();
-  const task = STATE.tasks.find(t => t.id === id);
-  try {
-    const d = await api("POST", "/api/mailbox", {
-      title: `Descartar ${id} · ${task?.title || ""}`.slice(0, 120),
-      project: task?.project || "cross", destination: "task",
-      body: `**Motivo del descarte (PH-3).** ${reason}`
-    });
-    closeModal("discardModal");
-    confirmWrite(d, `Descarte de ${id} propuesto al buzón`);
-  } catch (e) { reportWriteError(e); }
-  return false;
-};
-
 window.convertScratchpadToTask = function () {
   const t = (document.getElementById("scratchpadInput")?.value || "").trim();
   if (!t) { showToast("El bloc está vacío."); return; }
@@ -5005,16 +4845,6 @@ window.convertScratchpadToTask = function () {
   if (title) title.value = t.split("\n")[0].slice(0, 120);
   if (why) why.value = t;
   updateTaskPreview();
-};
-
-window.convertScratchpadToIdea = function () {
-  const t = (document.getElementById("scratchpadInput")?.value || "").trim();
-  if (!t) { showToast("El bloc está vacío."); return; }
-  openIdeaModal();
-  const title = document.getElementById("ideaTitle");
-  const body = document.getElementById("ideaBody");
-  if (title) title.value = t.split("\n")[0].slice(0, 120);
-  if (body) body.value = t;
 };
 
 // ───────────────────────────────────────────────── EL BUZÓN — agente → operador

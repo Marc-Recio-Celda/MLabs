@@ -34,9 +34,6 @@
       <button class="btn-hud-action btn-add-task" onclick="openTaskModal()">
         <span>➕</span> <span>Nueva Tarea</span>
       </button>
-      <button class="btn-hud-action btn-add-idea" onclick="openIdeaModal()">
-        <span>💡</span> <span>Aparcar Idea</span>
-      </button>
       <button class="btn-hud-action btn-scratchpad" onclick="toggleScratchpad()" title="Bloc de notas rápido">
         <span>📝</span> <span>Apuntes</span>
       </button>
@@ -140,15 +137,14 @@
       <button class="btn-close" onclick="toggleScratchpad()">✕</button>
     </div>
     <div class="scratchpad-body">
-      <p class="scratchpad-hint">Vuelca aquí pensamientos o notas fugaces para no perder el foco (`PH-3: Nothing is lost`).</p>
+      <p class="scratchpad-hint">Un borrador que vive sólo en este navegador. ⚠️ <strong>No escribe en
+        ningún fichero</strong>: la libreta y el parque se editan a mano, por decisión del operador.
+        Lo que aquí se quede, se queda aquí.</p>
       <textarea id="scratchpadInput" placeholder="Escribe aquí notas, fragmentos de código, ideas inmediatas..."></textarea>
       
       <div class="scratchpad-actions">
         <button class="btn-convert btn-convert-task" onclick="convertScratchpadToTask()">
           <span>➕</span> Convertir en Tarea
-        </button>
-        <button class="btn-convert btn-convert-idea" onclick="convertScratchpadToIdea()">
-          <span>💡</span> Convertir en Idea
         </button>
       </div>
     </div>
@@ -200,91 +196,6 @@
         <div class="modal-footer">
           <button type="button" class="btn-cancel" onclick="closeTaskModal()">Cancelar</button>
           <button type="submit" class="btn-submit"><span>💾</span> Guardar Tarea</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: AÑADIR IDEA -->
-  <div class="modal-overlay" id="ideaModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3><span>💡</span> Aparcar Nueva Idea</h3>
-        <button class="btn-close" onclick="closeIdeaModal()">✕</button>
-      </div>
-      <form id="ideaForm" onsubmit="handleCreateIdea(event)">
-        <div class="form-group">
-          <label>Título de la idea</label>
-          <input type="text" id="ideaTitle" required placeholder="Ej: Soporte para multi-tenancy en el motor de inferencia">
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Proyecto / Dominio</label>
-            <select id="ideaProject" required class="custom-select">
-              <!-- populated dynamically from model -->
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Ámbito (Scope)</label>
-            <input type="text" id="ideaScope" placeholder="Ej: frontend, ai, backend, data" value="general">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Cuerpo / Descripción de la idea</label>
-          <textarea id="ideaBody" rows="3" required placeholder="Describe la idea y qué ventajas aportaría cuando se decida abordar..."></textarea>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn-cancel" onclick="closeIdeaModal()">Cancelar</button>
-          <button type="submit" class="btn-submit"><span>💾</span> Guardar en Idea Park</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: COMENTAR TAREA -->
-  <div class="modal-overlay" id="commentModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3><span>💬</span> Añadir Comentario / Traza a Tarea</h3>
-        <button class="btn-close" onclick="closeCommentModal()">✕</button>
-      </div>
-      <form id="commentForm" onsubmit="handleSaveComment(event)">
-        <input type="hidden" id="commentTaskId">
-        <div class="form-group">
-          <label id="commentTaskTitleLabel">Tarea: T...</label>
-          <textarea id="commentTextInput" rows="4" required placeholder="Escribe tu observación, resultado de pruebas o actualización sobre esta tarea..."></textarea>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-cancel" onclick="closeCommentModal()">Cancelar</button>
-          <button type="submit" class="btn-submit"><span>💬</span> Añadir Comentario</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: DESCARTAR TAREA -->
-  <div class="modal-overlay" id="discardModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3><span style="color: var(--coral);">⚫</span> Descartar Tarea (Registro PH-3)</h3>
-        <button class="btn-close" onclick="closeDiscardModal()">✕</button>
-      </div>
-      <form id="discardForm" onsubmit="handleSaveDiscard(event)">
-        <input type="hidden" id="discardTaskId">
-        <div class="form-group">
-          <label id="discardTaskTitleLabel">Tarea: T...</label>
-          <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 6px;">
-            Según la filosofía de la empresa (`PH-3`), lo descartado se registra con su motivo para que la decisión sea trazable y no se repita en el futuro.
-          </p>
-          <label>Motivo del descarte / Alternativa elegida</label>
-          <textarea id="discardReasonInput" rows="3" required placeholder="Ej: Se descarta porque la verificación ya queda cubierta en la API local..."></textarea>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-cancel" onclick="closeDiscardModal()">Cancelar</button>
-          <button type="submit" class="btn-submit" style="background: var(--coral); color: #fff;"><span>⚫</span> Confirmar Descarte</button>
         </div>
       </form>
     </div>
