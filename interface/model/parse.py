@@ -208,7 +208,10 @@ def parse_queue(path, text):
                          "body": "\n".join(body).strip(), **f})
             continue
 
-        m = re.match(r"^(?P<id>T\d+)\s*·\s*(?P<title>.+?)\s*(?P<status>[⬜🔨⛔🔴✅])?\s*$", head)
+        # ⚠️ `⚫` faltaba en el juego, así que una tarea cancelada no casaba su emoji, se
+        # quedaba sin `status` y salía como pendiente — cancelada por escrito y abierta en
+        # toda vista que lea este campo.
+        m = re.match(r"^(?P<id>T\d+)\s*·\s*(?P<title>.+?)\s*(?P<status>[⬜🔨⛔🔴✅⚫])?\s*$", head)
         if m:
             f = {k: clean(v) for k, v in m.groupdict().items() if v}
             fields = kv_block(lines, i + 1)

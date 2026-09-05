@@ -6044,3 +6044,57 @@ input[type="text"]:focus, textarea:focus {
   font-size: 10.5px; font-style: italic; color: var(--ink-disabled); cursor: help;
   padding-left: 4px; align-self: center;
 }
+
+/* ── La declaración de trabajo en curso ──────────────────────────────────
+   FLOW.md no pone techo al número de tareas activas y dice en su lugar qué lo acota:
+   la visibilidad de esta cifra, leída en cada apertura. Por eso es la cabecera del muro
+   y no una píldora más entre otras. */
+.wip-declaration {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  padding: 14px 20px; margin-bottom: 16px;
+  background: linear-gradient(150deg, var(--paper-elevated), var(--vine-bg));
+  border: 1px solid var(--vine-border); border-left: 5px solid var(--vine);
+  border-radius: var(--radius-lg);
+}
+.wip-declaration.wip-floor {
+  background: linear-gradient(150deg, var(--paper-elevated), var(--gold-bg));
+  border-color: var(--gold-border); border-left-color: var(--gold);
+}
+.wip-n {
+  font-size: 42px; font-weight: 800; line-height: 1; color: var(--vine-deep);
+  min-width: 52px; text-align: center;
+}
+.wip-floor .wip-n { color: var(--gold-deep); }
+.wip-txt { flex: 1 1 320px; display: flex; flex-direction: column; gap: 3px; }
+.wip-txt strong { font-size: 14px; color: var(--ink); }
+.wip-txt span { font-size: 11.5px; line-height: 1.55; color: var(--ink-muted); }
+.wip-side { display: flex; gap: 6px; flex-wrap: wrap; }
+.wip-chip {
+  font-size: 11.5px; font-weight: 600; padding: 4px 11px; border-radius: var(--radius-full);
+  background: var(--ocbg); color: var(--oc); border: 1px solid var(--oc);
+  font-family: inherit;
+}
+.wip-bin {
+  cursor: pointer; background: var(--paper-subtle); color: var(--ink-muted);
+  border-color: var(--border-medium);
+}
+.wip-bin:hover { background: var(--paper-code); color: var(--ink); }
+
+/* Una cola que nadie drena tiene que verse, que es el propósito declarado de la regla. */
+.office-note {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 11px 16px; margin-bottom: 16px;
+  background: var(--accent-cyan-bg); border: 1px solid var(--ice-blue-border);
+  border-left: 4px solid var(--accent-cyan); border-radius: var(--radius-md);
+  font-size: 12px; line-height: 1.55; color: var(--ink-soft);
+}
+.office-note strong { color: var(--accent-cyan); font-size: 13px; }
+
+/* `pending` es «planificada» o «sin planificar» según exista su hoja, y la diferencia
+   decide qué haces con la tarjeta. */
+.plan-flag {
+  font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 1px 7px; border-radius: var(--radius-full); cursor: help;
+}
+.plan-flag.planned { background: var(--vine-bg); color: var(--vine-deep); border: 1px solid var(--vine-border); }
+.plan-flag.unplanned { background: var(--paper-subtle); color: var(--ink-muted); border: 1px dashed var(--border-medium); }

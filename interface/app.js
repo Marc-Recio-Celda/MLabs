@@ -4097,7 +4097,12 @@ function officeCards() {
     }
   }
   for (const t of STATE.tasks) {
-    if (t.status === "✅" || t.status === "⚫") continue;   // terminal: it leaves the board
+    // ⚠️ Aquí se descartaba por EMOJI (`✅`/`⚫`) antes de que el estado declarado pudiera
+    // opinar, así que una tarea `done` no llegaba nunca a la papelera — se evaporaba. Y el
+    // emoji `⚫` ni siquiera está en el juego que el parser reconoce, con lo que una
+    // cancelada entraba como pendiente. Dos sitios decidiendo lo mismo y discrepando.
+    // Ahora la terminalidad la decide `cardState` y sólo `cardState`, y el reparto entre
+    // muro y papelera lo hace quien pinta.
     const k = key(t.title);
     const hit = cards.get(k) || [...cards.values()].find(
       c => key(c.title).includes(k) || k.includes(key(c.title)));
@@ -4117,9 +4122,9 @@ function officeCards() {
     }
   }
 
-  // ⚠️ `cancelled` y `done` son terminales: salen de la cola, que es la vista sobre los
-  // otros tres. Una tarjeta terminal en el mural es un tablero que nunca se vacía.
-  for (const [k, c] of [...cards]) if (["done", "cancelled"].includes(c.declared)) cards.delete(k);
+  // ⚠️ `FLOW.md`: las terminales «dejan el muro **para la papelera**, marcadas como cuál».
+  // Marcadas, no borradas: `done` y `cancelled` son resultados distintos y un tablero que
+  // los funde en «ya no está» pierde el único dato que tienen.
 
   // ⚠️ Dos nombres para el mismo trabajo dan dos tarjetas, y la fusión por título sólo
   // acierta cuando uno contiene al otro: «Migración del parser a records» y «Migrar el
@@ -4150,6 +4155,11 @@ function cardState(c) {
   if (c.declared) return c.declared;
   if (c.active) return "active";
   if (c.marker === "⏸") return "paused";
+  // El respaldo para una instancia que aún no declara estados: el emoji del vocabulario
+  // anterior. ⚠️ Sólo se traducen los dos terminales, que son los únicos donde el emoji
+  // dice inequívocamente cuál es — un ⬜ puede ser `pending` o `paused` y no se adivina.
+  if (c.status === "✅") return "done";
+  if (c.status === "⚫") return "cancelled";
   return "pending";
 }
 
@@ -4297,45 +4307,75 @@ function renderTraceList() {
 }
 
 // ───────────────────────────────────────────────── OFICINA — the board
+const TERMINAL = ["done", "cancelled"];
+
 function renderOffice(container) {
-  const cards = officeCards();
-  const projects = [...new Set(cards.map(c => c.project).filter(Boolean))].sort();
+  const all = officeCards();
+  // El muro y la papelera son dos conjuntos. `FLOW.md`: las terminales «dejan el muro para
+  // la papelera, MARCADAS como cuál» — así que se apartan, no se borran, y `done` y
+  // `cancelled` siguen siendo distinguibles allí.
+  const cards = all.filter(c => !TERMINAL.includes(cardState(c)));
+  const bin = all.filter(c => TERMINAL.includes(cardState(c)));
+  const projects = [...new Set(all.map(c => c.project).filter(Boolean))].sort();
   const fp = STATE.officeFilterProj || "ALL";
   const fs = STATE.officeFilterState || "ALL";
-  const shown = cards.filter(c =>
+  const pool = fs === "bin" ? bin : cards;
+  const shown = pool.filter(c =>
     (fp === "ALL" || (c.project || "").toLowerCase() === fp.toLowerCase()) &&
-    (fs === "ALL" || cardState(c) === fs));
+    (["ALL", "bin"].includes(fs) || cardState(c) === fs));
   const count = st => cards.filter(c => cardState(c) === st).length;
+  const mailboxOpen = (STATE.mailbox || []).filter(e => ["open", "pending"].includes(e.state)).length;
 
   container.innerHTML = `
     <div class="view-header">
       <div class="view-title-group">
         <h1><span>🗂️</span> Oficina</h1>
-        <p class="view-subtitle">El mural de todo lo que hay abierto. Una tarjeta por tarea —
-          se fusionan las filas del <code>COMPASS</code> y las entradas de <code>TASKS</code>,
-          porque bajo <code>FLOW.md</code> un sub-bloque <em>es</em> una tarea.</p>
+        <p class="view-subtitle">El muro: una tarjeta por <strong>tarea</strong>, y una tarea es
+          <strong>un compromiso</strong>. Un sub-bloque es una pieza de un plan y <em>no</em> es
+          una tarea hasta que alguien decide que es su momento y lo promueve — confundir los dos
+          es lo que dio dos respuestas correctas a una pregunta: preguntado qué había pendiente,
+          un agente contestó 4 y otro ~50.</p>
       </div>
-      <div class="header-stats-bar">
-        <span class="spec-pill st-active"><strong>▶ Activa:</strong> ${count("active")}</span>
-        <span class="spec-pill st-paused"><strong>⏸ En pausa:</strong> ${count("paused")}</span>
-        <span class="spec-pill st-pending"><strong>○ En cola:</strong> ${count("pending")}</span>
+      <!-- La cuenta de activas es la cabecera y no una pildora mas. FLOW.md no pone techo
+           al numero de tareas activas a proposito, y dice en su lugar que lo acota: lo que
+           acota el trabajo en curso es la VISIBILIDAD, el muro declara su cuenta de activas
+           y se lee en cada apertura. Es un trabajo que la regla le da a esta vista. -->
+      <div class="wip-declaration ${count("active") === 0 ? "wip-floor" : ""}">
+        <span class="wip-n">${count("active")}</span>
+        <div class="wip-txt">
+          <strong>${count("active") === 1 ? "tarea activa" : "tareas activas"} ahora mismo</strong>
+          <span>Sin techo, a propósito: cada tarea tiene su propia hoja, así que nada se disputa.
+            Lo que acota el trabajo en curso es <em>este número, leído en cada apertura</em>.
+            Si empieza a subir, eso es evidencia para una regla — no motivo para adivinarla.</span>
+        </div>
+        <div class="wip-side">
+          <span class="wip-chip st-paused">⏸ ${count("paused")} en pausa</span>
+          <span class="wip-chip st-pending">○ ${count("pending")} en cola</span>
+          ${bin.length ? `<button class="wip-chip wip-bin" onclick="setOfficeFilter('state','bin')">🗑 ${bin.length} en la papelera</button>` : ""}
+        </div>
       </div>
     </div>
 
-    ${count("active") !== 1 ? `
+    <!-- El unico aviso es el SUELO. El techo no existe: avisar de hay mas de una activa era
+         la regla anterior, y mantenerlo habria contradicho al fichero que gobierna. -->
+    ${count("active") === 0 ? `
       <div class="office-warning">
-        <strong>⚠️ ${count("active") === 0 ? "Ninguna tarea está <code>active</code>."
-                                           : `Hay ${count("active")} tareas <code>active</code>.`}</strong>
+        <strong>⚠️ Ninguna tarea está <code>active</code>.</strong>
         <span>
-          Que <strong>varias estén abiertas a la vez es lo normal</strong> — <code>FLOW.md</code>
-          regla 4 lo permite expresamente, y ahora mismo hay ${cards.length} en el mural. Lo que
-          tiene que ser una es la <code>active</code>:
-          ${count("active") === 0
-            ? "sin ninguna, el <code>▶</code> no señala nada y no hay hoja en vuelo."
-            : "dos <code>active</code> son dos frentes, y entonces el <code>▶</code> no es uno."}
-          Las demás se quedan en <code>paused</code>, que es lo que hace barato cambiar: su hoja
-          se conserva y se ve.
+          <code>FLOW.md</code> pone un suelo: <strong>si hay trabajo en marcha, al menos una tarea
+          está activa</strong> — y si ninguna lo está, el agente lo dice y se asigna una, con su
+          proyecto, su plan y sus objetivos. Es lo que acota la promoción: un sub-bloque listo que
+          nadie promueve <strong>es invisible desde el muro</strong>.
         </span>
+      </div>` : ""}
+    ${mailboxOpen ? `
+      <div class="office-note">
+        <strong>📬 ${mailboxOpen} entrada${mailboxOpen === 1 ? "" : "s"} sin cerrar en el buzón.</strong>
+        <span>Una tarea de drenaje está <code>active</code> mientras su cola no está vacía, y
+          <code>paused</code> sólo cuando lo está — <strong>el estado de un drenaje se deriva de la
+          cuenta, no se elige</strong>. «En pausa con cosas dentro» no es un estado: es una
+          contradicción, y es justo así como una cola deja de verse.
+          <button class="inline-link" onclick="navigateTo('inbox')">ir al buzón →</button></span>
       </div>` : ""}
 
     <div class="office-filters">
@@ -4350,9 +4390,10 @@ function renderOffice(container) {
             ${m.icon} ${m.label} (${count(k)})
           </button>`;
         }).join("")}
-        <span class="filter-note" title="FLOW.md: cancelled y done son terminales — dejan la cola, que es la vista sobre los otros tres.">
-          ✕ ✓ las terminales dejan el tablero
-        </span>
+        <button class="chip-filter ${fs === "bin" ? "active" : ""}" onclick="setOfficeFilter('state','bin')"
+                title="FLOW.md: las terminales dejan el muro para la papelera, marcadas como cuál.">
+          🗑 papelera (${bin.length})
+        </button>
       </div>
       <div class="filter-row">
         <span class="filter-label">Proyecto</span>
@@ -4368,11 +4409,11 @@ function renderOffice(container) {
       ${shown.length ? shown.map(c => {
         const st = cardState(c);
         const m = STATE_META[st];
-        // The plan belongs to the task. Only the active one has the live sheet; the rest
-        // show what their sheet holds when the instance keeps one per task.
         // ⛔ Antes era `c.active ? STATE.livePlan : []`, así que toda tarjeta que no fuera
         // la del ▶ decía «sin plan abierto todavía» aunque su hoja estuviera en disco.
         const sheet = planForCard(c);
+        // The plan belongs to the task. Only the active one has the live sheet; the rest
+        // show what their sheet holds when the instance keeps one per task.
         const items = sheet ? sheet.items : [];
         const routed = items.filter(i => i.struck || i.outcome).length;
         const pct = items.length ? Math.round(routed / items.length * 100) : null;
@@ -4382,6 +4423,13 @@ function renderOffice(container) {
             <header class="mural-top">
               <span class="mural-marker ${m.cls}">${c.active ? "▶" : (c.marker || m.icon)}</span>
               <span class="mural-state ${m.cls}">${m.label}</span>
+              ${st === "pending" ? `
+                <span class="plan-flag ${sheet && sheet.items.length ? "planned" : "unplanned"}"
+                      title="${sheet && sheet.items.length
+                        ? "FLOW.md: pending es «planificada» cuando su hoja existe."
+                        : "FLOW.md: pending es «sin planificar» cuando su hoja no existe. Se planifica con current-plan."}">
+                  ${sheet && sheet.items.length ? "planificada" : "sin planificar"}
+                </span>` : ""}
               ${c.project ? `<span class="tag-pill tag-project">${esc(c.project)}</span>` : ""}
             </header>
             <h3 class="mural-title">${inline(c.title)}</h3>
@@ -5283,8 +5331,9 @@ function renderStructuralFiles(collapsed) {
 const NESTING = [
   ["project",   "proyecto",  "un repositorio soberano, con su propio ciclo de vida"],
   ["block",     "bloque",    "propuesto por adelantado — la forma del trabajo"],
-  ["sub-block", "sub-bloque","definido al llegar, no antes. <strong>Y un sub-bloque es una tarea</strong>"],
-  ["plan",      "plan",      "cómo se hace esa tarea · sus subtareas"],
+  ["sub-block", "sub-bloque","definido al llegar, no antes. Una <em>pieza del plan</em>, todavía no un compromiso"],
+  ["↓ promoción","promoción", "<strong>alguien decide que es su momento</strong>, y sólo entonces sale al muro"],
+  ["task",      "tarea",     "en el muro, con su propia hoja. <strong>Una tarea es un compromiso</strong>"],
   ["item",      "item",      "y los items engendran items, que se escriben en el acto"]
 ];
 
@@ -5307,9 +5356,11 @@ function renderNesting() {
             </div>`).join("")}
         </div>
         <p class="sub-note">
-          <strong>Cada sub-bloque es una tarea; no toda tarea es un sub-bloque.</strong> Una tarea
-          que llega entera entra en la cola sin bloque encima — y <em>la cola es una lista o no es
-          una cola</em>.
+          <strong>Un sub-bloque no es una tarea hasta que alguien lo dice.</strong> Es una pieza
+          de un plan; una tarea es un compromiso. Al promoverlo <em>no cambia nada más de él</em>:
+          conserva su dirección en el plan, y la tarea nombra esa dirección. Una tarea que llegó
+          entera no tiene bloque encima y escribe <code>block</code> vacío, porque un campo
+          ausente no puede decir eso.
         </p>
         <p class="sub-note sub-note-warn">
           ⚠️ Este esquema es la única transcripción que queda en la portada: <code>FLOW.md</code>
