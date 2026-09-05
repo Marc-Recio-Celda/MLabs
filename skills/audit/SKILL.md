@@ -50,11 +50,11 @@ unrun check is reported as unrun, never as passed (`MLabs:AX-22`).
 ## The brief — fresh context, every time
 
 The audit runs as a subagent that **has not seen the conversation and must not**: it reads from
-disk, and the live plan is how it sees the round's *reasoning* without reading a transcript
+disk, and the task's sheet is how it sees the round's *reasoning* without reading a transcript
 (`METHOD.md` §3).
 
 **The brief is three things and nothing else:** the role file's checklist · the paths the task
-touched · that task's live plan.
+touched · that task's sheet.
 
 ⚠️ **The brief never contains the dismissal criterion, nor names the file that holds it.** An
 auditor that knows it is judged for agreeing has an incentive to manufacture findings, which
@@ -66,7 +66,7 @@ was withheld.** There is no file an auditor can never be pointed at — the brie
 task touched*, and any file can be touched — so the rule is on the dispatcher, not on the filing
 cabinet. **A brief silently missing a path is indistinguishable from a round that did not touch it.**
 
-⚠️ **Fire before the live plan closes, not after.** This is the most common way to get the close
+⚠️ **Fire before the task's sheet closes, not after.** This is the most common way to get the close
 wrong and it fails silently: fired late, the audit reads the *previous* round's reasoning.
 **Closed, not emptied** — the plan becomes `99_SYSTEM/data/plans/<id>.json` and stays
 readable, so a late audit can still be given the right plan by id.

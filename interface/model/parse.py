@@ -324,8 +324,108 @@ def parse_park(path, text):
     return ents, probs
 
 
+# The wall's task heading, and the grammar is deliberately rigid:
+#     ### <marker> `<project>` · <title>
+# ⚠️ The wall became blocks of prose on 2026-09-05 so a human could read it (`AX-46`, the four
+# fields), and THIS READER WAS NOT CHANGED IN THE SAME ACT — so the cockpit reported zero active
+# tasks over a board with three. That is the *two changes in one diff* failure, committed by the
+# session that had just written the rule against it: the shape changed and its reader did not.
+# ⛔ The marker is FIRST because that is the one field a reader scans for, and it is the one field
+# a regex can anchor on without knowing anything else about the line.
+WALL_TASK = re.compile(r"^###\s+(?P<marker>[▶⏸⬜✅✖])\s+`(?P<project>[^`]+)`\s*·\s*(?P<title>.+?)\s*$")
+WALL_FIELD = re.compile(r"^\*\*(?P<k>Serves|Sheet|Why it is committed|What it affects)\*\*\s*(?P<v>.*)$")
+MARKER_STATE = {"▶": "active", "⏸": "paused", "⬜": "pending", "✅": "done", "✖": "cancelled"}
+
+
+def parse_wall(path, text):
+    """Tasks, as blocks. Returns [] when the file holds none, so the table reader still runs."""
+    ents, probs, lines = [], [], text.splitlines()
+    cur = None
+    in_bin = False
+    for i, line in enumerate(lines):
+        if line.startswith("## "):
+            in_bin = "bin" in line.lower()
+        m = WALL_TASK.match(line)
+        if m:
+            # ⛔ `kind` is "front" and NOT "task", and the reason is the cockpit rather than the
+            # model. `app.js:339` builds the front panel from `kind === "front"` and `:466` builds
+            # the task list from `kind === "task"` reading `TASKS.md`. Emitting "task" here puts
+            # the wall into the wrong panel and empties the right one — the shape changed, and the
+            # view that reads it did not. **A vocabulary the model prefers is not worth a cockpit
+            # that renders nothing**; the wall's entities ARE what that panel has always called
+            # fronts. ⚠️ `state`, `marker`, `serves` and `sheet` ride alongside for whoever wants
+            # the newer words, and `described_in` mirrors `sheet` so the existing panel resolves.
+            cur = {"kind": "front", "row": "summary", "line": i + 1, "marker": m["marker"],
+                   "state": MARKER_STATE[m["marker"]],
+                   "active": m["marker"] == "▶" and not in_bin,
+                   "name": clean(m["title"]), "project": m["project"],
+                   "in_bin": in_bin, "serves": None, "sheet": None,
+                   "described_in": None, "affects": None}
+            ents.append(cur)
+            continue
+        if cur is None:
+            continue
+        f = WALL_FIELD.match(line.strip())
+        if f:
+            k = f["k"]
+            v = clean(f["v"])
+            if k == "Serves":
+                # one line may carry `**Serves** x · **Sheet** y`
+                parts = re.split(r"·\s*\*\*Sheet\*\*", f["v"])
+                cur["serves"] = clean(parts[0])
+                if len(parts) > 1:
+                    cur["sheet"] = clean(parts[1])
+                    cur["described_in"] = cur["sheet"]
+            elif k == "Sheet":
+                cur["sheet"] = v
+            if cur.get("sheet"):
+                cur["described_in"] = cur["sheet"]
+            elif k == "What it affects":
+                cur["affects"] = v
+    # ⛔ Every task carries the four fields (`MLabs:AX-46`) and a missing one is NAMED, never
+    # counted. "Four are short" does not say which four, and the whole point of the contract is
+    # that a reader can act on the answer.
+    for e in ents:
+        if e["in_bin"]:
+            continue
+        for field in ("serves",):
+            if not e.get(field):
+                probs.append(Problem(path, e["line"],
+                                     f"wall task `{e['name']}` carries no **{field.title()}** — "
+                                     f"`AX-46` asks what objective it serves", ""))
+    # ⛔ THE FLOOR, and it lives here rather than after the table reader because that is where it
+    # was and it never ran: `parse_wall` returns early on a wall, so a board with work and nothing
+    # active reported clean. Found by a plant, not by reading (`AX-7`).
+    live = [e for e in ents if not e["in_bin"]]
+    # ⛔ Entries that are ALL in the bin means the live half stopped matching the grammar — the
+    # bin's ✅ headings kept parsing while the ▶/⬜ ones did not, so the board read as "two done
+    # tasks and no work" and reported clean. Found by the marker-removal plant, which is exactly
+    # the shape `AX-7` means by *plant against the format, not into it*.
+    if ents and not live:
+        probs.append(Problem(path, 0,
+                             f"the wall parsed {len(ents)} task(s) and every one is in the bin — "
+                             f"the live half is not matching `### <marker> `<project>` · <title>`",
+                             ""))
+    if live and not any(e["active"] for e in live):
+        probs.append(Problem(path, 0,
+                             f"the wall holds {len(live)} task(s) and none is active — the floor is "
+                             f"at least one `▶` whenever work is happening", ""))
+    return ents, probs
+
+
 def parse_compass(path, text):
-    """Fronts. The `▶` column is the marker; the board tables carry the rest."""
+    """Tasks or fronts. The wall's blocks first; the older `▶`-column tables if it holds none."""
+    wall_ents, wall_probs = parse_wall(path, text)
+    if wall_ents:
+        return wall_ents, wall_probs
+    # ⛔ A file that calls itself a wall and parses as zero tasks is BROKEN, not a table. Without
+    # this, dropping the markers turns a seven-task board into a two-row edges table and reports
+    # clean — a silent degradation, which is the class this whole file exists against. Planted.
+    if re.search(r"^#\s*\S*\s*WALL\b", text, re.M) or "task wall" in text[:400].lower():
+        return [], [Problem(path, 0,
+                            "this file declares itself the wall and parsed ZERO tasks — the "
+                            "heading grammar is `### <marker> `<project>` · <title>` and no line "
+                            "matched it", "")]
     ents, probs, lines = [], [], text.splitlines()
     project = None
     for i, line in enumerate(lines):

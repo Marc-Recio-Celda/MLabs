@@ -96,7 +96,7 @@ at the close"* is the same failure with a delay.
 **Close the task, in this order — the order is the point.**
 
 1. Every line struck, every residue routed to a destination.
-1b. **Update the `state.md` of every project the task touched**, by rule rather than by habit.
+1b. **Update the `plan.md` of every project the task touched**, by rule rather than by habit.
    **The test is the file's own: would this still be true if work stopped today?** If the answer
    changed during the task and the file did not, the close is not done. ⚠️ **Numbered `1b` rather
    than renumbering**, so every reference to steps 2–6 elsewhere still resolves.
@@ -105,7 +105,7 @@ at the close"* is the same failure with a delay.
    holds the list, and the list of what is *not* structural is the load-bearing half). Most
    closes do not qualify and should not: the close writes the live set and the logs by
    definition, so an audit that counted those would fire every time and be read none of the
-   times. When it does fire it reads the artefacts *and the live plan, which is still full* —
+   times. When it does fire it reads the artefacts *and the task's sheet, which is still full* —
    the plan is the only record of how the task thought, and emptying it first leaves the
    auditor reading a blank file while believing it read the reasoning. **The audit precedes
    the erasure, always.** The operator can also call it on any close, for any reason.
@@ -134,14 +134,14 @@ do not delete them.** The plan is cleared once, at the close, never during.
 
 ---
 
-## 3. Why the live plan is the load-bearing piece
+## 3. Why the plan sheet is the load-bearing piece
 
 It looks like a scratchpad. It is the only document in the system that holds **reasoning while
 it is happening**, and that gives it two properties nothing else has.
 
 **It is the durable substitute for conversation memory.** Everything else is written after the
 fact: a record says what was decided, never the four things considered on the way. A working
-conversation holds all of that and then ends. The live plan is where the middle of the thinking
+conversation holds all of that and then ends. The plan sheet is where the middle of the thinking
 lands on disk — which is what lets a reviewing agent see the round's *reasoning* while still
 reading only from disk, never a transcript. **Without it, either the reviewer reads the
 transcript (and inherits its blind spots) or it reviews conclusions with no access to how they
@@ -152,7 +152,7 @@ past tense. No compass can — it is one line. This is the natural source of a l
 whenever one gets built, precisely because it is the only file whose content is the present.
 
 ⚠️ **And it is closed, not emptied and not archived** — §2 step 4 is the winner and this line
-does not restate it. What must not happen is a live plan that *accumulates* — that is a backlog wearing
+does not restate it. What must not happen is a sheet that *accumulates* — that is a backlog wearing
 a friendlier name, and `AX-17` routes committed-but-not-started work somewhere else.
 
 ---
@@ -262,11 +262,11 @@ lapse.
 
 | File | Kind | Holds |
 |---|---|---|
-| `COMPASS.md` | Compass | one `▶`, edges not nodes, every project |
+| `WALL.md` | Compass | every task and its state, **several may be active**, every project |
 | `PLAN.md` | Live plan | **the active task's plan sheet** — a view, since every task carries its own |
 | `MAILBOX.md` | Queue | agent → operator, every project |
 | `TASKS.md` | Queue | operator → agent, every project |
-| `IDEAS.md` | Park | undecided, every project |
+| `notebook/ideas.md` | Park | deliberately not done, with the reason, every project |
 
 Named literally because AX-21 requires it: *"the central file for that kind"* is not a path, and
 an agent that has to guess has already failed the cold start.
@@ -290,10 +290,10 @@ first view is the live task list and not a nice-to-have.
 | File | Kind | Holds |
 |---|---|---|
 | `definition.md` | Standing | what this project is, and explicitly what it is not |
-| `state.md` | Standing | the present tense: would this still be true if work stopped today? |
+| `plan.md` | Standing | the blocks and sub-blocks that lead to the objectives · `objectives.md` | Standing | what is being pursued now |
 | `Decision_Log.md` | Record | `Dn` with author, date, reasoning, and what was discarded |
 | `LOG_AGENTS.md` | Record | what each agent did **in this project** |
-| `architecture.md` | Standing | the project's own axioms — **created when the first one exists**, never as an empty table |
+| `axioms.md` | Standing | the project's own axioms — **created when the first one exists**, never as an empty table |
 | `skills/` | — | procedures that only make sense here — **created when the first one exists** |
 
 **No sequenced-plan file.** AX-17's third drawer is not a document: **it is a field.** Committed
@@ -324,7 +324,7 @@ being read.
 
 | Where a project's know-how goes | Passes if |
 |---|---|
-| `architecture.md` — a project **axiom** | it passes `AX-4`, and nothing narrower would |
+| `axioms.md` — a project **axiom** | it passes `AX-4`, and nothing narrower would |
 | `nexus/skills/` — a project **skill** | it is a procedure someone follows, invoked when that work comes up |
 | `Decision_Log.md` — a **decision** | it is a choice already made that binds nothing going forward |
 
@@ -391,7 +391,7 @@ MLabs/                      the constitution — public, released, no state
 ├── NEXUS/                  the operations centre — private, and the hub
 │   ├── AGENTS.md           the binding: names the MLabs it runs; declares ledger and denylist
 │   ├── AXIOMS.md           the instance's own axioms — what MLabs cannot know
-│   ├── <live set>          compass · live plan · mailbox · tasks · ideas — every project
+│   ├── <live set>          wall · plans · mailbox · notebook · tasks — every project
 │   ├── <records>           method log · agent ledger · work log
 │   └── projects/<p>/       cartridge: definition · axioms · decisions · state · plan
 │
@@ -426,7 +426,7 @@ them changes**, since a rule can only contradict a rule it shares a reader with.
 |---|---|---|
 | **Company** | MLabs `AXIOMS.md` | it passes the second entry test in that file's header |
 | **Instance** | NEXUS `AXIOMS.md` | it binds **everything this operator does**, across every project — whether or not a stranger would also adopt it |
-| **Project** | the project's `architecture.md` | it binds this project only |
+| **Project** | the project's `axioms.md` | it binds this project only |
 
 **The departments are exhaustive by construction: the middle one is defined by breadth of *this*
 operator's work, not by whether a stranger would agree.** The most common real rule sits exactly
@@ -456,14 +456,14 @@ regenerates** (AX-20), and it is read as current for as long as nobody compares 
 | Something *you* delivered, including what leaves no commit | Work log, one line, citing an artefact |
 | Something an agent found while doing something else | `MAILBOX.md`, one line, no investigating, no fixing (AX-25) |
 | Something that needs executing | `TASKS.md`, with its why |
-| Something interesting with no commitment | `IDEAS.md` — one line while fresh; expand only if it survives a second reading |
+| Something interesting with no commitment | a `notebook/` sheet — one line while fresh. It reaches the park through the mailbox, carrying the decision that parked it |
 | Committed, sequenced, but not started | `TASKS.md`, with `blocked_by:` naming what must land first. The sequence is a graph over the tasks, never a second document |
 | Anything going into a queue or a park | The central file for that kind, **with `project:` filled in** |
 | What you are doing right now | `PLAN.md` |
-| What comes next across all projects | `COMPASS.md`, one `▶` |
+| What comes next across all projects | `WALL.md` — the active tasks, and at least one whenever work is happening |
 | A rule that binds any instance | Propose it as an axiom |
 | A rule that binds all your work but no stranger's | The instance's own `AXIOMS.md` |
-| A rule that binds one project | That project's `architecture.md` |
+| A rule that binds one project | That project's `axioms.md` |
 | Anything narrower than that | It is a decision, not an axiom |
 
 **If something fits nowhere, the structure is wrong, not the item** (AX-17). Redefine the

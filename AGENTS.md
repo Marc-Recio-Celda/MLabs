@@ -139,7 +139,7 @@ copy.
 
 - **A task closes having changed a structural file** → the agent names **the auditor for the
   department that changed** — one of them, `skills/audit/` routes — and the occasion for it is
-  **after** the destinations are read back and **before** the live plan is closed (`METHOD.md` §2).
+  **after** the destinations are read back and **before** the task's sheet is closed (`METHOD.md` §2).
   Each role file states its own two lists: structural, and expressly not structural.
 
 ## 8. Stage map
