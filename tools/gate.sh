@@ -173,11 +173,29 @@ fi
 #     catch these: the operations centre's name is deliberately absent from it, being
 #     vocabulary and not a person.
 #
-#     The line this draws is the one AGENTS.md §2 draws: naming the role and its
-#     conventional root is vocabulary and is allowed; naming anything *below* that root
-#     — a folder, a project, a file — is not. So the bare root in a diagram passes,
-#     and a full path to a file inside it does not. This is the only check standing
-#     between a debugging shortcut and a program that runs on exactly one machine.
+#     ⚠️ THE LINE MOVED 2026-09-05, ON THE OPERATOR'S RULING, AND IT MOVED BECAUSE IT WAS
+#     DRAWN IN THE WRONG PLACE. It used to forbid naming ANYTHING below an instance's root
+#     — the system folder, the knowledge domains, the projects — on the theory that a path
+#     is how a program ends up running on one machine. What that actually produced was a
+#     method that could not describe its own artefacts: a skill explaining where the mailbox
+#     lives could not say where the mailbox lives, so every skill was written in paraphrase
+#     and the paraphrase was worse than the path. It blocked the operator's own commit the
+#     day the skills were rewritten to be concrete.
+#
+#     The line is now: **the system folder and the knowledge domains are STRUCTURE and may
+#     be named; `98_PROJECTS` is the operator's WORK and may not.** A skill may say
+#     `99_SYSTEM/notebook/README.md` because that path is the same on every instance built
+#     from this method. Nothing may say `98_PROJECTS/…` because what is under it is one
+#     person's projects, and their names are the leak. (The operator, 2026-09-05: *"MLabs debe
+#     permitir referenciar los archivos de nexus, a no ser que sean trabajos míos, eso sigue
+#     sin filtrarse — pasa 98/."*)
+#
+#     ⚠️ The project NAMES are still covered, and by a different check: they are on the
+#     denylist, which check 1 reads. This check and that one now cover one thing each
+#     instead of overlapping on the folder and missing on the name.
+#
+#     This is still the only check standing between a debugging shortcut and a program that
+#     runs on exactly one machine — it just stands where the machine-specific part is.
 #     ⚠️ Exemptions exist and are DELIBERATELY visible. A gate with no escape hatch
 #     gets switched off whole the first time it blocks something legitimate, so a line
 #     may carry `gate:allow <reason>` — and every one is printed on every run. An
@@ -192,11 +210,19 @@ fi
 #     a named numbered root matches at any depth while the bare numbered placeholder,
 #     which ends at the underscore, still passes. That is the distinction the paragraph
 #     above always claimed to draw and did not.
-if hits=$(grep -rHnE '(^|[^A-Za-z_0-9])(99_SYSTEM|98_PROJECTS|0[0-9]_[A-Za-z][A-Za-z0-9_&.-]*)' -- "${FILES[@]}" 2>/dev/null); then  # gate:allow a pattern must contain what it matches
+#
+#     ⚠️ NARROWED AGAIN 2026-09-05. The pattern matched the bare folder name `98_PROJECTS`
+#     anywhere, which blocked every document that named the projects root as structural
+#     vocabulary — including this check's own documentation and any skill describing the
+#     layout. The pattern is now `98_PROJECTS/[A-Za-z]`: the slash plus a letter means an
+#     actual project name follows, so the bare folder name passes and a path into it does
+#     not. The project NAMES themselves are still on the denylist (check 1), which is why
+#     this check does not need to catch them at the folder level.
+if hits=$(grep -rHnE '98_PROJECTS/[A-Za-z]' -- "${FILES[@]}" 2>/dev/null); then
   real=$(echo "$hits" | grep -v 'gate:allow')
   allowed=$(echo "$hits" | grep 'gate:allow')
   if [ -n "$real" ]; then
-    echo "  ✗ paths below an instance's root, inside the public structure:"
+    echo "  ✗ the operator's own work named inside the public structure (98_PROJECTS):"
     echo "$real" | awk -F: '{print "      " $1 ":" $2}' | sort -u | head -20
     fail=1
   fi

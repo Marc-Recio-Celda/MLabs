@@ -109,21 +109,31 @@ def append_idea(adapter, *, title, body="", project="cross", scope="general",
     return {"file": path.name, "line": new.rstrip("\n").count("\n") + 1, "wrote": line}
 
 
-def append_task(adapter, *, title, project, why, status="⬜", author="operator"):
-    """`### T<n> · title <status>` with its `project:` and its `Why`.
+def append_task(adapter, *, title, project, why, status="⬜", board=None, author="operator"):
+    """`### T<n> · title <status>` with its `project:`, its `Board:` and its `Why`.
 
     ⛔ The `why` is required by the grammar and by `AX-14`: an executor that does not know
     the purpose cannot refuse a task whose premise is false.
+
+    ⚠️ `board` is the sub-block this task belongs to, and it is what joins the agenda to the
+    map. **It is optional and its absence is legitimate** — a task that arrived whole has no
+    block above it (`FLOW.md`) — but a writer that could not emit it at all guaranteed the
+    join would stay at three tasks out of sixty, which is where it was.
+    ⛔ **It is an id, never a sentence**: the reader takes the id and drops whatever follows.
     """
     if not (why or "").strip():
         raise WriteError("a task with no `why` — the field an executor needs to refuse a "
                          "task whose premise is false (`AX-14`)")
+    if board and not re.fullmatch(r"[A-Z]{1,3}\d+\.\d+", board.strip()):
+        raise WriteError(f"a `board` that is not a sub-block id: {board!r} — the join reads it "
+                         "as an address, and an address with prose in it addresses nothing")
     path = resolve(adapter, "tasks")
     text = _read(path)
     used = [int(n) for n in re.findall(r"^###\s+T(\d+)\s*·", text, re.M)]
     n = max(used) + 1 if used else 1
     block = (f"### T{n} · {title.strip()} {status}\n"
-             f"**project:** `{project}`\n"
+             f"**project:** `{project}`"
+             + (f" · **Board:** `{board.strip()}`" if board else "") + "\n"
              f"**Why** *({author}, {_today()})*. {why.strip()}")
     new = text.rstrip("\n") + "\n\n" + block + "\n"
     _atomic_write(path, new)

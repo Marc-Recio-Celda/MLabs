@@ -68,8 +68,8 @@ cabinet. **A brief silently missing a path is indistinguishable from a round tha
 
 ⚠️ **Fire before the live plan closes, not after.** This is the most common way to get the close
 wrong and it fails silently: fired late, the audit reads the *previous* round's reasoning.
-**Closed, not emptied** — the plan becomes a closed plan record at the path the binding declares and
-stays readable, so a late audit can still be given the right plan by id.
+**Closed, not emptied** — the plan becomes `99_SYSTEM/data/plans/<id>.json` and stays
+readable, so a late audit can still be given the right plan by id.
 
 ⚠️ **The fresh context above is a discipline, not yet a mechanism.** `context: fork` would enforce
 it, and would stop the audit's reading from displacing the working conversation's. It is **not set**:
@@ -114,7 +114,7 @@ says *this is not true any more*; *what is true instead* is `skills/redefine-pro
 
 1. **The operator adjudicates.** Not every finding is genuine, and the count that binds is the one
    they accept.
-2. **One row per finding** in the role's log — one file per role, at the path the binding declares.
+2. **One row per finding** in the role's log — `99_SYSTEM/logs/<role>.md`, contract below.
 3. **One ledger entry per firing** in the operations centre's agent log: the narrative.
 4. **Only the operator acts on a veto.**
 5. **Apply what survives** — and where a finding is accepted and not fixed, say so and why. **An
@@ -155,8 +155,8 @@ row carries.
 as new every round, and **the role's value reads larger than it is** in the one direction the
 operator reading that log cannot detect.
 
-⚠️ **The reader, and its proof against an adversarial plant, live in the employee-log directory's
-own `README.md`** — instance-side. This table is the structure it implements; that file is the state.
+⚠️ **The reader, and its proof against an adversarial plant, live in `99_SYSTEM/logs/README.md`.**
+That file is the instance's; this table is the structure it implements.
 
 ### Standing — the three of them, in one table
 
@@ -166,7 +166,7 @@ own `README.md`** — instance-side. This table is the structure it implements; 
 | `instance-auditor` | `IA-` | `[instance-auditor]`, the instance ledger | **once**, for the operations centre |
 | `project-auditor` | `PA-<project>-`, **one file per project** | `[project-auditor]`, **that project's** agent log | **per project** — a project's blind spots are its own |
 
-**Every log sits at the path the instance's binding declares** (`MLabs:AX-1`). **The per-role
+**Every log sits under `99_SYSTEM/logs/`** by default, at the path the instance's binding declares (`MLabs:AX-1`). **The per-role
 prefixes apply from round 8 forward** under the renaming rule above, and **which earlier rounds a
 role inherits is in that role's own log.**
 
@@ -177,12 +177,9 @@ that reading is a command rather than an impression**: one file per role, a `Rou
 `Acc` column, parsed **by column name**.
 
 ```bash
-python3 <the instance's metrics script> --json   # → audits.<role>.firings · .operator_accepted
+python3 99_SYSTEM/scripts/metrics.py --json   # → audits.<role>.firings · .operator_accepted
 ```
 
-⚠️ **The literal path is the instance's and is declared in its binding, never here.** A public file
-that hard-codes a path below an operations centre is a program that runs on exactly one machine —
-the failure `MLabs:AX-1` exists to prevent, and the release gate blocks it.
 **The same holds for the hiring record: it is reached through the binding, never by a name written
 here.**
 

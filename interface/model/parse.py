@@ -59,15 +59,38 @@ class Problem(dict):
 
 # ---------------------------------------------------------------- field readers
 
+# A field key: bolded, and either opening the line or following a `·` separator. ⚠️ Anything
+# looser reads `**bold**` inside a value as a new field and truncates the value before it.
+FIELD_KEY = re.compile(r"(?:(?<=^)|(?<=·\s))\*\*(?P<k>[A-Za-z][\w ’'-]*?):?\*\*:?\s*")
+
+
 def kv_block(lines, start):
-    """`**Field:** value` and `> **Field:** value` lines following a header."""
+    """`**Field:** value` lines following a header, **several fields to a line**.
+
+    ⚠️ THIS READ ONE FIELD PER LINE AND TOOK THE REST OF THE LINE AS ITS VALUE. The task list
+    writes `**project:** `x` · **from** `MAILBOX` · **Closes:** …` on one line, so `project` came
+    back carrying the two fields after it — **48 of 60 tasks, 49 distinct values of a field whose
+    vocabulary is four** — while `parse_queue`'s own *"a queue entry with no `project:`"* check
+    reported **zero problems**, because the field was not empty, merely wrong. A filter nobody can
+    see is broken is the failure `AX-7` names.
+
+    A key is `**Name**` or `**Name:**` at the start of the line or just after a `·`; anything else
+    bolded belongs to a value. Each value runs to the next key.
+    """
     out = {}
     for raw in lines[start:]:
         if raw.startswith("#"):
             break
-        m = re.match(r"^>?\s*\*\*(?P<k>[A-Za-z][\w ’'-]*):?\*\*[: ]\s*(?P<v>.+?)\s*$", raw)
-        if m:
-            out[m.group("k").strip().lower().replace(" ", "_")] = m.group("v").strip()
+        s = raw.strip()
+        if s.startswith(">"):
+            s = s[1:].strip()
+        hits = list(FIELD_KEY.finditer(s))
+        if not hits or hits[0].start() != 0:
+            continue
+        for n, m in enumerate(hits):
+            end = hits[n + 1].start() if n + 1 < len(hits) else len(s)
+            v = re.sub(r"[·|,;]\s*$", "", s[m.end():end].strip()).strip()
+            out[m.group("k").strip().lower().replace(" ", "_")] = v
     return out
 
 
@@ -203,20 +226,33 @@ def parse_queue(path, text):
             # that only parses in one of two live formats reports two thirds as missing.
             wm = re.search(r"\*\*Why[.:]?\*\*\s*(?:\*\([^)]*\)\*)?[.:]?\s*(.+?)"
                            r"(?=\n\*\*[A-Z]|\n---|\Z)", blob, re.S)
-            # ⛔ Los cinco estados de `FLOW.md` viven EN LA TAREA, y una instancia que los
-            # haya adoptado los escribe como `**state:** paused`. El emoji de la cabecera es
-            # el vocabulario anterior y sigue en los ficheros, así que se leen los dos y el
+            # ⛔ Los estados de `FLOW.md` viven EN LA TAREA, y una instancia que los haya
+            # adoptado los escribe como `**state:** paused`. El emoji de la cabecera es el
+            # vocabulario anterior y sigue en los ficheros, así que se leen los dos y el
             # declarado gana — ⚠️ pero NO se traduce el emoji a un estado de FLOW aquí: un
             # ⬜ puede ser `pending` o `paused` y sólo la tarea sabe cuál. Inventar la
             # equivalencia es exactamente lo que convierte un dato en una suposición.
             declared = clean(fields.get("state", "")).lower()
             state = declared if declared in FLOW_STATES else None
+            # ⚠️ A citation is an id, never a sentence. `**Board:** A5.1 · and it carries …` is
+            # how all three live ones are written, so the id is taken and the prose after it is
+            # not: a join key with commentary glued to it joins nothing.
+            bm = re.match(r"[`*]*([A-Z]{1,3}\d+\.\d+)", clean(fields.get("board", "")))
+            board_id = bm.group(1) if bm else ""
+            # ⚠️ `board`, `from` and `closes` were parsed and then thrown away here. `board` is
+            # the citation that joins the agenda to the map — the one thing you cannot see today
+            # is which sub-block a committed task belongs to — and it was **one dictionary key**
+            # away the whole time. Emitted whether or not the task carries them (`AX-24`): a task
+            # that arrived whole legitimately has no block above it (`FLOW.md`).
             ents.append({"kind": "task", "line": i + 1,
                          "state": state,
                          "plan": clean(fields.get("plan", "")) or None,
                          "block": clean(fields.get("block", "")) or None,
                          "sub_block": clean(fields.get("sub_block", "")) or None,
                          "project": clean(fields.get("project", "")),
+                         "board": board_id,
+                         "from": clean(fields.get("from", "")),
+                         "closes": clean(fields.get("closes", "")),
                          "author": clean(why.group("author")) if why else None,
                          "date": why.group("date") if why else None,
                          "why": clean(wm.group(1))[:600] if wm else None, **f})
@@ -229,6 +265,14 @@ def parse_queue(path, text):
             probs.append(Problem(path, e["line"],
                                  "a queue entry with no `project:` — the field the filter "
                                  "depends on and nothing else can infer", e.get("title", "")))
+        # ⚠️ AND ONE THAT IS PRESENT BUT NOT A PROJECT NAME. The empty case was the only one
+        # checked, so a `project:` carrying a whole sentence passed as filled — 48 of 60 tasks,
+        # reported as zero problems. **A check that only sees absence cannot see wrongness.**
+        elif " · " in e["project"] or len(e["project"]) > 40:
+            probs.append(Problem(path, e["line"],
+                                 "a `project:` that is not a project name — the filter reads it "
+                                 "whole, so anything after the name silently becomes a new value",
+                                 e["project"][:120]))
     return ents, probs
 
 
@@ -332,9 +376,25 @@ def parse_compass(path, text):
                          "waits_on": clean(g.get("Waits on", cells[1] if len(cells) > 1 else "")),
                          "note": clean(g.get("Note", cells[2] if len(cells) > 2 else None)),
                          "project": project})
+    # ⚠️ `exactly one ▶` was the rule until 2026-09-05 and `M-135` retired it. It existed because
+    # there was ONE live plan file, so one task could hold the sheet — it was a statement about a
+    # scarce resource, not about attention. Each task now owns its sheet, nothing is contended, and
+    # several active tasks is a normal working day. ⛔ THE CHECK BLOCKED THE COCKPIT THE DAY THE
+    # DECISION LANDED: it reported an error over a board that was correct, which is worse than no
+    # check — a false alarm teaches the reader to stop reading the channel.
+    #
+    # What is still decidable, and it is the only thing: a board with work on it and NOTHING
+    # active. The new rule is a FLOOR — *if work is happening, at least one task is active* — and a
+    # static reader cannot know whether work is happening. It CAN see that the board holds tasks
+    # and none carries the marker, which is the state nobody meant to be in.
+    # ⛔ Several active is NOT reported, at any count. There is no ceiling by rule; the bound is
+    # the wall stating its active count and somebody reading it.
     active = [e for e in ents if e.get("active")]
-    if len(active) != 1:
-        probs.append(Problem(path, 0, f"the compass must hold exactly one `▶`; found {len(active)}"))
+    waiting = [e for e in ents if not e.get("active") and e.get("kind") in ("front", "task")]
+    if not active and waiting:
+        probs.append(Problem(path, 0,
+            f"the board holds {len(waiting)} task(s) and none is active — the floor is at least "
+            f"one `▶` whenever work is happening"))
     return ents, probs
 
 
@@ -483,10 +543,16 @@ def parse_standing(path, text, project_pattern=None):
     title = lines[first][2:].strip() if first >= 0 else path.stem
 
     project = None
+    # The owner a project sits under — a laboratory, a workspace. It is NOT a second field
+    # to maintain: the adapter's `project_from` already captures it from the path, and this
+    # only stops discarding it. Every queue entry inherits it through `project`, so the
+    # grouping is stated once, by where the cartridge lives, and never transcribed.
+    lab = None
     if project_pattern:
         m = re.search(project_pattern, str(path).replace("\\", "/"))
         if m:
             project = (m.groupdict().get("project") or (m.group(1) if m.groups() else None))
+            lab = m.groupdict().get("lab")
 
     # 1. Extract Phase Summary from blockquote
     phase_summary = ""
@@ -518,7 +584,7 @@ def parse_standing(path, text, project_pattern=None):
             elif what_lines and not l_strip:
                 break
 
-    # Fallback to definition.md if state.md has no What section
+    # Fallback to definition.md if the plan (`state.md` before `M-135`) has no What section
     if not what_lines:
         def_file = path.parent / "definition.md"
         if def_file.exists():
@@ -603,15 +669,42 @@ def parse_standing(path, text, project_pattern=None):
                     sub_id = sub_id_m.group(1)
                     # Validate subblock pattern e.g. A1.1, B8.2, S1.3, TR1.2
                     if SUBBLOCK_ID.match(sub_id):
-                        kind = parts[1] if len(parts) > 1 else ""
-                        what = parts[2] if len(parts) > 2 else ""
-                        status_str = parts[-1] if len(parts) >= 4 else ""
+                        # BY NAME, which is the rule `GRAMMAR.md` calls non-negotiable and which
+                        # `parse_compass` already obeys. ⚠️ THIS READER WAS POSITIONAL — `parts[1]`,
+                        # `parts[2]`, `parts[-1]`, never `parts[3]` — so the five-column board tables
+                        # lost their `Waits on` cell entirely: 125 of 198 sub-block rows are in one,
+                        # and 78 carry a real dependency. **That is the dependency graph an order of
+                        # work needs, and it was discarded without a word.**
+                        head = header_of(lines, i) or []
+                        g = dict(zip(head, parts)) if len(head) == len(parts) else None
+                        if g is None:
+                            probs.append(Problem(path, i + 1,
+                                "a board row whose cell count does not match its header — read by "
+                                f"position as a fallback ({len(parts)} cells, header {len(head)})",
+                                line))
+                            g = {}
+                            kind = parts[1] if len(parts) > 1 else ""
+                            what = parts[2] if len(parts) > 2 else ""
+                            status_str = parts[-1] if len(parts) >= 4 else ""
+                        else:
+                            kind = g.get("Kind", "")
+                            what = g.get("What", "")
+                            status_str = g.get("Status", "")
+                        # ⚠️ EMITTED WHETHER OR NOT THE TABLE HAS THE COLUMN (`AX-24`): a field that
+                        # may legitimately be empty is written empty, so a consumer can tell "no
+                        # dependency" from "this reader never looked".
+                        waits = clean(g.get("Waits on") or g.get("Waits On") or g.get("Depends On") or "")
                         current_block["subblocks"].append({
                             "id": sub_id,
                             "kind": kind,
                             "title": what.replace("**", "").replace("`", ""),
                             "desc": what.replace("**", "").replace("`", ""),
-                            "status": "completed" if "✅" in status_str else ("active" if any(s in status_str for s in ["🔨", "▶", "🔴", "open"]) else "pending")
+                            "waits_on": "" if waits in ("—", "-", "–") else waits,
+                            # ⚠️ `"open"` WAS IN THIS LIST AND IS A SUBSTRING, NOT A MARKER. It
+                            # matched any status cell whose prose contained the letters — 22 rows
+                            # painted `active` while their marker said ⬜. The markers are the
+                            # vocabulary; a word in a sentence is not one.
+                            "status": "completed" if "✅" in status_str else ("active" if any(s in status_str for s in ["🔨", "▶", "🔴"]) else "pending")
                         })
                     elif ID_LIKE.match(sub_id):
                         probs.append(Problem(path, i + 1, f"a sub-block id the grammar cannot place: {sub_id!r}", line))
@@ -687,7 +780,7 @@ def parse_standing(path, text, project_pattern=None):
             if len(parts) >= 2:
                 code_repo = parts[1].replace("`", "").split("—")[0].strip()
 
-    # Fallback to definition.md if not in state.md
+    # Fallback to definition.md if not in the plan (`state.md` before `M-135`)
     if (not code_repo or not remote_url) and (path.parent / "definition.md").exists():
         try:
             def_text = (path.parent / "definition.md").read_text(encoding="utf-8")
@@ -787,8 +880,16 @@ def parse_standing(path, text, project_pattern=None):
         readme_type = "definition"
 
     architecture_content = ""
-    arch_file = path.parent / "architecture.md"
-    if arch_file.exists() and arch_file.is_file():
+    # ⚠️ RENAMED 2026-09-05 by `M-135`: `architecture.md` -> `axioms.md`. BOTH are resolved, new
+    # name first, because a tree is half migrated for most of a migration's life and an engine
+    # that only knows one name reports a whole department as absent rather than as moved.
+    # ⛔ This literal is engine code naming an instance file, which the adapter contract forbids
+    # (`interface:AX-1`): the engine is supposed to learn every path from `interface.json`. It is
+    # left here and declared rather than quietly fixed, because moving it into the adapter is a
+    # change to the source schema and that is its own decision, not a side effect of a rename.
+    arch_file = next((f for f in (path.parent / "axioms.md", path.parent / "architecture.md")
+                      if f.exists() and f.is_file()), None)
+    if arch_file is not None:
         try:
             architecture_content = arch_file.read_text(encoding="utf-8")
         except Exception:
@@ -864,6 +965,7 @@ def parse_standing(path, text, project_pattern=None):
         "line": 1,
         "title": clean(title),
         "project": project,
+        "lab": lab,
         "definition": definition,
         "phase_summary": phase_summary,
         "code_repo": code_repo,
@@ -1121,6 +1223,21 @@ def parse_adapter(adapter_path):
                     e["file"] = f.name
             entities += ents
             problems += probs
+    # The lab is a property of the PROJECT, so it is resolved once here and inherited, never
+    # written on an entry. A queue that carries `project:` can then be filtered by owner —
+    # several repositories under one lab are one front worked as many — without ~97 entries
+    # restating a fact the tree already states, and without a project that changes owner
+    # needing every one of its entries edited.
+    # ⚠️ NO LAB IS NAMED HERE. `interface/` is public and tracked, and the release gate greps
+    # it: a lab name in a comment is a leak the engine has no reason to carry, since the tree
+    # supplies every one of them at run time.
+    labs = {e["project"]: e["lab"] for e in entities
+            if e["kind"] == "project-state" and e.get("project") and e.get("lab")}
+    for e in entities:
+        # `cross` and `nexus` belong to no lab, and that is an answer, not a gap.
+        if e["kind"] != "project-state" and e.get("project") in labs:
+            e["lab"] = labs[e["project"]]
+
     assign_ids(entities)
     dupes = [e["id"] for e in entities if e["id"].rsplit("-", 1)[-1].isdigit()
              and not e["id"].rsplit("-", 1)[-1].startswith("0")]
