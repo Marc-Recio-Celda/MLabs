@@ -11,6 +11,7 @@ The adapter is given, never discovered — see find_default_adapter.
 """
 
 import argparse
+import gzip
 import http.server
 import importlib
 import mimetypes
@@ -272,12 +273,32 @@ def one_skill(adapter, name):
 
 def make_handler(adapter):
     class Handler(http.server.BaseHTTPRequestHandler):
+        # ⚠️ Comprimir NO es `interface:I1.5`, y no hay que confundirlo con haberlo hecho.
+        # `I1.5` es que el cliente deje de reconstruir cada fila en cada cambio; esto sólo
+        # reduce lo que viaja. Medido 2026-09-06 sobre un centro real: `/api/model` pesa
+        # **1,86 MB** y **476 KB** comprimido — un 74 % menos por una rama de stdlib, y el
+        # navegador ya pide `gzip` sin que nadie toque el cliente. La cota de `I1.5` sigue
+        # siendo la que dice el plan; lo que baja aquí es el coste de cada latido hasta ahí.
+        # ⛔ Con umbral: comprimir 200 bytes gasta más CPU de la que ahorra en red.
+        GZIP_MIN = 4096
+
         def _send(self, code, body, ctype="application/json"):
             if isinstance(body, (dict, list)):
                 body = json.dumps(body, ensure_ascii=False)
             payload = body.encode("utf-8")
+            encoding = None
+            if (len(payload) >= self.GZIP_MIN
+                    and "gzip" in self.headers.get("Accept-Encoding", "")):
+                payload = gzip.compress(payload, 6)
+                encoding = "gzip"
             self.send_response(code)
             self.send_header("Content-Type", ctype)
+            if encoding:
+                self.send_header("Content-Encoding", encoding)
+                # Sin esto una caché intermedia puede servir la versión comprimida a quien
+                # no la pidió. Aquí no hay ninguna, y aun así se declara: la cabecera cuesta
+                # nada y su ausencia es un fallo que sólo aparece cuando ya hay una.
+                self.send_header("Vary", "Accept-Encoding")
             self.send_header("Content-Length", str(len(payload)))
             # ⛔ Aquí había `Access-Control-Allow-Origin: *`. La página se sirve desde este
             # mismo origen y todos sus `fetch` son relativos, así que CORS no le hacía falta
