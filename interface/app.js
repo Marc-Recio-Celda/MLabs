@@ -31,10 +31,6 @@ let STATE = {
   taskFilterStatus: "",
   taskDateSort: "newest",
   taskSearch: "",
-  decFilterProj: "",
-  decFilterStatus: "",
-  decSearch: "",
-  showFrozen: false,
   activeCsTab: "session",
   globalSearchQuery: ""
 };
@@ -334,6 +330,7 @@ function ingestModel(model) {
     what: e.what || null,
     asks: e.asks || null,
     affects: e.affects || null,
+    stale: Boolean(e.stale),
     prose: e.prose || "",
     body: e.body || "",
     line: e.line,
@@ -354,7 +351,10 @@ function ingestModel(model) {
     section: e.section || "General",
     origin: e.origin || "Operator",
     date_inferred: Boolean(e.date_inferred),
-    origin_inferred: Boolean(e.origin_inferred)
+    origin_inferred: Boolean(e.origin_inferred),
+    // La fuente lo declaró caducado y el aviso se pinta con esto.
+    stale: Boolean(e.stale),
+    source: e.source || ""
   }));
 
   // Skills
@@ -395,6 +395,8 @@ function ingestModel(model) {
     date_inferred: Boolean(e.date_inferred),
     origin_inferred: Boolean(e.origin_inferred),
     file: e.file || "",
+    stale: Boolean(e.stale),
+    source: e.source || "",
     comments: [],
     discardReason: null
   }));
@@ -462,6 +464,13 @@ function ingestModel(model) {
     const gitCommitDate = pState?.git_commit_date || "";
     const readmeContent = pState?.readme_content || "";
     const readmePath = pState?.readme_path || "";
+    // ⛔ Esto faltaba, y con ello `renderProjectGuideTab` etiquetaba SIEMPRE «README.md»:
+    // sus cuatro etiquetas por clase de documento llevaban muertas desde que se escribieron,
+    // y su guarda `readmeType !== "definition"` era siempre cierta, así que una definición
+    // servida como guía se listaba dos veces — una mal etiquetada y otra bien.
+    const readmeType = pState?.readme_type || "";
+    // El fallo de git deja de ser indistinguible de «este proyecto no tiene git».
+    const gitError = pState?.git_error || "";
 
     return {
       name,
@@ -469,6 +478,8 @@ function ingestModel(model) {
       status: "ACTIVE",
       readmeContent,
       readmePath,
+      readmeType,
+      gitError,
       gitBranch,
       gitCommit,
       gitCommitMsg,
@@ -616,11 +627,6 @@ function syncUrlHash() {
     if (STATE.skillFilterType && STATE.skillFilterType !== "ALL") {
       hash += `?filter=${encodeURIComponent(STATE.skillFilterType)}`;
     }
-  } else if (view === "decisions") {
-    hash = `#/decisions`;
-    if (STATE.decFilterProj) {
-      hash += `?project=${encodeURIComponent(STATE.decFilterProj)}`;
-    }
   } else if (view === "inbox") {
     hash = `#/inbox`;
     if (STATE.selectedTaskFilter && STATE.selectedTaskFilter !== "ALL") {
@@ -703,9 +709,12 @@ function restoreRouteFromUrl() {
       STATE.skillFilterType = decodeURIComponent(params.get("filter"));
     }
   } else if (mainView === "decisions") {
-    STATE.currentView = "decisions";
+    // La vista se retiró (`interface:I14.2`) y la ruta sobrevive redirigida: un marcador
+    // viejo aterriza en el hub, que es donde las decisiones viven ahora, y con el proyecto
+    // ya seleccionado si el enlace lo traía.
+    STATE.currentView = "projects";
     if (params.has("project")) {
-      STATE.decFilterProj = decodeURIComponent(params.get("project"));
+      STATE.selectedProject = decodeURIComponent(params.get("project"));
     }
   } else if (mainView === "inbox") {
     STATE.currentView = "inbox";
@@ -837,7 +846,6 @@ function renderView() {
     case "cheatsheet": renderCheatSheet(main); break;
     case "inbox": renderInbox(main); break;
     case "ideas": renderIdeas(main); break;
-    case "decisions": renderDecisions(main); break;
     case "skills": renderSkills(main); break;
     default: renderOverview(main); break;
   }
@@ -959,8 +967,7 @@ function renderOverview(container) {
               ["inbox", "📬", "Buzón & Tareas", "Las dos colas, corriendo en direcciones opuestas. Ninguna vacía la suya.", `${(STATE.mailbox||[]).length} cartas · ${STATE.tasks.length} tareas`],
               ["dashboard", "📐", "Dashboard", "Lo que se mide y lo que todavía no. Cada medida con su denominador y su fuente.", "PH-6"],
               ["skills", "🏺", "Ágora", "Las skills, agrupadas por cómo las alcanza el modelo.", `${STATE.skills.length} skills`],
-              ["projects", "🚀", "Projects Hub", "Cada proyecto, un cartucho soberano con su propio ciclo de vida.", `${STATE.projects.length} proyectos`],
-              ["decisions", "📜", "Decision Log", "El registro que sólo crece: quién, cuándo, por qué, y qué se descartó.", `${liveDecisions().length} vivas`],
+              ["projects", "🚀", "Projects Hub", "Cada proyecto, un cartucho soberano con su propio ciclo de vida — su definición, sus objetivos, su plan, sus axiomas y <strong>su registro de decisiones</strong>.", `${STATE.projects.length} proyectos · ${liveDecisions().length} decisiones vivas`],
               ["ideas", "💡", "Idea Park", "Lo interesante sin compromiso. Una línea mientras está fresca.", `${STATE.ideas.length} ideas`],
               ["cheatsheet", "📖", "CheatSheet", "Los comandos, listos para copiar.", "⭐"]
             ].map(([view, icon, title, desc, tag]) => `
@@ -998,7 +1005,7 @@ function renderEntablature() {
       what: "Concretas, con autor, fecha y razonamiento — <strong>y con lo que se descartó</strong>, que es la parte que no deja rastro en ningún otro sitio si nadie la escribe.",
       who: "Se toman trabajando. Se escriben en el momento: una decisión sin escribir vuelve como debate abierto.",
       count: `${liveDecisions().length} vivas`,
-      go: `navigateTo('decisions')`, goLabel: "abrir el registro →" }
+      go: `navigateTo('projects')`, goLabel: "abrir el hub, que es donde viven →" }
   ];
   return `
     <p class="section-lead">
@@ -2511,7 +2518,10 @@ function renderProjectGuideTab(proj) {
     let label = "📖 README.md";
     if (proj.readmeType === "guide") label = "📖 Guía de Uso";
     else if (proj.readmeType === "how-to-use") label = "📖 HOW-TO-USE.md";
-    else if (proj.readmeType === "definition") label = "📋 Definición (definition.md)";
+    // ⚠️ No es una guía: es lo que se enseña a falta de una. Una definición dice QUÉ ES
+    // esto; una guía dice CÓMO SE USA. Servir la primera con la etiqueta de la segunda es
+    // el mismo defecto que enseñar el README de otro, una capa más abajo.
+    else if (proj.readmeType === "definition") label = "📋 Sin guía — se muestra la definición";
 
     docsList.push({
       id: "primary",
@@ -2561,10 +2571,16 @@ function renderProjectGuideTab(proj) {
   if (docsList.length === 0) {
     docsList.push({
       id: "primary",
-      label: "📄 Definición",
-      path: "state.md",
-      content: proj.definition || "Sin guía de uso disponible para este proyecto.",
-      type: "definition"
+      label: "📄 Todavía no hay guía",
+      // ⚠️ Decía `state.md`, que `M-135` retiró en favor de `plan.md`. Ahora no nombra
+      // ningún fichero, porque en este caso no se está leyendo ninguno.
+      path: "—",
+      content: proj.definition
+        || "**Todavía no hay guía de uso para este proyecto.**\n\nEl Hub busca, por este "
+         + "orden, `guide.md`, `usage.md` y `README.md` **dentro del proyecto**, y no sale de "
+         + "él: hasta 2026-09-06 subía a la carpeta de grupo y acababa sirviendo el README "
+         + "del centro como guía de seis proyectos distintos.",
+      type: "empty"
     });
   }
 
@@ -2789,7 +2805,11 @@ function renderMarkdownBody(text) {
     }
 
     // Markdown Tables
-    if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+    // ⛔ Aquí también exigía `endsWith("|")`, y era peor que en el renderizador: una fila sin
+    // pipe de cierre no se perdía sola — **caía al `else if (inTable)` y cerraba la tabla**,
+    // así que se llevaba consigo todas las filas siguientes. Medido: de una tabla de cuatro
+    // filas con una sin cerrar en la segunda, se pintaban dos.
+    if (trimmed.startsWith("|")) {
       if (!inTable) {
         if (inList) { html += `</${listType}>`; inList = false; }
         inTable = true;
@@ -2879,15 +2899,28 @@ function renderMarkdownTable(lines) {
   let html = '<div style="overflow-x: auto; margin: 16px 0 20px;"><table class="doc-table">';
   let hasHeader = false;
 
+  // ⛔ Antes exigía que la fila empezara Y acabara con `|`, y descartaba en silencio la que
+  // no. Una tabla a la que se le olvida el pipe de cierre — que es la que se escribe a mano
+  // y la que más se edita — perdía filas sin decirlo, y una tabla con una fila menos se lee
+  // como una tabla completa. **Basta con que empiece**; el cierre es opcional.
+  let width = 0;
   for (let i = 0; i < lines.length; i++) {
     const row = lines[i].trim();
-    if (!row.startsWith("|") || !row.endsWith("|")) continue;
+    if (!row.startsWith("|")) continue;
     if (row.includes("---") && row.replace(/[|\s-:]/g, "").length === 0) {
       hasHeader = true;
       continue;
     }
 
-    const cells = row.split("|").slice(1, -1).map(c => c.trim());
+    // `slice(1)` quita el hueco vacío de antes del primer `|`; el de después del último
+    // sólo existe si la fila cierra, y por eso se quita mirando en vez de contando.
+    const parts = row.split("|").slice(1);
+    if (row.endsWith("|")) parts.pop();
+    const cells = parts.map(c => c.trim());
+    // ⚠️ Una fila corta se rellena en vez de descuadrar la tabla, y una larga no se recorta:
+    // perder un campo es el mismo defecto que perder una fila, un nivel más abajo.
+    if (!width) width = cells.length;
+    while (cells.length < width) cells.push("");
     if (i === 0 || !hasHeader) {
       html += "<thead><tr>";
       cells.forEach(c => { html += `<th>${inline(c)}</th>`; });
@@ -2920,10 +2953,8 @@ function initAppListeners() {
     const val = e.target.value;
     if (val === "ALL") {
       STATE.taskFilterProj = "";
-      STATE.decFilterProj = "";
     } else {
       STATE.taskFilterProj = val;
-      STATE.decFilterProj = val;
       STATE.selectedProject = val;
     }
     renderView();
@@ -2932,7 +2963,6 @@ function initAppListeners() {
   document.getElementById("globalSearch")?.addEventListener("input", e => {
     const q = e.target.value.trim().toLowerCase();
     STATE.taskSearch = q;
-    STATE.decSearch = q;
     renderView();
   });
 }
@@ -3093,154 +3123,36 @@ function findPlanForFront(front) {
 // la capacidad de enseñar la hoja de una tarea en pausa.
 
 
-function renderDecisions(container) {
-  const allProjects = [...new Set(STATE.decisions.map(d => d.project).filter(Boolean))].sort();
-  const frozenCount = STATE.decisions.filter(d => d.frozen).length;
-  const showFrozen = STATE.showFrozen === true;
-  const projFilter = STATE.decFilterProj || "";
-  const statusFilter = STATE.decFilterStatus || "";
-  const searchTxt = (STATE.decSearch || "").toLowerCase().trim();
-
-  // Filter decisions
-  let filtered = STATE.decisions.filter(d => {
-    if (!showFrozen && d.frozen) return false;
-    if (projFilter && d.project !== projFilter) return false;
-    if (statusFilter === "ALIVE" && d.isSuperseded) return false;
-    if (statusFilter === "SUPERSEDED" && !d.isSuperseded) return false;
-
-    if (searchTxt) {
-      const matchTitle = (d.title || "").toLowerCase().includes(searchTxt);
-      const matchWhy = (d.why || "").toLowerCase().includes(searchTxt);
-      const matchId = (d.id || "").toLowerCase().includes(searchTxt);
-      const matchProj = (d.project || "").toLowerCase().includes(searchTxt);
-      const matchDiscarded = (d.discarded || "").toLowerCase().includes(searchTxt);
-      if (!matchTitle && !matchWhy && !matchId && !matchProj && !matchDiscarded) return false;
-    }
-    return true;
-  });
-
-  // Sort decisions: newest or highest numeric ID first
-  filtered.sort((a, b) => {
-    const idA = parseInt(String(a.id).replace(/\D/g, "")) || 0;
-    const idB = parseInt(String(b.id).replace(/\D/g, "")) || 0;
-    if (idA && idB && a.project === b.project) return idB - idA;
-    return (b.date || "").localeCompare(a.date || "");
-  });
-
-  container.innerHTML = `
-    <div class="view-header">
-      <div class="view-title-group">
-        <h1><span>📜</span> Decision Log (Registro de Decisiones)</h1>
-        <p class="view-subtitle">${liveDecisions().length} decisiones inmutables con autor, fecha, liveness y trazabilidad de supersedes</p>
+// El aviso de fuente caducada. ⛔ Va EN el panel, nunca en un tooltip: un aviso que hay que
+// buscar no avisa. El adapter marca una fuente `stale` — una vista generada cuyo generador
+// no existe, por ejemplo — y hasta 2026-09-06 ese flag no salía del JSON, así que estos
+// paneles se pintaban como si estuvieran vivos. **Un panel caducado que no dice que lo está
+// es cómo se deja de confiar en la pantalla entera** (`interface:I3.8`).
+// ⚠️ Cuenta las entidades marcadas, no las fuentes: si sólo una parte de lo que se ve viene
+// de la fuente caducada, el aviso lo dice en vez de teñirlo todo.
+function staleBanner(entities, queSon) {
+  const n = (entities || []).filter(e => e && e.stale).length;
+  if (!n) return "";
+  const total = (entities || []).length;
+  const fuentes = [...new Set((entities || []).filter(e => e.stale).map(e => e.source))];
+  return `
+    <div class="stale-banner" role="status">
+      <span class="stale-mark">⛔</span>
+      <div class="stale-body">
+        <strong>${n} de ${total} ${esc(queSon)} vienen de una fuente que el adaptador
+          declara caducada.</strong>
+        <span>Lo que ves aquí puede no ser lo que hay en disco. El adaptador lo dice así:</span>
+        <ul>${fuentes.map(f => `<li><code>${esc(f)}</code></li>`).join("")}</ul>
       </div>
-    </div>
-
-    <!-- DECISION FILTERS (Priority #2) -->
-    <div class="view-toolbar">
-      <div class="toolbar-group">
-        <label for="decFilterProj">Proyecto:</label>
-        <select id="decFilterProj" class="custom-select" onchange="updateDecFilter('decFilterProj', this.value)">
-          <option value="">Todos los Proyectos (${liveDecisions().length})</option>
-          ${allProjects.map(p => `
-            <option value="${esc(p)}" ${p === projFilter ? "selected" : ""}>
-              ${esc(p)} (${STATE.decisions.filter(d => d.project === p).length})
-            </option>
-          `).join("")}
-        </select>
-      </div>
-
-      <div class="toolbar-group">
-        <label for="decFilterStatus">Vivacidad:</label>
-        <select id="decFilterStatus" class="custom-select" onchange="updateDecFilter('decFilterStatus', this.value)">
-          <option value="">Todas las Decisiones</option>
-          <option value="ALIVE" ${statusFilter === "ALIVE" ? "selected" : ""}>🟢 Vivas (Activas)</option>
-          <option value="SUPERSEDED" ${statusFilter === "SUPERSEDED" ? "selected" : ""}>🔄 Reemplazadas (Superseded)</option>
-        </select>
-      </div>
-
-      <div class="toolbar-group checkbox-group">
-        <label class="toggle-label" title="Las copias congeladas son fotografías selladas declaradas (AX-20)">
-          <input type="checkbox" id="decToggleFrozen" ${showFrozen ? "checked" : ""} onchange="updateDecFilter('showFrozen', this.checked)">
-          <span>Mostrar Copias Congeladas (${frozenCount})</span>
-        </label>
-      </div>
-
-      <div class="toolbar-group search-group">
-        <input type="text" id="decSearchInput" class="custom-input" placeholder="Buscar por D_n, texto, por qué, descartado..." value="${esc(STATE.decSearch)}" oninput="updateDecFilter('decSearch', this.value)">
-      </div>
-    </div>
-
-    <!-- DECISIONS LIST -->
-    <div class="tickets-list">
-      ${filtered.length ? filtered.map(d => `
-        <div class="ticket-card decision-card ${d.isSuperseded ? 'discarded' : ''}">
-          <div class="ticket-top">
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
-              <span class="tag-pill tag-project">${esc(d.project)}</span>
-              ${d.isSuperseded ? `
-                <span class="tag-pill tag-superseded" title="Reemplazada por ${esc(d.supersededBy.join(', '))}">
-                  🔄 Reemplazada por ${esc(d.supersededBy.join(', '))}
-                </span>
-              ` : `
-                <span class="tag-pill tag-alive" title="Decisión VIVA">🟢 VIVA</span>
-              `}
-              ${d.supersedes ? `
-                <span class="tag-pill tag-supersedes" title="Reemplaza a ${esc(d.supersedes)}">⚡ Reemplaza a ${esc(d.supersedes)}</span>
-              ` : ''}
-              ${d.frozen ? `
-                <span class="tag-pill tag-frozen" title="Copia sellada de ${esc(d.mirror_of || 'snapshot')}">🧊 Frozen Mirror</span>
-              ` : ''}
-            </div>
-            ${renderDate(d.date, d.date_inferred)}
-          </div>
-
-          <h3 class="ticket-title" style="margin-top: 4px; font-size: 15px;">${inline(d.title)}</h3>
-          
-          ${(d.why || d.discarded) ? `
-            <details class="decision-details">
-              <summary>
-                <span class="toggle-icon">▶</span>
-                <span>Ver razonamiento (Why)${d.discarded ? ' y descartados' : ''}</span>
-              </summary>
-              <div class="decision-body-content">
-                ${d.why ? `
-                  <div class="decision-why-text">
-                    <strong>Por qué (Why):</strong> ${inline(d.why)}
-                  </div>
-                ` : ''}
-
-                ${d.discarded ? `
-                  <div class="discarded-box" style="margin-top: 4px;">
-                    <strong>Alternativa descartada:</strong> ${inline(d.discarded)}
-                  </div>
-                ` : ''}
-
-                <div class="ticket-meta" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line);">
-                  ${renderOrigin(d.origin, d.origin_inferred)}
-                  ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
-                  ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
-                </div>
-              </div>
-            </details>
-          ` : `
-            <div class="ticket-meta" style="margin-top: 4px;">
-              ${renderOrigin(d.origin, d.origin_inferred)}
-              ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
-              ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
-            </div>
-          `}
-        </div>
-      `).join("") : `
-        <div class="empty-state">
-          <div class="empty-icon">📜</div>
-          <h3>No hay decisiones que coincidan</h3>
-          <p>Prueba a ajustar los filtros de proyecto, vivacidad o búsqueda.</p>
-        </div>
-      `}
-    </div>
-  `;
+    </div>`;
 }
+
+// ⛔ `renderDecisions` vivía aquí y se retira 2026-09-06 (`interface:I14.2`). Una decisión
+// pertenece a su proyecto y se lee dentro de él: la pantalla de proyecto ya tiene su pestaña
+// de decisiones, filtrada y con vivas contra totales, así que la vista suelta era una segunda
+// respuesta a la misma pregunta sin ganador declarado (`MLabs:AX-20`).
+// ⚠️ La ruta `#/decisions` NO se borra: redirige al hub. Un marcador que el operador tiene en
+// la cabeza no deja de existir porque la vista sí.
 
 function renderIdeas(container) {
   container.innerHTML = `
@@ -3250,6 +3162,7 @@ function renderIdeas(container) {
         <p class="view-subtitle">Aparcamiento ordenado de ideas y mejoras futuras para preservar el foco (PH-3)</p>
       </div>
     </div>
+    ${staleBanner(STATE.ideas, "ideas")}
 
     <div class="tickets-list">
       ${STATE.ideas.length ? STATE.ideas.map(idea => `
@@ -3324,6 +3237,7 @@ function renderInbox(container) {
         <p class="view-subtitle">Corren en direcciones opuestas y <strong>ninguna vacía la suya</strong>
           (<code>AX-15</code>): el <strong>buzón</strong> va de agente a operador, la
           <strong>lista de tareas</strong> de operador a agente.</p>
+        ${staleBanner([...(STATE.tasks || []), ...(STATE.mailbox || [])], "entradas")}
       </div>
       <button class="btn-hud-action btn-add-task" onclick="openTaskModal()">
         <span>➕</span> <span>Nueva Tarea</span>
@@ -3960,11 +3874,6 @@ window.openTaskModal = function() {
 
 window.selectCsTab = function(cat) {
   STATE.activeCsTab = cat;
-  renderView();
-};
-
-window.updateDecFilter = function(key, val) {
-  STATE[key] = val;
   renderView();
 };
 

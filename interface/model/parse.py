@@ -1040,11 +1040,11 @@ def parse_standing(path, text, project_pattern=None):
             if (repo_dir / ".git").exists() or repo_dir.is_dir():
                 branch = subprocess.check_output(
                     ["git", "-C", str(repo_dir), "branch", "--show-current"],
-                    text=True, stderr=subprocess.DEVNULL, timeout=0.5
+                    text=True, stderr=subprocess.DEVNULL, timeout=5
                 ).strip()
                 commit_out = subprocess.check_output(
                     ["git", "-C", str(repo_dir), "log", "-1", "--format=%h	%s	%cd", "--date=short"],
-                    text=True, stderr=subprocess.DEVNULL, timeout=0.5
+                    text=True, stderr=subprocess.DEVNULL, timeout=5
                 ).strip().split("	")
                 if len(commit_out) >= 3:
                     git_info = {
@@ -1058,20 +1058,28 @@ def parse_standing(path, text, project_pattern=None):
                         "git_branch": branch or "main",
                         "git_commit": commit_out[0]
                     }
-        except Exception:
-            pass
+        # ⛔ Era `except Exception: pass`, así que un fallo de programación se disfrazaba de
+        # repositorio lento y las dos cosas se pintaban igual: sin metadata. **Un proyecto sin
+        # git y un proyecto cuyo git no se pudo leer son dos estados distintos**, y desde
+        # 2026-09-06 el segundo lo dice en vez de desaparecer.
+        except (OSError, subprocess.SubprocessError) as e:
+            git_info = {"git_error": f"{type(e).__name__}: {e}".strip()[:200]}
 
     # Look for README.md, guide.md, HOW-TO-USE.md, or definition.md for Visual Usage Guide
     readme_content = ""
     readme_path = ""
     readme_type = "readme"
 
+    # ⛔ Aquí había dos candidatos más — `path.parent.parent / "README.md"` y su
+    # `HOW-TO-USE.md` — que se salen del proyecto y alcanzan la carpeta de grupo. Medido
+    # 2026-09-06 contra un centro real: **seis de catorce proyectos resolvían al README de
+    # la raíz del centro**, o sea a la portada de la empresa, servida como la guía de uso de
+    # seis proyectos distintos. No era «la guía de otro proyecto»: era la de todos.
+    # **`Todavía no hay guía` es mejor respuesta que la guía de otro.**
     possible_readmes = [
         (path.parent / "guide.md", "guide"),
         (path.parent / "usage.md", "guide"),
         (path.parent / "README.md", "readme"),
-        (path.parent.parent / "README.md", "readme"),
-        (path.parent.parent / "HOW-TO-USE.md", "how-to-use"),
     ]
     if code_repo:
         try:
@@ -1444,6 +1452,13 @@ def parse_adapter(adapter_path):
                 if kind == "records":
                     e["kind"] = src.get("entity") or "record"
                 e["source"] = src["label"]
+                # ⛔ El adapter puede declarar una fuente caducada — una vista generada cuyo
+                # generador no existe, por ejemplo — y hasta 2026-09-06 ese flag no salía del
+                # JSON: ninguna capa lo leía, y tres paneles se pintaban como si estuvieran
+                # vivos. **Un panel caducado que no dice que lo está es cómo se deja de
+                # confiar en la pantalla entera**, que es lo que la fila `I3.8` predijo.
+                if src.get("stale"):
+                    e["stale"] = True
                 try:
                     e["file"] = str(f.relative_to(sroot))
                 except ValueError:

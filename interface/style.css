@@ -6266,3 +6266,31 @@ input[type="text"]:focus, textarea:focus {
   border: 1px dashed var(--border-medium); border-radius: var(--radius-full);
 }
 .bench-more:hover { background: var(--paper-code); color: var(--ink); }
+
+/* ═══ El aviso de fuente caducada (`interface:I3.8`) ═══════════════════════════════════
+   ⛔ Va EN el panel y no en un tooltip: un aviso que hay que buscar no avisa. Y usa el
+   token `--rust`, que es el que esta paleta reserva para *alerta y descarte* — ninguna
+   sala declara un color literal (`interface:AX-11`). */
+.stale-banner {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  background: var(--rust-bg);
+  border: 1px solid var(--rust-border);
+  border-left: 3px solid var(--rust);
+  border-radius: var(--radius-md);
+}
+.stale-banner .stale-mark { font-size: 15px; line-height: 1.4; flex-shrink: 0; }
+.stale-banner .stale-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stale-banner strong { color: var(--rust); font-size: 13px; line-height: 1.45; }
+.stale-banner span { color: var(--ink-soft); font-size: 12.5px; line-height: 1.5; }
+.stale-banner ul { margin: 2px 0 0; padding-left: 18px; }
+.stale-banner li { color: var(--ink-muted); font-size: 12px; line-height: 1.6; }
+.stale-banner code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  word-break: break-word;
+}
