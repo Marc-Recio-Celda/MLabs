@@ -41,21 +41,9 @@ let STATE = {
 
 let STAMP = null;
 
-// Escaping and formatting helpers
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-function inline(s) {
-  if (s == null) return "";
-  let t = String(s);
-  if (/<[a-z][\s\S]*>/i.test(t)) return t;
-  t = esc(t);
-  t = t.replace(/`([^`]+)`/g, (_, a) => `<code>${a}</code>`);
-  t = t.replace(/\*\*([\s\S]+?)\*\*/g, (_, a) => `<strong>${a}</strong>`);
-  t = t.replace(/(^|[^*\w])\*([^*\n]+)\*/g, (_, a, b) => `${a}<em>${b}</em>`);
-  t = t.replace(/~~([^~]+)~~/g, (_, a) => `<del>${a}</del>`);
-  return t;
-}
+// `esc`, `inline` y `jsq` viven en `render/escape.js`, que `index.html` carga antes que
+// este fichero. Están en un fichero propio porque son el borde entre contenido y código:
+// un solo sitio que auditar, y un solo sitio que la prueba con planta puede cargar.
 
 window.copyToClipboard = function(text, msg, evt) {
   if (!text) return;
@@ -1458,7 +1446,7 @@ function renderProjectsHub(container) {
         const labProjectsCount = enrichedProjects.filter(p => p.lab === lab).length;
         const icon = lab.toLowerCase().includes("proj") ? "💼" : "🔬";
         return `
-          <div class="skill-stat-chip ${selectedLab === lab ? 'active' : ''}" onclick="updateLabFilter('${esc(lab)}')">
+          <div class="skill-stat-chip ${selectedLab === lab ? 'active' : ''}" onclick="updateLabFilter(${jsq(lab)})">
             <span class="stat-count">${labProjectsCount}</span>
             <span class="stat-name">${icon} ${esc(lab)}</span>
           </div>
@@ -1511,7 +1499,7 @@ function renderLabSection(labName, projects) {
 
       <div class="projects-matrix-grid">
         ${projects.map(p => `
-          <div class="project-card" onclick="openProjectDetail('${esc(p.name)}')">
+          <div class="project-card" onclick="openProjectDetail(${jsq(p.name)})">
             <div class="card-top">
               <div class="project-name-group">
                 <span class="project-rank">${esc(p.rank)}</span>
@@ -1733,7 +1721,7 @@ function renderProjectWorkflowTab(proj, projectTasks, projectDecs) {
     <div class="doc-section">
       <div class="section-head" style="cursor: default;">
         <h2><span class="num">01</span> Mapa Ramificado de Fases, Bloques y Subbloques</h2>
-        <button class="btn-hud-action" onclick="openTaskModalForProject('${esc(proj.name)}')">
+        <button class="btn-hud-action" onclick="openTaskModalForProject(${jsq(proj.name)})">
           <span>➕</span> <span>Nueva Tarea para ${esc(proj.name)}</span>
         </button>
       </div>
@@ -1755,7 +1743,7 @@ function renderProjectWorkflowTab(proj, projectTasks, projectDecs) {
               <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
                 <span class="card-badge ${block.status === 'completed' ? 'badge-vine' : (block.status === 'active' ? 'badge-gold' : '')}">${esc(block.statusLabel)}</span>
                 ${block.decisions && block.decisions.length ? `
-                  <span class="card-badge badge-grape" title="Decisiones asociadas: ${block.decisions.join(', ')}">📜 ${block.decisions.length} Decs</span>
+                  <span class="card-badge badge-grape" title="Decisiones asociadas: ${esc(block.decisions.join(', '))}">📜 ${block.decisions.length} Decs</span>
                 ` : ''}
               </div>
             </div>
@@ -1863,7 +1851,7 @@ function renderProjectStateTab(proj, projectTasks, projectDecs) {
           <div class="hero-label">ACCIÓN SIGUIENTE INMEDIATA (NEXT ACTION)</div>
           <div class="hero-text">${inline(proj.nextAction)}</div>
           <div style="margin-top: 10px; display: flex; gap: 8px;">
-            <button class="gov-link-btn" onclick="copyToClipboard('claude -p \\'execute next action on ${esc(proj.name)}\\'', 'Comando de ejecución copiado')">
+            <button class="gov-link-btn" onclick="copyToClipboard(${jsq("claude -p 'execute next action on " + proj.name + "'")}, 'Comando de ejecución copiado')">
               ⚡ Ejecutar Acción con Agente
             </button>
           </div>
@@ -2062,7 +2050,7 @@ function renderProjectSkillsTab(proj) {
           </div>
           <h3>Auditar Proyecto</h3>
           <p>Verifica los cambios y el diff del proyecto contra sus propios axiomas de proyecto y reglas de higiene.</p>
-          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard('claude -p \\'run project-auditor on ${esc(proj.name)}\\'', 'Comando copiado')">
+          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard(${jsq("claude -p 'run project-auditor on " + proj.name + "'")}, 'Comando copiado')">
             📋 Copiar: claude -p 'run project-auditor on ${esc(proj.name)}'
           </button>
         </div>
@@ -2074,7 +2062,7 @@ function renderProjectSkillsTab(proj) {
           </div>
           <h3>Redefinir / Resincronizar</h3>
           <p>Reescribe definition.md y state.md cuando el proyecto ha derivado o avanzado varias decisiones sin actualizar.</p>
-          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard('claude -p \\'run redefine-project on ${esc(proj.name)}\\'', 'Comando copiado')">
+          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard(${jsq("claude -p 'run redefine-project on " + proj.name + "'")}, 'Comando copiado')">
             📋 Copiar: claude -p 'run redefine-project on ${esc(proj.name)}'
           </button>
         </div>
@@ -2086,7 +2074,7 @@ function renderProjectSkillsTab(proj) {
           </div>
           <h3>Abrir Sesión en Proyecto</h3>
           <p>Fija el frente activo en este proyecto, prepara el plan numérico en vuelo y abre el ciclo de trabajo.</p>
-          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard('claude -p \\'open-session on ${esc(proj.name)}\\'', 'Comando copiado')">
+          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard(${jsq("claude -p 'open-session on " + proj.name + "'")}, 'Comando copiado')">
             📋 Copiar: claude -p 'open-session on ${esc(proj.name)}'
           </button>
         </div>
@@ -2098,7 +2086,7 @@ function renderProjectSkillsTab(proj) {
           </div>
           <h3>Limpieza Previa a Release</h3>
           <p>Elimina comentarios arqueológicos, vocabulario privado y wikilinks antes de compartir o proponer PR.</p>
-          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard('claude -p \\'run code-cleanup on ${esc(proj.name)}\\'', 'Comando copiado')">
+          <button class="gov-link-btn" style="margin-top: auto;" onclick="copyToClipboard(${jsq("claude -p 'run code-cleanup on " + proj.name + "'")}, 'Comando copiado')">
             📋 Copiar: claude -p 'run code-cleanup on ${esc(proj.name)}'
           </button>
         </div>
@@ -2176,7 +2164,7 @@ function renderProjectReposTab(proj) {
 
           ${proj.remoteUrl ? `
             <div class="repo-actions-row">
-              <button class="btn-repo-action" onclick="copyToClipboard('${esc(proj.remoteUrl)}', 'URL de GitHub copiada', event)">
+              <button class="btn-repo-action" onclick="copyToClipboard(${jsq(proj.remoteUrl)}, 'URL de GitHub copiada', event)">
                 <span>📋 Copiar URL</span>
               </button>
               ${remoteHttp ? `
@@ -2184,7 +2172,7 @@ function renderProjectReposTab(proj) {
                   <span>↗️ Abrir en GitHub</span>
                 </a>
               ` : ''}
-              <button class="btn-repo-action" onclick="copyToClipboard('git clone ${esc(proj.remoteUrl)}', 'Comando git clone copiado', event)">
+              <button class="btn-repo-action" onclick="copyToClipboard(${jsq("git clone " + proj.remoteUrl)}, 'Comando git clone copiado', event)">
                 <span>💻 Copiar git clone</span>
               </button>
             </div>
@@ -2220,10 +2208,10 @@ function renderProjectReposTab(proj) {
           ` : ''}
 
           <div class="repo-actions-row">
-            <button class="btn-repo-action" onclick="copyToClipboard('${esc(proj.codeRepo)}', 'Ruta del workspace copiada', event)">
+            <button class="btn-repo-action" onclick="copyToClipboard(${jsq(proj.codeRepo)}, 'Ruta del workspace copiada', event)">
               <span>📋 Copiar Ruta</span>
             </button>
-            <button class="btn-repo-action" onclick="copyToClipboard('cd ${esc(proj.codeRepo)}', 'Comando cd copiado', event)">
+            <button class="btn-repo-action" onclick="copyToClipboard(${jsq("cd " + proj.codeRepo)}, 'Comando cd copiado', event)">
               <span>💻 Copiar cd</span>
             </button>
           </div>
@@ -2248,10 +2236,10 @@ function renderProjectReposTab(proj) {
           </div>
 
           <div class="repo-actions-row">
-            <button class="btn-repo-action" onclick="copyToClipboard('${esc(proj.name)}/nexus/state.md', 'Ruta state.md copiada', event)">
+            <button class="btn-repo-action" onclick="copyToClipboard(${jsq(proj.name + '/nexus/state.md')}, 'Ruta state.md copiada', event)">
               <span>🎯 Copiar state.md</span>
             </button>
-            <button class="btn-repo-action" onclick="copyToClipboard('${esc(proj.name)}/nexus/Decision_Log.md', 'Ruta Decision_Log.md copiada', event)">
+            <button class="btn-repo-action" onclick="copyToClipboard(${jsq(proj.name + '/nexus/Decision_Log.md')}, 'Ruta Decision_Log.md copiada', event)">
               <span>📜 Copiar Decision_Log.md</span>
             </button>
           </div>
@@ -2279,7 +2267,7 @@ function renderProjectReposTab(proj) {
               <span class="accordion-chevron">▼</span>
             </summary>
             <div class="git-guide-content">
-              <div class="git-cmd-box" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git switch ${esc(activeBranch)} && git pull origin ${esc(activeBranch)}', 'Comando copiado', event)">
+              <div class="git-cmd-box" onclick="copyToClipboard(${jsq("cd " + proj.codeRepo + " && git switch " + activeBranch + " && git pull origin " + activeBranch)}, 'Comando copiado', event)">
                 <div class="git-cmd-left">
                   <span class="git-cmd-label">1. Cambiar a rama de trabajo y actualizar</span>
                   <code class="git-cmd-code">cd ${esc(proj.codeRepo)} && git switch ${esc(activeBranch)} && git pull origin ${esc(activeBranch)}</code>
@@ -2287,7 +2275,7 @@ function renderProjectReposTab(proj) {
                 <span class="git-cmd-copy-hint">Copiar 📋</span>
               </div>
 
-              <div class="git-cmd-box" onclick="copyToClipboard('cd ${esc(proj.codeRepo)} && git status -s', 'Comando copiado', event)">
+              <div class="git-cmd-box" onclick="copyToClipboard(${jsq("cd " + proj.codeRepo + " && git status -s")}, 'Comando copiado', event)">
                 <div class="git-cmd-left">
                   <span class="git-cmd-label">2. Revisar cambios en el árbol de trabajo</span>
                   <code class="git-cmd-code">git status -s</code>
@@ -2295,7 +2283,7 @@ function renderProjectReposTab(proj) {
                 <span class="git-cmd-copy-hint">Copiar 📋</span>
               </div>
 
-              <div class="git-cmd-box" onclick="copyToClipboard('git add -A && git commit -m \'feat(${esc(proj.name)}): avance en sub-bloque activo\'', 'Comando copiado', event)">
+              <div class="git-cmd-box" onclick="copyToClipboard(${jsq("git add -A && git commit -m 'feat(" + proj.name + "): avance en sub-bloque activo'")}, 'Comando copiado', event)">
                 <div class="git-cmd-left">
                   <span class="git-cmd-label">3. Preparar commit estructurado</span>
                   <code class="git-cmd-code">git add -A && git commit -m "feat(${esc(proj.name)}): avance en sub-bloque activo"</code>
@@ -2303,7 +2291,7 @@ function renderProjectReposTab(proj) {
                 <span class="git-cmd-copy-hint">Copiar 📋</span>
               </div>
 
-              <div class="git-cmd-box" onclick="copyToClipboard('git push origin ${esc(activeBranch)}', 'Comando copiado', event)">
+              <div class="git-cmd-box" onclick="copyToClipboard(${jsq("git push origin " + activeBranch)}, 'Comando copiado', event)">
                 <div class="git-cmd-left">
                   <span class="git-cmd-label">4. Subir cambios a la rama de trabajo</span>
                   <code class="git-cmd-code">git push origin ${esc(activeBranch)}</code>
@@ -2331,7 +2319,7 @@ function renderProjectReposTab(proj) {
                 <span class="git-cmd-copy-hint">Copiar 📋</span>
               </div>
 
-              <div class="git-cmd-box" onclick="copyToClipboard('git merge --no-ff ${esc(activeBranch)} -m \'merge: integrate ${esc(activeBranch)} branch updates into master\'', 'Comando copiado', event)">
+              <div class="git-cmd-box" onclick="copyToClipboard(${jsq("git merge --no-ff " + activeBranch + " -m 'merge: integrate " + activeBranch + " branch updates into master'")}, 'Comando copiado', event)">
                 <div class="git-cmd-left">
                   <span class="git-cmd-label">2. Merge explícito sin fast-forward (burbuja de commit)</span>
                   <code class="git-cmd-code">git merge --no-ff ${esc(activeBranch)} -m "merge: integrate ${esc(activeBranch)} branch updates into master"</code>
@@ -2339,7 +2327,7 @@ function renderProjectReposTab(proj) {
                 <span class="git-cmd-copy-hint">Copiar 📋</span>
               </div>
 
-              <div class="git-cmd-box" onclick="copyToClipboard('git push origin master && git switch ${esc(activeBranch)}', 'Comando copiado', event)">
+              <div class="git-cmd-box" onclick="copyToClipboard(${jsq("git push origin master && git switch " + activeBranch)}, 'Comando copiado', event)">
                 <div class="git-cmd-left">
                   <span class="git-cmd-label">3. Pushear master limpio y volver a la rama de trabajo</span>
                   <code class="git-cmd-code">git push origin master && git switch ${esc(activeBranch)}</code>
@@ -2383,7 +2371,7 @@ function renderProjectReposTab(proj) {
                 <span class="git-cmd-copy-hint">Copiar 📋</span>
               </div>
 
-              <div class="git-cmd-box" onclick="copyToClipboard('git remote add origin ${esc(proj.remoteUrl || 'git@github.com:organization/' + proj.name + '.git')} && git push -u origin main', 'Comando copiado', event)">
+              <div class="git-cmd-box" onclick="copyToClipboard(${jsq("git remote add origin " + (proj.remoteUrl || "git@github.com:organization/" + proj.name + ".git") + " && git push -u origin main")}, 'Comando copiado', event)">
                 <div class="git-cmd-left">
                   <span class="git-cmd-label">4. Vincular remoto en GitHub y subir upstream</span>
                   <code class="git-cmd-code">git remote add origin ${esc(proj.remoteUrl || 'git@github.com:organization/' + proj.name + '.git')} && git push -u origin main</code>
@@ -2411,7 +2399,7 @@ function renderProjectReposTab(proj) {
                 <span class="git-cmd-copy-hint">Copiar 📋</span>
               </div>
 
-              <div class="git-cmd-box" onclick="copyToClipboard('git worktree add .claude/worktrees/task-1 -b task/${esc(proj.name)}-1', 'Comando copiado', event)">
+              <div class="git-cmd-box" onclick="copyToClipboard(${jsq("git worktree add .claude/worktrees/task-1 -b task/" + proj.name + "-1")}, 'Comando copiado', event)">
                 <div class="git-cmd-left">
                   <span class="git-cmd-label">2. Crear worktree aislado para tarea</span>
                   <code class="git-cmd-code">git worktree add .claude/worktrees/task-1 -b task/${esc(proj.name)}-1</code>
@@ -2447,7 +2435,7 @@ function renderProjectReposTab(proj) {
                 <span class="git-cmd-copy-hint">Copiar 📋</span>
               </div>
 
-              <div class="git-cmd-box" onclick="copyToClipboard('git clone git@github-work:${esc(proj.name)}.git', 'Comando copiado', event)">
+              <div class="git-cmd-box" onclick="copyToClipboard(${jsq("git clone git@github-work:" + proj.name + ".git")}, 'Comando copiado', event)">
                 <div class="git-cmd-left">
                   <span class="git-cmd-label">2. Clonar usando alias SSH personal (~/.ssh/config)</span>
                   <code class="git-cmd-code">git clone git@github-work:${esc(proj.name)}.git</code>
@@ -2631,7 +2619,7 @@ function renderProjectGuideTab(proj) {
             <h4 class="step-card-title">Instalación / Entorno</h4>
           </div>
           <p style="font-size: 12px; color: var(--ink-soft); margin: 0;">Preparar dependencias y entorno de ejecución local.</p>
-          <div class="repo-path-box" onclick="copyToClipboard('${quickInstallCmd.replace(/'/g, "\\'")}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
+          <div class="repo-path-box" onclick="copyToClipboard(${jsq(quickInstallCmd)}, 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
             <code>${esc(quickInstallCmd)}</code>
           </div>
         </div>
@@ -2642,7 +2630,7 @@ function renderProjectGuideTab(proj) {
             <h4 class="step-card-title">Ejecución / Dev Server</h4>
           </div>
           <p style="font-size: 12px; color: var(--ink-soft); margin: 0;">Lanzar el servicio, servidor o pipeline en desarrollo.</p>
-          <div class="repo-path-box" onclick="copyToClipboard('${quickRunCmd.replace(/'/g, "\\'")}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
+          <div class="repo-path-box" onclick="copyToClipboard(${jsq(quickRunCmd)}, 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
             <code>${esc(quickRunCmd)}</code>
           </div>
         </div>
@@ -2653,7 +2641,7 @@ function renderProjectGuideTab(proj) {
             <h4 class="step-card-title">Tests &amp; Verificación</h4>
           </div>
           <p style="font-size: 12px; color: var(--ink-soft); margin: 0;">Comprobar integridad antes de commitear cambios.</p>
-          <div class="repo-path-box" onclick="copyToClipboard('${quickTestCmd.replace(/'/g, "\\'")}', 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
+          <div class="repo-path-box" onclick="copyToClipboard(${jsq(quickTestCmd)}, 'Comando copiado', event)" style="cursor: pointer;" title="Clic para copiar">
             <code>${esc(quickTestCmd)}</code>
           </div>
         </div>
@@ -2664,7 +2652,7 @@ function renderProjectGuideTab(proj) {
         <div class="guide-doc-switcher">
           <span style="font-size: 12px; font-weight: 800; color: var(--ink-muted); margin-right: 6px; text-transform: uppercase;">Explorar Documentos:</span>
           ${docsList.map(d => `
-            <button class="guide-doc-pill ${d.id === currentDoc.id ? 'active' : ''}" onclick="setGuideActiveDoc('${esc(proj.name)}', '${esc(d.id)}')">
+            <button class="guide-doc-pill ${d.id === currentDoc.id ? 'active' : ''}" onclick="setGuideActiveDoc(${jsq(proj.name)}, ${jsq(d.id)})">
               <span>${esc(d.label)}</span>
               <span class="guide-doc-badge">${esc(d.path.split('/').pop())}</span>
             </button>
@@ -2678,7 +2666,7 @@ function renderProjectGuideTab(proj) {
           <h3 style="margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px;">
             <span>📄</span> <span>${esc(currentDoc.label)}</span>
           </h3>
-          <button class="btn-repo-action" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(currentDoc.content)}'), 'Documento completo copiado', event)">
+          <button class="btn-repo-action" onclick="copyToClipboard(decodeURIComponent(${jsq(encodeURIComponent(currentDoc.content))}), 'Documento completo copiado', event)">
             <span>📋 Copiar Markdown Completo</span>
           </button>
         </div>
@@ -2769,7 +2757,7 @@ function renderMarkdownBody(text) {
           <div class="code-block-container">
             <div class="code-block-header">
               <span>${esc(codeLang || 'snippet')}</span>
-              <button class="btn-code-copy" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(fullCode)}'), 'Código copiado', event)">Copiar</button>
+              <button class="btn-code-copy" onclick="copyToClipboard(decodeURIComponent(${jsq(encodeURIComponent(fullCode))}), 'Código copiado', event)">Copiar</button>
             </div>
             <pre><code>${esc(fullCode)}</code></pre>
           </div>
@@ -3591,7 +3579,7 @@ function renderSkills(container) {
 
           <div class="stoa-floor">
             ${list.length ? list.map(sk => `
-              <article class="persona ${sk.auditor ? "persona-auditor" : ""}" onclick="openSkill('${esc(sk.title)}')">
+              <article class="persona ${sk.auditor ? "persona-auditor" : ""}" onclick="openSkill(${jsq(sk.title)})">
                 <header class="persona-top">
                   <span class="persona-glyph">${st.glyph}</span>
                   <h3>${esc(sk.title)}</h3>
@@ -3834,7 +3822,7 @@ function renderSkillPage(container) {
             <p class="rail-note" style="margin-top:0">Una skill que trae más que su
                <code>SKILL.md</code> guarda ahí lo que no cabe en una descripción.</p>
             ${o.siblings.map(f => `
-              <button class="clause-jump ${st.tone}" onclick="toggleSibling('${esc(f.name)}')">
+              <button class="clause-jump ${st.tone}" onclick="toggleSibling(${jsq(f.name)})">
                 <span class="cj-id">📄</span><span class="cj-title">${esc(f.name)}</span>
                 <span class="cj-n">${Math.round(f.body.length / 1024)} KB</span>
               </button>
@@ -3847,7 +3835,7 @@ function renderSkillPage(container) {
           ${(STATE.skills || []).filter(s => s.title !== o.name &&
               (STOAS[s.trigger] ? s.trigger : "unclear") === (meta && STOAS[meta.trigger] ? meta.trigger : "unclear"))
             .map(s => `
-              <button class="clause-jump ${st.tone}" onclick="openSkill('${esc(s.title)}')">
+              <button class="clause-jump ${st.tone}" onclick="openSkill(${jsq(s.title)})">
                 <span class="cj-id">${st.glyph}</span><span class="cj-title">${esc(s.title)}</span>
               </button>`).join("") || `<p class="rail-note" style="margin-top:0">Es la única.</p>`}
         </div>
@@ -4475,7 +4463,7 @@ function renderOffice(container) {
         <span class="filter-label">Proyecto</span>
         <button class="chip-filter ${fp === "ALL" ? "active" : ""}" onclick="setOfficeFilter('proj','ALL')">Todos</button>
         ${projects.map(p => `
-          <button class="chip-filter ${fp.toLowerCase() === p.toLowerCase() ? "active" : ""}" onclick="setOfficeFilter('proj','${esc(p)}')">
+          <button class="chip-filter ${fp.toLowerCase() === p.toLowerCase() ? "active" : ""}" onclick="setOfficeFilter('proj',${jsq(p)})">
             ${esc(p)} (${cards.filter(c => c.project === p).length})
           </button>`).join("")}
       </div>
@@ -4495,7 +4483,7 @@ function renderOffice(container) {
         const pct = items.length ? Math.round(routed / items.length * 100) : null;
         return `
           <article class="mural-card ${m.cls} ${c.active ? "mural-active" : ""}"
-                   onclick="openDesk('${esc(c.id)}')" title="Abrir el despacho de esta tarea">
+                   onclick="openDesk(${jsq(c.id)})" title="Abrir el despacho de esta tarea">
             <header class="mural-top">
               <span class="mural-marker ${m.cls}">${c.active ? "▶" : (c.marker || m.icon)}</span>
               <span class="mural-state ${m.cls}">${m.label}</span>
@@ -4951,7 +4939,7 @@ function renderMailboxPanel() {
           const n = all.filter(e => inState(e) && e.destination === d).length;
           return `
             <button class="hole ${fDest === d ? "hole-on" : ""} ${n ? "" : "hole-empty"}"
-                    onclick="setMailboxDest('${esc(d)}')" title="Destino propuesto: ${esc(d)}">
+                    onclick="setMailboxDest(${jsq(d)})" title="Destino propuesto: ${esc(d)}">
               <span class="hole-slot"><span class="hole-stack" style="--n:${Math.min(n, 5)}"></span></span>
               <span class="hole-label">${esc(d)}</span>
               <span class="hole-n">${n}</span>
@@ -5158,7 +5146,7 @@ function renderPediment() {
           const ax = axiomsOf(c.id);
           const runnable = ax.filter(a => a.check_state === "$").length;
           return `
-            <button class="column ${CLAUSE_TONE[c.id] || ""}" onclick="openClause('${c.id}')"
+            <button class="column ${CLAUSE_TONE[c.id] || ""}" onclick="openClause(${jsq(c.id)})"
                     title="${esc(c.epigraph || c.title)}">
               <span class="capital"></span>
               <span class="shaft">
@@ -5258,7 +5246,7 @@ function renderClause(container) {
         <div class="rail-panel">
           <div class="rail-head"><strong>Las otras cláusulas</strong></div>
           ${others.map(o => `
-            <button class="clause-jump ${CLAUSE_TONE[o.id] || ""}" onclick="openClause('${o.id}')">
+            <button class="clause-jump ${CLAUSE_TONE[o.id] || ""}" onclick="openClause(${jsq(o.id)})">
               <span class="cj-id">${o.id}</span>
               <span class="cj-title">${esc(o.title)}</span>
               <span class="cj-n">${axiomsOf(o.id).length}</span>
@@ -5291,7 +5279,7 @@ function renderAxiomRow(a, highlightClause) {
         <span class="axiom-serves">
           ${(a.serves || []).map(s => `
             <button class="serves-chip ${s === highlightClause ? "is-here" : ""} ${CLAUSE_TONE[s] || ""}"
-                    onclick="event.stopPropagation(); openClause('${s}')">${s}</button>`).join("")}
+                    onclick="event.stopPropagation(); openClause(${jsq(s)})">${s}</button>`).join("")}
         </span>
       </div>
       <div class="axiom-text">${inline(a.text)}</div>
@@ -5721,7 +5709,7 @@ function renderDashboard(container) {
         <div class="chart-rows">
           ${rows.map(r => `
             <div class="chart-row">
-              <button class="cr-label ${CLAUSE_TONE[r.id] || ""}" onclick="openClause('${r.id}')"
+              <button class="cr-label ${CLAUSE_TONE[r.id] || ""}" onclick="openClause(${jsq(r.id)})"
                       title="Abrir ${r.id} · ${esc(r.title)}">
                 <span class="cr-id">${r.id}</span>
                 <span class="cr-title">${esc(r.title)}</span>
