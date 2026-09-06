@@ -1427,6 +1427,15 @@ def parse_adapter(adapter_path):
         sroot = (root / src["root"]).resolve() if src.get("root") else root
         paths = ([sroot / src["path"]] if src.get("path")
                  else sorted(sroot.glob(src.get("glob", ""))))
+        # Una fuente puede excluir lo que su patrón alcanza de más. ⛔ Existe porque un mismo
+        # fichero leído por dos fuentes se parsea dos veces con dos gramáticas, y la que no le
+        # corresponde reporta problemas que no lo son: `93_Notebook/*.md` alcanzaba `ideas.md`,
+        # que tiene su propia fuente `park`, y lo leía además como documento — dos entidades y
+        # dos problemas por un fichero que sólo tiene una clase.
+        # ⚠️ Los patrones son relativos a la raíz de la fuente, igual que `glob`.
+        for pattern in src.get("exclude", []):
+            fuera = {f.resolve() for f in sroot.glob(pattern)}
+            paths = [f for f in paths if f.resolve() not in fuera]
         if not paths and not src.get("optional"):
             problems.append(Problem(src.get("path") or src.get("glob"), 0,
                                     f"source {src['label']!r} resolved to no file"))
