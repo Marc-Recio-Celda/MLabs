@@ -4219,6 +4219,13 @@ function cardState(c) {
   if (c.declared) return c.declared;
   if (c.active) return "active";
   if (c.marker === "⏸") return "paused";
+  // ⛔ Los marcadores del muro que sí son inequívocos, leídos del MARCADOR y no del status.
+  // Medido 2026-09-06: una fila con `✖` y sin estado declarado caía a `pending` — se veía
+  // en cola una tarea cancelada. ⚠️ `✖` es U+2716, el que escriben el muro y `parse.py`;
+  // `STATE_META` pinta `✕` U+2715, que es otro carácter y sólo sirve para dibujar. **Un
+  // desajuste que no se ve leyendo es el argumento del check, no el de releer.**
+  if (c.marker === "✖") return "cancelled";
+  if (c.marker === "⤴") return "deferred";
   // El respaldo para una instancia que aún no declara estados: el emoji del vocabulario
   // anterior. ⚠️ Sólo se traducen los dos terminales, que son los únicos donde el emoji
   // dice inequívocamente cuál es — un ⬜ puede ser `pending` o `paused` y no se adivina.
