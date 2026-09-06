@@ -238,19 +238,14 @@ def make_handler(adapter):
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(payload)))
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            # ⛔ Aquí había `Access-Control-Allow-Origin: *`. La página se sirve desde este
+            # mismo origen y todos sus `fetch` son relativos, así que CORS no le hacía falta
+            # a nadie más que a un tercero: con esa cabecera, CUALQUIER web que el operador
+            # abriera podía leerse el centro de operaciones entero. Un mismo origen no
+            # necesita permiso; lo que la cabecera concedía era el permiso a los demás.
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(payload)
-
-        def do_OPTIONS(self):
-            self.send_response(204)
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
-            self.end_headers()
 
         def do_GET(self):
             path = self.path.split("?", 1)[0]
@@ -429,14 +424,26 @@ def main():
     ap = argparse.ArgumentParser(description="MLabs Operations Cockpit Server")
     ap.add_argument("--adapter", help="path to adapter JSON")
     ap.add_argument("--port", type=int, default=8770)
+    # ⛔ Escuchaba en `0.0.0.0`, es decir en toda la red. Este programa sirve el contenido de
+    # un centro de operaciones privado y no autentica a nadie — y el propio proyecto lo
+    # escribió en su `definition.md`: «does not leave localhost at v1 or v2». El valor por
+    # defecto pasa a ser el que el proyecto declaró.
+    # ⚠️ Y la bandera existe porque algún día se va a querer abrir desde otro dispositivo, y
+    # eso debe ser una decisión escrita en la orden, no un descuido en una constante. La
+    # diferencia entre las dos cosas es esta línea.
+    ap.add_argument("--host", default="127.0.0.1",
+                    help="interfaz donde escuchar (por defecto sólo esta máquina). "
+                         "0.0.0.0 la expone a toda la red SIN autenticación")
     args = ap.parse_args()
 
     adapter = load_adapter(args.adapter)
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("0.0.0.0", args.port), make_handler(adapter)) as httpd:
+    with socketserver.TCPServer((args.host, args.port), make_handler(adapter)) as httpd:
         print(f"\n⚡ MLabs & NEXUS Operations Cockpit")
         print(f"  URL:     http://localhost:{args.port}")
         print(f"  Adapter: {adapter.get('path') or 'Standalone'}")
+        if args.host not in ("127.0.0.1", "localhost", "::1"):
+            print(f"  ⚠️  ESCUCHANDO EN {args.host} — expuesto a la red y sin autenticación")
         print(f"  Ready for connections. (Ctrl+C to stop)\n")
         try:
             httpd.serve_forever()

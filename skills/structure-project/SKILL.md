@@ -31,6 +31,47 @@ cartridge that still has the old ones is *not migrated*, which `coherence.py` re
 as missing. A project directory with no
 `nexus/` is an incomplete creation, and `build-nexus` reports it whoever made it.
 
+**0b. Read the finished projects before writing a rule.** ⛔ **A project opened without reading the
+others repeats their mistakes and loses their wins**, and it is measurable: **276 decision records in
+the store, 67 with a non-empty `discarded`, and a project opened today reads 0.** It has already cost
+something countable — *one home per rule* was learned once, and a later project then arrived at the
+same shape twice on its own: **the same lesson, three arrivals, and no citation between any of
+them.**
+
+Read every sibling's `axioms.md` and the `Discarded` field of its `Decision_Log.md`. **What you are
+looking for is a rule that already solved a problem this project is about to have**, and each one you
+take is written into the new axiom's own row **naming where it came from** — `<project>:AX-n` — so
+the second arrival is visible as a second arrival.
+
+⚠️ **The trap, and it will silently return nothing.** Two axiom formats are in use — a table row
+`| **AX-n** | 🟢 | …` and a heading `### AX-n — …` — so **a sweep with one pattern reads zero over
+the projects that use the other**, and reports them as having no rules rather than as unread. Match
+both, and **report the per-project counts** so a zero has to be looked at instead of assumed:
+
+```bash
+# from the projects root. Two patterns, and the count is per file, never a total.
+for f in */*/nexus/axioms.md */nexus/axioms.md; do
+  [ -f "$f" ] || continue
+  t=$(grep -cE '^\| \*\*AX-[0-9]+\*\* \|' "$f")        # table rows
+  h=$(grep -cE '^#{2,3} AX-[0-9]+ ' "$f")                # heading rows
+  printf '%-52s table %-4s heading %s\n' "$f" "$t" "$h"
+done
+```
+
+⚠️ **The status column is deliberately not in the table pattern, and the first version of this
+snippet had it.** Matching `\| (🟢|⚫) \|` returns **zero on every project** the moment one of them
+uses a status glyph the pattern does not list — which is a sweep that reports *nine projects with no
+rules* and looks like a finding instead of a bug. **Match the id and the row; read the status with
+your eyes.**
+
+⛔ **A project reported with zero in both is read by eye before it is believed** — an empty axiom file
+is a real state (`METHOD.md` §5: `axioms.md` is created when the first one exists), and it is not the
+same state as a file this sweep could not parse.
+
+**What comes out of this step**: a short list of *inherited from `<project>:AX-n`, and what it saves*,
+which goes into step 3. **An empty list is a result** — say so — but it is a rare one, and a project
+whose first axiom department cites nothing has usually not looked.
+
 **1. Copy the template.** The cartridge is copied, never typed (`MLabs:AX-26`). Copy it whole **into
 `<project>/nexus/`**, then
 substitute every placeholder — the project's name, its path, its own `AX-n` series — in one pass.
@@ -159,6 +200,7 @@ trusting a clean run** (`MLabs:AX-7`).
 | 6 | **The wall has NOT gained a row.** A cartridge is not a commitment, and prediction 6 used to assert the opposite |
 | 7 | Every new queue or park entry carries `project:` — entry count and `project:` count match |
 | 8 | The agent contract sits at the code repository root **iff** the operator owns it; otherwise in the cartridge and nowhere else |
+| **10** | **The harvest ran and its per-project counts are non-zero in exactly one format each.** ⛔ **A project reporting zero in both is unread, not ruleless** — and if the new `axioms.md` cites no sibling at all, step 0b says so out loud rather than leaving the absence to be read as *nothing applied* |
 | **9** | **The denylist coverage check returns empty**, and the new name, planted into a tracked file, makes the release gate fire. **A name added and never tested is a name that may still be invisible** |
 
 **An unrunnable check is reported unrun** (`MLabs:AX-22`).
