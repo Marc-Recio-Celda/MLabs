@@ -381,7 +381,7 @@ def parse_park(path, text):
 # ⛔ The marker is FIRST because that is the one field a reader scans for, and it is the one field
 # a regex can anchor on without knowing anything else about the line.
 WALL_TASK = re.compile(r"^###\s+(?P<marker>[▶⏸⬜✅✖⤴])\s+`(?P<project>[^`]+)`\s*·\s*(?P<title>.+?)\s*$")
-WALL_FIELD = re.compile(r"^\*\*(?P<k>Serves|Sheet|Why it is committed|What it affects|Drains|Returns when|Closed|Deferred)\*\*"
+WALL_FIELD = re.compile(r"^\*\*(?P<k>Serves|Sheet|Why it is committed|What it affects|Drains|Returns when|Opened|Closed|Deferred)\*\*"
                         r"\s*(?P<v>.*)$")
 # Los cuatro de `AX-46` sobre una tarea del muro, y el nombre de cada uno en el fichero.
 # ⛔ Se escribe UNA vez: la lista que valida y la lista que se lee tienen que ser la misma, o
@@ -426,7 +426,7 @@ def parse_wall(path, text):
                    "name": clean(m["title"]), "project": m["project"],
                    "in_bin": in_bin, "serves": None, "sheet": None,
                    "described_in": None, "affects": None, "why": None, "drains": None,
-                   "returns_when": None}
+                   "returns_when": None, "dates": {}}
             ents.append(cur)
             continue
         if cur is None:
@@ -450,11 +450,14 @@ def parse_wall(path, text):
                 # Lo encontró una plantada, no una lectura (`MLabs:AX-7`): el caso bien formado
                 # fue el que falló. Ahora parte por cualquiera de los nombres conocidos.
                 INLINE = ("Sheet", "Returns when", "Why it is committed", "What it affects",
-                          "Drains")
+                          "Drains", "Opened", "Closed", "Deferred")
                 pat = r"·\s*\*\*(" + "|".join(re.escape(x) for x in INLINE) + r")\*\*"
                 parts = re.split(pat, f["v"])
                 cur["serves"] = clean(parts[0])
                 for name, val in zip(parts[1::2], parts[2::2]):
+                    if name in ("Opened", "Closed", "Deferred"):
+                        cur["dates"][name.lower()] = clean(val)
+                        continue
                     key = {"Sheet": "sheet", "Returns when": "returns_when",
                            "Why it is committed": "why", "What it affects": "affects",
                            "Drains": "drains"}[name]
@@ -465,6 +468,11 @@ def parse_wall(path, text):
                 cur["why"] = v
             elif k == "What it affects":
                 cur["affects"] = v
+            elif k in ("Opened", "Closed", "Deferred"):
+                # ⛔ Las fechas de una tarea, y no hay segundo almacén (`MLabs:FLOW.md`,
+                # 2026-09-05). Se escriben cuando cambia el marcador — un momento que ya ocurre —
+                # y de aquí las lee quien agregue. Un registro curado a mano es una segunda cola.
+                cur["dates"][k.lower()] = v
             elif k == "Returns when":
                 # ⛔ Lo que traería de vuelta una tarea aplazada. `FLOW.md` lo exige: sin
                 # condición, aplazar es olvidar con pasos de más.

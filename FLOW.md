@@ -144,6 +144,30 @@ address in the plan, and `plan`, the sheet they were decided or spawned inside. 
 creation, never backfilled**: a field added later means every existing record lacks it, plus a
 conversion to fill them.
 
+## A finished task carries its dates, and nothing else records them
+
+**Two fields, written at the moment the marker changes**: `**Opened**`, and `**Closed**` or
+`**Deferred**`. That moment already happens — the marker has to be edited anyway — so **the close
+gets no more expensive and the history starts existing.**
+
+⛔ **The bin is the log, and there is no second store.** ⚠️ **A register curated by hand is a second
+queue, and the half that gets forgotten is always the closing half** — this system has already
+proved it twice with `Repeat of`, the field its employee logs exist for, filled by hand and
+therefore not filled.
+
+**So the aggregate is a command, never a discipline.** A script reads the bin and produces the
+numbers; nothing has to be kept in sync, because there is only one place to fall behind and it is
+the place the work happens in.
+
+⚠️ **The fields that make a history useful are only knowable at close time, which is exactly when
+attention is lowest.** A design that asks for effort there collects nothing. **Make the close cheap
+and the aggregation automatic — never the other way round.**
+
+⛔ **And the scale trigger is stated rather than guessed** (`AX-27`): **when the bin outgrows one
+readable file, it rolls per period into a container of sheets.** One file per period, the same shape
+the capture layer already uses, for the same reason — *a change to one is a diff of one, and
+concurrent writes stop colliding.* **That is a `when`, not an alternative.**
+
 ## A closed sheet is its own log
 
 It needs no extra machinery — **that is what a plan sheet already is** once its items carry
