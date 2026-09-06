@@ -1,13 +1,13 @@
 ---
 name: structure-project
-description: Creates a project's cartridge under the method — definition, state, decision log, agent log, and its own axioms once it has one — plus the agent contract where the repository is owned, and a compass row; when a new project starts or when work already underway is brought under the method for the first time.
+description: Creates a project's cartridge under the method — definition, objectives, plan, decision log, agent log, and its own axioms once it has one — plus the agent contract where the repository is owned; when a new project starts or when work already underway is brought under the method for the first time.
 ---
 
 # structure-project
 
 ## Occasion
 **A new project starts**, or a body of work already underway is brought under the method. One
-firing produces **one cartridge and one compass row**.
+firing produces **one cartridge and nothing else** — no wall row, no `▶`, no task.
 
 **Where it writes:** the operations centre, at its projects root. **Path shapes only — the literal
 root is the instance's, declared in its binding.**
@@ -61,16 +61,20 @@ own header (`MLabs:AX-2`); every entry carries author, date, reasoning and **wha
 (`MLabs:AX-24`). **The first entry is the one that created the project:** why it exists, and what
 shape was rejected for it.
 
-**5. Open `plan.md` and `Decision_Log.md` as live documents.** Both state their present and
-neither carries a changelog (`MLabs:AX-41`).
+**5. Open `objectives.md` and `plan.md`.** ⛔ **They are two files because they change at two
+rates** (`MLabs:AX-39`), and this step is where the split is honoured or lost.
 
-- `plan.md` — current position, what it waits on, and the active risks with the fallback agreed
-  for each, all of it against `METHOD.md` §2 step 1b's test. ⚠️ **`next action` is a required field,
-  not a courtesy** — a state file without one is a project whose next move lives in somebody's head,
-  and `interface/model/parse.py` reports its absence by name.
-- ⚠️ **No sequenced-plan file.** `AX-17`'s third drawer **is a field, not a document** — the rule
-  is that axiom's, and the consequence here is that the cartridge has one file fewer than an author
-  expects.
+- `objectives.md` — **what the project is trying to achieve now.** One entry each, with **why it is
+  an objective and not a task** and **what met looks like**. ⛔ **It is not derivable from the
+  repository**: an objective is a judgement, so this is the file the operator writes and an agent
+  may only record. ⚠️ **An objectives file that is incomplete says so** — the ten cartridges that
+  came out of `M-135` with none at all is what this step exists to stop repeating.
+- `plan.md` — the blocks and sub-blocks that move those objectives, the active risks with the
+  fallback agreed for each. ⛔ **Every block names the objective it serves**, and a block that
+  serves none is a block nobody decided to do.
+- ⛔ **The state is not a document.** It is the position inside the plan — which sub-blocks have
+  been promoted to the wall and which carry the `▶`. **A state you maintain goes stale; a state that
+  is a position cannot.** A cartridge opened today has no `state.md`.
 
 **6. Place the agent contract — only in a repository the operator owns.** It holds what is true of
 **this** repository and reaches the method by reference: it is the one file naming where MLabs
@@ -103,11 +107,27 @@ pass.** Then plant the new name into a tracked file and watch `tools/gate.sh` bl
 are not the same test and neither substitutes for the other:** coverage asks whether the gate *can*
 see the name, the plant asks whether it *does*.
 
-**7. Register the project in the compass.** One row, **edges not nodes**: the compass points at
-where the work is described and describes none of it (`METHOD.md` §2). **A new cartridge does not
-take the `▶` by arriving** — exactly one active front exists across every project, and moving it is
-the operator's act. Anything this structuring turns up that is not this task leaves with a
-destination from the closed vocabulary, one line, **with `project:` filled in** (`MLabs:AX-25`).
+⛔ **This step assumes the project's name is a private identifier, and that is not always true.**
+A project called `Notebook`, `Portfolio` or `Trading` is a **dictionary word the public method has
+to be able to say** — adding it to the denylist would make the release gate fire on legitimate prose,
+which is the same defect that made check 2 of `tools/gate.sh` block the operator's own commits in
+September. **When the name is method vocabulary, do not add it: report it, and say plainly that the
+gate cannot see this project's name.** A stated hole beats a broken gate, and it beats a silent one
+by more.
+
+**7. Do NOT put the project on the wall.** ⛔ **A cartridge arriving is not a commitment**, and the
+wall holds commitments. A sub-block reaches the wall when somebody **promotes** it — that is the
+operator's act, and it is the whole distinction `MLabs:FLOW.md` exists to keep
+(*asked what was pending, one agent answered 4 and another ~50, and both were right*).
+
+⚠️ **This step said *register the project in the compass* until 2026-09-05 and both halves were
+wrong.** The compass was replaced by the wall (`M-135`), and *exactly one active front across every
+project* went with the live plan file that made it necessary — **several tasks may be active now.**
+A skill that still registered a row would have put an unstarted project onto the board of what is
+being done.
+
+Anything this structuring turns up that is not this task leaves with a destination from the closed
+vocabulary, one line, **with `project:` filled in** (`MLabs:AX-25`).
 
 ## ⚠️ The live set stays central
 
@@ -131,12 +151,12 @@ trusting a clean run** (`MLabs:AX-7`).
 
 | # | Prediction |
 |---|---|
-| 1 | Listing the cartridge returns **step 1's four files**, plus `axioms.md` and `skills/` only where they have content, plus the agent contract only where step 6 leaves it there |
+| 1 | Listing the cartridge returns `definition.md`, `objectives.md`, `plan.md`, `Decision_Log.md` and `LOG_AGENTS.md`, plus `axioms.md` and `skills/` only where they have content, plus the agent contract only where step 6 leaves it there |
 | 2 | Searching the cartridge for the central queue and park filenames returns **nothing** |
-| 3 | Searching the cartridge for template placeholders returns **nothing** |
+| 3 | Searching the cartridge for template placeholders returns **nothing** — and for `state.md`, `architecture.md`, `workflow.md` too: those names are retired, and a cartridge carrying one was copied from a template nobody migrated |
 | 4 | `axioms.md` holds ≥ 1 axiom; every one is bare, every foreign rule cited in it is anchored |
 | 5 | `Decision_Log.md` holds ≥ 1 entry, and its header states the field contract |
-| 6 | The compass holds exactly one `▶` across every project, and a row naming this one |
+| 6 | **The wall has NOT gained a row.** A cartridge is not a commitment, and prediction 6 used to assert the opposite |
 | 7 | Every new queue or park entry carries `project:` — entry count and `project:` count match |
 | 8 | The agent contract sits at the code repository root **iff** the operator owns it; otherwise in the cartridge and nowhere else |
 | **9** | **The denylist coverage check returns empty**, and the new name, planted into a tracked file, makes the release gate fire. **A name added and never tested is a name that may still be invisible** |
@@ -149,6 +169,6 @@ trusting a clean run** (`MLabs:AX-7`).
 - **Hire the project's auditor** — its own act, under `MLabs:AX-11`, with the dismissal criterion
   fixed before the first firing.
 - **Touch a repository the operator does not own** (`MLabs:AX-19`).
-- **Set the active front.** It adds the row; the operator moves the `▶`.
+- **Set the active front, or add any row at all to the wall.** Promotion is the operator's act.
 - **Amend the company or instance axiom files.** A rule that fails the project test is **proposed
   upward, never written upward.**

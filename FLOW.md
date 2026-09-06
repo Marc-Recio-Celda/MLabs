@@ -21,6 +21,7 @@ project
         └── block                 the shape of the work, proposed up front
               └── sub-block       defined on arrival, not before
                     ↓ promoted when somebody decides it is time
+                    ↑ deferred when somebody decides it is not
                   task            on the wall, with its own sheet
                     └── item      and items spawn items, written down immediately
 ```
@@ -47,6 +48,33 @@ the plan, and the task names that address.
 ⛔ **A task that arrived whole has no block above it and writes `block` empty** rather than omitting
 the field (`AX-24`): a task with no block legitimately has none, and an absent field cannot say that.
 
+## Deferral — the inverse, and the board saturates without it
+
+**A task may be deferred: it leaves the wall and returns to its plan as a sub-block, keeping
+whatever it had done.** ⚠️ **Promotion had no inverse until 2026-09-05**, so the only exits were
+*done* and *cancelled* — and a task that is neither has to stay. **A board only ever grows** under
+that rule, and the first thing that gives way is the one property the wall exists for: that a person
+can read it.
+
+⛔ **Cancelling something you still intend to do is a lie the board then carries**, and it is what
+the missing exit forces. Deferral is the honest one.
+
+| | |
+|---|---|
+| **What it is** | a **transition, not a state.** The row leaves the wall; the state afterwards is the sub-block's — `⬜` if it was never started, `⏸` if it was, keeping its struck items |
+| **Where it is recorded** | the wall's **bin**, marked `⤴`, beside `done` and `cancelled`. **The bin is what leaving the wall means, and all three exits are findable in one place** |
+| **What the plan gains** | the sub-block's row says it was on the wall and came back, with the date. ⚠️ **Silent demotion loses that it was ever promoted**, and *promoted twice, deferred once* is information about the work |
+| **What it must name** | ⛔ **what would bring it back.** A condition, a date, or the thing it waits on |
+
+⛔ **A deferral with no condition is forgetting with extra steps**, and it is the failure mode of
+this whole idea rather than an edge case: the point of deferring instead of cancelling is that it
+returns, and *it returns* is a claim somebody has to be able to check. **A deferral that cannot say
+what would bring it back is a cancellation that has not admitted it.**
+
+⚠️ **Deferral is not `paused`, and the difference is the wall.** A paused task is still on the board
+and still counted — it is switching, and the sheet is held **in view**. A deferred task is off the
+board entirely. **Pausing is about attention; deferring is about commitment.**
+
 ## The states, and they live on the task
 
 `pending` · `active` · `paused` · `cancelled` · `done`.
@@ -57,6 +85,10 @@ the field (`AX-24`): a task with no block legitimately has none, and an absent f
 | **active** | the `▶`. **Several tasks may be active at once** |
 | **paused** | has been active. Its sheet is held and visible, so resuming costs reading rather than reconstructing |
 | **cancelled** · **done** | terminal. They leave the wall for the bin, **marked as which** |
+
+⚠️ **Three ways off the wall, and only two of them are terminal**: `done` ✅ · `cancelled` ✖ ·
+**`deferred` ⤴, which returns the work to its plan and is not an outcome at all.** All three are
+recorded in the bin, because *left the wall* is one question and it should have one answer.
 
 ⛔ **The floor: if work is happening, at least one task is active.** If none is, the agent says so
 and one is assigned, with the project it belongs to, its plan and its objectives. ⚠️ **This is what
@@ -111,6 +143,30 @@ A decision, a task and an item each carry **where they happened** — `block` an
 address in the plan, and `plan`, the sheet they were decided or spawned inside. ⚠️ **Added at
 creation, never backfilled**: a field added later means every existing record lacks it, plus a
 conversion to fill them.
+
+## A finished task carries its dates, and nothing else records them
+
+**Two fields, written at the moment the marker changes**: `**Opened**`, and `**Closed**` or
+`**Deferred**`. That moment already happens — the marker has to be edited anyway — so **the close
+gets no more expensive and the history starts existing.**
+
+⛔ **The bin is the log, and there is no second store.** ⚠️ **A register curated by hand is a second
+queue, and the half that gets forgotten is always the closing half** — this system has already
+proved it twice with `Repeat of`, the field its employee logs exist for, filled by hand and
+therefore not filled.
+
+**So the aggregate is a command, never a discipline.** A script reads the bin and produces the
+numbers; nothing has to be kept in sync, because there is only one place to fall behind and it is
+the place the work happens in.
+
+⚠️ **The fields that make a history useful are only knowable at close time, which is exactly when
+attention is lowest.** A design that asks for effort there collects nothing. **Make the close cheap
+and the aggregation automatic — never the other way round.**
+
+⛔ **And the scale trigger is stated rather than guessed** (`AX-27`): **when the bin outgrows one
+readable file, it rolls per period into a container of sheets.** One file per period, the same shape
+the capture layer already uses, for the same reason — *a change to one is a diff of one, and
+concurrent writes stop colliding.* **That is a `when`, not an alternative.**
 
 ## A closed sheet is its own log
 

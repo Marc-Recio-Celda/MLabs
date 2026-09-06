@@ -10,7 +10,7 @@ cannot be skipped, the one delegated case, and what a queue looks like when the 
 **Below is how a pass is actually worked.**
 
 ## Occasion
-- a `notebook/` sheet or `MAILBOX.md` has accumulated entries, or the compass names a triage.
+- a `93_Notebook/` sheet or `MAILBOX.md` has accumulated entries, or the compass names a triage.
 - An agent's findings need integrating.
 
 ---
@@ -23,7 +23,7 @@ mixing them is what made the mailbox expensive in the first place.
 
 | | **Stage 1 · the notebook drain** | **Stage 2 · the mailbox triage** |
 |---|---|---|
-| Reads | `notebook/*.md` — one-line notes across every sheet, nothing adjudicated | `MAILBOX.md` — entries that already survived stage 1 |
+| Reads | `93_Notebook/*.md` — one-line notes across every sheet, nothing adjudicated | `MAILBOX.md` — entries that already survived stage 1 |
 | Asks | *what kind of thing is this?* | *what is the right destination, and does the claim still hold?* |
 | Outcomes | **applied** · → mailbox · → tasks · **discarded** | the destination vocabulary in §5 |
 | Costs | minutes. Most notes end **discarded** and that is information | judgement. This is the expensive one and it should stay expensive |
@@ -134,9 +134,30 @@ its view — an artefact that only points one way is invisible from the other si
 | At the destination — mailbox entry, task, decision, board row | `from: N-nn` (or `from: MAILBOX <title>`) |
 | In the drain report, in `LOG_AGENTS.md` | `N-nn → <destination> · <one line on why>` |
 
-⚠️ **`AX-15` deletes the completed entry, and that is correct** — a queue that keeps its drained
-items stops saying what is left. **The trail is not the entry; it is the id at the destination plus
-the line in the log.** Anyone holding a task can therefore reach the note it came from and the pass
+⚠️ **`AX-15` deletes the completed *notebook* entry, and that is correct** — a one-line note has no
+content beyond its routing, and a queue that keeps its drained items stops saying what is left.
+
+⛔ **A MAILBOX entry is different and is NEVER deleted.** It is marked `[resolved]` and the
+adjudication is appended underneath it. ⚠️ **The reasoning is not the queue item** *(operator,
+2026-09-05: «el log de esto es lo único que no guardo; se guardan las tareas y decisiones pero no lo
+que hemos hablado aquí»)*. A mailbox entry **is** the argument — four fields, written to be read
+without its conversation — and the sub-block it becomes is one line. **Deleting the entry keeps the
+verdict and throws away the case.**
+
+⛔ **And the drain report is not optional, because it is the half that does not exist.** Measured
+2026-09-05: `LOG_AGENTS.md` holds **zero** lines of the shape below, in a method that has said since
+August that the trail is *the id at the destination plus the line in the log*. **The two-ended link
+has been half-built the whole time**, and the missing half is the one that says *why this went
+there*.
+
+```
+# the drain report, one line per entry, written in the same act as the routing
+N-nn → <destination> · <one line on why>
+```
+
+⚠️ **This is not a conversation log and must not become one.** `PH-4` says the value lives in the
+artefacts, never in the history of a conversation. **The drain report is the conversation compressed
+to what was decided** — which is the part that is worth keeping and the only part anyone rereads. Anyone holding a task can therefore reach the note it came from and the pass
 that decided it, which is what `PH-4` means by *the value lives in the artefacts, never in the
 history of a conversation.*
 
