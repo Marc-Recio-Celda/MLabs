@@ -4283,6 +4283,8 @@ const STATE_META = {
   pending:   { label: "en cola",    icon: "○", cls: "st-pending",
                hint: "abierta y nunca activa todavía. Su hoja existe y puede estar vacía" },
   paused_r:  { label: "en pausa",   icon: "⏸", cls: "st-paused", hint: "" },
+  deferred:  { label: "aplazada",   icon: "⤴", cls: "st-terminal",
+               hint: "terminal: dejó la cola para más adelante" },
   cancelled: { label: "cancelada",  icon: "✕", cls: "st-terminal",
                hint: "terminal: sale de la cola" },
   done:      { label: "hecha",      icon: "✓", cls: "st-done",
