@@ -101,8 +101,49 @@ def load_adapter(path):
         "title": data.get("title", "Operations centre"),
         "root": root,
         "sources": sources,
+        # ⛔ De dónde salen las métricas lo declara la instancia, nunca el motor
+        # (`interface:AX-1`): aquí no hay ninguna ruta a ningún script.
+        "metrics": data.get("metrics"),
         "path": str(p)
     }
+
+
+def metrics(adapter):
+    """Lo que mide el script que el adaptador declara, **verbatim**.
+
+    ⛔ El motor no recalcula ni una cifra. `interface:I3.1` lo dice en una línea — *el
+    trabajo es una vista, no un parser* — y escribir un segundo parser es exactamente lo
+    que hay que no hacer: dos cosas que cuentan lo mismo acaban discrepando y ninguna
+    declara cuál gana (`MLabs:AX-20`).
+
+    ⚠️ Sin `metrics` declarado devuelve `available: False` **y dice qué falta**, en vez de
+    un objeto vacío que se lee como *cero* (`interface:AX-5`). Un tablero que enseña cero
+    cuando lo que pasa es que no hay fuente es peor que uno vacío.
+    """
+    spec = adapter.get("metrics")
+    if not spec:
+        return {"available": False,
+                "why": "el adaptador no declara `metrics`",
+                "how": 'añade {"metrics": {"script": "<ruta>", "args": ["--json"]}} al adaptador'}
+    script = (adapter["root"] / spec.get("script", "")).resolve()
+    # ⛔ Sólo se ejecuta lo que el adaptador nombra. Ni la petición ni la query eligen nada.
+    if not str(script).startswith(str(adapter["root"])) or not script.is_file():
+        return {"available": False,
+                "why": f"el script declarado no está o cae fuera de la raíz: {spec.get('script')!r}"}
+    args = [str(a) for a in spec.get("args", ["--json"])]
+    try:
+        r = subprocess.run([sys.executable, str(script), *args], cwd=str(adapter["root"]),
+                           capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as e:
+        return {"available": False, "why": f"{type(e).__name__}: {e}"}
+    if r.returncode != 0:
+        return {"available": False,
+                "why": f"el script salió {r.returncode}",
+                "stderr": (r.stderr or "").strip()[:400]}
+    try:
+        return {"available": True, "source": spec.get("script"), "data": json.loads(r.stdout)}
+    except json.JSONDecodeError as e:
+        return {"available": False, "why": f"el script no devolvió JSON: {e}"}
 
 
 def stamp(adapter):
@@ -298,6 +339,11 @@ def make_handler(adapter):
                 # What this session has written, so a confirmation is something the operator
                 # can read back rather than a toast that has already faded.
                 self._send(200, {"events": writer.read_journal(adapter) if writer else []})
+            elif path == "/api/metrics":
+                # `interface:I3.1` — las firings de los roles son la única medida de la salud
+                # del sistema, y eran lo único que esta interfaz no podía pintar. El script ya
+                # las calculaba y nada las leía.
+                self._send(200, metrics(adapter))
             elif path == "/api/stamp":
                 self._send(200, {"stamp": stamp(adapter)})
             else:

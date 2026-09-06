@@ -3008,6 +3008,7 @@ async function loadModel() {
   // ⚠️ La doctrina se carga una vez: son ficheros del propio motor, no estado vivo, y
   // volver a pedirlos en cada latido gastaría una petición por segundo para nada.
   if (STATE.doctrine === undefined) loadDoctrine();
+  if (STATE.metrics === undefined) loadMetrics();
   loadRecent();
 }
 
@@ -4952,6 +4953,21 @@ async function loadRecent() {
   } catch (_) { STATE.recentLines = {}; }
 }
 
+// ⛔ `interface:I3.1` — las firings de los roles eran la única medida de la salud del
+// sistema que esta interfaz no podía pintar, y el script que las calcula llevaba escrito
+// desde antes. **El trabajo es una vista, no un parser**: esto pide el JSON y no recalcula
+// nada, porque dos cosas que cuentan lo mismo acaban discrepando (`MLabs:AX-20`).
+// ⚠️ Se carga una vez, como la doctrina: el script barre el árbol y no es estado vivo.
+async function loadMetrics() {
+  try {
+    STATE.metrics = await api("GET", "/api/metrics");
+  } catch (e) {
+    // No hay fuente y se dice, que no es lo mismo que cero (`interface:AX-5`).
+    STATE.metrics = { available: false, why: e.message };
+  }
+  renderView();
+}
+
 async function loadDoctrine() {
   try {
     const d = await api("GET", "/api/doctrine");
@@ -5548,6 +5564,68 @@ function metric({ id, purpose, title, n, of, unit, source, bad, note, tone }) {
     </article>`;
 }
 
+// Las auditorías, que es lo único de este tablero que el modelo no puede calcular: sale de
+// `metrics.py` a través de `/api/metrics`, **verbatim** (`interface:I3.1`).
+// ⛔ Sin fuente NO se pinta un cero. Un cero aquí se leería como «ninguna auditoría ha
+// encontrado nada», que es lo contrario de «no lo hemos medido» (`MLabs:AX-36`).
+function renderAuditMetrics() {
+  const m = STATE.metrics;
+  if (m === undefined) {
+    return `<section class="dash-block"><div class="dash-block-head">
+      <h2>Los roles y lo que encuentran</h2><p>Midiendo…</p></div></section>`;
+  }
+  if (!m.available) {
+    return `<section class="dash-block"><div class="dash-block-head">
+      <h2>Los roles y lo que encuentran</h2>
+      <p>⛔ <strong>Sin fuente, y por eso no hay cifras aquí</strong> — un cero se leería como
+         <em>ninguna auditoría encontró nada</em>, que es lo contrario de <em>no medido</em>.</p>
+      </div>
+      <div class="callout callout-warning"><span class="callout-icon">⚠️</span>
+        <div class="callout-content">${inline(m.why || "sin razón declarada")}
+        ${m.how ? `<br><code>${esc(m.how)}</code>` : ""}</div></div>
+    </section>`;
+  }
+  const audits = (m.data && m.data.audits) || {};
+  const roles = Object.keys(audits).sort();
+  if (!roles.length) {
+    return `<section class="dash-block"><div class="dash-block-head">
+      <h2>Los roles y lo que encuentran</h2>
+      <p>El script corre y no devuelve auditorías. <strong>Se dice, no se rellena.</strong></p>
+      </div></section>`;
+  }
+  return `
+    <section class="dash-block">
+      <div class="dash-block-head">
+        <h2>Los roles y lo que encuentran</h2>
+        <p>Leído de <code>${esc(m.source || "el script declarado")}</code>, sin recalcular nada.
+           <strong>Un rol se juzga por las ocasiones que lo justificaban contra las veces que se
+           invocó</strong>, y un log vacío dice que las ocasiones no han llegado.</p>
+      </div>
+      <div class="dash-grid">
+        ${roles.map(r => {
+          const a = audits[r] || {};
+          const st = a.by_status || {};
+          const abiertos = Number(st.open || 0);
+          const hallazgos = Number(a.findings || 0);
+          const rep = a.repeat_rate_pct;
+          return `
+            ${metric({ purpose: "steer", title: `${r} — hallazgos sin cerrar`,
+                       n: abiertos, of: hallazgos || null, unit: hallazgos ? "" : "hallazgos",
+                       bad: "sube: se encuentra y no se arregla",
+                       source: "metrics.py --json",
+                       note: `**${a.firings || 0} firings.** ${Object.entries(st).map(([k, v]) =>
+                         `\`${k}\` ${v}`).join(" · ") || "sin desglose"}` })}
+            ${rep === undefined ? "" : metric({ purpose: "prove", title: `${r} — repetición`,
+                       n: Number(a.repeats || 0), of: hallazgos || null,
+                       bad: "sube: el mismo hallazgo vuelve, así que no se arregló la causa",
+                       source: "metrics.py --json",
+                       note: `**${rep} %** de los hallazgos son repeticiones. ⚠️ Una tasa de
+                              repetición alta mide la corrección, no la auditoría.` })}`;
+        }).join("")}
+      </div>
+    </section>`;
+}
+
 function renderDashboard(container) {
   const ax = D().axioms;
   const clauses = D().clauses.filter(c => !c.objective);
@@ -5654,6 +5732,8 @@ function renderDashboard(container) {
         </figcaption>
       </figure>
     </section>
+
+    ${renderAuditMetrics()}
 
     <section class="dash-block">
       <div class="dash-block-head">
