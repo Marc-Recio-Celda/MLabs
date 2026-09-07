@@ -553,6 +553,14 @@ function updateHUD() {
   const badgeDecisions = document.getElementById("badgeDecisions");
   if (badgeDecisions) badgeDecisions.textContent = liveDecisions().length;
 
+  const badgeLibrary = document.getElementById("badgeLibrary");
+  // ⚠️ La cuenta es la del vault, no la del árbol entero: la sala responde «qué sabe esta
+  // empresa», y los cartuchos de proyecto y el sistema no son conocimiento, son estado.
+  if (badgeLibrary) {
+    const t = STATE.tree;
+    badgeLibrary.textContent = t && t.available
+      ? LIB_SHELVES.reduce((n, r) => n + t.files.filter(f => f.root === r).length, 0) : 0;
+  }
   const badgeSkills = document.getElementById("badgeSkills");
   if (badgeSkills) badgeSkills.textContent = STATE.skills.length;
 
@@ -846,6 +854,7 @@ function renderView() {
     case "inbox": renderInbox(main); break;
     case "ideas": renderIdeas(main); break;
     case "skills": renderSkills(main); break;
+    case "library": renderLibrary(main); break;
     default: renderOverview(main); break;
   }
 
@@ -2952,6 +2961,20 @@ function initAppListeners() {
     STATE.taskSearch = q;
     renderView();
   });
+
+  // ⛔ Al teclear se filtra lo que ya está en memoria; **al pulsar Enter se busca en el
+  // disco**. Son dos cosas distintas y se separan a propósito: buscar en 326 ficheros en
+  // cada pulsación sería una petición por tecla, y filtrar la vista actual es lo que se
+  // quiere el 90 % de las veces. ⚠️ Es la función concreta por la que se abre Obsidian, así
+  // que va donde ya estaba la mano del operador en vez de en un sitio nuevo.
+  document.getElementById("globalSearch")?.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    const q = e.target.value.trim();
+    if (q.length < 2) return;
+    STATE.libNote = null; STATE.libShelf = null;
+    STATE.currentView = "library";
+    loadSearch(q);
+  });
 }
 
 if (document.readyState === "loading") {
@@ -2995,6 +3018,7 @@ async function loadModel() {
   // volver a pedirlos en cada latido gastaría una petición por segundo para nada.
   if (STATE.doctrine === undefined) loadDoctrine();
   if (STATE.metrics === undefined) loadMetrics();
+  if (STATE.tree === undefined) loadTree();
   loadRecent();
 }
 
@@ -4770,6 +4794,46 @@ async function loadRecent() {
 // desde antes. **El trabajo es una vista, no un parser**: esto pide el JSON y no recalcula
 // nada, porque dos cosas que cuentan lo mismo acaban discrepando (`MLabs:AX-20`).
 // ⚠️ Se carga una vez, como la doctrina: el script barre el árbol y no es estado vivo.
+// ⛔ El árbol se pide UNA vez y son metadatos: 326 filas sin un solo cuerpo. Los cuerpos
+// se piden al abrir, y sólo el que se abre — meter el vault en `/api/model`, que ya pesa
+// 1,8 MB, convertiría un problema conocido (`I1.5`) en uno inmanejable.
+async function loadTree() {
+  try {
+    STATE.tree = await api("GET", "/api/tree");
+  } catch (e) {
+    STATE.tree = { available: false, why: e.message };
+  }
+  renderView();
+}
+
+// Un fichero, al abrirlo. ⚠️ Se cachea por ruta: volver a una nota que ya leíste no vuelve
+// a pedirla, que es la mitad de que esto se sienta como un lector y no como una web.
+async function loadNote(root, path) {
+  const key = `${root}/${path}`;
+  STATE.notes = STATE.notes || {};
+  if (STATE.notes[key]) { renderView(); return; }
+  STATE.notes[key] = { loading: true };
+  renderView();
+  try {
+    const d = await api("GET", `/api/file?path=${encodeURIComponent(path)}`);
+    STATE.notes[key] = d.available ? { body: d.body } : { error: d.why || "no se pudo leer" };
+  } catch (e) {
+    STATE.notes[key] = { error: e.message };
+  }
+  renderView();
+}
+
+async function loadSearch(q) {
+  STATE.searchQ = q;
+  if (!q || q.trim().length < 2) { STATE.search = null; renderView(); return; }
+  try {
+    STATE.search = await api("GET", `/api/search?q=${encodeURIComponent(q)}`);
+  } catch (e) {
+    STATE.search = { available: false, why: e.message };
+  }
+  renderView();
+}
+
 async function loadMetrics() {
   try {
     STATE.metrics = await api("GET", "/api/metrics");
@@ -5436,6 +5500,224 @@ function renderAuditMetrics() {
         }).join("")}
       </div>
     </section>`;
+}
+
+// ═══ La Biblioteca ═════════════════════════════════════════════════════════════════════
+//
+// La sala responde UNA pregunta (`interface:AX-10`): **qué sabe esta empresa**. Y su prueba
+// es la de `I9`: *un día entero con esta pestaña abierta sin abrir el explorador; si se abre,
+// falta una puerta.*
+//
+// ⛔ **Las decisiones de diseño, escritas para que se puedan cambiar** (`O2` · `AX-13`):
+//
+//   · **Dos columnas, con las estanterías siempre visibles.** No es decoración: si al abrir
+//     una nota desaparece el mapa, cada nota es un callejón sin salida y se vuelve al
+//     explorador — que es exactamente lo que esta sala existe para evitar.
+//   · **La columna de lectura mide ~68 caracteres** (`--read-measure`). Es la decisión
+//     tipográfica de mayor efecto y la más fácil de tocar: por encima de ~75 el ojo pierde
+//     el principio de la línea al saltar, y esto es prosa que se lee, no una tabla que se
+//     escanea.
+//   · **Las estanterías van en el orden del router, no alfabético.** Los dominios están
+//     numerados `01_`–`08_` porque ese orden lo decidió el operador; ordenarlos por nombre
+//     tira esa información.
+//   · **Cada estantería lleva su cuenta, incluidas las de uno.** Una estantería vacía es
+//     información — `07_BigData` tiene una nota —, y esconderla es adular al vault.
+//
+// El tema Bodleian se afina encima de esto, con referencias. La estructura no lo espera.
+
+// Las raíces que son *conocimiento*, en el orden en que el router las presenta. El resto
+// del árbol (los proyectos, el sistema) se navega desde su propia sala.
+const LIB_SHELVES = ["00_INDEXES", "01_KERNEL", "02_Capture", "03_Storage",
+                     "04_Analysis&Modeling", "05_Visualization", "06_DeepLearning&RL",
+                     "07_BigData", "08_BIO", "96_COMPILED", "97_COURSEWORK"];
+
+const SHELF_LABEL = {
+  "00_INDEXES": "El router", "01_KERNEL": "Kernel", "02_Capture": "Captura",
+  "03_Storage": "Almacenamiento", "04_Analysis&Modeling": "Análisis y modelado",
+  "05_Visualization": "Visualización", "06_DeepLearning&RL": "Deep learning y RL",
+  "07_BigData": "Big data", "08_BIO": "Bio", "96_COMPILED": "Compilado",
+  "97_COURSEWORK": "Coursework"
+};
+
+function libFiles(root) {
+  return ((STATE.tree && STATE.tree.files) || []).filter(f => f.root === root);
+}
+
+window.openShelf = function (root) {
+  STATE.libShelf = root; STATE.libNote = null; STATE.currentView = "library"; renderView();
+};
+window.openNote = function (root, path) {
+  STATE.libShelf = root; STATE.libNote = { root, path };
+  STATE.currentView = "library"; renderView(); loadNote(root, path);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+window.closeNote = function () { STATE.libNote = null; renderView(); };
+window.backToHits = function () { STATE.libNote = null; renderView(); };
+
+function renderLibrary(container) {
+  const t = STATE.tree;
+  if (t === undefined) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📚</div>
+      <h3>Abriendo la biblioteca…</h3></div>`;
+    return;
+  }
+  if (!t.available) {
+    // ⛔ Sin fuente se dice cuál falta, nunca una sala vacía que parece un vault vacío.
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📚</div>
+      <h3>La biblioteca no tiene fondo declarado</h3>
+      <p>${inline(t.why || "")}</p>
+      ${t.how ? `<p><code>${esc(t.how)}</code></p>` : ""}</div>`;
+    return;
+  }
+
+  const shelves = LIB_SHELVES.filter(r => (t.roots || []).includes(r));
+  const total = shelves.reduce((n, r) => n + libFiles(r).length, 0);
+  const shelf = STATE.libShelf && shelves.includes(STATE.libShelf) ? STATE.libShelf : null;
+
+  container.innerHTML = `
+    <div class="view-header">
+      <div class="view-title-group">
+        <h1><span>📚</span> Biblioteca</h1>
+        <p class="view-subtitle"><strong>Qué sabe esta empresa.</strong> Por materia y nunca por
+          ruta: ${total} notas en ${shelves.length} estanterías, leídas del disco.</p>
+      </div>
+    </div>
+
+    <div class="lib-room">
+      <aside class="lib-shelves">
+        <div class="lib-shelves-head">Estanterías</div>
+        ${shelves.map(r => {
+          const n = libFiles(r).length;
+          return `
+            <button class="lib-shelf ${r === shelf ? "is-open" : ""}" onclick="openShelf(${jsq(r)})">
+              <span class="lib-shelf-name">${esc(SHELF_LABEL[r] || r)}</span>
+              <span class="lib-shelf-n">${n}</span>
+            </button>`;
+        }).join("")}
+      </aside>
+      <div class="lib-main">${
+        STATE.libNote ? renderNote()
+        : STATE.search ? renderSearchHits()
+        : shelf ? renderShelf(shelf)
+        : renderLibFront(shelves)
+      }</div>
+    </div>`;
+}
+
+// La portada de la sala es el router del propio operador — ya es el índice por materia, así
+// que se renderiza en vez de inventar uno que se quedaría desincronizado (`MLabs:AX-20`).
+function renderLibFront(shelves) {
+  const router = libFiles("00_INDEXES").find(f => /ROUTER/i.test(f.path));
+  if (router) {
+    const key = `00_INDEXES/${router.path}`;
+    if (!(STATE.notes || {})[key]) loadNote("00_INDEXES", router.path);
+    const n = (STATE.notes || {})[key];
+    return `
+      <div class="lib-front-head">
+        <h2>${esc(router.title || router.path)}</h2>
+        <p>La portada de esta sala es tu propio router: dice qué existe, dónde está y cuándo
+           leerlo. <strong>No lo resumo — lo abro.</strong></p>
+      </div>
+      <section class="doc-reader lib-reader">${
+        n && n.body ? renderMarkdownBody(n.body)
+        : n && n.error ? `<p class="lib-err">${inline(n.error)}</p>`
+        : "<p>Abriendo…</p>"}</section>`;
+  }
+  return `<div class="lib-front-head"><h2>Elige una estantería</h2>
+    <p>No hay router en <code>00_INDEXES</code>, así que la sala abre por sus estanterías.</p></div>`;
+}
+
+window.clearSearch = function () { STATE.search = null; STATE.searchQ = ""; 
+  const el = document.getElementById("globalSearch"); if (el) el.value = ""; renderView(); };
+
+function renderSearchHits() {
+  const s = STATE.search;
+  if (!s.available) {
+    return `<div class="lib-front-head"><h2>La búsqueda no ha podido correr</h2>
+      <p>${inline(s.why || "")}</p></div>`;
+  }
+  // Agrupados por fichero: veinte líneas del mismo sitio son un resultado, no veinte.
+  const porFichero = new Map();
+  for (const h of s.hits) {
+    const k = `${h.root}|${h.path}`;
+    if (!porFichero.has(k)) porFichero.set(k, []);
+    porFichero.get(k).push(h);
+  }
+  return `
+    <div class="lib-front-head">
+      <h2>«${esc(s.q)}» — ${s.hits.length} línea${s.hits.length === 1 ? "" : "s"}
+        en ${porFichero.size} fichero${porFichero.size === 1 ? "" : "s"}</h2>
+      <p>Leído del disco, no del modelo.${s.capped ? " ⚠️ <strong>Cortado</strong> en el tope: hay más." : ""}
+        <button class="crumb-link" onclick="clearSearch()">✕ limpiar</button></p>
+    </div>
+    ${porFichero.size === 0 ? `<p class="lib-err">Nada. Y eso también es un resultado.</p>` : ""}
+    ${[...porFichero.entries()].map(([k, hs]) => {
+      const [root, path] = k.split("|");
+      const f = libFiles(root).find(x => x.path === path);
+      return `
+        <section class="lib-group">
+          <h3 class="lib-group-head">
+            <button class="lib-hit-file" onclick="openNote(${jsq(root)}, ${jsq(path)})">
+              ${esc((f && f.title) || path)}</button>
+            <span>${hs.length}</span>
+          </h3>
+          <ul class="lib-hits">
+            ${hs.slice(0, 6).map(h => `
+              <li><button class="lib-hit" onclick="openNote(${jsq(root)}, ${jsq(path)})">
+                <span class="lib-hit-line">L${h.line}</span>
+                <span class="lib-hit-text">${esc(h.text)}</span></button></li>`).join("")}
+            ${hs.length > 6 ? `<li class="lib-hit-more">…y ${hs.length - 6} más en este fichero</li>` : ""}
+          </ul>
+        </section>`;
+    }).join("")}`;
+}
+
+function renderShelf(root) {
+  const files = libFiles(root);
+  // Agrupadas por su primera carpeta: es la materia dentro del dominio, y viene del árbol
+  // real en vez de una taxonomía inventada aquí.
+  const grupos = new Map();
+  for (const f of files) {
+    const parte = f.path.includes("/") ? f.path.split("/")[0] : "—";
+    if (!grupos.has(parte)) grupos.set(parte, []);
+    grupos.get(parte).push(f);
+  }
+  return `
+    <div class="lib-front-head">
+      <h2>${esc(SHELF_LABEL[root] || root)}</h2>
+      <p>${files.length} nota${files.length === 1 ? "" : "s"} · <code>${esc(root)}</code></p>
+    </div>
+    ${[...grupos.entries()].map(([g, fs]) => `
+      <section class="lib-group">
+        ${g !== "—" ? `<h3 class="lib-group-head">${esc(g.replace(/^\d+[-_]?/, "") || g)}
+          <span>${fs.length}</span></h3>` : ""}
+        <ul class="lib-list">
+          ${fs.map(f => `
+            <li><button class="lib-item" onclick="openNote(${jsq(root)}, ${jsq(f.path)})">
+              <span class="lib-item-title">${esc(f.title || f.path.split("/").pop())}</span>
+              <span class="lib-item-meta">${Math.round(f.bytes / 1024)} KB</span>
+            </button></li>`).join("")}
+        </ul>
+      </section>`).join("")}`;
+}
+
+function renderNote() {
+  const { root, path } = STATE.libNote;
+  const n = (STATE.notes || {})[`${root}/${path}`] || {};
+  const f = libFiles(root).find(x => x.path === path) || {};
+  return `
+    <div class="lib-crumb">
+      ${STATE.search ? `<button class="crumb-link" onclick="backToHits()">◂ resultados de «${esc(STATE.search.q || "")}»</button>`
+                     : `<button class="crumb-link" onclick="openShelf(${jsq(root)})">◂ ${esc(SHELF_LABEL[root] || root)}</button>`}
+      <span class="crumb-here">${esc(path)}</span>
+    </div>
+    <div class="lib-front-head">
+      <h2>${esc(f.title || path.split("/").pop())}</h2>
+    </div>
+    <section class="doc-reader lib-reader">${
+      n.body ? renderMarkdownBody(n.body)
+      : n.error ? `<p class="lib-err">${inline(n.error)}</p>`
+      : "<p>Abriendo…</p>"}</section>`;
 }
 
 function renderDashboard(container) {

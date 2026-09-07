@@ -6294,3 +6294,58 @@ input[type="text"]:focus, textarea:focus {
   color: var(--ink-muted);
   word-break: break-word;
 }
+
+/* ═══ La Biblioteca ════════════════════════════════════════════════════════════════════
+   Las razones de cada número están en `app.js`, junto a `renderLibrary`, para que se lean
+   donde se usan. Aquí sólo la variable que más se va a tocar: */
+:root { --read-measure: 68ch; }
+
+.lib-room { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 26px; align-items: start; }
+@media (max-width: 900px) { .lib-room { grid-template-columns: 1fr; } }
+
+/* Las estanterías se quedan a la vista al hacer scroll: si el mapa desaparece al leer, cada
+   nota es un callejón sin salida y se vuelve al explorador de ficheros. */
+.lib-shelves { position: sticky; top: 18px; display: flex; flex-direction: column; gap: 2px;
+  border: 1px solid var(--line); border-radius: var(--radius-md); padding: 8px; }
+.lib-shelves-head { font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-muted); padding: 4px 8px 8px; }
+.lib-shelf { display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  width: 100%; padding: 7px 9px; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--ink); font-size: 13px; text-align: left; cursor: pointer; }
+.lib-shelf:hover { background: var(--line-subtle); }
+.lib-shelf.is-open { background: var(--gold-bg); box-shadow: inset 2px 0 0 var(--gold); }
+.lib-shelf-n { font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); }
+
+.lib-front-head { margin: 0 0 18px; }
+.lib-front-head h2 { margin: 0 0 4px; font-size: 21px; line-height: 1.25; }
+.lib-front-head p { margin: 0; color: var(--ink-soft); font-size: 13.5px; }
+
+.lib-crumb { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 12.5px; }
+.lib-crumb .crumb-here { font-family: var(--font-mono); color: var(--ink-muted); font-size: 11.5px; }
+
+.lib-group { margin: 0 0 22px; }
+.lib-group-head { display: flex; align-items: baseline; gap: 8px; margin: 0 0 8px;
+  font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-muted); }
+.lib-group-head span { font-family: var(--font-mono); font-size: 11px; }
+.lib-list { list-style: none; margin: 0; padding: 0; }
+.lib-item { display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+  width: 100%; padding: 8px 10px; border: 0; border-bottom: 1px solid var(--line-subtle);
+  background: transparent; color: var(--ink); font-size: 14px; text-align: left; cursor: pointer; }
+.lib-item:hover { background: var(--line-subtle); }
+.lib-item-meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); flex-shrink: 0; }
+
+/* La medida de lectura. Por encima de ~75 caracteres el ojo pierde el principio de la línea
+   al saltar, y esto es prosa que se lee, no una tabla que se escanea. */
+.lib-reader { max-width: var(--read-measure); }
+.lib-err { color: var(--rust); font-size: 13.5px; }
+.lib-hit-file { border: 0; background: transparent; padding: 0; cursor: pointer;
+  color: var(--ink); font: inherit; text-transform: none; letter-spacing: 0; font-size: 13.5px; }
+.lib-hit-file:hover { text-decoration: underline; }
+.lib-hits { list-style: none; margin: 0; padding: 0; }
+.lib-hit { display: flex; gap: 10px; width: 100%; padding: 5px 10px; border: 0;
+  background: transparent; text-align: left; cursor: pointer; align-items: baseline; }
+.lib-hit:hover { background: var(--line-subtle); }
+.lib-hit-line { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-muted); flex-shrink: 0; }
+.lib-hit-text { font-size: 12.5px; color: var(--ink-soft); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.lib-hit-more { padding: 4px 10px; font-size: 11.5px; color: var(--ink-muted); }
