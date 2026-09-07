@@ -29,15 +29,6 @@
       <span class="front-title">Cargando frente activo...</span>
     </div>
 
-    <!-- QUICK WRITE ACTIONS (TOP BAR) -->
-    <div class="hud-quick-actions">
-      <button class="btn-hud-action btn-add-task" onclick="openTaskModal()">
-        <span>➕</span> <span>Nueva Tarea</span>
-      </button>
-      <button class="btn-hud-action btn-scratchpad" onclick="toggleScratchpad()" title="Bloc de notas rápido">
-        <span>📝</span> <span>Apuntes</span>
-      </button>
-    </div>
 
     <div class="hud-controls">
       <div class="search-box">
@@ -123,78 +114,7 @@
     </main>
   </div>
 
-  <!-- FLOATING SCRATCHPAD DRAWER -->
-  <aside class="scratchpad-drawer" id="scratchpadDrawer">
-    <div class="scratchpad-header">
-      <div class="scratchpad-title">
-        <span>📝</span> <strong>Bloc de Notas & Apuntes Rápidos</strong>
-      </div>
-      <button class="btn-close" onclick="toggleScratchpad()">✕</button>
-    </div>
-    <div class="scratchpad-body">
-      <p class="scratchpad-hint">Un borrador que vive sólo en este navegador. ⚠️ <strong>No escribe en
-        ningún fichero</strong>: la libreta y el parque se editan a mano, por decisión del operador.
-        Lo que aquí se quede, se queda aquí.</p>
-      <textarea id="scratchpadInput" placeholder="Escribe aquí notas, fragmentos de código, ideas inmediatas..."></textarea>
-      
-      <div class="scratchpad-actions">
-        <button class="btn-convert btn-convert-task" onclick="convertScratchpadToTask()">
-          <span>➕</span> Convertir en Tarea
-        </button>
-      </div>
-    </div>
-  </aside>
 
-  <!-- MODAL: AÑADIR TAREA -->
-  <div class="modal-overlay" id="taskModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3><span>➕</span> Añadir Nueva Tarea</h3>
-        <button class="btn-close" onclick="closeTaskModal()">✕</button>
-      </div>
-      <form id="taskForm" onsubmit="handleCreateTask(event)">
-        <div class="form-group">
-          <label>Título de la tarea</label>
-          <input type="text" id="taskTitle" required placeholder="Ej: Implementar verificación de integridad en pipeline">
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Proyecto asignado</label>
-            <select id="taskProject" required class="custom-select">
-              <!-- populated dynamically from model -->
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Estado inicial</label>
-            <select id="taskStatus" class="custom-select">
-              <option value="⬜">⬜ Pendiente</option>
-              <option value="🔨">🔨 En curso</option>
-              <option value="⛔">⛔ Bloqueada</option>
-              <option value="🔴">🔴 Crítica</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Justificación / Why (¿Por qué se hace?)</label>
-          <textarea id="taskWhy" rows="3" required placeholder="Explica brevemente la razón y objetivo técnico de esta tarea..."></textarea>
-        </div>
-
-        <div class="form-preview-box">
-          <div class="preview-label">PREVIEW REGISTRO GENERADO:</div>
-          <pre id="taskMarkdownPreview">### T... · ... ⬜
-**project:** `...`
-**Why** *(operator, YYYY-MM-DD)*. ...</pre>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn-cancel" onclick="closeTaskModal()">Cancelar</button>
-          <button type="submit" class="btn-submit"><span>💾</span> Guardar Tarea</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
   <!-- TOAST NOTIFICATION -->
   <div class="toast-notification" id="toast">

@@ -4,8 +4,7 @@
 
 const STORAGE_KEYS = {
   TASKS: "mlabs_nexus_tasks_v3",
-  IDEAS: "mlabs_nexus_ideas_v3",
-  SCRATCHPAD: "mlabs_nexus_scratchpad_v3"
+  IDEAS: "mlabs_nexus_ideas_v3"
 };
 
 let STATE = {
@@ -1728,9 +1727,6 @@ function renderProjectWorkflowTab(proj, projectTasks, projectDecs) {
     <div class="doc-section">
       <div class="section-head" style="cursor: default;">
         <h2><span class="num">01</span> Mapa Ramificado de Fases, Bloques y Subbloques</h2>
-        <button class="btn-hud-action" onclick="openTaskModalForProject(${jsq(proj.name)})">
-          <span>➕</span> <span>Nueva Tarea para ${esc(proj.name)}</span>
-        </button>
       </div>
       <p class="lead">
         Secuencia estructurada de ejecución. Cada bloque maestro engloba sus subbloques ramificados, verificaciones y tareas vivas.
@@ -2120,14 +2116,6 @@ window.setProjectSubtab = function(tabKey) {
   renderView();
 };
 
-window.openTaskModalForProject = function(projectName) {
-  openTaskModal();
-  const projSelect = document.getElementById("taskProject");
-  if (projSelect) {
-    projSelect.value = projectName;
-    updateTaskPreview();
-  }
-};
 
 window.selectProject = function(name) {
   openProjectDetail(name);
@@ -2939,7 +2927,6 @@ function renderMarkdownTable(lines) {
 
 function initAppListeners() {
   ["taskTitle", "taskProject", "taskStatus", "taskWhy"].forEach(id => {
-    document.getElementById(id)?.addEventListener("input", updateTaskPreview);
   });
 
   document.querySelectorAll(".nav-item").forEach(btn => {
@@ -3004,7 +2991,6 @@ async function loadModel() {
     renderView();
     return;
   }
-  if (STATE.trace === undefined) loadTrace();
   // ⚠️ La doctrina se carga una vez: son ficheros del propio motor, no estado vivo, y
   // volver a pedirlos en cada latido gastaría una petición por segundo para nada.
   if (STATE.doctrine === undefined) loadDoctrine();
@@ -3240,9 +3226,6 @@ function renderInbox(container) {
           <strong>lista de tareas</strong> de operador a agente.</p>
         ${staleBanner([...(STATE.tasks || []), ...(STATE.mailbox || [])], "entradas")}
       </div>
-      <button class="btn-hud-action btn-add-task" onclick="openTaskModal()">
-        <span>➕</span> <span>Nueva Tarea</span>
-      </button>
     </div>
 
     ${renderMailboxPanel()}
@@ -3774,18 +3757,6 @@ function showToast(msg) {
   }
 }
 
-function updateTaskPreview() {
-  const title = document.getElementById("taskTitle")?.value || "...";
-  const proj = document.getElementById("taskProject")?.value || (STATE.projects[0]?.name || "project");
-  const status = document.getElementById("taskStatus")?.value || "⬜";
-  const why = document.getElementById("taskWhy")?.value || "...";
-  const nextId = `T${STATE.tasks.length + 60}`;
-
-  const preview = document.getElementById("taskMarkdownPreview");
-  if (preview) {
-    preview.textContent = `### ${nextId} · ${title} ${status}\n**project:** \`${proj}\`\n**Why** *(operator, ${new Date().toISOString().slice(0, 10)})*. ${why}`;
-  }
-}
 
 function autoScrollPlanContainer(smooth = true) {
   requestAnimationFrame(() => {
@@ -3864,14 +3835,6 @@ function fillProjectSelect(id) {
   }
 }
 
-window.openTaskModal = function() {
-  const modal = document.getElementById("taskModal");
-  fillProjectSelect("taskProject");
-  if (modal) {
-    updateTaskPreview();
-    modal.classList.add("active");
-  }
-};
 
 window.selectCsTab = function(cat) {
   STATE.activeCsTab = cat;
@@ -3979,33 +3942,8 @@ async function api(method, path, body) {
   return data;
 }
 
-// One place that reports a write, so a confirmation always says WHERE it landed. ⚠️ "Idea
-// guardada" is not traceability; "IDEAS.md línea 14" is, because it can be checked.
-function confirmWrite(data, what) {
-  const where = data.file ? ` · <code>${esc(data.file)}</code>${data.line ? ` línea ${data.line}` : ""}` : "";
-  showToast(`${what}${where.replace(/<[^>]+>/g, "")}`);
-  STATE.lastWrite = { what, ...data, at: new Date().toISOString() };
-  loadModel();
-  loadTrace();
-}
 
-function reportWriteError(e) {
-  if (e.stale) {
-    showToast("El plan cambió en disco. Recargando para que veas el estado real.");
-    loadModel();
-  } else {
-    showToast(`No se pudo escribir: ${e.message}`);
-  }
-}
 
-async function loadTrace() {
-  try {
-    const d = await api("GET", "/api/trace");
-    STATE.trace = (d.events || []).slice().reverse();
-    const rail = document.getElementById("traceRail");
-    if (rail) rail.innerHTML = renderTraceList();
-  } catch (_) { STATE.trace = STATE.trace || []; }
-}
 
 // ───────────────────────────────────────────────── the unified card
 //
@@ -4249,45 +4187,11 @@ function renderPlanItem(item, editable) {
           ${item.line ? `<span class="pi-line" title="Línea en PLAN.md">L${item.line}</span>` : ""}
         </div>
       </div>
-      ${!routed && editable && item.line ? `
-        <div class="pi-route" title="Dale su destino — los cuatro de FLOW.md">
-          ${Object.entries(OUTCOMES).map(([k, o]) => `
-            <button class="pi-route-btn ${o.cls}" title="${o.label} — ${o.hint}"
-                    onclick="routePlanItem(${item.line}, ${JSON.stringify(item.text.slice(0, 40)).replace(/"/g, "&quot;")}, '${k}')">
-              ${o.icon}
-            </button>`).join("")}
-        </div>` : ""}
+      ${!routed && item.line ? `
+        <span class="pi-unrouted" title="Un item tachado sin destino es un cierre fallido: el parser lo reporta">sin destino</span>` : ""}
     </div>`;
 }
 
-function renderTraceList() {
-  const ev = STATE.trace || [];
-  if (!ev.length) {
-    return `<div class="trace-empty">Nada escrito todavía en esta sesión.<br>
-            <span>Cada nota, idea o entrada al buzón aparecerá aquí con su fichero y su línea.</span></div>`;
-  }
-  const KIND = {
-    "mailbox":    { icon: "📬", label: "al buzón" },
-    "idea":       { icon: "💡", label: "a ideas" },
-    "task":       { icon: "➕", label: "tarea creada" },
-    "plan-item":  { icon: "📝", label: "item al plan" },
-    "plan-route": { icon: "🎯", label: "item enrutado" }
-  };
-  return ev.map(e => {
-    const k = KIND[e.kind] || { icon: "•", label: e.kind };
-    return `
-      <div class="trace-row">
-        <span class="trace-icon">${k.icon}</span>
-        <div class="trace-body">
-          <div class="trace-head"><strong>${k.label}</strong>
-            <span class="trace-where"><code>${esc(e.file || "")}</code>${e.line ? ` L${e.line}` : ""}</span>
-          </div>
-          <div class="trace-text">${esc(String(e.wrote || "").slice(0, 160))}</div>
-          <div class="trace-at">${esc(String(e.at || "").replace("T", " "))}</div>
-        </div>
-      </div>`;
-  }).join("");
-}
 
 // ───────────────────────────────────────────────── OFICINA — the board
 const TERMINAL = ["done", "cancelled"];
@@ -4647,28 +4551,6 @@ function renderDesk(container) {
                    : "Se planifica con <code>current-plan</code>."}</p>
             </div>`}
 
-          ${isLive ? `
-          <!-- CAPTURA EN VIVO -->
-          <div class="capture-box">
-            <div class="capture-head">
-              <strong>📝 Anota sin salir de aquí</strong>
-              <span>Entra al plan <em>sin destino</em>. Lo leo del disco y decidimos juntos a dónde va.</span>
-            </div>
-            <div class="capture-row">
-              <textarea id="captureInput" rows="2" placeholder="Una idea, una observación, algo que acaba de surgir… (Ctrl+Enter para añadir)"
-                        onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')addPlanNote()"></textarea>
-            </div>
-            <div class="capture-actions">
-              ${secNames.length > 1 ? `
-                <select id="captureSection" class="custom-select capture-sel">
-                  ${secNames.map(s => `<option value="${esc(s)}">en «${esc(s)}»</option>`).join("")}
-                </select>` : `<input type="hidden" id="captureSection" value="${esc(secNames[0] || "")}">`}
-              <label class="capture-ord">
-                <input type="checkbox" id="captureOrdered" checked> lleva número
-              </label>
-              <button class="btn-submit" onclick="addPlanNote()">＋ Añadir al plan</button>
-            </div>
-          </div>` : ""}
         ` : `
           <div class="front-state-card ${st === "paused" ? "paused-state-card" : "queued-state-card"}">
             <div class="state-card-icon">${m.icon}</div>
@@ -4692,19 +4574,14 @@ function renderDesk(container) {
       </div></section>
 
       <aside class="desk-rail">
-        <div class="rail-panel">
-          <div class="rail-head"><strong>🧾 Traza de la sesión</strong>
-            <button class="rail-refresh" onclick="loadTrace()" title="Releer el diario">⟳</button></div>
-          <div id="traceRail" class="trace-list">${renderTraceList()}</div>
-        </div>
         <div class="rail-panel rail-legend">
           <div class="rail-head"><strong>Los cuatro destinos</strong></div>
           ${Object.entries(OUTCOMES).map(([k, o]) => `
             <div class="legend-row ${o.cls}"><span>${o.icon}</span>
               <div><strong>${o.label}</strong><em>${o.hint}</em></div></div>`).join("")}
-          <p class="rail-note">Un item tachado sin destino es un <strong>cierre fallido</strong>
-             — el parser lo reporta y aquí no puede ocurrir: los cuatro botones son los únicos
-             caminos de salida.</p>
+          <p class="rail-note">Un item tachado sin destino es un <strong>cierre fallido</strong>,
+             y el parser lo reporta. ⚠️ <strong>Esta vista lo lee, no lo arregla</strong>: el
+             destino se escribe en el fichero, a mano.</p>
         </div>
       </aside>
     </div>
@@ -4721,83 +4598,18 @@ window.openDesk = function (cardId) {
   STATE.deskCardId = cardId;
   STATE.currentView = "desk";
   renderView();
-  loadTrace();
   window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
-window.addPlanNote = async function () {
-  const ta = document.getElementById("captureInput");
-  const text = (ta?.value || "").trim();
-  if (!text) return;
-  const section = document.getElementById("captureSection")?.value || "";
-  const ordered = document.getElementById("captureOrdered")?.checked !== false;
-  try {
-    const d = await api("POST", "/api/plan/item", { text, section, ordered });
-    ta.value = "";
-    confirmWrite(d, "Anotado en el plan, sin destino");
-  } catch (e) { reportWriteError(e); }
-};
 
-window.routePlanItem = async function (line, expect, outcome) {
-  try {
-    const d = await api("PATCH", "/api/plan/item", { line, expect, outcome });
-    confirmWrite(d, `Item enrutado: ${OUTCOMES[outcome].label}`);
-  } catch (e) { reportWriteError(e); }
-};
 
 // ───────────────────────────────────────────────── los handlers que faltaban
 //
 // ⛔ `index.html` called all of these and none of them existed. The modals opened and
 // could not close; submitting a form threw and reloaded the page, so the entry was lost
-// *and* the view was reset. Every one of them now writes through the API and reports what
-// the server actually did.
-function closeModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.remove("active");
-}
-window.closeTaskModal    = () => closeModal("taskModal");
 
-window.toggleScratchpad = function () {
-  const d = document.getElementById("scratchpadDrawer");
-  if (!d) return;
-  d.classList.toggle("open");
-  if (d.classList.contains("open")) {
-    const ta = document.getElementById("scratchpadInput");
-    if (ta) {
-      // ⚠️ Restored from storage, never blanked. A scratchpad that empties on close is a
-      // scratchpad that eats what was written in it, which is `PH-3` broken by a widget.
-      ta.value = localStorage.getItem(STORAGE_KEYS.SCRATCHPAD) || "";
-      ta.oninput = () => localStorage.setItem(STORAGE_KEYS.SCRATCHPAD, ta.value);
-      ta.focus();
-    }
-  }
-};
 
-window.handleCreateTask = async function (ev) {
-  ev.preventDefault();
-  const title = document.getElementById("taskTitle")?.value.trim();
-  const project = document.getElementById("taskProject")?.value;
-  const status = document.getElementById("taskStatus")?.value || "⬜";
-  const why = document.getElementById("taskWhy")?.value.trim();
-  try {
-    const d = await api("POST", "/api/task", { title, project, status, why });
-    closeModal("taskModal");
-    document.getElementById("taskForm")?.reset();
-    confirmWrite(d, `Tarea ${d.id || ""} creada`);
-  } catch (e) { reportWriteError(e); }
-  return false;
-};
 
-window.convertScratchpadToTask = function () {
-  const t = (document.getElementById("scratchpadInput")?.value || "").trim();
-  if (!t) { showToast("El bloc está vacío."); return; }
-  openTaskModal();
-  const title = document.getElementById("taskTitle");
-  const why = document.getElementById("taskWhy");
-  if (title) title.value = t.split("\n")[0].slice(0, 120);
-  if (why) why.value = t;
-  updateTaskPreview();
-};
 
 // ───────────────────────────────────────────────── EL BUZÓN — agente → operador
 //
