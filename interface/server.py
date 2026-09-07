@@ -97,8 +97,132 @@ def load_adapter(path):
         # ⛔ De dónde salen las métricas lo declara la instancia, nunca el motor
         # (`interface:AX-1`): aquí no hay ninguna ruta a ningún script.
         "metrics": data.get("metrics"),
+        # ⛔ Qué se puede navegar lo declara la instancia. El motor no nombra ninguna raíz.
+        "browse": data.get("browse") or [],
         "path": str(p)
     }
+
+
+# ── el navegador ────────────────────────────────────────────────────────────────────────
+#
+# ⛔ Esto ensancha a propósito una regla que este mismo fichero escribió en `/api/skill`:
+# *«se pide por NOMBRE… un cliente que pudiera nombrar una ruta leería cualquier fichero que
+# el servidor alcance»*. `read_file` ES ese cliente, porque un navegador no puede funcionar
+# de otra forma. Así que la contención deja de ser una precaución y pasa a ser la función.
+#
+# ⚠️ Y la contención es de UNA pieza, aquí, no repartida por las rutas: una comprobación que
+# hay que acordarse de llamar es una comprobación que un día no se llama.
+
+def _browse_roots(adapter):
+    """Las raíces navegables, **declaradas por la instancia** (`interface:AX-1`)."""
+    out = []
+    for rel in adapter.get("browse") or []:
+        d = (adapter["root"] / rel).resolve()
+        if d.is_dir():
+            out.append(d)
+    return out
+
+
+def _contained(adapter, rel):
+    """La ruta pedida, resuelta y **dentro** de una raíz navegable, o `None`.
+
+    ⛔ Se comprueba sobre la ruta YA RESUELTA, que es lo que neutraliza `../`, las rutas
+    absolutas y **los enlaces simbólicos que salen** — el que se olvida, porque `resolve()`
+    los sigue y una comprobación sobre el texto de la ruta no los ve.
+    ⚠️ El allowlist es de extensión: `.md` y nada más. Una lista de lo prohibido siempre
+    tiene un hueco; una de lo permitido no.
+    """
+    if not rel or not isinstance(rel, str):
+        return None
+    rel = urllib.parse.unquote(rel)           # `..%2f` es `../` una vez decodificado
+    if "\x00" in rel or not rel.endswith(".md"):
+        return None
+    for raiz in _browse_roots(adapter):
+        f = (raiz / rel.lstrip("/")).resolve()
+        try:
+            f.relative_to(raiz)               # lanza si cae fuera; no compara cadenas
+        except ValueError:
+            continue
+        if f.is_file():
+            return f
+    return None
+
+
+def _walk(raiz):
+    """Los `.md` **realmente dentro** de `raiz`, resueltos.
+
+    ⛔ `rglob` devuelve `raiz/atajo.md` para un enlace simbólico que apunta fuera, y
+    `relative_to` sobre esa ruta sin resolver cae dentro siempre. Hay que resolver primero,
+    igual que en `_contained` — y por eso las tres rutas pasan por aquí y no cada una por su
+    cuenta. ⚠️ La primera versión de esto tenía la comprobación sólo en `_contained`, el
+    árbol listaba el enlace, y **fue la prueba con planta la que lo encontró**, no la
+    relectura.
+    """
+    for f in sorted(raiz.rglob("*.md")):
+        try:
+            real = f.resolve()
+            real.relative_to(raiz)
+        except (ValueError, OSError):
+            continue
+        if real.is_file():
+            yield f, real
+
+
+def tree(adapter):
+    """Metadatos de cada `.md` navegable. **Sin cuerpos**: el árbol es barato, el texto no."""
+    roots = _browse_roots(adapter)
+    if not roots:
+        return {"available": False,
+                "why": "el adaptador no declara `browse`",
+                "how": 'añade {"browse": ["93_Notebook", "01_KERNEL", …]} al adaptador'}
+    files = []
+    for raiz in roots:
+        for f, real in _walk(raiz):
+            title = ""
+            try:
+                with real.open(encoding="utf-8", errors="replace") as fh:
+                    for _ in range(40):       # el `# ` suele estar arriba; no se lee entero
+                        line = fh.readline()
+                        if not line:
+                            break
+                        if line.startswith("# "):
+                            title = line[2:].strip()
+                            break
+            except OSError:
+                pass
+            st = real.stat()
+            files.append({"root": raiz.name, "path": str(f.relative_to(raiz)),
+                          "title": title, "bytes": st.st_size, "mtime": int(st.st_mtime)})
+    return {"available": True, "roots": [r.name for r in roots], "files": files}
+
+
+def read_file(adapter, rel):
+    f = _contained(adapter, rel)
+    if not f:
+        return {"available": False, "why": "fuera de lo navegable, o no es un .md que exista"}
+    return {"available": True, "path": rel,
+            "body": f.read_text(encoding="utf-8", errors="replace")}
+
+
+def search(adapter, q, limit=200):
+    """El `grep` que el operador corre fuera. Sobre las mismas raíces y nada más."""
+    q = (q or "").strip()
+    if len(q) < 2:
+        return {"available": False, "why": "hacen falta al menos dos caracteres"}
+    needle, hits = q.lower(), []
+    for raiz in _browse_roots(adapter):
+        for f, real in _walk(raiz):
+            try:
+                for n, line in enumerate(real.read_text(encoding="utf-8", errors="replace")
+                                         .splitlines(), 1):
+                    if needle in line.lower():
+                        hits.append({"root": raiz.name, "path": str(f.relative_to(raiz)),
+                                     "line": n, "text": line.strip()[:240]})
+                        if len(hits) >= limit:
+                            return {"available": True, "q": q, "hits": hits, "capped": True}
+            except OSError:
+                continue
+    return {"available": True, "q": q, "hits": hits, "capped": False}
 
 
 def metrics(adapter):
@@ -348,6 +472,17 @@ def make_handler(adapter):
                 # what the page claimed, and omitting one entirely, while looking
                 # authoritative. `AX-20` names that failure and this endpoint is the fix.
                 self._send(200, doctrine())
+            elif path == "/api/tree":
+                self._send(200, tree(adapter))
+            elif path == "/api/file":
+                rel = urllib.parse.parse_qs(
+                    self.path.split("?", 1)[1] if "?" in self.path else "").get("path", [""])[0]
+                r = read_file(adapter, rel)
+                self._send(200 if r.get("available") else 404, r)
+            elif path == "/api/search":
+                q = urllib.parse.parse_qs(
+                    self.path.split("?", 1)[1] if "?" in self.path else "").get("q", [""])[0]
+                self._send(200, search(adapter, q))
             elif path == "/api/metrics":
                 # `interface:I3.1` — las firings de los roles son la única medida de la salud
                 # del sistema, y eran lo único que esta interfaz no podía pintar. El script ya
