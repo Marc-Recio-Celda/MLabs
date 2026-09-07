@@ -6349,3 +6349,81 @@ input[type="text"]:focus, textarea:focus {
 .lib-hit-text { font-size: 12.5px; color: var(--ink-soft); overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; }
 .lib-hit-more { padding: 4px 10px; font-size: 11.5px; color: var(--ink-muted); }
+
+/* ═══ El estante ═══════════════════════════════════════════════════════════════════════
+   «Estantes interactivos que me llevan a libros, y cada libro es una nota.»
+
+   ⛔ Las medidas de cada lomo salen del tamaño real de la nota (ver `book()` en `app.js`):
+   un estante donde los libros gordos se ven gordos dice algo verdadero de un vistazo. Uno
+   con medidas al azar es decoración que además miente.
+
+   ⚠️ Los cinco tonos son **pasos de una sola familia**, no cinco colores: `AX-11` prohíbe
+   que una sala declare su propia paleta, y ocho salas con ocho paletas es exactamente el
+   estado que no se puede deshacer barato. Para cambiarlos, toca `--book-1..5` y nada más. */
+:root {
+  --shelf-h: 168px;
+  --book-1: #7a5c3e; --book-2: #6d4a3a; --book-3: #8a6a45;
+  --book-4: #5d5340; --book-5: #7b6a4a;
+}
+
+.shelf { margin: 0 0 26px; }
+.shelf-books {
+  display: flex; align-items: flex-end; gap: 3px;
+  height: var(--shelf-h); padding: 0 6px;
+  overflow-x: auto; overflow-y: hidden;
+}
+/* La tabla del estante: una línea con sombra, no una textura. La madera se sugiere con el
+   tono de los lomos; dibujarla entera compite con los títulos, que es lo que se lee. */
+.shelf-plank {
+  height: 7px; border-radius: 2px;
+  background: linear-gradient(var(--line-strong), var(--line));
+  box-shadow: 0 3px 6px -2px rgba(0, 0, 0, .28);
+}
+
+.book {
+  position: relative; flex: 0 0 auto;
+  width: var(--w); height: var(--h);
+  border: 0; border-radius: 2px 2px 0 0; padding: 8px 0 16px;
+  cursor: pointer; overflow: hidden;
+  display: flex; align-items: flex-start; justify-content: center;
+  transition: transform .12s ease, filter .12s ease;
+  /* El brillo del canto: dos líneas claras al borde, que es lo que hace que un rectángulo
+     se lea como un lomo y no como una barra. */
+  box-shadow: inset 1.5px 0 0 rgba(255, 255, 255, .22),
+              inset -1.5px 0 0 rgba(0, 0, 0, .18);
+}
+.book.tone-1 { background: var(--book-1); } .book.tone-2 { background: var(--book-2); }
+.book.tone-3 { background: var(--book-3); } .book.tone-4 { background: var(--book-4); }
+.book.tone-5 { background: var(--book-5); }
+
+/* Se levanta, no se agranda: un libro que crece empuja a sus vecinos y el estante entero
+   se mueve bajo el ratón. */
+.book:hover, .book:focus-visible { transform: translateY(-7px); filter: brightness(1.14); outline: none; }
+
+.book-spine {
+  writing-mode: vertical-rl; text-orientation: mixed;
+  font-size: 11.5px; line-height: 1.1; letter-spacing: .01em;
+  color: rgba(255, 248, 235, .93);
+  max-height: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.book-foot {
+  position: absolute; bottom: 4px; left: 0; right: 0; text-align: center;
+  font-family: var(--font-mono); font-size: 9px; color: rgba(255, 248, 235, .5);
+}
+@media (prefers-reduced-motion: reduce) { .book { transition: none; } }
+
+/* El frontmatter: fuera del flujo, no escondido. Las etiquetas dicen de qué va la nota de un
+   vistazo; el resto se despliega si hace falta. Cerrado por defecto, que es `AX-8`. */
+.note-meta { margin: 0 0 16px; max-width: var(--read-measure); }
+.note-meta > summary { display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  list-style: none; cursor: pointer; padding: 6px 0; }
+.note-meta > summary::-webkit-details-marker { display: none; }
+.meta-tag { font-size: 10.5px; letter-spacing: .02em; padding: 2px 8px; border-radius: var(--radius-full);
+  background: var(--gold-bg); border: 1px solid var(--gold-border); color: var(--ink-soft); }
+.meta-tag-none { background: transparent; border-style: dashed; color: var(--ink-muted); }
+.meta-more { font-size: 10.5px; color: var(--ink-muted); margin-left: auto; }
+.note-meta dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px;
+  margin: 6px 0 0; padding: 10px 12px; border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm); font-size: 12px; }
+.note-meta dt { font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); }
+.note-meta dd { margin: 0; color: var(--ink-soft); }

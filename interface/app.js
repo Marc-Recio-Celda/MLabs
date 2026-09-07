@@ -4803,6 +4803,10 @@ async function loadTree() {
   } catch (e) {
     STATE.tree = { available: false, why: e.message };
   }
+  // ⚠️ El contador vive en `updateHUD`, que corre al ingerir el modelo — antes de que el
+  // árbol llegue. Sin esto la sala decía 202 notas y su chapa decía 0, que es la clase de
+  // desacuerdo que hace dudar de toda la pantalla.
+  updateHUD();
   renderView();
 }
 
@@ -5562,11 +5566,19 @@ function renderLibrary(container) {
     return;
   }
   if (!t.available) {
-    // ⛔ Sin fuente se dice cuál falta, nunca una sala vacía que parece un vault vacío.
+    // ⛔ Dos averías distintas con dos arreglos distintos, y el mensaje las contaba igual.
+    // Un 404 no es «no hay fondo declarado»: es **este servidor no conoce la ruta**, o sea
+    // que está corriendo una versión anterior. Decirlo ahorra buscar en el sitio equivocado.
+    const viejo = /404/.test(String(t.why || ""));
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">📚</div>
-      <h3>La biblioteca no tiene fondo declarado</h3>
-      <p>${inline(t.why || "")}</p>
-      ${t.how ? `<p><code>${esc(t.how)}</code></p>` : ""}</div>`;
+      <h3>${viejo ? "El servidor no conoce la biblioteca todavía"
+                  : "La biblioteca no tiene fondo declarado"}</h3>
+      <p>${viejo
+        ? "<strong>La ruta <code>/api/tree</code> ha devuelto 404</strong>, así que el servidor "
+          + "que está sirviendo esta página es anterior a ella. <strong>Reinícialo</strong> y la "
+          + "sala aparece — no hay nada que declarar ni que arreglar."
+        : inline(t.why || "")}</p>
+      ${!viejo && t.how ? `<p><code>${esc(t.how)}</code></p>` : ""}</div>`;
     return;
   }
 
@@ -5619,7 +5631,7 @@ function renderLibFront(shelves) {
            leerlo. <strong>No lo resumo — lo abro.</strong></p>
       </div>
       <section class="doc-reader lib-reader">${
-        n && n.body ? renderMarkdownBody(n.body)
+        n && n.body ? renderMarkdownBody(splitFrontmatter(n.body).body)
         : n && n.error ? `<p class="lib-err">${inline(n.error)}</p>`
         : "<p>Abriendo…</p>"}</section>`;
   }
@@ -5685,20 +5697,87 @@ function renderShelf(root) {
   return `
     <div class="lib-front-head">
       <h2>${esc(SHELF_LABEL[root] || root)}</h2>
-      <p>${files.length} nota${files.length === 1 ? "" : "s"} · <code>${esc(root)}</code></p>
+      <p>${files.length} nota${files.length === 1 ? "" : "s"} · <code>${esc(root)}</code>
+         · <em>pasa el ratón por un lomo para leer su título</em></p>
     </div>
     ${[...grupos.entries()].map(([g, fs]) => `
       <section class="lib-group">
         ${g !== "—" ? `<h3 class="lib-group-head">${esc(g.replace(/^\d+[-_]?/, "") || g)}
           <span>${fs.length}</span></h3>` : ""}
-        <ul class="lib-list">
-          ${fs.map(f => `
-            <li><button class="lib-item" onclick="openNote(${jsq(root)}, ${jsq(f.path)})">
-              <span class="lib-item-title">${esc(f.title || f.path.split("/").pop())}</span>
-              <span class="lib-item-meta">${Math.round(f.bytes / 1024)} KB</span>
-            </button></li>`).join("")}
-        </ul>
+        <div class="shelf">
+          <div class="shelf-books">${fs.map(f => book(root, f)).join("")}</div>
+          <div class="shelf-plank"></div>
+        </div>
       </section>`).join("")}`;
+}
+
+// Un lomo. ⛔ **Alto y ancho salen del tamaño real de la nota**, no de un aleatorio: un
+// estante en el que los libros gordos se ven gordos dice algo verdadero de un vistazo, y uno
+// con medidas inventadas es decoración que además miente.
+//   · ancho  22–52 px sobre el tamaño en KB — el ancho es el que se percibe como «grosor»
+//   · alto   76–100 % del estante, por el título — variar el alto es lo que hace que un
+//            estante parezca un estante y no una barra de progreso
+//   · color  el tono de la materia, en pasos del mismo token; **una sola familia**, porque
+//            ocho paletas es lo que `AX-11` prohíbe
+function book(root, f) {
+  const kb = Math.max(1, Math.round(f.bytes / 1024));
+  const ancho = Math.min(52, 22 + Math.round(Math.sqrt(kb) * 4));
+  const largo = (f.title || f.path).length;
+  // ⛔ Esto era `76 + (largo % 25)`, y el módulo destruía exactamente la relación que el
+  // comentario de arriba afirmaba: un título de 26 caracteres salía más bajo que uno de 24.
+  // **Ahora es monótono** — más título, más alto —, acotado para que el estante siga siendo
+  // un estante. Un título que aun así no cabe se corta con puntos suspensivos, que es honesto.
+  const alto = Math.min(100, Math.max(66, 52 + largo * 1.5));
+  const tono = ((root.charCodeAt(0) * 7 + root.length * 3 + largo) % 5) + 1;
+  const titulo = f.title || f.path.split("/").pop().replace(/\.md$/, "");
+  return `
+    <button class="book tone-${tono}" style="--w:${ancho}px;--h:${alto}%"
+            title="${esc(titulo)} · ${kb} KB"
+            onclick="openNote(${jsq(root)}, ${jsq(f.path)})">
+      <span class="book-spine">${esc(titulo)}</span>
+      <span class="book-foot">${kb}</span>
+    </button>`;
+}
+
+// ⛔ El frontmatter YAML se pintaba como si fuera texto, así que **cada nota del vault abría
+// con un bloque de `tags:`, `aliases:` y `status:`** antes de su primera frase. Obsidian lo
+// esconde, y ésa era una de las razones concretas para seguir abriéndolo.
+// ⚠️ No se esconde: se **saca del flujo de lectura**. Las etiquetas son útiles para saber de
+// qué va una nota; lo que no puede es competir con la primera línea de prosa.
+function splitFrontmatter(md) {
+  const t = String(md || "");
+  if (!t.startsWith("---")) return { meta: null, body: t };
+  const fin = t.indexOf("\n---", 3);
+  if (fin === -1) return { meta: null, body: t };
+  const crudo = t.slice(3, fin);
+  const resto = t.slice(t.indexOf("\n", fin + 1) + 1);
+  // Un YAML de verdad necesitaría una librería, y `AX-7` no admite dependencias. Esto lee
+  // lo que estas notas escriben — `clave: valor` y listas con `-` — y **lo que no entiende
+  // lo deja pasar como una fila más**, nunca lo tira.
+  const campos = [];
+  let clave = null;
+  for (const ln of crudo.split("\n")) {
+    const m = ln.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
+    if (m) { clave = { k: m[1], v: m[2].trim() ? [m[2].trim()] : [] }; campos.push(clave); }
+    else if (clave && /^\s*-\s+/.test(ln)) clave.v.push(ln.replace(/^\s*-\s+/, "").trim());
+    else if (ln.trim()) campos.push({ k: "", v: [ln.trim()] });
+  }
+  return { meta: campos.filter(c => c.v.length), body: resto };
+}
+
+function renderMeta(meta) {
+  if (!meta || !meta.length) return "";
+  return `
+    <details class="note-meta">
+      <summary>
+        ${meta.filter(c => /tag/i.test(c.k)).flatMap(c => c.v).slice(0, 6)
+             .map(v => `<span class="meta-tag">${esc(v)}</span>`).join("")
+          || `<span class="meta-tag meta-tag-none">sin etiquetas</span>`}
+        <span class="meta-more">${meta.length} campos</span>
+      </summary>
+      <dl>${meta.map(c => `
+        <dt>${esc(c.k || "—")}</dt><dd>${c.v.map(v => esc(v)).join(" · ")}</dd>`).join("")}</dl>
+    </details>`;
 }
 
 function renderNote() {
@@ -5714,8 +5793,9 @@ function renderNote() {
     <div class="lib-front-head">
       <h2>${esc(f.title || path.split("/").pop())}</h2>
     </div>
+    ${n.body ? renderMeta(splitFrontmatter(n.body).meta) : ""}
     <section class="doc-reader lib-reader">${
-      n.body ? renderMarkdownBody(n.body)
+      n.body ? renderMarkdownBody(splitFrontmatter(n.body).body)
       : n.error ? `<p class="lib-err">${inline(n.error)}</p>`
       : "<p>Abriendo…</p>"}</section>`;
 }
