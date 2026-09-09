@@ -247,8 +247,18 @@ def project_file(adapter, name, relative):
     if not path.is_relative_to(directory) or not path.is_file():
         return {"available": False, "why": "No se encuentra este documento dentro del proyecto."}
     body = path.read_text(encoding="utf-8", errors="replace")
-    outline = [{"level": len(m[1]), "title": model.clean(m[2]), "line": i + 1}
-               for i, line in enumerate(body.splitlines()) if (m := re.match(r"^(#{1,6})\s+(.+)", line))]
+    outline, fence = [], None
+    for i, line in enumerate(body.splitlines()):
+        marker = re.match(r"^\s*(`{3,}|~{3,})", line)
+        if marker:
+            token = marker[1]
+            if fence is None:
+                fence = token
+            elif token[0] == fence[0] and len(token) >= len(fence):
+                fence = None
+            continue
+        if fence is None and (heading := re.match(r"^(#{1,6})\s+(.+)", line)):
+            outline.append({"level": len(heading[1]), "title": model.clean(heading[2]), "line": i + 1})
     role = next((d["role"] for d in project["documents"] if (adapter["root"] / d["path"]).resolve() == path), None)
     objectives = []
     if role == "objectives":

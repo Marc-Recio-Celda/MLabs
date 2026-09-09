@@ -851,6 +851,10 @@ def parse_project_blocks(path, text):
                         # and 78 carry a real dependency. **That is the dependency graph an order of
                         # work needs, and it was discarded without a word.**
                         head = header_of(lines, i) or []
+                        # Supporting tables can also have ids. Their findings or evidence
+                        # stay in the source document; they are not empty plan steps.
+                        if head and "What" not in head:
+                            continue
                         g = dict(zip(head, parts)) if len(head) == len(parts) else None
                         if g is None:
                             probs.append(Problem(path, i + 1,

@@ -434,7 +434,7 @@ function ingestModel(model) {
   STATE.projectCatalogs = Object.fromEntries(Object.entries(STATE.projectCatalogs || {}).map(([key, value]) => [key, { ...value, stale: true }]));
   STATE.projectDocuments = Object.fromEntries(Object.entries(STATE.projectDocuments || {}).map(([key, value]) => [key, { ...value, stale: true }]));
 
-  if (!STATE.selectedProject && STATE.projects.length) {
+  if (!STATE.selectedProject && STATE.projects.length && STATE.currentView !== "project-detail") {
     STATE.selectedProject = STATE.projects[0].name;
   }
 
@@ -1535,7 +1535,9 @@ function selectedProjectFile(project, catalog) {
   if (STATE.projectFile) return STATE.projectFile;
   const role = STATE.projectSubtab || "objectives";
   const file = (catalog?.files || []).find(f => f.role === role && f.primary);
-  return file?.path || null;
+  const definition = role === "objectives" && !(catalog?.files || []).some(f => f.role === "objectives")
+    ? (catalog?.files || []).find(f => f.role === "definition" && f.primary) : null;
+  return (file || definition)?.path || null;
 }
 
 function projectFileRows(project, files, query = "") {
@@ -1575,6 +1577,12 @@ function projectDocumentContent(doc) {
   return `<div class="project-markdown readme-markdown-body">${renderMarkdownBody(splitFrontmatter(doc.body).body)}</div>`;
 }
 
+function projectNextLinks(project, doc) {
+  const ids = new Set((project.nextAction || "").match(/\b[A-Z]+\d+(?:\.\d+[a-z]?)?\b/g) || []);
+  return (doc.blocks || []).filter(b => ids.has(b.id) || (b.subblocks || []).some(s => ids.has(s.id)))
+    .map(b => `<a href="${esc(projectRoute(project.name, STATE.projectSubtab, STATE.projectFile || "", b.id))}">Ir a ${esc(b.id)} →</a>`).join(" ");
+}
+
 function renderProjectDetailPage(container) {
   const project = STATE.projects.find(p => p.name === STATE.selectedProject);
   if (!project || project.ambiguous) {
@@ -1593,15 +1601,15 @@ function renderProjectDetailPage(container) {
   const role = file?.role || section;
   const title = PROJECT_ROLES[role] || file?.title || "Documento";
   let content;
-  if (section === "files" && !path) {
+  if ((!catalog || catalog.loading) && !catalog?.files && !path) {
+    content = '<p class="quiet-loading" role="status">Leyendo los archivos del proyecto…</p>';
+  } else if (catalog && !catalog.available && !catalog.loading) {
+    content = `<p class="quiet-empty">${esc(catalog.why)}</p>`;
+  } else if (section === "files" && !path) {
     content = `<section class="project-file-index"><h2>Archivos del proyecto</h2>
       <label class="project-file-search">Buscar documento<input type="search" value="${esc(STATE.projectFileQuery || "")}" oninput="filterProjectFiles(this.value)" placeholder="Título o nombre del archivo"></label>
       <p class="project-source-facts">${catalog?.files?.length || 0} documentos de lectura</p>
       <div id="projectFileList">${projectFileRows(project, catalog?.files || [], STATE.projectFileQuery || "")}</div></section>`;
-  } else if ((!catalog || catalog.loading) && !path) {
-    content = '<p class="quiet-loading" role="status">Leyendo los archivos del proyecto…</p>';
-  } else if (catalog && !catalog.available && !catalog.loading) {
-    content = `<p class="quiet-empty">${esc(catalog.why)}</p>`;
   } else if (!path) {
     content = `<section class="project-missing"><h2>${esc(title)}</h2><p>No hay un documento único de ${esc(title.toLowerCase())} enlazado a este proyecto.</p>
       <a href="${esc(projectRoute(project.name, "files"))}">Ver los archivos disponibles →</a></section>`;
@@ -1621,7 +1629,8 @@ function renderProjectDetailPage(container) {
         <header class="project-document-heading"><h2>${esc(title)}</h2>
           <span class="project-source-path">${esc(path)}</span>
           ${doc.loading ? '<span class="quiet-loading">Actualizando…</span>' : ""}</header>
-        ${role === "plan" && project.nextAction ? `<div class="project-next"><strong>Siguiente acción declarada</strong><p>${inline(project.nextAction)}</p></div>` : ""}
+        ${section === "objectives" && role === "definition" ? '<p class="project-next">Este proyecto aún no tiene un documento separado de objetivos. Puedes consultar su definición completa aquí.</p>' : ""}
+        ${role === "plan" && project.nextAction ? `<div class="project-next"><strong>Siguiente acción declarada</strong><p>${inline(project.nextAction)}</p>${projectNextLinks(project, doc)}</div>` : ""}
         ${projectDocumentContent(doc)}
       </article></div>`;
   }

@@ -97,11 +97,24 @@ class Projects(unittest.TestCase):
         self.assertNotIn('notes/code.py', names)
         self.assertFalse(server.project_file(self.adapter, 'sample', 'notes/escape.md')['available'])
 
+    def test_supporting_table_is_not_a_list_of_empty_plan_steps(self):
+        path = self.root / 'projects/group/sample/nexus/plan.md'
+        with path.open('a') as handle:
+            handle.write('\n| Id | Finding | Result |\n|---|---|---|\n| F1 | Supporting evidence | Closed |\n')
+        document = server.project_file(self.adapter, 'sample', 'nexus/plan.md')
+        self.assertEqual([s['id'] for s in document['blocks'][0]['subblocks']], ['A1.1'])
+        self.assertIn('Supporting evidence', document['body'])
+
     def test_duplicate_project_names_are_not_merged(self):
         other = self.root / 'projects/other/sample/nexus'
         other.mkdir(parents=True)
         (other / 'plan.md').write_text('# A different cartridge')
         self.assertFalse(server.project_files(self.adapter, 'sample')['available'])
+
+    def test_outline_does_not_turn_code_examples_into_headings(self):
+        self.write('sample/Decision_Log.md', '# Decisions\n\n```markdown\n### Dn template\n```\n\n### D12 Real decision\n')
+        doc = server.project_file(self.adapter, 'sample', 'nexus/Decision_Log.md')
+        self.assertEqual([h['title'] for h in doc['outline']], ['Decisions', 'D12 Real decision'])
 
 
 if __name__ == '__main__':

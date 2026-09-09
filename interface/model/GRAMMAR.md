@@ -136,7 +136,19 @@ A struck item with no destination is reported as **a failed close**, which is wh
 close rule calls it.
 
 ### `standing` — project state
-A blockquote of `**Field:** value` after the title. **Required: `Last updated`, `Next action`.**
+Project-bound sources declare a `role`: definition, objectives, plan, axioms, decisions, log or
+contract. Their `project_from` path capture or explicit `project` gives ownership. They compose
+one state per project. Duplicate project names in different cartridges remain ambiguous.
+
+Definition prose comes only from `What It Is` in the definition document. Blocks and metadata
+come only from the primary plan (legacy `state.md` is a fallback). `Last updated`, `Next action`
+and `integrated through` are read when declared; absent values stay absent. An auxiliary table
+without a `What` column is source context, not a list of plan steps. Status prose stays available.
+
+Document metadata is returned with the project; bodies are loaded individually through the
+project reader, constrained to that project's directory within the adapter's browse roots.
+Objective tables preserve every column after the objective id; the complete source remains
+available beside the reading projection. Unbound Standing sources retain the legacy parser.
 
 ## What this grammar does not do
 

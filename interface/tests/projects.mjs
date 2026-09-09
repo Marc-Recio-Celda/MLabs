@@ -23,3 +23,9 @@ assert.equal(sample.definition, '');
 assert.equal(sample.progress, null);
 assert.equal(projects.find(p => p.name === 'sample-extra').integratedThrough, 'D12');
 console.log('Project identity and absent metadata stay faithful to their sources.');
+
+const readerContext = vm.createContext({ STATE: { projectSubtab: 'objectives' } });
+vm.runInContext(source.slice(source.indexOf('function selectedProjectFile('), source.indexOf('function projectFileRows(')), readerContext);
+assert.equal(readerContext.selectedProjectFile({}, {files:[{role:'definition',primary:true,path:'nexus/definition.md'}]}), 'nexus/definition.md', 'Legacy projects expose their real definition when objectives have no separate file');
+assert.equal(readerContext.selectedProjectFile({}, {files:[{role:'definition',primary:true,path:'nexus/definition.md'},{role:'objectives',primary:true,path:'nexus/objectives.md'}]}), 'nexus/objectives.md', 'A declared objectives document always wins');
+assert.equal(readerContext.selectedProjectFile({}, {files:[{role:'definition',primary:true,path:'nexus/definition.md'},{role:'objectives',primary:false,path:'nexus/objectives-one.md'},{role:'objectives',primary:false,path:'nexus/objectives-two.md'}]}), null, 'Ambiguous objectives do not silently fall back to a different role');
