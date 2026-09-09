@@ -204,6 +204,73 @@ def read_file(adapter, rel):
             "body": f.read_text(encoding="utf-8", errors="replace")}
 
 
+def task_sheet(adapter, task_id):
+    """Resolve only the selected task's declared markdown reference, inside browse roots.
+
+    A scoped project reference selects its heading or exact table row. It is supporting
+    context, not an inferred sequence of task steps. Missing and ambiguous links stay missing.
+    """
+    unavailable = lambda why: {"available": False, "why": why}
+    if not model or not adapter.get("path"):
+        return unavailable("No hay un adaptador disponible.")
+    fronts = model.parse_adapter(adapter["path"])["entities"]
+    task = next((e for e in fronts if e["kind"] == "front" and e["id"] == task_id), None)
+    if not task:
+        return unavailable("Esta tarea ya no está en el muro.")
+    ref = task.get("sheet") or task.get("described_in") or ""
+    match = re.match(r"^`?([^`\s,]+\.md)`?(.*)$", ref)
+    if not match:
+        return unavailable("Esta tarea todavía no tiene una hoja enlazada.")
+    rel, tail = match.groups()
+    token = tail.strip().strip("`").split()[0].rstrip("`,") if tail.strip().strip("`") else ""
+    fragment = token if model.SUBBLOCK_ID.fullmatch(token) else None
+    if token and model.ID_LIKE.match(token) and not fragment:
+        return unavailable("El identificador de la sección no se reconoce: " + token)
+    if Path(rel).is_absolute() or ".." in Path(rel).parts:
+        return unavailable("La hoja está fuera de las carpetas de lectura.")
+    allowed = {real for root in _browse_roots(adapter) for _, real in _walk(root)}
+    # A full instance-relative path or a path beside the wall has an explicit base.
+    candidates = {(adapter["root"] / rel).resolve(),
+                  (adapter["root"] / task["file"]).parent.joinpath(rel).resolve()} & allowed
+    if not candidates:
+        candidates = {p for p in allowed if p.as_posix().endswith("/" + rel)}
+    if len(candidates) != 1:
+        return unavailable("No se encuentra la hoja enlazada." if not candidates
+                           else "El enlace coincide con varias hojas; falta concretar la ruta.")
+    path = next(iter(candidates))
+    body = path.read_text(encoding="utf-8", errors="replace")
+    if fragment:
+        lines = body.splitlines()
+        token = re.compile(r"(?<![\w.])" + re.escape(fragment) + r"(?![\w.])")
+        heads = [(i, len(m[1])) for i, line in enumerate(lines)
+                 if (m := re.match(r"^(#{1,6})\s+(.+)", line)) and token.search(m[2])]
+        rows = [i for i, line in enumerate(lines) if line.startswith("|")
+                and token.search(line.split("|")[1])]
+        if len(heads) == 1:
+            start, level = heads[0]
+            end = next((i for i in range(start + 1, len(lines))
+                        if (m := re.match(r"^(#{1,6})\s", lines[i])) and len(m[1]) <= level), len(lines))
+            body = "\n".join(lines[start:end])
+        elif not heads and len(rows) == 1:
+            row = rows[0]
+            start = row
+            while start > 0 and lines[start - 1].startswith("|"):
+                start -= 1
+            body = "\n".join(lines[start:start + 2] + [lines[row]])
+        else:
+            return unavailable("La sección enlazada no se encuentra de forma inequívoca: " + fragment)
+    # Only a task sheet explicitly identifies itself as such. A log or project roadmap
+    # can be read, but its bullets never become invented 'next steps'.
+    is_task = bool(re.search(r"^\*\*Task:\*\*", body, re.M)) and not fragment
+    parsed, _ = model.parse_plan(path, body) if is_task else ([], [])
+    current = re.search(r"^\*\*Now:\*\*\s*(.+)", body, re.M) if is_task else None
+    meta = next((e for e in parsed if e["kind"] == "live-plan-meta"), {})
+    return {"available": True, "path": os.path.relpath(path, adapter["root"]),
+            "reference": ref, "body": body, "current": current[1] if current else None,
+            "items": [e for e in parsed if e["kind"] == "plan-item" and e.get("section", "").lower() == "items"],
+            "order_why": meta.get("order_why", "")}
+
+
 def search(adapter, q, limit=200):
     """El `grep` que el operador corre fuera. Sobre las mismas raíces y nada más."""
     q = (q or "").strip()
@@ -474,6 +541,11 @@ def make_handler(adapter):
                 self._send(200, doctrine())
             elif path == "/api/tree":
                 self._send(200, tree(adapter))
+            elif path == "/api/task-sheet":
+                task_id = urllib.parse.parse_qs(
+                    self.path.split("?", 1)[1] if "?" in self.path else "").get("id", [""])[0]
+                result = task_sheet(adapter, task_id)
+                self._send(200 if result.get("available") else 404, result)
             elif path == "/api/file":
                 rel = urllib.parse.parse_qs(
                     self.path.split("?", 1)[1] if "?" in self.path else "").get("path", [""])[0]

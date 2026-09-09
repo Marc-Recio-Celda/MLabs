@@ -483,6 +483,27 @@ def parse_wall(path, text):
                 cur["drains"] = v
             if cur.get("sheet"):
                 cur["described_in"] = cur["sheet"]
+    # Keep the task's activity and multiline fields. The first-line reader above retains
+    # legacy inline metadata; paragraph continuation belongs to the same declared field.
+    field_keys = {"Serves": "serves", "Sheet": "sheet", "Why it is committed": "why",
+                  "What it affects": "affects", "Drains": "drains", "Returns when": "returns_when"}
+    for e in ents:
+        start = e["line"]
+        end = next((j for j in range(start, len(lines)) if re.match(r"^#{1,3} ", lines[j])), len(lines))
+        description, active_key = [], None
+        for line in lines[start:end]:
+            field = WALL_FIELD.match(line.strip())
+            if field:
+                active_key = field_keys.get(field["k"])
+                # Inline metadata is complete on this line, not a paragraph continuation.
+                if re.search(r"·\s*\*\*(?:" + "|".join(field_keys) + r"|Opened|Closed|Deferred)\*\*", field["v"]):
+                    active_key = None
+                continue
+            if active_key and line.strip():
+                e[active_key] = (e.get(active_key) or "") + " " + clean(line)
+            elif not active_key:
+                description.append(line)
+        e["description"] = "\n".join(description).strip()
     # ⛔ Every task carries the four fields (`MLabs:AX-46`) and a missing one is NAMED, never
     # counted. "Four are short" does not say which four, and the whole point of the contract is
     # that a reader can act on the answer.

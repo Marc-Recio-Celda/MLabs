@@ -111,6 +111,22 @@ Summary table: `| marker | name | described in | moves when |`, marker ∈ ▶ �
 **Exactly one `▶` across the file**; the parser reports the count when it is not one.
 Board tables: `| Front | Waits on | Note |`, under a `### \`project\`` heading.
 
+### Task sheet reading
+
+A wall task's `**Sheet**` names a markdown path, optionally followed by a block or sub-block id.
+The reader resolves an instance-relative or wall-relative path first, then a unique suffix inside
+the adapter's browsable roots. Ambiguous, absent and out-of-bounds references remain unavailable.
+A fragment selects its exact heading section or table row, using the shared id grammar above.
+The task state never grants it the retired global plan. Historical queues do not add wall cards.
+
+`description` preserves the wall task's prose before its named fields; `why` and `affects` include
+continued lines. Ordinary bold prose is not an inline metadata field.
+
+A task sheet identifies itself with `**Task:**`. Optional `**Now:**` supplies an explicit current
+activity; without it the desk shows the wall's first paragraph, without inferring a next step.
+Items under `## Items` use the plan grammar below. A roadmap or a log remains source context;
+its bullets are not invented task steps. The complete declared source can be opened from the desk.
+
 ### `plan` — plan item
 ```
 <n>. text                          — pending

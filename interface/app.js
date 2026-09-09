@@ -22,7 +22,7 @@ let STATE = {
   problems: [],
   loaded: false,
   error: null,
-  currentView: "overview",
+  currentView: "cockpit",
   selectedProject: "",
   selectedSubtab: "overview",
   selectedTaskFilter: "ALL",
@@ -224,6 +224,7 @@ function generateProjectRamifiedWorkflow(pName, decCount, pState, projectTasks =
 function ingestModel(model) {
   const entities = model.entities || [];
   STATE.problems = model.problems || [];
+  STATE.taskSheets = Object.fromEntries(Object.entries(STATE.taskSheets || {}).map(([id, sheet]) => [id, { ...sheet, stale: true }]));
   
   // Fronts & Active Front
   STATE.fronts = entities.filter(e => e.kind === "front");
@@ -518,17 +519,9 @@ function ingestModel(model) {
 function updateHUD() {
   const frontEl = document.getElementById("hudActiveFront");
   if (frontEl) {
-    if (STATE.activeFront) {
-      frontEl.innerHTML = `
-        <span class="front-marker">▶ ACTIVE FRONT</span>
-        <span class="front-title">${esc(STATE.activeFront.name)}</span>
-      `;
-    } else {
-      frontEl.innerHTML = `
-        <span class="front-marker">⏸ COMPASS</span>
-        <span class="front-title">Sin frente activo en COMPASS</span>
-      `;
-    }
+    const count = STATE.fronts.filter(f => f.active && !f.in_bin).length;
+    frontEl.innerHTML = `<span class="front-marker">OFICINA</span>
+      <span class="front-title">${count} tareas activas</span>`;
   }
 
   // Update Sidebar Badges
@@ -541,12 +534,6 @@ function updateHUD() {
     badgeMailbox.textContent = open;
     badgeMailbox.classList.toggle("warn-badge", open > 0);
   }
-  const badgeInbox = document.getElementById("badgeInbox");
-  if (badgeInbox) {
-    const activeTasks = STATE.tasks.filter(t => ["⬜", "🔨", "⛔", "🔴"].includes(t.status)).length;
-    badgeInbox.textContent = activeTasks;
-  }
-
   const badgeIdeas = document.getElementById("badgeIdeas");
   if (badgeIdeas) badgeIdeas.textContent = STATE.ideas.length;
 
@@ -620,7 +607,7 @@ function syncUrlHash() {
     if (STATE.officeFilterProj && STATE.officeFilterProj !== "ALL") {
       params.push(`proyecto=${encodeURIComponent(STATE.officeFilterProj)}`);
     }
-    if (STATE.officeFilterState && STATE.officeFilterState !== "ALL") {
+    if (STATE.officeFilterState && STATE.officeFilterState !== "active") {
       params.push(`estado=${encodeURIComponent(STATE.officeFilterState)}`);
     }
     if (params.length) hash += `?${params.join("&")}`;
@@ -652,18 +639,8 @@ function syncUrlHash() {
 }
 
 function restoreRouteFromUrl() {
-  let hash = window.location.hash;
-  if (!hash || hash === "#" || hash === "#/") {
-    try {
-      const saved = localStorage.getItem("nexus_last_route");
-      if (saved && saved.startsWith("#/")) {
-        hash = saved;
-      }
-    } catch (e) {}
-  }
-  if (!hash || hash === "#" || hash === "#/") {
-    hash = "#/overview";
-  }
+  const hash = window.location.hash && !["#", "#/"].includes(window.location.hash)
+    ? window.location.hash : "#/cockpit";
 
   const [pathPart, queryPart] = hash.replace(/^#\/?/, "").split("?");
   const segments = pathPart.split("/").filter(Boolean);
@@ -703,8 +680,8 @@ function restoreRouteFromUrl() {
     if (segments[1]) STATE.deskCardId = decodeURIComponent(segments[1]);
   } else if (mainView === "cockpit") {
     STATE.currentView = "cockpit";
-    if (params.has("proyecto")) STATE.officeFilterProj = decodeURIComponent(params.get("proyecto"));
-    if (params.has("estado")) STATE.officeFilterState = decodeURIComponent(params.get("estado"));
+    STATE.officeFilterProj = params.get("proyecto") || "ALL";
+    STATE.officeFilterState = params.get("estado") || "active";
   } else if (mainView === "cheatsheet") {
     STATE.currentView = "cheatsheet";
     if (params.has("tab")) {
@@ -728,7 +705,7 @@ function restoreRouteFromUrl() {
     if (params.has("filter")) {
       STATE.selectedTaskFilter = decodeURIComponent(params.get("filter"));
     }
-  } else if (["overview", "projects", "ideas"].includes(mainView)) {
+  } else if (["overview", "projects", "ideas", "library", "dashboard"].includes(mainView)) {
     STATE.currentView = mainView;
   }
 
@@ -752,6 +729,7 @@ window.addEventListener("popstate", () => {
 });
 
 window.navigateTo = function(viewName) {
+  if (STATE.currentView !== viewName) history.pushState(null, "", `#/${viewName}`);
   STATE.currentView = viewName;
   document.querySelectorAll(".nav-item").forEach(btn => {
     btn.classList.toggle("active", btn.getAttribute("data-view") === viewName);
@@ -840,6 +818,10 @@ function renderView() {
     return;
   }
 
+  const route = STATE.currentView === "desk" ? `desk/${STATE.deskCardId}` : STATE.currentView;
+  const sameRoute = main.dataset.route === route;
+  const openDetails = sameRoute ? [...main.querySelectorAll("details[id][open]")].map(d => d.id) : [];
+  const scrollTop = sameRoute ? main.scrollTop : 0;
   switch (STATE.currentView) {
     case "overview": renderOverview(main); break;
     case "projects": renderProjectsHub(main); break;
@@ -858,6 +840,12 @@ function renderView() {
     default: renderOverview(main); break;
   }
 
+  main.dataset.route = route;
+  openDetails.forEach(id => { const node = document.getElementById(id); if (node) node.open = true; });
+  main.scrollTop = scrollTop;
+  document.querySelectorAll(".nav-item").forEach(button => {
+    button.classList.toggle("active", button.dataset.view === (STATE.currentView === "desk" ? "cockpit" : STATE.currentView));
+  });
   syncUrlHash();
 }
 
@@ -3931,12 +3919,7 @@ setInterval(watchStamp, 2000);
 // ═════════════════════════════════════════════════════════════════════════════
 // OFICINA (el mural) y DESPACHO (la mesa de una tarea)
 //
-// ⛔ Everything below WRITES. The rest of this file reads a model and paints it; these
-// functions change files on disk through `/api`, and every one of them confirms from the
-// server's answer rather than from having sent the request. A view that says *saved*
-// because it called `fetch` is the failure this section replaces: the previous write layer
-// answered `ok` and touched nothing, so the interface built to uphold `PH-3` was the thing
-// breaking it.
+// Read-only wall and task desk. The source files own every state and plan.
 // ═════════════════════════════════════════════════════════════════════════════
 
 // `FLOW.md`'s four, in one place. ⚠️ The view paints by outcome and the writer spells the
@@ -3995,91 +3978,17 @@ function similarTitles(a, b) {
 }
 
 function officeCards() {
-  const cards = new Map();
-  const key = t => normaliseTitle(t);
-
-  // The summary table is the ranked queue and is the spine of the board. Board rows are
-  // detail about the same fronts (`row: "board"`), so they enrich and never add.
-  for (const f of STATE.fronts.filter(f => f.row !== "board")) {
-    cards.set(key(f.name), {
-      id: f.id || f.name, title: f.name, project: f.project || "cross",
-      marker: f.marker, active: Boolean(f.active),
-      moves_when: f.moves_when || "", described_in: f.described_in || "",
-      // Los cuatro de `AX-46` sobre la tarea, que es lo que hace que la tarjeta se lea sin
-      // la conversación que la produjo: a qué sirve, qué pasa, y qué se mueve.
-      declared: f.state || null, serves: f.serves || null, affects: f.affects || null,
-      drains: f.drains || null, planId: f.sheet || null,
-      why: f.why || "", taskId: null, status: null, sources: ["compass"], line: f.line
-    });
-  }
-  for (const f of STATE.fronts.filter(f => f.row === "board")) {
-    const c = cards.get(key(f.name)) || [...cards.values()].find(
-      c => key(c.title).includes(key(f.name)) || key(f.name).includes(key(c.title)));
-    if (c) {
-      c.waits_on = f.waits_on || c.waits_on || "";
-      c.note = f.note || c.note || "";
-      c.serves = c.serves || f.serves || null;
-      c.affects = c.affects || f.affects || null;
-      c.drains = c.drains || f.drains || null;
-      c.why = c.why || f.why || "";
-      if (!c.sources.includes("board")) c.sources.push("board");
-    } else {
-      cards.set(key(f.name), {
-        id: f.id || f.name, title: f.name, project: f.project || "cross",
-        marker: null, active: false, moves_when: f.moves_when || "",
-        waits_on: f.waits_on || "", note: f.note || "", described_in: f.described_in || "",
-        why: "", taskId: null, status: null, sources: ["board"], line: f.line
-      });
-    }
-  }
-  for (const t of STATE.tasks) {
-    // ⚠️ Aquí se descartaba por EMOJI (`✅`/`⚫`) antes de que el estado declarado pudiera
-    // opinar, así que una tarea `done` no llegaba nunca a la papelera — se evaporaba. Y el
-    // emoji `⚫` ni siquiera está en el juego que el parser reconoce, con lo que una
-    // cancelada entraba como pendiente. Dos sitios decidiendo lo mismo y discrepando.
-    // Ahora la terminalidad la decide `cardState` y sólo `cardState`, y el reparto entre
-    // muro y papelera lo hace quien pinta.
-    const k = key(t.title);
-    const hit = cards.get(k) || [...cards.values()].find(
-      c => key(c.title).includes(k) || k.includes(key(c.title)));
-    if (hit) {
-      hit.taskId = t.id; hit.why = t.why || hit.why; hit.status = t.status;
-      hit.declared = t.state || hit.declared; hit.planId = t.plan || hit.planId;
-      hit.block = t.block || hit.block; hit.subBlock = t.sub_block || hit.subBlock;
-      if (!hit.sources.includes("tasks")) hit.sources.push("tasks");
-    } else {
-      cards.set(k, {
-        id: t.id, title: t.title, project: t.project || "cross", marker: null,
-        active: false, moves_when: "", described_in: t.file || "", why: t.why || "",
-        taskId: t.id, status: t.status, declared: t.state || null, planId: t.plan || null,
-        block: t.block || null, subBlock: t.sub_block || null,
-        sources: ["tasks"], line: t.line
-      });
-    }
-  }
-
-  // ⚠️ `FLOW.md`: las terminales «dejan el muro **para la papelera**, marcadas como cuál».
-  // Marcadas, no borradas: `done` y `cancelled` son resultados distintos y un tablero que
-  // los funde en «ya no está» pierde el único dato que tienen.
-
-  // ⚠️ Dos nombres para el mismo trabajo dan dos tarjetas, y la fusión por título sólo
-  // acierta cuando uno contiene al otro: «Migración del parser a records» y «Migrar el
-  // parser a records» no se tocan. Lo que NO se hace es fusionarlas por parecido — una
-  // fusión equivocada **esconde una tarea**, y un tablero al que le falta trabajo es peor
-  // que uno que enseña dos veces el mismo. Se marcan, y el operador decide.
-  // ⚠️ La primera versión cortaba en cuanto una tarjeta ya tenía gemela, así que con tres
-  // nombres del mismo trabajo la tercera se quedaba fuera — y una bandera que no aparece
-  // sobre el caso peor es la que menos sirve. Una tarjeta puede parecerse a varias.
-  const list = [...cards.values()];
-  for (const a of list) {
-    a.twins = list.filter(b => b !== a && similarTitles(a.title, b.title)).map(b => b.title);
-  }
-
-  const rank = c => c.active ? 0 : c.marker === "⏸" ? 3 : /^\d+$/.test(c.marker || "") ? 1 : 2;
-  return [...cards.values()].sort((a, b) =>
-    rank(a) - rank(b) ||
-    (parseInt(a.marker) || 99) - (parseInt(b.marker) || 99) ||
-    a.title.localeCompare(b.title));
+  // The wall owns commitments. Historical queue entries are readable in their room,
+  // but cannot create or merge wall tasks by a similar title.
+  return STATE.fronts.filter(f => f.row !== "board").map(f => ({
+    id: f.id, title: f.name, project: f.project || "cross", marker: f.marker,
+    active: Boolean(f.active), declared: f.state || null, inBin: Boolean(f.in_bin),
+    serves: f.serves || "", description: f.description || "", why: f.why || "",
+    affects: f.affects || "", planId: f.sheet || f.described_in || null,
+    described_in: f.described_in || "", moves_when: f.moves_when || "",
+    waits_on: f.waits_on || "", returns_when: f.returns_when || "",
+    drains: f.drains || "", file: f.file, line: f.line
+  }));
 }
 
 // The five states of `FLOW.md`, derived rather than stored — ⚠️ a second place holding
@@ -4106,40 +4015,25 @@ function cardState(c) {
   return "pending";
 }
 
-// ⛔ Toda tarea lleva su hoja desde que existe. La activa la tiene en el `PLAN.md` en vivo;
-// las demás, en su registro de plan — y una `paused` la tiene **llena y con items
-// tachados**, que es lo que `FLOW.md` llama «lo que hace barato cambiar de tarea: la hoja
-// se conserva y se ve, así que reanudar cuesta leer y no reconstruir».
-//
-// ⚠️ El Despacho dejó de buscarla cuando sustituyó al cockpit, así que toda tarea que no
-// fuera la del `▶` salía vacía aunque su plan estuviera en disco — cobrando exactamente la
-// reconstrucción que esa regla existe para evitar.
-function planForCard(c) {
-  if (!c) return null;
-  if (c.active) {
-    return { live: true, items: STATE.livePlan || [], sections: STATE.planSections || [],
-             meta: STATE.livePlanMeta || null, id: STATE.livePlanMeta?.plan_id || null };
+// A task's sheet is loaded by its identity, never by activity or title similarity.
+function planForCard(card) {
+  return card ? (STATE.taskSheets || {})[card.id] || null : null;
+}
+
+async function loadTaskSheet(card) {
+  const cache = STATE.taskSheets || (STATE.taskSheets = {});
+  cache[card.id] = { ...cache[card.id], loading: true, stale: false };
+  try {
+    const response = await fetch(`/api/task-sheet?id=${encodeURIComponent(card.id)}`);
+    const sheet = await response.json();
+    if (!response.ok && !sheet.why) throw new Error(`HTTP ${response.status}`);
+    cache[card.id] = sheet;
+  } catch (error) {
+    cache[card.id] = { available: false, why: "No se pudo leer la hoja. " + error.message };
   }
-  const byId = c.planId && (STATE.plans || []).find(p =>
-    String(p.id).toLowerCase() === String(c.planId).toLowerCase());
-  const rec = byId || findPlanForFront({
-    name: c.title, described_in: c.described_in, moves_when: c.moves_when, waits_on: c.waits_on
-  });
-  if (!rec) return null;
-  return {
-    live: false, id: rec.id, meta: rec, sections: [],
-    // El registro de plan trae otra forma; se normaliza a la del plan en vivo para que la
-    // misma función pinte las dos. Dos renderizadores para dos formas del mismo item es
-    // como uno de los dos se queda atrás.
-    items: (rec.items || []).map(it => ({
-      index: it.index, line: null, text: it.text || "",
-      struck: it.status === "done" || Boolean(it.destination),
-      destination: it.destination || "",
-      outcome: outcomeOfDestination(it.destination),
-      section: null, subsection: null, ordered: true,
-      author: null, date: it.completed_at || null
-    }))
-  };
+  if (STATE.taskSheets === cache && STATE.currentView === "desk" && STATE.deskCardId === card.id) {
+    renderView();
+  }
 }
 
 // La misma clasificación que hace el parser, para los destinos que llegan de un registro.
@@ -4156,7 +4050,7 @@ function outcomeOfDestination(d) {
 // como «en cola» sería decir que sigue abierta.
 const STATE_META = {
   active:    { label: "activa",     icon: "▶", cls: "st-active",
-               hint: "es la del ▶. Su hoja es el PLAN.md en vivo" },
+               hint: "trabajo en marcha, con su propia hoja" },
   paused:    { label: "en pausa",   icon: "⏸", cls: "st-paused",
                hint: "ha estado activa: su hoja está llena y se conserva, por eso reanudarla cuesta leer" },
   pending:   { label: "en cola",    icon: "○", cls: "st-pending",
@@ -4218,398 +4112,101 @@ function renderPlanItem(item, editable) {
 
 
 // ───────────────────────────────────────────────── OFICINA — the board
-const TERMINAL = ["done", "cancelled"];
+const TERMINAL = ["done", "cancelled", "deferred"];
 
 function renderOffice(container) {
   const all = officeCards();
-  // El muro y la papelera son dos conjuntos. `FLOW.md`: las terminales «dejan el muro para
-  // la papelera, MARCADAS como cuál» — así que se apartan, no se borran, y `done` y
-  // `cancelled` siguen siendo distinguibles allí.
-  const cards = all.filter(c => !TERMINAL.includes(cardState(c)));
-  const bin = all.filter(c => TERMINAL.includes(cardState(c)));
-  const projects = [...new Set(all.map(c => c.project).filter(Boolean))].sort();
+  const live = all.filter(c => !c.inBin && !TERMINAL.includes(cardState(c)));
+  const history = all.filter(c => c.inBin || TERMINAL.includes(cardState(c)));
+  const fs = STATE.officeFilterState || "active";
   const fp = STATE.officeFilterProj || "ALL";
-  const fs = STATE.officeFilterState || "ALL";
-  const pool = fs === "bin" ? bin : cards;
-  const shown = pool.filter(c =>
-    (fp === "ALL" || (c.project || "").toLowerCase() === fp.toLowerCase()) &&
-    (["ALL", "bin"].includes(fs) || cardState(c) === fs));
-  const count = st => cards.filter(c => cardState(c) === st).length;
-  const mailboxOpen = (STATE.mailbox || []).filter(e => ["open", "pending"].includes(e.state)).length;
-
+  const states = [["active", "Activas"], ["paused", "En pausa"], ["pending", "Pendientes"], ["bin", "Historial"]];
+  const pool = fs === "bin" ? history : live.filter(c => fs === "ALL" || cardState(c) === fs);
+  const shown = pool.filter(c => fp === "ALL" || c.project === fp);
+  const projects = [...new Set(all.map(c => c.project))].sort();
+  const activeCount = live.filter(c => cardState(c) === "active").length;
   container.innerHTML = `
-    <div class="view-header">
-      <div class="view-title-group">
-        <h1><span>🗂️</span> Oficina</h1>
-        <p class="view-subtitle">El muro: una tarjeta por <strong>tarea</strong>, y una tarea es
-          <strong>un compromiso</strong>. Un sub-bloque es una pieza de un plan y <em>no</em> es
-          una tarea hasta que alguien decide que es su momento y lo promueve — confundir los dos
-          es lo que dio dos respuestas correctas a una pregunta: preguntado qué había pendiente,
-          un agente contestó 4 y otro ~50.</p>
+    <section class="office-quiet">
+      <header class="quiet-heading">
+        <p class="quiet-eyebrow">OFICINA</p>
+        <h1>Tu trabajo en marcha</h1>
+        <p>${activeCount} tarea${activeCount === 1 ? " activa" : "s activas"}. Elige una para continuar.</p>
+      </header>
+      <div class="quiet-controls">
+        <nav class="quiet-tabs" aria-label="Estado de las tareas">
+          ${states.map(([state, label]) => `<button class="quiet-tab ${fs === state ? "selected" : ""}"
+            aria-pressed="${fs === state}" onclick="setOfficeFilter('state','${state}')">${label}
+            <span>${state === "bin" ? history.length : live.filter(c => cardState(c) === state).length}</span></button>`).join("")}
+        </nav>
+        <label class="quiet-project-filter">Proyecto
+          <select onchange="setOfficeFilter('proj',this.value)">
+            <option value="ALL">Todos</option>
+            ${projects.map(project => `<option value="${esc(project)}" ${fp === project ? "selected" : ""}>${esc(project)}</option>`).join("")}
+          </select>
+        </label>
       </div>
-      <!-- La cuenta de activas es la cabecera y no una pildora mas. FLOW.md no pone techo
-           al numero de tareas activas a proposito, y dice en su lugar que lo acota: lo que
-           acota el trabajo en curso es la VISIBILIDAD, el muro declara su cuenta de activas
-           y se lee en cada apertura. Es un trabajo que la regla le da a esta vista. -->
-      <div class="wip-declaration ${count("active") === 0 ? "wip-floor" : ""}">
-        <span class="wip-n">${count("active")}</span>
-        <div class="wip-txt">
-          <strong>${count("active") === 1 ? "tarea activa" : "tareas activas"} ahora mismo</strong>
-          <span>Sin techo, a propósito: cada tarea tiene su propia hoja, así que nada se disputa.
-            Lo que acota el trabajo en curso es <em>este número, leído en cada apertura</em>.
-            Si empieza a subir, eso es evidencia para una regla — no motivo para adivinarla.</span>
-        </div>
-        <div class="wip-side">
-          <span class="wip-chip st-paused">⏸ ${count("paused")} en pausa</span>
-          <span class="wip-chip st-pending">○ ${count("pending")} en cola</span>
-          ${bin.length ? `<button class="wip-chip wip-bin" onclick="setOfficeFilter('state','bin')">🗑 ${bin.length} en la papelera</button>` : ""}
-        </div>
+      <div class="quiet-wall">
+        ${shown.length ? shown.map(c => `<a class="quiet-task" href="#/desk/${encodeURIComponent(c.id)}">
+          <div class="quiet-task-meta"><span>${esc(c.project)}</span><span>${STATE_META[cardState(c)]?.label || esc(cardState(c))}</span></div>
+          <h2>${inline(c.title)}</h2>
+          ${c.serves ? `<p>${inline(c.serves)}</p>` : ""}
+          <span class="quiet-task-open">Abrir tarea <span aria-hidden="true">→</span></span>
+        </a>`).join("") : `<p class="quiet-empty">${fs === "active" ? "No hay tareas activas con este filtro." : "No hay tareas en este apartado."}</p>`}
       </div>
-    </div>
-
-    <!-- El unico aviso es el SUELO. El techo no existe: avisar de hay mas de una activa era
-         la regla anterior, y mantenerlo habria contradicho al fichero que gobierna. -->
-    ${count("active") === 0 ? `
-      <div class="office-warning">
-        <strong>⚠️ Ninguna tarea está <code>active</code>.</strong>
-        <span>
-          <code>FLOW.md</code> pone un suelo: <strong>si hay trabajo en marcha, al menos una tarea
-          está activa</strong> — y si ninguna lo está, el agente lo dice y se asigna una, con su
-          proyecto, su plan y sus objetivos. Es lo que acota la promoción: un sub-bloque listo que
-          nadie promueve <strong>es invisible desde el muro</strong>.
-        </span>
-      </div>` : ""}
-    ${mailboxOpen ? `
-      <div class="office-note">
-        <strong>📬 ${mailboxOpen} entrada${mailboxOpen === 1 ? "" : "s"} sin cerrar en el buzón.</strong>
-        <span>Una tarea de drenaje está <code>active</code> mientras su cola no está vacía, y
-          <code>paused</code> sólo cuando lo está — <strong>el estado de un drenaje se deriva de la
-          cuenta, no se elige</strong>. «En pausa con cosas dentro» no es un estado: es una
-          contradicción, y es justo así como una cola deja de verse.
-          <button class="inline-link" onclick="navigateTo('inbox')">ir al buzón →</button></span>
-      </div>` : ""}
-
-    <div class="office-filters">
-      <div class="filter-row">
-        <span class="filter-label">Estado</span>
-        <button class="chip-filter ${fs === "ALL" ? "active" : ""}" onclick="setOfficeFilter('state','ALL')">Todas (${cards.length})</button>
-        ${["active", "paused", "pending"].map(k => {
-          const m = STATE_META[k];
-          return `
-          <button class="chip-filter ${fs === k ? "active" : ""} ${m.cls}" onclick="setOfficeFilter('state','${k}')"
-                  title="${m.hint}">
-            ${m.icon} ${m.label} (${count(k)})
-          </button>`;
-        }).join("")}
-        <button class="chip-filter ${fs === "bin" ? "active" : ""}" onclick="setOfficeFilter('state','bin')"
-                title="FLOW.md: las terminales dejan el muro para la papelera, marcadas como cuál.">
-          🗑 papelera (${bin.length})
-        </button>
-      </div>
-      <div class="filter-row">
-        <span class="filter-label">Proyecto</span>
-        <button class="chip-filter ${fp === "ALL" ? "active" : ""}" onclick="setOfficeFilter('proj','ALL')">Todos</button>
-        ${projects.map(p => `
-          <button class="chip-filter ${fp.toLowerCase() === p.toLowerCase() ? "active" : ""}" onclick="setOfficeFilter('proj',${jsq(p)})">
-            ${esc(p)} (${cards.filter(c => c.project === p).length})
-          </button>`).join("")}
-      </div>
-    </div>
-
-    <div class="office-mural">
-      ${shown.length ? shown.map(c => {
-        const st = cardState(c);
-        const m = STATE_META[st];
-        // ⛔ Antes era `c.active ? STATE.livePlan : []`, así que toda tarjeta que no fuera
-        // la del ▶ decía «sin plan abierto todavía» aunque su hoja estuviera en disco.
-        const sheet = planForCard(c);
-        // The plan belongs to the task. Only the active one has the live sheet; the rest
-        // show what their sheet holds when the instance keeps one per task.
-        const items = sheet ? sheet.items : [];
-        const routed = items.filter(i => i.struck || i.outcome).length;
-        const pct = items.length ? Math.round(routed / items.length * 100) : null;
-        return `
-          <article class="mural-card ${m.cls} ${c.active ? "mural-active" : ""}"
-                   onclick="openDesk(${jsq(c.id)})" title="Abrir el despacho de esta tarea">
-            <header class="mural-top">
-              <span class="mural-marker ${m.cls}">${c.active ? "▶" : (c.marker || m.icon)}</span>
-              <span class="mural-state ${m.cls}">${m.label}</span>
-              ${st === "pending" ? `
-                <span class="plan-flag ${sheet && sheet.items.length ? "planned" : "unplanned"}"
-                      title="${sheet && sheet.items.length
-                        ? "FLOW.md: pending es «planificada» cuando su hoja existe."
-                        : "FLOW.md: pending es «sin planificar» cuando su hoja no existe. Se planifica con current-plan."}">
-                  ${sheet && sheet.items.length ? "planificada" : "sin planificar"}
-                </span>` : ""}
-              ${c.project ? `<span class="tag-pill tag-project">${esc(c.project)}</span>` : ""}
-            </header>
-            <h3 class="mural-title">${inline(c.title)}</h3>
-
-            <!-- El objetivo NO se esconde. AX-46 pide que el artefacto se lea sin la
-                 conversacion que lo produjo, y una tarjeta que hay que sobrevolar para saber a
-                 que sirve no cumple eso: cuesta un gesto mas, que es la version pequena de
-                 costar una re-explicacion. -->
-            ${c.serves ? `
-              <div class="mural-serves" title="AX-46 · el objetivo al que sirve esta tarea">
-                <span class="serves-k">sirve a</span>
-                <span class="serves-v">${cut(c.serves, 130)}</span>
-              </div>`
-            : `<div class="mural-serves serves-missing" title="AX-46 pide los cuatro campos, y este falta. Se escribe en el muro como **Serves**.">
-                <span class="serves-k">sirve a</span>
-                <span class="serves-v">— sin declarar —</span>
-              </div>`}
-
-            <!-- La descripcion y el alcance sí se abren al pasar por encima: son el detalle,
-                 y el detalle de nueve tarjetas a la vez es la saturacion que hay que evitar. -->
-            ${(c.why || c.affects || c.moves_when || c.waits_on) ? `
-              <div class="mural-extra">
-                ${c.why ? `<p class="mural-why">${cut(c.why, 300)}</p>` : ""}
-                ${c.affects ? `
-                  <div class="mural-cond">
-                    <span class="cond-k">toca</span>
-                    <span class="cond-v">${cut(c.affects, 190)}</span>
-                  </div>` : ""}
-                ${(c.moves_when || c.waits_on) ? `
-                  <div class="mural-cond">
-                    <span class="cond-k">${c.waits_on ? "espera" : "avanza cuando"}</span>
-                    <span class="cond-v">${cut(c.moves_when || c.waits_on, 190)}</span>
-                  </div>` : ""}
-              </div>
-              <div class="mural-peek">pasa el ratón para el detalle</div>` : ""}
-            ${pct !== null ? `
-              <div class="mural-progress" title="${sheet.live ? "PLAN.md en vivo" : `plan ${esc(sheet.id || "")}`}">
-                <div class="mural-bar"><div class="mural-fill" style="width:${pct}%"></div></div>
-                <span class="mural-pct">${routed}/${items.length}${sheet.live ? " · en vivo" : ""}</span>
-              </div>` : `
-              <div class="mural-noplan" title="Toda tarea lleva su hoja desde que existe; ésta está vacía o no se ha encontrado su registro.">
-                hoja vacía
-              </div>`}
-            <footer class="mural-foot">
-              ${c.taskId ? `<span class="tag-pill tag-purple">${esc(c.taskId)}</span>` : ""}
-              ${c.twins && c.twins.length ? `
-                <span class="twin-flag" title="Se parece${c.twins.length > 1 ? "n" : ""} mucho a ésta: ${c.twins.map(t => `«${esc(t)}»`).join(" · ")}. Si son el mismo trabajo, unifica el título o declara **plan:** con el mismo id. La interfaz no las fusiona sola porque una fusión equivocada esconde una tarea, y a un tablero al que le falta trabajo no se le nota.">
-                  ⧉ ${c.twins.length === 1 ? "posible duplicada" : `${c.twins.length} posibles duplicadas`}
-                </span>` : ""}
-              ${c.sources.map(s => `<span class="src-chip src-${s}">${s}</span>`).join("")}
-              <span class="mural-go">abrir despacho →</span>
-            </footer>
-          </article>`;
-      }).join("") : `
-        <div class="empty-state">
-          <div class="empty-icon">🗂️</div><h3>Nada que mostrar con este filtro</h3>
-          <p>Cambia el estado o el proyecto para ver el resto del mural.</p>
-        </div>`}
-    </div>`;
+    </section>`;
 }
 
-// ───────────────────────────────────────────────── DESPACHO — one task's desk
 function renderDesk(container) {
-  const cards = officeCards();
-  const card = cards.find(c => c.id === STATE.deskCardId)
-            || cards.find(c => normaliseTitle(c.title) === normaliseTitle(STATE.deskCardId))
-            || cards.find(c => c.active) || cards[0];
-  if (!card) { STATE.currentView = "cockpit"; return renderOffice(container); }
-
-  const st = cardState(card);
-  const m = STATE_META[st];
-  // ⛔ Aquí estaba la regresión. Era `isLive ? STATE.livePlan : []`, y `findPlanForFront`
-  // —que ya existía y el cockpit anterior sí llamaba— dejó de usarse: toda tarea que no
-  // fuera la del ▶ enseñaba un cartel de «en pausa» y ninguna hoja, aunque su plan
-  // estuviera en disco. Reanudarla costaba reconstruirla, que es justo lo que el estado
-  // `paused` existe para evitar.
+  const card = officeCards().find(c => c.id === STATE.deskCardId);
+  if (!card) {
+    container.innerHTML = `<section class="office-quiet"><a class="quiet-back" href="#/cockpit">← Volver al muro</a>
+      <h1>No se encuentra esta tarea</h1><p>El enlace ya no corresponde a una tarea del muro.</p></section>`;
+    return;
+  }
   const sheet = planForCard(card);
-  const isLive = Boolean(sheet && sheet.live);
-  const items = sheet ? sheet.items : [];
-  const sections = sheet ? (sheet.sections || []) : [];
-  const groups = planTree(items, sections);
-  const routed = items.filter(i => i.struck || i.outcome).length;
-  const pct = items.length ? Math.round(routed / items.length * 100) : 0;
-  const byOutcome = k => items.filter(i => i.outcome === k).length;
-  const secNames = [...new Set(groups.map(g => g.section).filter(Boolean))];
-
+  if (!sheet || sheet.stale) loadTaskSheet(card);
+  const items = sheet?.items || [];
+  const remaining = items.filter(i => !i.struck && !i.outcome);
+  const done = items.filter(i => i.struck || i.outcome);
+  const paragraphs = (card.description || "").split(/\n\s*\n/).filter(Boolean);
+  const now = sheet?.current || paragraphs[0] || "Esta tarea no tiene una actividad actual descrita.";
+  const list = entries => `<ol class="quiet-steps">${entries.map(i => `<li value="${Number(i.index) || 1}">
+    ${inline(i.text)}${i.destination ? `<span class="quiet-outcome">${inline(i.destination)}</span>` : ""}</li>`).join("")}</ol>`;
   container.innerHTML = `
-    <div class="desk-surface">
-    <div class="desk-plate">
-      <button class="crumb-link" onclick="navigateTo('cockpit')">🗂️ Oficina</button>
-      <span class="crumb-sep">›</span>
-      <span class="crumb-here">${inline(card.title)}</span>
-      <span class="mural-state ${m.cls}">${m.icon} ${m.label}</span>
-    </div>
-    <svg class="desk-lamp" width="118" height="92" viewBox="0 0 118 92" aria-hidden="true">
-      <!-- El flexo. Adorno: la luz que echa vive en el gradiente de la mesa, no aquí —
-           ⚠️ si el dibujo desaparece, el despacho sigue leyéndose igual de bien. -->
-      <defs>
-        <linearGradient id="lampMetal" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#55514a"/><stop offset="1" stop-color="#2a2825"/>
-        </linearGradient>
-        <linearGradient id="lampShade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#5d584f"/><stop offset="1" stop-color="#332f2a"/>
-        </linearGradient>
-        <radialGradient id="lampGlow" cx=".5" cy=".2" r=".9">
-          <stop offset="0" stop-color="#fff6d8" stop-opacity=".95"/>
-          <stop offset="1" stop-color="#f4cf78" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
-      <!-- el cono de luz, hacia la mesa -->
-      <path d="M60 40 L104 88 L30 88 Z" fill="url(#lampGlow)" opacity=".55"/>
-      <!-- peana -->
-      <ellipse cx="24" cy="85" rx="19" ry="5" fill="rgba(30,16,6,.45)"/>
-      <path d="M8 84 h32 a3 3 0 0 1 0 5 h-32 a3 3 0 0 1 0-5z" fill="url(#lampMetal)"/>
-      <!-- columna y brazo articulado -->
-      <path d="M24 84 L24 52" stroke="url(#lampMetal)" stroke-width="4.5" stroke-linecap="round"/>
-      <path d="M24 52 L58 30" stroke="url(#lampMetal)" stroke-width="4.5" stroke-linecap="round"/>
-      <circle cx="24" cy="52" r="4" fill="#4a463f"/>
-      <circle cx="58" cy="30" r="3.6" fill="#4a463f"/>
-      <!-- pantalla, mirando abajo -->
-      <path d="M50 18 L78 12 L70 38 L47 30 Z" fill="url(#lampShade)"/>
-      <ellipse cx="58.5" cy="34" rx="12" ry="4.6" transform="rotate(-14 58.5 34)" fill="#ffeeb8"/>
-    </svg>
-    <div class="desk-hero ${m.cls}">
-      <div class="desk-hero-main">
-        <h1 class="desk-title">${inline(card.title)}</h1>
-        <div class="desk-hero-tags">
-          ${card.project ? `<span class="tag-pill tag-project-hero">${esc(card.project)}</span>` : ""}
-          ${card.taskId ? `<span class="tag-pill tag-purple">${esc(card.taskId)}</span>` : ""}
-          ${card.described_in ? `<span class="tag-pill"><code>${esc(card.described_in)}</code></span>` : ""}
-        </div>
-
-        <!-- Los cuatro campos de AX-46, en la cabecera y en este orden: a que sirve, que pasa,
-             que toca. Es lo primero que se lee al entrar, porque es lo que responde a "que
-             estoy haciendo aqui" sin abrir nada mas. Un campo que falta se nombra en su sitio
-             en vez de desaparecer: un hueco declarado se rellena, uno callado no. -->
-        <dl class="ax46">
-          <div class="ax46-row ${card.serves ? "" : "ax46-missing"}">
-            <dt>Sirve a</dt>
-            <dd>${card.serves ? inline(card.serves)
-              : `<span class="ax46-gap">sin declarar — se escribe en el muro como <code>**Serves**</code></span>`}</dd>
-          </div>
-          <div class="ax46-row ${card.why ? "" : "ax46-missing"}">
-            <dt>Qué pasa</dt>
-            <dd>${card.why ? expandable(card.why)
-              : `<span class="ax46-gap">sin declarar — <code>**Why it is committed**</code></span>`}</dd>
-          </div>
-          <div class="ax46-row ${card.affects ? "" : "ax46-missing"}">
-            <dt>Qué toca</dt>
-            <dd>${card.affects ? inline(card.affects)
-              : `<span class="ax46-gap">sin declarar — <code>**What it affects**</code></span>`}</dd>
-          </div>
-          ${(card.moves_when || card.waits_on) ? `
-            <div class="ax46-row">
-              <dt>${card.waits_on ? "Espera a" : "Avanza cuando"}</dt>
-              <dd>${inline(card.moves_when || card.waits_on)}</dd>
-            </div>` : ""}
-        </dl>
-      </div>
-      ${isLive ? `
+    <article class="quiet-desk">
+      <a class="quiet-back" href="#/cockpit">← Volver al muro</a>
+      <header class="quiet-desk-heading">
+        <p class="quiet-eyebrow">${esc(card.project)} <span>· ${STATE_META[cardState(card)]?.label || esc(cardState(card))}</span></p>
+        <h1>${inline(card.title)}</h1>
+        ${card.serves ? `<p class="quiet-purpose">${inline(card.serves)}</p>` : ""}
+      </header>
+      <section class="quiet-now" aria-label="Actividad actual">
+        <h2>${cardState(card) === "active" ? "Ahora" : "Situación"}</h2>
+        <div>${inline(now)}</div>
+        ${card.waits_on ? `<p class="quiet-blocker">Espera a: ${inline(card.waits_on)}</p>` : ""}
+      </section>
+      ${!sheet || sheet.loading ? `<p class="quiet-loading" role="status">Leyendo la hoja de esta tarea…</p>` : ""}
+      ${sheet && !sheet.loading && !sheet.available ? `<p class="quiet-source-note">${esc(sheet.why)}</p>` : ""}
+      <div class="quiet-folds">
         ${items.length ? `
-          <div class="tally">
-            <!-- ⚠️ Etiquetado. En una tarea de triaje esta cuenta convive con la de la mesa, y
-                 miden cosas distintas: aquí items del plan, allí entradas del buzón. Dos
-                 números grandes sin decir de qué son es la manera de leer el equivocado. -->
-            <span class="tally-what">items de esta hoja</span>
-            <div class="tally-pair">
-              <span class="tally-done">
-                <span class="tally-n">${routed}</span>
-                <span class="tally-l">hechos</span>
-              </span>
-              <span class="tally-sep"></span>
-              <span class="tally-open">
-                <span class="tally-n">${items.length - routed}</span>
-                <span class="tally-l">${items.length - routed === 1 ? "abierto" : "abiertos"}</span>
-              </span>
-            </div>
-            <div class="tally-bar"><div class="tally-fill" style="width:${pct}%"></div></div>
-            <div class="tally-out">
-              ${Object.entries(OUTCOMES).filter(([k]) => byOutcome(k)).map(([k, o]) =>
-                `<span class="oc ${o.cls}" title="${o.hint}">${o.icon} ${byOutcome(k)}</span>`).join("")}
-            </div>
-          </div>` : ""}` : ""}
-    </div>
-
-    <div class="desk-grid">
-      <section class="desk-work">
-      ${renderTriageBench(card)}
-      <div class="sheet">
-        ${sheet ? `
-          ${!isLive ? `
-            <div class="sheet-banner ${m.cls}">
-              <span class="sheet-banner-icon">${m.icon}</span>
-              <div>
-                <strong>Hoja conservada${sheet.id ? ` · <code>${esc(sheet.id)}</code>` : ""}</strong>
-                <span>${st === "paused"
-                  ? "Esta tarea ha estado activa y su hoja se guarda tal cual la dejaste — con sus items tachados y sus destinos. Reanudarla cuesta leer, no reconstruir."
-                  : "Se lee de su registro de plan. Sólo la tarea del <code>▶</code> escribe en el <code>PLAN.md</code> en vivo, así que aquí no hay botones de enrutado."}</span>
-              </div>
-              ${STATE.activeFront ? `<button class="btn-quick out-done" onclick="navigateTo('cockpit')">ver la activa →</button>` : ""}
-            </div>` : ""}
-          ${sheet.meta?.order_why ? `
-            <div class="order-why-card">
-              <div class="order-why-header"><span class="order-why-icon">🧠</span>
-                <strong>El orden, y por qué este orden</strong>
-                ${!isLive && sheet.id ? `<span class="order-why-badge">${esc(sheet.id)}</span>` : ""}</div>
-              <div class="order-why-body">${inline(sheet.meta.order_why)}</div>
-            </div>` : ""}
-
-          ${groups.length ? groups.map(g => {
-            const gr = g.items.filter(i => i.struck || i.outcome).length;
-            return `
-            <div class="plan-section">
-              <div class="plan-section-head">
-                <h3>${g.subsection ? `<span class="sec-parent">${esc(g.section || "")} ›</span> ` : ""}${esc(g.subsection || g.section || "Plan")}</h3>
-                <span class="sec-kind" title="${g.ordered ? "los items van uno detrás de otro" : "sin orden: se pueden hacer en cualquier secuencia"}">
-                  ${g.ordered ? "↓ en orden" : "⇄ sin orden"}
-                </span>
-                <span class="sec-count ${gr === g.items.length ? "sec-all" : ""}"
-                      title="${gr} de ${g.items.length} con destino">${gr}/${g.items.length}</span>
-              </div>
-              <div class="plan-section-items">
-                ${g.items.map(i => renderPlanItem(i, isLive)).join("")}
-              </div>
-            </div>`;
-          }).join("") : `
-            <div class="empty-state"><div class="empty-icon">📋</div>
-              <h3>El plan está vacío</h3>
-              <p>Esta tarea tiene su hoja desde que existe (<code>FLOW.md</code>), pero nadie la ha
-                 planificado todavía. ${isLive
-                   ? "Escribe abajo el primer item, o invoca <code>current-plan</code>."
-                   : "Se planifica con <code>current-plan</code>."}</p>
-            </div>`}
-
-        ` : `
-          <div class="front-state-card ${st === "paused" ? "paused-state-card" : "queued-state-card"}">
-            <div class="state-card-icon">${m.icon}</div>
-            <h3>Sin hoja que enseñar</h3>
-            <p class="state-card-desc">
-              Toda tarea lleva una desde que existe (<code>FLOW.md</code>), así que esto significa
-              una de dos: <strong>está vacía porque nadie la ha planificado</strong>, o
-              <strong>su registro de plan no se ha encontrado</strong> — y la interfaz no puede
-              distinguirlo desde fuera.
-            </p>
-            <div class="state-detail-box">
-              <strong>${card.waits_on ? "Espera a" : "Condición de avance"}:</strong>
-              <p>${inline(card.moves_when || card.waits_on || "Secuenciada en el orden de trabajo.")}</p>
-            </div>
-            <div class="state-guidance-box">
-              <span>💡 Se planifica con <code>current-plan</code>. Si crees que su plan existe,
-                    comprueba que la tarea declare <code>**plan:**</code> con su id — es lo que
-                    la ata a su registro sin depender de que los títulos se parezcan.</span>
-            </div>
-          </div>`}
-      </div></section>
-
-      <aside class="desk-rail">
-        <div class="rail-panel rail-legend">
-          <div class="rail-head"><strong>Los cuatro destinos</strong></div>
-          ${Object.entries(OUTCOMES).map(([k, o]) => `
-            <div class="legend-row ${o.cls}"><span>${o.icon}</span>
-              <div><strong>${o.label}</strong><em>${o.hint}</em></div></div>`).join("")}
-          <p class="rail-note">Un item tachado sin destino es un <strong>cierre fallido</strong>,
-             y el parser lo reporta. ⚠️ <strong>Esta vista lo lee, no lo arregla</strong>: el
-             destino se escribe en el fichero, a mano.</p>
-        </div>
-      </aside>
-    </div>
-    </div>`;
+          <details id="desk-remaining"><summary>Lo que queda <span>${remaining.length}</span></summary>
+            ${remaining.length ? list(remaining) : "<p>Todos los pasos de esta hoja tienen salida.</p>"}
+          </details>
+          <details id="desk-done"><summary>Lo que ya hemos hecho <span>${done.length}</span></summary>
+            ${done.length ? list(done) : "<p>Todavía no hay pasos cerrados en esta hoja.</p>"}
+          </details>` : ""}
+        <details id="desk-context"><summary>Contexto y plan</summary>
+          ${paragraphs.slice(sheet?.current ? 0 : 1).map(p => `<p>${inline(p)}</p>`).join("")}
+          ${card.why ? `<h3>Por qué lo hacemos</h3><p>${inline(card.why)}</p>` : ""}
+          ${card.affects ? `<h3>Qué afecta</h3><p>${inline(card.affects)}</p>` : ""}
+          ${card.returns_when ? `<h3>Cuándo vuelve</h3><p>${inline(card.returns_when)}</p>` : ""}
+          ${sheet?.order_why ? `<h3>Por qué este orden</h3><p>${inline(sheet.order_why)}</p>` : ""}
+          ${sheet?.available ? `<details id="desk-source" class="quiet-source"><summary>Leer la hoja original</summary>
+            <p class="quiet-source-path">${esc(sheet.reference)}</p>
+            <div class="md-body">${renderMarkdownBody(sheet.body)}</div></details>` : ""}
+        </details>
+      </div>
+    </article>`;
 }
 
 // ───────────────────────────────────────────────── acciones de la oficina
@@ -4619,6 +4216,7 @@ window.setOfficeFilter = function (which, val) {
 };
 
 window.openDesk = function (cardId) {
+  history.pushState(null, "", `#/desk/${encodeURIComponent(cardId)}`);
   STATE.deskCardId = cardId;
   STATE.currentView = "desk";
   renderView();
