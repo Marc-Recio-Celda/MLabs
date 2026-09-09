@@ -782,81 +782,8 @@ def parse_plan(path, text):
     return ents, probs
 
 
-def parse_standing(path, text, project_pattern=None):
-    """A project's state. Reads its header fields, definition, phase, and ramified blocks."""
-    lines = text.splitlines()
-    probs = []   # nothing is dropped — GRAMMAR.md rule 2, which this function broke in four places
-    first = next((i for i, l in enumerate(lines) if l.startswith("# ")), -1)
-    fields = kv_block(lines, first + 1)
-    title = lines[first][2:].strip() if first >= 0 else path.stem
-
-    project = None
-    # The owner a project sits under — a laboratory, a workspace. It is NOT a second field
-    # to maintain: the adapter's `project_from` already captures it from the path, and this
-    # only stops discarding it. Every queue entry inherits it through `project`, so the
-    # grouping is stated once, by where the cartridge lives, and never transcribed.
-    lab = None
-    if project_pattern:
-        m = re.search(project_pattern, str(path).replace("\\", "/"))
-        if m:
-            project = (m.groupdict().get("project") or (m.group(1) if m.groups() else None))
-            lab = m.groupdict().get("lab")
-
-    # 1. Extract Phase Summary from blockquote
-    phase_summary = ""
-    for line in lines[:20]:
-        line_s = line.strip()
-        if line_s.startswith(">") and any(k.lower() in line_s.lower() for k in ["phase", "iteration", "mvp", "pre-phase", "paused", "built"]):
-            cleaned = line_s.lstrip("> *").strip()
-            parts = [p.strip().replace("**", "").replace("`", "") for p in cleaned.split("·")]
-            # Filter out pure Last updated parts or resume points
-            descriptive_parts = [p for p in parts if not p.lower().startswith("last updated") and not p.lower().startswith("resume point") and not p.lower().startswith("this file")]
-            if descriptive_parts:
-                phase_summary = " · ".join(descriptive_parts[:2])
-                break
-
-    # 2. Extract Project Definition ("## 1. What it is")
-    definition = ""
-    in_what = False
-    what_lines = []
-    for line in lines:
-        if re.match(r"^##\s+\d*\.?\s*What\b", line, re.I):
-            in_what = True
-            continue
-        elif in_what and (line.startswith("## ") or line.startswith("---") or line.startswith("|") or line.startswith("```")):
-            break
-        elif in_what:
-            l_strip = line.strip()
-            if l_strip and not l_strip.startswith(">"):
-                what_lines.append(l_strip)
-            elif what_lines and not l_strip:
-                break
-
-    # Fallback to definition.md if the plan (`state.md` before `M-135`) has no What section
-    if not what_lines:
-        def_file = path.parent / "definition.md"
-        if def_file.exists():
-            try:
-                def_text = def_file.read_text(encoding="utf-8")
-                in_def_what = False
-                for dline in def_text.splitlines():
-                    if re.match(r"^##\s+\d*\.?\s*What\b", dline, re.I):
-                        in_def_what = True
-                        continue
-                    elif in_def_what and (dline.startswith("## ") or dline.startswith("---") or dline.startswith("|")):
-                        break
-                    elif in_def_what:
-                        dl_strip = dline.strip()
-                        if dl_strip and not dl_strip.startswith(">"):
-                            what_lines.append(dl_strip)
-                        elif what_lines and not dl_strip:
-                            break
-            except Exception:
-                pass
-
-    if what_lines:
-        definition = " ".join(what_lines).replace("**", "").replace("`", "")
-
+def parse_project_blocks(path, text):
+    lines, probs = text.splitlines(), []
     # 3. Extract Ramified Blocks & Subblocks Hierarchy
     board_blocks = []
     current_block = None
@@ -948,6 +875,7 @@ def parse_standing(path, text, project_pattern=None):
                             "title": what.replace("**", "").replace("`", ""),
                             "desc": what.replace("**", "").replace("`", ""),
                             "waits_on": "" if waits in ("—", "-", "–") else waits,
+                            "status_text": status_str,
                             # ⚠️ `"open"` WAS IN THIS LIST AND IS A SUBSTRING, NOT A MARKER. It
                             # matched any status cell whose prose contained the letters — 22 rows
                             # painted `active` while their marker said ⬜. The markers are the
@@ -1014,6 +942,87 @@ def parse_standing(path, text, project_pattern=None):
                                 })
                             elif ID_LIKE.match(sub_id):
                                 probs.append(Problem(path, i + 1, f"a sub-block id the grammar cannot place: {sub_id!r}", line))
+
+    return board_blocks, probs
+
+
+def parse_standing(path, text, project_pattern=None):
+    """A project's state. Reads its header fields, definition, phase, and ramified blocks."""
+    lines = text.splitlines()
+    probs = []   # nothing is dropped — GRAMMAR.md rule 2, which this function broke in four places
+    first = next((i for i, l in enumerate(lines) if l.startswith("# ")), -1)
+    fields = kv_block(lines, first + 1)
+    title = lines[first][2:].strip() if first >= 0 else path.stem
+
+    project = None
+    # The owner a project sits under — a laboratory, a workspace. It is NOT a second field
+    # to maintain: the adapter's `project_from` already captures it from the path, and this
+    # only stops discarding it. Every queue entry inherits it through `project`, so the
+    # grouping is stated once, by where the cartridge lives, and never transcribed.
+    lab = None
+    if project_pattern:
+        m = re.search(project_pattern, str(path).replace("\\", "/"))
+        if m:
+            project = (m.groupdict().get("project") or (m.group(1) if m.groups() else None))
+            lab = m.groupdict().get("lab")
+
+    # 1. Extract Phase Summary from blockquote
+    phase_summary = ""
+    for line in lines[:20]:
+        line_s = line.strip()
+        if line_s.startswith(">") and any(k.lower() in line_s.lower() for k in ["phase", "iteration", "mvp", "pre-phase", "paused", "built"]):
+            cleaned = line_s.lstrip("> *").strip()
+            parts = [p.strip().replace("**", "").replace("`", "") for p in cleaned.split("·")]
+            # Filter out pure Last updated parts or resume points
+            descriptive_parts = [p for p in parts if not p.lower().startswith("last updated") and not p.lower().startswith("resume point") and not p.lower().startswith("this file")]
+            if descriptive_parts:
+                phase_summary = " · ".join(descriptive_parts[:2])
+                break
+
+    # 2. Extract Project Definition ("## 1. What it is")
+    definition = ""
+    in_what = False
+    what_lines = []
+    for line in lines:
+        if re.match(r"^##\s+\d*\.?\s*What\b", line, re.I):
+            in_what = True
+            continue
+        elif in_what and (line.startswith("## ") or line.startswith("---") or line.startswith("|") or line.startswith("```")):
+            break
+        elif in_what:
+            l_strip = line.strip()
+            if l_strip and not l_strip.startswith(">"):
+                what_lines.append(l_strip)
+            elif what_lines and not l_strip:
+                break
+
+    # Fallback to definition.md if the plan (`state.md` before `M-135`) has no What section
+    if not what_lines:
+        def_file = path.parent / "definition.md"
+        if def_file.exists():
+            try:
+                def_text = def_file.read_text(encoding="utf-8")
+                in_def_what = False
+                for dline in def_text.splitlines():
+                    if re.match(r"^##\s+\d*\.?\s*What\b", dline, re.I):
+                        in_def_what = True
+                        continue
+                    elif in_def_what and (dline.startswith("## ") or dline.startswith("---") or dline.startswith("|")):
+                        break
+                    elif in_def_what:
+                        dl_strip = dline.strip()
+                        if dl_strip and not dl_strip.startswith(">"):
+                            what_lines.append(dl_strip)
+                        elif what_lines and not dl_strip:
+                            break
+            except Exception:
+                pass
+
+    if what_lines:
+        definition = " ".join(what_lines).replace("**", "").replace("`", "")
+
+    board_blocks, board_problems = parse_project_blocks(path, text)
+    probs += board_problems
 
     # 4. Extract Code Repo and Remote URL from metadata tables
     code_repo = ""
@@ -1434,6 +1443,69 @@ PARSERS = {"philosophy": parse_philosophy, "axioms": parse_axioms, "doc": parse_
            "plan": parse_plan, "standing": parse_standing, "record": lambda p, t: ([], [])}
 
 
+def project_document(path, text, source, root):
+    """Typed, lightweight project sources. The adapter owns role and project identity."""
+    match = re.search(source.get("project_from", r"(?!)"), path.as_posix())
+    project = source.get("project") or (match.groupdict().get("project") if match else None)
+    if not project:
+        return [], [Problem(path, 1, "project source has no matching owner")]
+    role = source.get("role") or {"state": "plan", "Decision_Log": "decisions"}.get(path.stem, path.stem)
+    lines = text.splitlines()
+    header_end = next((i for i, line in enumerate(lines) if line.startswith("## ")), len(lines))
+    fields = {k: clean(v) for k, v in kv_block([l for l in lines[:header_end] if not l.startswith("#")], 0).items()}
+    title = next((clean(line[2:]) for line in lines if line.startswith("# ")), path.stem)
+    definition = ""
+    if role == "definition":
+        section = re.search(r"^##\s+(?:[0-9]+\.\s*)?What it is\s*\n+([^#].*?)(?=\n\s*\n|\Z)", text, re.M | re.S | re.I)
+        if section:
+            definition = clean(" ".join(section[1].splitlines()))
+    blocks, problems = parse_project_blocks(path, text) if role == "plan" else ([], [])
+    stat = path.stat()
+    return [{"kind": "project-document", "project": project,
+             "lab": match.groupdict().get("lab") if match else source.get("lab"),
+             "role": role, "title": title, "definition": definition, "blocks": blocks,
+             "fields": fields, "path": os.path.relpath(path, root),
+             "cartridge": os.path.relpath(path.parent, root),
+             "project_root": os.path.relpath(path.parent.parent, root),
+             "mtime_ns": stat.st_mtime_ns, "bytes": stat.st_size, "line": 1}], problems
+
+
+def compose_projects(documents):
+    """One cartridge per project; a duplicate name stays an explicit ownership problem."""
+    groups, entities, problems = {}, [], []
+    for doc in documents:
+        groups.setdefault(doc["project"], []).append(doc)
+    for name, docs in groups.items():
+        cartridges = {d["cartridge"] for d in docs}
+        if len(cartridges) != 1:
+            problems.append(Problem(name, 1, "project name belongs to multiple cartridges", kind="contract"))
+            entities.append({"kind": "project-state", "project": name, "title": name,
+                             "ambiguous": True, "documents": [], "blocks": []})
+            continue
+        by_role = {}
+        for doc in docs:
+            by_role.setdefault(doc["role"], []).append(doc)
+        # Prefer the explicitly current plan to a legacy state when both are declared.
+        plans = by_role.get("plan", [])
+        current = [d for d in plans if Path(d["path"]).stem != "state"]
+        plans = current or plans
+        plan = plans[0] if len(plans) == 1 else None
+        definition = by_role.get("definition", [])
+        definition = definition[0] if len(definition) == 1 else None
+        fields = plan["fields"] if plan else {}
+        entities.append({"kind": "project-state", "project": name, "title": name,
+                         "lab": docs[0].get("lab"), "project_root": docs[0]["project_root"],
+                         "cartridge": docs[0]["cartridge"], "file": plan["path"] if plan else None,
+                         "definition": definition["definition"] if definition else "",
+                         "blocks": plan["blocks"] if plan else [],
+                         "last_updated": fields.get("last_updated"),
+                         "integrated_through": fields.get("integrated_through"),
+                         "next_action": fields.get("next_action"), "status": fields.get("status"),
+                         "documents": [{**{k: d[k] for k in ("role", "title", "path", "mtime_ns", "bytes")},
+                                        "primary": d is plan if d["role"] == "plan" else len(by_role[d["role"]]) == 1} for d in docs]})
+    return entities, problems
+
+
 # ----------------------------------------------------------------------- entry
 
 def parse_adapter(adapter_path):
@@ -1465,16 +1537,22 @@ def parse_adapter(adapter_path):
         # was a list of projects that have a state file, presented as the list of
         # projects: two were missing and nothing said so.
         for container in sorted(sroot.glob(src["expect"])) if src.get("expect") else []:
+            if any(container in f.parents for pattern in src.get("exclude", []) for f in sroot.glob(pattern)):
+                continue
             if container.is_dir() and not any(str(f).startswith(str(container)) for f in paths):
                 problems.append(Problem(container, 0,
                                         f"{container.name} matches {src['expect']!r} but has no "
                                         f"file for {src['label']!r}"))
         for f in paths:
             if not f.is_file():
+                if src.get("optional"):
+                    continue
                 problems.append(Problem(f, 0, f"source {src['label']!r} names a missing file"))
                 continue
             body = f.read_text(encoding="utf-8", errors="replace")
-            if kind == "standing":
+            if kind == "standing" and (src.get("project_from") or src.get("project")):
+                ents, probs = project_document(f, body, src, root)
+            elif kind == "standing":
                 ents, probs = PARSERS[kind](f, body, src.get("project_from"))
             else:
                 ents, probs = PARSERS[kind](f, body)
@@ -1495,6 +1573,10 @@ def parse_adapter(adapter_path):
                     e["file"] = f.name
             entities += ents
             problems += probs
+    project_docs = [e for e in entities if e["kind"] == "project-document"]
+    projects, project_problems = compose_projects(project_docs)
+    entities = [e for e in entities if e["kind"] != "project-document"] + projects
+    problems += project_problems
     # The lab is a property of the PROJECT, so it is resolved once here and inherited, never
     # written on an entry. A queue that carries `project:` can then be filtered by owner —
     # several repositories under one lab are one front worked as many — without ~97 entries

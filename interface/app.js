@@ -220,6 +220,20 @@ function generateProjectRamifiedWorkflow(pName, decCount, pState, projectTasks =
   return [];
 }
 
+function projectViewModel(entities, fronts = []) {
+  return entities.filter(e => e.kind === "project-state" && e.project).map(p => ({
+    name: p.project, lab: p.lab || "Otros proyectos", definition: p.definition || "",
+    ambiguous: Boolean(p.ambiguous), documents: p.documents || [], projectRoot: p.project_root,
+    file: p.file || "", workflow: p.blocks || [],
+    nextAction: p.next_action || null, lastUpdated: p.last_updated || null,
+    integratedThrough: p.integrated_through || null, status: p.status || null,
+    totalBlocks: (p.blocks || []).length,
+    completedBlocks: (p.blocks || []).filter(b => b.status === "completed").length,
+    progress: null, decisionsCount: null,
+    activeTasks: fronts.filter(f => f.project === p.project && f.active && !f.in_bin)
+  })).sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+}
+
 // Ingest typed model from server
 function ingestModel(model) {
   const entities = model.entities || [];
@@ -415,98 +429,10 @@ function ingestModel(model) {
   }
   STATE.tasks = Array.from(combinedTasksMap.values());
 
-  // Projects Hub Discovery: extract from project-states, decisions, tasks and fronts
-  const projectStates = entities.filter(e => e.kind === "project-state");
-  const discoveredNames = new Set([
-    ...projectStates.map(ps => ps.project).filter(p => p && !p.startsWith("_") && !p.toLowerCase().includes("template")),
-    ...STATE.decisions.map(d => d.project),
-    ...STATE.tasks.map(t => t.project.split(" ")[0]),
-    ...STATE.fronts.map(f => f.project)
-  ].filter(Boolean).filter(name => !["nexus", "cross", "system"].includes(name.toLowerCase())));
-
-  const projectNamesList = Array.from(discoveredNames).sort((a, b) => {
-    const countA = STATE.decisions.filter(d => d.project === a).length;
-    const countB = STATE.decisions.filter(d => d.project === b).length;
-    return countB - countA;
-  });
-
-  STATE.projects = projectNamesList.map((name, idx) => {
-    const pState = projectStates.find(ps => ps.project === name) ||
-                   projectStates.find(ps => ps.project && ps.project.toLowerCase() === name.toLowerCase()) ||
-                   projectStates.find(ps => ps.title && ps.title.toLowerCase().includes(name.toLowerCase()));
-    const decCount = STATE.decisions.filter(d => d.project === name).length;
-    const projectTasks = STATE.tasks.filter(t => t.project === name || t.project.startsWith(name));
-    const projectDecs = STATE.decisions.filter(d => d.project === name);
-    
-    const workflow = generateProjectRamifiedWorkflow(name, decCount, pState, projectTasks, projectDecs);
-    const completedBlocks = workflow.filter(b => b.status === "completed").length;
-    const totalBlocks = workflow.length;
-    // ⚠️ Era `: 75`. Un proyecto sin bloques declarados enseñaba un 75 % de avance que no
-    // salía de ningún sitio. `null` es «no medido», y la vista lo pinta como tal.
-    const progress = totalBlocks ? Math.round((completedBlocks / totalBlocks) * 100) : null;
-
-    let rawLastUpdated = pState?.last_updated || "";
-    let integratedThrough = pState?.integrated_through || "";
-    if (rawLastUpdated.includes("integrated through")) {
-      const parts = rawLastUpdated.split(/·\s*\*\*integrated through\*\*\s*/i);
-      rawLastUpdated = parts[0].trim();
-      if (!integratedThrough && parts[1]) integratedThrough = parts[1].replace(/[`*]/g, "").trim();
-    }
-
-    const nextAction = pState?.next_action || pState?.resume_point || pState?.phase || "Progreso de las tareas prioritarias del roadmap";
-    const definition = pState?.definition || "Plataforma soberana bajo metodología MLabs con ciclo de vida desacoplado y gobernanza inmutable.";
-    const currentPhase = pState?.phase_summary || pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución";
-    const codeRepo = pState?.code_repo || "";
-    const remoteUrl = pState?.remote_url || "";
-    const gitBranch = pState?.git_branch || "";
-    const gitCommit = pState?.git_commit || "";
-    const gitCommitMsg = pState?.git_commit_msg || "";
-    const gitCommitDate = pState?.git_commit_date || "";
-    const readmeContent = pState?.readme_content || "";
-    const readmePath = pState?.readme_path || "";
-    // ⛔ Esto faltaba, y con ello `renderProjectGuideTab` etiquetaba SIEMPRE «README.md»:
-    // sus cuatro etiquetas por clase de documento llevaban muertas desde que se escribieron,
-    // y su guarda `readmeType !== "definition"` era siempre cierta, así que una definición
-    // servida como guía se listaba dos veces — una mal etiquetada y otra bien.
-    const readmeType = pState?.readme_type || "";
-    // El fallo de git deja de ser indistinguible de «este proyecto no tiene git».
-    const gitError = pState?.git_error || "";
-
-    return {
-      name,
-      rank: `#${idx + 1}`,
-      status: "ACTIVE",
-      readmeContent,
-      readmePath,
-      readmeType,
-      gitError,
-      gitBranch,
-      gitCommit,
-      gitCommitMsg,
-      gitCommitDate,
-      progress,
-      completedBlocks,
-      totalBlocks,
-      decisionsCount: decCount,
-      nextAction,
-      lastUpdated: rawLastUpdated || new Date().toISOString().slice(0, 10),
-      integratedThrough: integratedThrough || `D${decCount || 1}`,
-      currentPhase,
-      definition,
-      codeRepo,
-      remoteUrl,
-      file: pState ? pState.file : "",
-      // ⛔ The fallback is the generic one `getProjectLab` already uses, and must stay
-      // generic. A literal folder name from one operations centre hard-coded into the
-      // public engine is the `interface:AX-1` breach this project exists to avoid — and
-      // ⚠️ the release gate CANNOT see it unless that word is on the instance's denylist,
-      // which is why the list is derived from disk (`tools/denylist-coverage.sh`) rather
-      // than remembered.
-      icon: pState?.icon || null,
-      lab: pState?.lab || (pState ? getProjectLab(pState) : "Workspaces"),
-      workflow
-    };
-  });
+  STATE.projects = projectViewModel(entities, STATE.fronts);
+  // Keep the current document visible while its refreshed source is fetched.
+  STATE.projectCatalogs = Object.fromEntries(Object.entries(STATE.projectCatalogs || {}).map(([key, value]) => [key, { ...value, stale: true }]));
+  STATE.projectDocuments = Object.fromEntries(Object.entries(STATE.projectDocuments || {}).map(([key, value]) => [key, { ...value, stale: true }]));
 
   if (!STATE.selectedProject && STATE.projects.length) {
     STATE.selectedProject = STATE.projects[0].name;
@@ -583,13 +509,7 @@ function syncUrlHash() {
   const view = STATE.currentView || "overview";
 
   if (view === "project-detail") {
-    const proj = encodeURIComponent(STATE.selectedProject || "");
-    const tab = encodeURIComponent(STATE.projectSubtab || "workflow");
-    hash = `#/project/${proj}/${tab}`;
-    const activeDoc = STATE.guideActiveDoc && STATE.selectedProject ? STATE.guideActiveDoc[STATE.selectedProject] : null;
-    if (tab === "guide" && activeDoc) {
-      hash += `?doc=${encodeURIComponent(activeDoc)}`;
-    }
+    hash = projectRoute(STATE.selectedProject || "", STATE.projectSubtab || "objectives", STATE.projectFile || "", STATE.projectAnchor || "");
   } else if (view === "skill") {
     hash = `#/skill/${encodeURIComponent(STATE.skillOpen?.name || "")}`;
   } else if (view === "clause") {
@@ -650,16 +570,11 @@ function restoreRouteFromUrl() {
 
   if (mainView === "project" || mainView === "project-detail") {
     STATE.currentView = "project-detail";
-    if (segments[1]) {
-      STATE.selectedProject = decodeURIComponent(segments[1]);
-    }
-    if (segments[2]) {
-      STATE.projectSubtab = decodeURIComponent(segments[2]);
-    }
-    if (params.has("doc") && STATE.selectedProject) {
-      STATE.guideActiveDoc = STATE.guideActiveDoc || {};
-      STATE.guideActiveDoc[STATE.selectedProject] = decodeURIComponent(params.get("doc"));
-    }
+    STATE.selectedProject = decodeURIComponent(segments[1] || "");
+    const legacy = { workflow: "plan", state: "plan", architecture: "definition", guide: "files", skills: "files", repos: "files" };
+    STATE.projectSubtab = legacy[segments[2]] || segments[2] || "objectives";
+    STATE.projectFile = params.get("file") || "";
+    STATE.projectAnchor = params.get("section") || "";
   } else if (mainView === "skill" && segments[1]) {
     // ⚠️ Restaurar esta ruta no es sólo fijar la vista: su contenido se pide al servidor,
     // así que hay que relanzar la petición o la página queda en blanco tras una recarga.
@@ -784,6 +699,19 @@ function liveDecisions() {
   return (STATE.decisions || []).filter(d => !d.frozen);
 }
 
+const PROJECT_READING = (() => {
+  try { return JSON.parse(sessionStorage.getItem("project-reading") || "{}"); } catch { return {}; }
+})();
+
+function rememberProjectReading(main) {
+  const route = main.dataset.route || "";
+  if (!route.startsWith("#/project/") || main.dataset.readerReady !== "true") return;
+  const saved = PROJECT_READING[route] || (PROJECT_READING[route] = { details: {} });
+  saved.scroll = main.scrollTop;
+  main.querySelectorAll("details[id]").forEach(detail => { saved.details[detail.id] = detail.open; });
+  try { sessionStorage.setItem("project-reading", JSON.stringify(PROJECT_READING)); } catch {}
+}
+
 function renderView() {
   const main = document.getElementById("mainContent");
   if (!main) return;
@@ -818,10 +746,15 @@ function renderView() {
     return;
   }
 
-  const route = STATE.currentView === "desk" ? `desk/${STATE.deskCardId}` : STATE.currentView;
+  const route = STATE.currentView === "desk" ? `desk/${STATE.deskCardId}` : STATE.currentView === "project-detail"
+    ? projectRoute(STATE.selectedProject, STATE.projectSubtab, STATE.projectFile) : STATE.currentView;
+  rememberProjectReading(main);
+  STATE.readingPositions = STATE.readingPositions || {};
+  if (main.dataset.route) STATE.readingPositions[main.dataset.route] = main.scrollTop;
   const sameRoute = main.dataset.route === route;
   const openDetails = sameRoute ? [...main.querySelectorAll("details[id][open]")].map(d => d.id) : [];
-  const scrollTop = sameRoute ? main.scrollTop : 0;
+  const savedReading = PROJECT_READING[route];
+  const scrollTop = savedReading?.scroll ?? STATE.readingPositions[route] ?? 0;
   switch (STATE.currentView) {
     case "overview": renderOverview(main); break;
     case "projects": renderProjectsHub(main); break;
@@ -842,10 +775,24 @@ function renderView() {
 
   main.dataset.route = route;
   openDetails.forEach(id => { const node = document.getElementById(id); if (node) node.open = true; });
-  main.scrollTop = scrollTop;
-  document.querySelectorAll(".nav-item").forEach(button => {
-    button.classList.toggle("active", button.dataset.view === (STATE.currentView === "desk" ? "cockpit" : STATE.currentView));
+  main.dataset.readerReady = String(Boolean(main.querySelector(".project-page, .project-file-index")));
+  Object.entries(savedReading?.details || {}).forEach(([id, open]) => {
+    const detail = document.getElementById(id); if (detail) detail.open = open;
   });
+  main.scrollTop = scrollTop;
+  if (STATE.currentView === "project-detail" && STATE.projectAnchor !== "" && STATE.projectAnchor != null) {
+    const heading = document.getElementById(`project-heading-${STATE.projectAnchor}`);
+    if (heading && (PROJECT_READING[route]?.anchor !== STATE.projectAnchor || main.dataset.anchor !== `${route}/${STATE.projectAnchor}` && !savedReading)) {
+      if (heading.tagName === "DETAILS") heading.open = true;
+      heading.scrollIntoView({ block: "start" });
+      main.dataset.anchor = `${route}/${STATE.projectAnchor}`;
+      PROJECT_READING[route] = { ...(PROJECT_READING[route] || { details: {} }), anchor: STATE.projectAnchor };
+    }
+  } else { main.dataset.anchor = ""; }
+  document.querySelectorAll(".nav-item").forEach(button => {
+    button.classList.toggle("active", button.dataset.view === (STATE.currentView === "desk" ? "cockpit" : STATE.currentView === "project-detail" ? "projects" : STATE.currentView));
+  });
+  rememberProjectReading(main);
   syncUrlHash();
 }
 
@@ -1417,52 +1364,28 @@ function getProjectLab(p) {
   return "Workspaces";
 }
 
+function projectRoute(name, section = "objectives", file = "", anchor = "") {
+  const params = new URLSearchParams();
+  if (file) params.set("file", file);
+  if (anchor) params.set("section", anchor);
+  return `#/project/${encodeURIComponent(name)}/${section}${params.size ? "?" + params : ""}`;
+}
+
 function renderProjectsHub(container) {
-  const selectedLab = STATE.selectedLabFilter || "ALL";
-
-  const enrichedProjects = STATE.projects.map(p => ({
-    ...p,
-    lab: getProjectLab(p)
-  }));
-
-  const discoveredLabs = Array.from(new Set(enrichedProjects.map(p => p.lab).filter(Boolean))).sort();
-
-  const filteredProjects = selectedLab === "ALL" 
-    ? enrichedProjects 
-    : enrichedProjects.filter(p => p.lab === selectedLab);
-
-  container.innerHTML = `
-    <div class="view-header">
-      <div class="view-title-group">
-        <h1><span>🚀</span> Projects Hub</h1>
-        <p class="view-subtitle">Matriz de proyectos organizada por Laboratorios y Centros de Trabajo soberanos</p>
-      </div>
-    </div>
-
-    <!-- LAB FILTER CHIPS -->
-    <div class="skills-stats-hud" style="margin-bottom: 24px;">
-      <div class="skill-stat-chip ${selectedLab === 'ALL' ? 'active' : ''}" onclick="updateLabFilter('ALL')">
-        <span class="stat-count">${enrichedProjects.length}</span>
-        <span class="stat-name">🏢 Todos los Laboratorios</span>
-      </div>
-      ${discoveredLabs.map(lab => {
-        const labProjectsCount = enrichedProjects.filter(p => p.lab === lab).length;
-        const icon = lab.toLowerCase().includes("proj") ? "💼" : "🔬";
-        return `
-          <div class="skill-stat-chip ${selectedLab === lab ? 'active' : ''}" onclick="updateLabFilter(${jsq(lab)})">
-            <span class="stat-count">${labProjectsCount}</span>
-            <span class="stat-name">${icon} ${esc(lab)}</span>
-          </div>
-        `;
-      }).join("")}
-    </div>
-
-    <!-- LAB SECTIONS -->
-    ${selectedLab === "ALL" ? discoveredLabs.map(lab => {
-      const labProjects = enrichedProjects.filter(p => p.lab === lab);
-      return renderLabSection(lab, labProjects);
-    }).join("") : renderLabSection(selectedLab, filteredProjects)}
-  `;
+  const projects = STATE.projects.filter(p => !STATE.taskFilterProj || p.name === STATE.taskFilterProj);
+  const groups = [...new Set(projects.map(p => p.lab))];
+  container.innerHTML = `<section class="project-room">
+    <header class="quiet-heading"><p class="quiet-eyebrow">PROYECTOS</p>
+      <h1>Un lugar para cada proyecto</h1><p>Sus objetivos, su plan y los documentos que explican el trabajo.</p></header>
+    ${groups.map(group => `<section class="project-group"><h2>${esc(group)}</h2><div class="project-shelves">
+      ${projects.filter(p => p.lab === group).map(p => `<article class="project-bookmark">
+        <a class="project-title-link" href="${esc(projectRoute(p.name))}"><h3>${esc(p.name)}</h3></a>
+        ${p.definition ? `<p class="project-intent">${inline(p.definition)}</p>` : ""}
+        <div class="project-door-links"><a href="${esc(projectRoute(p.name))}">Objetivos</a>
+          <a href="${esc(projectRoute(p.name, "plan"))}">Plan</a><a href="${esc(projectRoute(p.name, "files"))}">Archivos</a></div>
+        <p class="project-source-facts">${p.ambiguous ? "El nombre corresponde a varios proyectos" : `${p.totalBlocks} bloques de plan · ${p.activeTasks.length} tareas activas`}</p>
+      </article>`).join("")}</div></section>`).join("") || '<p>No hay proyectos declarados con este filtro.</p>'}
+  </section>`;
 }
 
 function renderLabSection(labName, projects) {
@@ -1586,102 +1509,141 @@ document.addEventListener("click", (e) => {
   }
 });
 
-function renderProjectDetailPage(container) {
-  const projName = STATE.selectedProject || (STATE.projects[0] ? STATE.projects[0].name : "");
-  const proj = STATE.projects.find(p => p.name === projName) || STATE.projects[0];
+const PROJECT_ROLES = { objectives: "Objetivos", plan: "Plan", definition: "Definición", axioms: "Reglas", decisions: "Decisiones", log: "Registro de trabajo", contract: "Instrucciones" };
 
-  if (!proj) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <h3>Proyecto no encontrado</h3>
-        <p>Selecciona un proyecto desde el Projects Hub.</p>
-        <button class="btn-hud-action" onclick="navigateTo('projects')">Volver a Projects Hub</button>
-      </div>
-    `;
+async function loadProjectResource(project, path = null) {
+  const catalogs = STATE.projectCatalogs || (STATE.projectCatalogs = {});
+  const documents = STATE.projectDocuments || (STATE.projectDocuments = {});
+  const cache = path === null ? catalogs : documents;
+  const key = path === null ? project : JSON.stringify([project, path]);
+  cache[key] = { ...cache[key], loading: true, stale: false };
+  const params = new URLSearchParams({ project });
+  if (path !== null) params.set("path", path);
+  try {
+    const response = await fetch(`/api/project-${path === null ? "files" : "file"}?${params}`);
+    const result = await response.json();
+    if (!response.ok && !result.why) throw new Error(`HTTP ${response.status}`);
+    cache[key] = result;
+  } catch (error) {
+    cache[key] = { available: false, why: "No se pudo leer el documento. " + error.message };
+  }
+  if (cache === (path === null ? STATE.projectCatalogs : STATE.projectDocuments)
+      && STATE.currentView === "project-detail" && STATE.selectedProject === project) renderView();
+}
+
+function selectedProjectFile(project, catalog) {
+  if (STATE.projectFile) return STATE.projectFile;
+  const role = STATE.projectSubtab || "objectives";
+  const file = (catalog?.files || []).find(f => f.role === role && f.primary);
+  return file?.path || null;
+}
+
+function projectFileRows(project, files, query = "") {
+  const needle = query.trim().toLocaleLowerCase();
+  const matches = files.filter(f => !needle || `${f.title} ${f.path} ${PROJECT_ROLES[f.role] || ""}`.toLocaleLowerCase().includes(needle));
+  return matches.map(f => `<a class="project-file-row" href="${esc(projectRoute(project.name, "files", f.path))}">
+    <span>${f.primary ? `<strong>${esc(PROJECT_ROLES[f.role] || f.title)}</strong>` : `<strong>${esc(f.title)}</strong>`}
+      <small>${esc(f.path)}</small></span><span aria-hidden="true">→</span></a>`).join("") || '<p class="quiet-empty">No hay documentos con ese texto.</p>';
+}
+
+window.filterProjectFiles = function(value) {
+  STATE.projectFileQuery = value;
+  const project = STATE.projects.find(p => p.name === STATE.selectedProject);
+  const list = document.getElementById("projectFileList");
+  if (project && list) list.innerHTML = projectFileRows(project, STATE.projectCatalogs?.[project.name]?.files || [], value);
+};
+
+function projectDocumentContent(doc) {
+  const source = `<details class="project-original" id="project-original"><summary>Leer documento completo</summary><div class="project-markdown readme-markdown-body">${renderMarkdownBody(splitFrontmatter(doc.body).body)}</div></details>`;
+  if (doc.objectives?.length) {
+    const labels = { "Why": "Por qué", "Why it is an objective and not a task": "Por qué", "Met when": "Se cumple cuando" };
+    return `<div class="project-objectives">${doc.objectives.map(objective => {
+      const [first, ...rest] = objective.fields;
+      return `<section class="project-objective" id="project-heading-${esc(objective.id)}"><span class="objective-id">${esc(objective.id)}</span>
+        <div><h3>${inline(first?.[1] || "")}</h3><details id="objective-${esc(objective.id)}"><summary>Qué significa y cómo se cumple</summary>
+          ${rest.map(([label, value]) => `<h4>${esc(labels[label] || label)}</h4><p>${inline(value)}</p>`).join("")}</details></div></section>`;
+    }).join("")}</div>${source}`;
+  }
+  if (doc.blocks?.length) {
+    return `<div class="project-plan-blocks">${doc.blocks.map(block => `<details id="project-heading-${esc(block.id)}" class="project-plan-block">
+      <summary><span class="objective-id">${esc(block.id)}</span><span>${inline(block.title)}</span></summary>
+      <div class="project-subblocks">${block.subblocks?.length ? block.subblocks.map(sub => `<section class="project-subblock"><h4>${esc(sub.id)}</h4><p>${inline(sub.title)}</p>
+        ${sub.status_text ? `<p class="project-status-source"><strong>Estado:</strong> ${inline(sub.status_text)}</p>` : ""}
+        ${sub.waits_on ? `<p class="project-status-source"><strong>Depende de:</strong> ${inline(sub.waits_on)}</p>` : ""}</section>`).join("") : '<p>Este bloque no tiene pasos desglosados en el plan.</p>'}</div>
+    </details>`).join("")}</div>${source}`;
+  }
+  return `<div class="project-markdown readme-markdown-body">${renderMarkdownBody(splitFrontmatter(doc.body).body)}</div>`;
+}
+
+function renderProjectDetailPage(container) {
+  const project = STATE.projects.find(p => p.name === STATE.selectedProject);
+  if (!project || project.ambiguous) {
+    container.innerHTML = `<section class="project-room"><a class="quiet-back" href="#/projects">← Proyectos</a>
+      <h1>${project ? "Este nombre corresponde a varios proyectos" : "Proyecto no encontrado"}</h1>
+      <p>Vuelve a la lista para elegir un proyecto con sus propios documentos.</p></section>`;
     return;
   }
-
-  const labName = getProjectLab(proj);
-  const isPersonal = labName.toLowerCase().includes("proj");
-  const icon = isPersonal ? "💼" : "🔬";
-  const activeTab = STATE.projectSubtab || "workflow";
-
-  const projectTasks = STATE.tasks.filter(t => t.project === proj.name || t.project.startsWith(proj.name));
-  const activeTasks = projectTasks.filter(t => ["⬜", "🔨", "⛔", "🔴"].includes(t.status));
-  const projectDecs = STATE.decisions.filter(d => d.project === proj.name);
-  const liveDecs = projectDecs.filter(d => !d.isSuperseded);
-
-  container.innerHTML = `
-    <!-- BREADCRUMB & TOP NAV -->
-    <div class="proj-page-breadcrumb-bar">
-      <button class="btn-back-hub" onclick="navigateTo('projects')">
-        <span>←</span> <span>Volver a Projects Hub</span>
-      </button>
-      <div class="proj-breadcrumb-path">
-        <span>Projects Hub</span> / <span>${esc(labName)}</span> / <strong>${esc(proj.name)}</strong>
-      </div>
-      <div class="proj-quick-switch">
-        <label for="quickProjSelect">Cambiar Proyecto:</label>
-        <select id="quickProjSelect" class="search-input" style="padding: 4px 8px; font-size: 12px; width: auto;" onchange="openProjectDetail(this.value)">
-          ${STATE.projects.map(p => `
-            <option value="${esc(p.name)}" ${p.name === proj.name ? 'selected' : ''}>${esc(p.name)} (${getProjectLab(p)})</option>
-          `).join("")}
-        </select>
-      </div>
+  const catalog = STATE.projectCatalogs?.[project.name];
+  if (!catalog || catalog.stale) loadProjectResource(project.name);
+  const section = STATE.projectSubtab || "objectives";
+  const path = selectedProjectFile(project, catalog);
+  const doc = path ? STATE.projectDocuments?.[JSON.stringify([project.name, path])] : null;
+  if (path && (!doc || doc.stale)) loadProjectResource(project.name, path);
+  const file = catalog?.files?.find(f => f.path === path);
+  const role = file?.role || section;
+  const title = PROJECT_ROLES[role] || file?.title || "Documento";
+  let content;
+  if (section === "files" && !path) {
+    content = `<section class="project-file-index"><h2>Archivos del proyecto</h2>
+      <label class="project-file-search">Buscar documento<input type="search" value="${esc(STATE.projectFileQuery || "")}" oninput="filterProjectFiles(this.value)" placeholder="Título o nombre del archivo"></label>
+      <p class="project-source-facts">${catalog?.files?.length || 0} documentos de lectura</p>
+      <div id="projectFileList">${projectFileRows(project, catalog?.files || [], STATE.projectFileQuery || "")}</div></section>`;
+  } else if ((!catalog || catalog.loading) && !path) {
+    content = '<p class="quiet-loading" role="status">Leyendo los archivos del proyecto…</p>';
+  } else if (catalog && !catalog.available && !catalog.loading) {
+    content = `<p class="quiet-empty">${esc(catalog.why)}</p>`;
+  } else if (!path) {
+    content = `<section class="project-missing"><h2>${esc(title)}</h2><p>No hay un documento único de ${esc(title.toLowerCase())} enlazado a este proyecto.</p>
+      <a href="${esc(projectRoute(project.name, "files"))}">Ver los archivos disponibles →</a></section>`;
+  } else if (!doc || (doc.loading && !doc.body)) {
+    content = '<p class="quiet-loading" role="status">Abriendo el documento…</p>';
+  } else if (!doc.available && !doc.loading) {
+    content = `<p class="quiet-empty">${esc(doc.why)}</p>`;
+  } else {
+    const structured = Boolean(doc.objectives?.length || doc.blocks?.length);
+    const outline = doc.objectives?.length ? doc.objectives.map(o => ({ key: o.id, title: o.id, level: 2 }))
+      : doc.blocks?.length ? doc.blocks.map(b => ({ key: b.id, title: `${b.id} · ${b.title}`, level: 2 }))
+      : (doc.outline || []).filter(h => h.level > 1 && h.level <= 3).map((h, i) => ({ ...h, key: String(i) }));
+    content = `<div class="project-reading-layout">
+      <aside class="project-outline" aria-label="Índice del documento"><details id="project-outline"><summary>En este documento</summary>
+        ${outline.map((h, i) => `<a class="outline-level-${h.level}" href="${esc(projectRoute(project.name, section, STATE.projectFile || "", h.key))}">${esc(h.title)}</a>`).join("")}</details></aside>
+      <article class="project-page" data-project-document="${esc(path)}">
+        <header class="project-document-heading"><h2>${esc(title)}</h2>
+          <span class="project-source-path">${esc(path)}</span>
+          ${doc.loading ? '<span class="quiet-loading">Actualizando…</span>' : ""}</header>
+        ${role === "plan" && project.nextAction ? `<div class="project-next"><strong>Siguiente acción declarada</strong><p>${inline(project.nextAction)}</p></div>` : ""}
+        ${projectDocumentContent(doc)}
+      </article></div>`;
+  }
+  container.innerHTML = `<section class="project-room project-detail-room">
+    <div class="project-sticky-nav">
+      <div class="project-reading-header"><a class="quiet-back" href="#/projects">← Proyectos</a>
+        <label>Cambiar proyecto<select aria-label="Cambiar proyecto" onchange="openProjectDetail(this.value)">
+          ${STATE.projects.map(p => `<option value="${esc(p.name)}" ${p.name === project.name ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label></div>
+      <div class="project-reading-title"><h1>${esc(project.name)}</h1><span>${esc(project.lab)}</span></div>
+      <nav class="project-primary-nav" aria-label="Documentos del proyecto">
+        ${[["objectives", "Objetivos"], ["plan", "Plan"], ["files", "Archivos"]].map(([key, label]) => `<a ${section === key ? 'aria-current="page"' : ""} href="${esc(projectRoute(project.name, key))}">${label}</a>`).join("")}
+        <details id="project-more"><summary>Más</summary><div>${[["definition", "Definición"], ["axioms", "Reglas"], ["decisions", "Decisiones"], ["log", "Registro de trabajo"]].map(([key, label]) => `<a href="${esc(projectRoute(project.name, key))}">${label}</a>`).join("")}</div></details>
+      </nav>
     </div>
-
-    <!-- SOVEREIGN PROJECT HERO HEADER WITH FULL DEFINITION & PHASE -->
-    <header class="chuleta-header proj-sovereign-header">
-      <div class="brand">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
-          <div>
-            <div class="kicker">${esc(labName)} · CARTRIDGE SOBERANO</div>
-            <div style="display: flex; align-items: center; gap: 14px; margin-top: 4px; flex-wrap: wrap;">
-              <span style="font-size: 32px;">${icon}</span>
-              <h1 style="margin: 0; font-size: 28px;">${esc(proj.name)}</h1>
-              <span class="card-badge badge-vine" style="font-size: 12px;">${esc(proj.status)}</span>
-              <span class="card-badge badge-gold" style="font-size: 12px;">Sincronizado: ${esc(proj.integratedThrough)}</span>
-            </div>
-          </div>
-          <div class="proj-phase-badge-box">
-            <span class="proj-phase-tag">FASE TÉCNICA ACTUAL</span>
-            <div class="proj-phase-text">${inline(proj.currentPhase)}</div>
-          </div>
-        </div>
-
-        <!-- DEFINICIÓN INTEGRADA DEL PROYECTO (WHAT IT IS) -->
-        <div class="proj-definition-hero-card">
-          <div class="proj-def-label">DEFINICIÓN &amp; PROPÓSITO DEL PROYECTO</div>
-          <p class="proj-def-text">${inline(proj.definition)}</p>
-        </div>
-
-        <!-- SPECS HUD (BLOQUES, DECISIONES, TAREAS, NEXT ACTION) -->
-        <div class="specs" style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.12);">
-          <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>🗺️ Bloques:</strong> ${
-            proj.progress === null ? "sin declarar" : `${proj.completedBlocks}/${proj.totalBlocks} (${proj.progress}%)`}</span>
-          <span class="spec-pill" onclick="setProjectSubtab('decisions')"><strong>📜 Decisiones:</strong> ${liveDecs.length} Vivas (${projectDecs.length} Totales)</span>
-          <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>📋 Tareas:</strong> ${projectTasks.length} (${activeTasks.length} Activas)</span>
-          <span class="spec-pill active-pill" onclick="setProjectSubtab('state')"><strong>🎯 Next Action:</strong> ${inline(proj.nextAction.slice(0, 52))}...</span>
-        </div>
-      </div>
-    </header>
-
-    <!-- PROJECT INTERNAL TABS (TOC) -->
-    <nav class="toc-bar" style="margin: 20px 0 24px;">
-      <button class="toc-pill ${activeTab === 'workflow' ? 'active' : ''}" onclick="setProjectSubtab('workflow')"><span>🗺️</span> 1. Workflow Ramificado</button>
-      <button class="toc-pill ${activeTab === 'state' ? 'active' : ''}" onclick="setProjectSubtab('state')"><span>🎯</span> 2. Estado Vivo &amp; Next Action</button>
-      <button class="toc-pill ${activeTab === 'architecture' ? 'active' : ''}" onclick="setProjectSubtab('architecture')"><span>🏛️</span> 3. Arquitectura &amp; Definición</button>
-      <button class="toc-pill ${activeTab === 'decisions' ? 'active' : ''}" onclick="setProjectSubtab('decisions')"><span>📜</span> 4. Decisiones (${projectDecs.length})</button>
-      <button class="toc-pill ${activeTab === 'skills' ? 'active' : ''}" onclick="setProjectSubtab('skills')"><span>⚡</span> 5. Skills &amp; Operaciones</button>
-      <button class="toc-pill ${activeTab === 'repos' ? 'active' : ''}" onclick="setProjectSubtab('repos')"><span>🐙</span> 6. Repos &amp; Git</button>
-      <button class="toc-pill ${activeTab === 'guide' ? 'active' : ''}" onclick="setProjectSubtab('guide')"><span>📖</span> 7. Guía de Uso</button>
-    </nav>
-
-    <!-- TAB CONTENT RENDERER -->
-    <div class="proj-tab-content-area">
-      ${renderProjectSubtabContent(proj, activeTab, projectTasks, projectDecs)}
-    </div>
-  `;
+    ${content}
+  </section>`;
+  // The outline is tied to visible headings, not a guessed source summary.
+  if (!doc?.objectives?.length && !doc?.blocks?.length) {
+    container.querySelectorAll(".project-markdown h3, .project-markdown h4").forEach((heading, index) => {
+      heading.id = `project-heading-${index}`;
+    });
+  }
 }
 
 function renderProjectSubtabContent(proj, tab, projectTasks, projectDecs) {
@@ -2101,18 +2063,12 @@ window.updateLabFilter = function(lab) {
 };
 
 window.openProjectDetail = function(name) {
-  STATE.selectedProject = name;
-  STATE.currentView = "project-detail";
-  STATE.projectSubtab = "workflow";
-  renderView();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.location.hash = projectRoute(name).slice(1);
 };
 
-window.setProjectSubtab = function(tabKey) {
-  STATE.projectSubtab = tabKey;
-  renderView();
+window.setProjectSubtab = function(section) {
+  window.location.hash = projectRoute(STATE.selectedProject, section).slice(1);
 };
-
 
 window.selectProject = function(name) {
   openProjectDetail(name);
@@ -2923,6 +2879,13 @@ function renderMarkdownTable(lines) {
 }
 
 function initAppListeners() {
+  // This reader restores a scroll container after lazy document loading.
+  // Browser history restoration races that render and overwrites its position.
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  const reader = document.getElementById("mainContent");
+  reader?.addEventListener("scroll", () => rememberProjectReading(reader), { passive: true });
+  reader?.addEventListener("toggle", () => rememberProjectReading(reader), true);
+
   ["taskTitle", "taskProject", "taskStatus", "taskWhy"].forEach(id => {
   });
 

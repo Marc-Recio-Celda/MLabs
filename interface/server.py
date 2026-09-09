@@ -204,6 +204,65 @@ def read_file(adapter, rel):
             "body": f.read_text(encoding="utf-8", errors="replace")}
 
 
+def _project_scope(adapter, name):
+    """Return the unique declared cartridge and its readable project directory."""
+    if not model or not adapter.get("path"):
+        return None, None
+    projects = [p for p in model.parse_adapter(adapter["path"])["entities"]
+                if p["kind"] == "project-state" and p.get("project") == name]
+    if len(projects) != 1 or projects[0].get("ambiguous") or not projects[0].get("project_root"):
+        return None, None
+    project = projects[0]
+    directory = (adapter["root"] / project["project_root"]).resolve()
+    if not directory.is_dir() or not any(directory.is_relative_to(root) for root in _browse_roots(adapter)):
+        return None, None
+    return project, directory
+
+
+def project_files(adapter, name):
+    project, directory = _project_scope(adapter, name)
+    if directory is None:
+        return {"available": False, "why": "No hay un proyecto único y accesible con ese nombre."}
+    docs = {str((adapter["root"] / d["path"]).resolve()): d for d in project["documents"]}
+    files = []
+    for path, real in _walk(directory):
+        with real.open(encoding="utf-8", errors="replace") as handle:
+            title = next((line[2:].strip() for _, line in zip(range(40), handle) if line.startswith("# ")), path.stem)
+        stat = real.stat()
+        doc = docs.get(str(real), {})
+        files.append({"path": str(path.relative_to(directory)), "title": title,
+                      "role": doc.get("role"), "primary": doc.get("primary", False),
+                      "bytes": stat.st_size, "mtime_ns": stat.st_mtime_ns})
+    return {"available": True, "project": name, "files": files}
+
+
+def project_file(adapter, name, relative):
+    project, directory = _project_scope(adapter, name)
+    if directory is None or not relative or "\x00" in relative:
+        return {"available": False, "why": "No se encuentra este documento del proyecto."}
+    rel = Path(relative)
+    if rel.is_absolute() or ".." in rel.parts or rel.suffix != ".md":
+        return {"available": False, "why": "El documento está fuera de este proyecto."}
+    path = (directory / rel).resolve()
+    if not path.is_relative_to(directory) or not path.is_file():
+        return {"available": False, "why": "No se encuentra este documento dentro del proyecto."}
+    body = path.read_text(encoding="utf-8", errors="replace")
+    outline = [{"level": len(m[1]), "title": model.clean(m[2]), "line": i + 1}
+               for i, line in enumerate(body.splitlines()) if (m := re.match(r"^(#{1,6})\s+(.+)", line))]
+    role = next((d["role"] for d in project["documents"] if (adapter["root"] / d["path"]).resolve() == path), None)
+    objectives = []
+    if role == "objectives":
+        for line, row in model.table_rows(body.splitlines(), 0):
+            values = list(row.values())
+            identifier = model.clean(values[0]) if values else ""
+            if model.BLOCK_ID.fullmatch(identifier) and identifier.startswith("O"):
+                objectives.append({"id": identifier, "fields": list(row.items())[1:], "line": line})
+    blocks, _ = model.parse_project_blocks(path, body) if role == "plan" else ([], [])
+    return {"available": True, "project": name, "path": relative, "body": body,
+            "outline": outline, "role": role, "objectives": objectives, "blocks": blocks,
+            "mtime_ns": path.stat().st_mtime_ns}
+
+
 def task_sheet(adapter, task_id):
     """Resolve only the selected task's declared markdown reference, inside browse roots.
 
@@ -347,6 +406,10 @@ def stamp(adapter):
             for f in sorted(target_root.glob(spec["glob"])):
                 if f.is_file():
                     bits.append(f"{f}:{f.stat().st_mtime}")
+    for directory in _browse_roots(adapter):
+        for path, real in _walk(directory):
+            stat = real.stat()
+            bits.append(f"{path}:{stat.st_mtime_ns}:{stat.st_size}")
     return str(hash("|".join(bits)))
 
 
@@ -541,6 +604,12 @@ def make_handler(adapter):
                 self._send(200, doctrine())
             elif path == "/api/tree":
                 self._send(200, tree(adapter))
+            elif path in ("/api/project-files", "/api/project-file"):
+                params = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
+                name = params.get("project", [""])[0]
+                result = (project_files(adapter, name) if path == "/api/project-files"
+                          else project_file(adapter, name, params.get("path", [""])[0]))
+                self._send(200 if result.get("available") else 404, result)
             elif path == "/api/task-sheet":
                 task_id = urllib.parse.parse_qs(
                     self.path.split("?", 1)[1] if "?" in self.path else "").get("id", [""])[0]
