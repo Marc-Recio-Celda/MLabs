@@ -47,9 +47,11 @@ class Library(unittest.TestCase):
 
     def test_version_changes_when_text_changes_and_deletion_disappears(self):
         before = server.tree(self.adapter)['files'][0]['version']
+        stamp_before = server.stamp(self.adapter)
         file = self.root / 'science/topic/Index.md'
         file.write_text('# Changed\n')
         self.assertNotEqual(server.tree(self.adapter)['files'][0]['version'], before)
+        self.assertNotEqual(server.stamp(self.adapter), stamp_before)
         file.unlink()
         self.assertFalse(any(f['root'] == 'science' for f in server.tree(self.adapter)['files']))
 

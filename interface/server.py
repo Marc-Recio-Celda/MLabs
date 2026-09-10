@@ -394,6 +394,8 @@ def search(adapter, q, limit=200, library=False, root=None):
                                      "line": n, "text": line.strip()[:240]})
                         if len(hits) >= limit:
                             return {"available": True, "q": q, "hits": hits, "capped": True}
+                        if library:
+                            break  # One result per document keeps long notes from hiding the rest.
             except OSError:
                 continue
     return {"available": True, "q": q, "hits": hits, "capped": False}
@@ -439,10 +441,10 @@ def metrics(adapter):
 
 def stamp(adapter):
     """Cheap change token for live sync polling."""
-    if not adapter.get("sources"):
+    if not adapter.get("sources") and not adapter.get("browse"):
         return "standalone"
     bits = []
-    for spec in adapter["sources"]:
+    for spec in adapter.get("sources", []):
         target_root = adapter["root"]
         if spec.get("root"):
             target_root = (target_root / spec["root"]).resolve()

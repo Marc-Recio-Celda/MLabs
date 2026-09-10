@@ -472,7 +472,7 @@ function updateHUD() {
   if (badgeLibrary) {
     const t = STATE.tree;
     badgeLibrary.textContent = t && t.available
-      ? LIB_SHELVES.reduce((n, r) => n + t.files.filter(f => f.root === r).length, 0) : 0;
+      ? libraryFiles().length : "…";
   }
   const badgeSkills = document.getElementById("badgeSkills");
   if (badgeSkills) badgeSkills.textContent = STATE.skills.length;
@@ -510,6 +510,8 @@ function syncUrlHash() {
 
   if (view === "project-detail") {
     hash = projectRoute(STATE.selectedProject || "", STATE.projectSubtab || "objectives", STATE.projectFile || "", STATE.projectAnchor || "");
+  } else if (view === "library") {
+    hash = Library.route(libraryLocation());
   } else if (view === "skill") {
     hash = `#/skill/${encodeURIComponent(STATE.skillOpen?.name || "")}`;
   } else if (view === "clause") {
@@ -575,6 +577,21 @@ function restoreRouteFromUrl() {
     STATE.projectSubtab = legacy[segments[2]] || segments[2] || "objectives";
     STATE.projectFile = params.get("file") || "";
     STATE.projectAnchor = params.get("section") || "";
+  } else if (mainView === "library") {
+    STATE.currentView = "library";
+    STATE.libShelf = params.get("root") || "";
+    STATE.libFolder = params.get("folder") || "";
+    STATE.libNote = params.get("note") ? {root:STATE.libShelf, path:params.get("note")} : null;
+    STATE.libAnchor = params.get("anchor") || "";
+    STATE.libSearchAll = params.get("all") === "1";
+    STATE.libSearchRoot = params.get("note") ? params.get("searchRoot") || "" : STATE.libShelf;
+    const q = params.get("q") || "";
+    const searchKey = JSON.stringify([q, STATE.libSearchAll, STATE.libNote ? STATE.libSearchRoot || "" : STATE.libShelf]);
+    if (!STATE.libNote) STATE.libSearchRoot = STATE.libShelf;
+    STATE.searchQ = q;
+    if (q && (STATE.searchKey !== searchKey || !STATE.search)) { STATE.searchKey = searchKey; setTimeout(() => loadSearch(q), 0); }
+    if (!q) STATE.search = null;
+    STATE.libLimit = 24;
   } else if (mainView === "skill" && segments[1]) {
     // ⚠️ Restaurar esta ruta no es sólo fijar la vista: su contenido se pide al servidor,
     // así que hay que relanzar la petición o la página queda en blanco tras una recarga.
@@ -705,7 +722,7 @@ const PROJECT_READING = (() => {
 
 function rememberProjectReading(main) {
   const route = main.dataset.route || "";
-  if (!route.startsWith("#/project/") || main.dataset.readerReady !== "true") return;
+  if (!(route.startsWith("#/project/") || route.startsWith("#/library")) || main.dataset.readerReady !== "true") return;
   const saved = PROJECT_READING[route] || (PROJECT_READING[route] = { details: {} });
   saved.scroll = main.scrollTop;
   main.querySelectorAll("details[id]").forEach(detail => { saved.details[detail.id] = detail.open; });
@@ -747,7 +764,7 @@ function renderView() {
   }
 
   const route = STATE.currentView === "desk" ? `desk/${STATE.deskCardId}` : STATE.currentView === "project-detail"
-    ? projectRoute(STATE.selectedProject, STATE.projectSubtab, STATE.projectFile) : STATE.currentView;
+    ? projectRoute(STATE.selectedProject, STATE.projectSubtab, STATE.projectFile) : STATE.currentView === "library" ? Library.route({...libraryLocation(), anchor:""}) : STATE.currentView;
   rememberProjectReading(main);
   STATE.readingPositions = STATE.readingPositions || {};
   if (main.dataset.route) STATE.readingPositions[main.dataset.route] = main.scrollTop;
@@ -775,7 +792,7 @@ function renderView() {
 
   main.dataset.route = route;
   openDetails.forEach(id => { const node = document.getElementById(id); if (node) node.open = true; });
-  main.dataset.readerReady = String(Boolean(main.querySelector(".project-page, .project-file-index")));
+  main.dataset.readerReady = String(Boolean(main.querySelector(".project-page, .project-file-index, .library-browser")));
   Object.entries(savedReading?.details || {}).forEach(([id, open]) => {
     const detail = document.getElementById(id); if (detail) detail.open = open;
   });
@@ -787,6 +804,12 @@ function renderView() {
       heading.scrollIntoView({ block: "start" });
       main.dataset.anchor = `${route}/${STATE.projectAnchor}`;
       PROJECT_READING[route] = { ...(PROJECT_READING[route] || { details: {} }), anchor: STATE.projectAnchor };
+    }
+  } else if (STATE.currentView === "library" && STATE.libAnchor) {
+    const anchor = "note-heading-" + Library.slug(STATE.libAnchor);
+    const heading = document.getElementById(anchor) || document.getElementById("library-missing-anchor");
+    if (heading && main.dataset.anchor !== `${route}/${STATE.libAnchor}`) {
+      heading.scrollIntoView({block:"start"}); main.dataset.anchor = `${route}/${STATE.libAnchor}`;
     }
   } else { main.dataset.anchor = ""; }
   document.querySelectorAll(".nav-item").forEach(button => {
@@ -2931,9 +2954,7 @@ function initAppListeners() {
     if (e.key !== "Enter") return;
     const q = e.target.value.trim();
     if (q.length < 2) return;
-    STATE.libNote = null; STATE.libShelf = null;
-    STATE.currentView = "library";
-    loadSearch(q);
+    location.hash = Library.route({q, all:true});
   });
 }
 
@@ -3870,6 +3891,7 @@ async function watchStamp() {
     const data = await res.json();
     const newStamp = data.stamp;
     if (STAMP !== null && newStamp !== STAMP) {
+      await loadTree();
       await loadModel();
     }
     STAMP = newStamp;
@@ -4369,42 +4391,46 @@ async function loadRecent() {
 // 1,8 MB, convertiría un problema conocido (`I1.5`) en uno inmanejable.
 async function loadTree() {
   try {
-    STATE.tree = await api("GET", "/api/tree");
-  } catch (e) {
-    STATE.tree = { available: false, why: e.message };
-  }
-  // ⚠️ El contador vive en `updateHUD`, que corre al ingerir el modelo — antes de que el
-  // árbol llegue. Sin esto la sala decía 202 notas y su chapa decía 0, que es la clase de
-  // desacuerdo que hace dudar de toda la pantalla.
-  updateHUD();
-  renderView();
+    const tree = await api("GET", "/api/tree");
+    if (JSON.stringify(tree) !== JSON.stringify(STATE.tree)) {
+      STATE.tree = tree; STATE.libraryRevision = (STATE.libraryRevision || 0) + 1;
+      for (const [key, note] of Object.entries(STATE.notes || {})) {
+        const file = tree.files?.find(f => Library.key(f) === key);
+        if (!file || file.version !== note.version) note.stale = true;
+        delete note.rendered; // Link destinations may have changed even when this body did not.
+      }
+      if (STATE.libNote) {
+        const note = STATE.notes?.[Library.key(STATE.libNote)];
+        if (note?.stale) loadNote(STATE.libNote.root, STATE.libNote.path);
+      }
+      if (STATE.searchQ) loadSearch(STATE.searchQ);
+    }
+  } catch (e) { if (!STATE.tree) STATE.tree = {available:false, why:e.message}; }
+  updateHUD(); renderView();
 }
-
-// Un fichero, al abrirlo. ⚠️ Se cachea por ruta: volver a una nota que ya leíste no vuelve
-// a pedirla, que es la mitad de que esto se sienta como un lector y no como una web.
-async function loadNote(root, path) {
-  const key = `${root}/${path}`;
-  STATE.notes = STATE.notes || {};
-  if (STATE.notes[key]) { renderView(); return; }
-  STATE.notes[key] = { loading: true };
-  renderView();
+async function loadNote(root, path, retry = false) {
+  const key = Library.key({root,path}); STATE.notes ||= {};
+  const old = STATE.notes[key];
+  if (old?.loading || (old && !old.stale && !retry)) return;
+  const version = STATE.tree?.files?.find(f => Library.key(f) === key)?.version;
+  STATE.notes[key] = {...old, loading:true, stale:false}; renderView();
   try {
-    const d = await api("GET", `/api/file?path=${encodeURIComponent(path)}`);
-    STATE.notes[key] = d.available ? { body: d.body } : { error: d.why || "no se pudo leer" };
-  } catch (e) {
-    STATE.notes[key] = { error: e.message };
-  }
+    const d = await api("GET", `/api/file?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}`);
+    STATE.notes[key] = d.available ? {body:d.body, version} : {...old, version, error:d.why || "No se pudo leer", loading:false, stale:false};
+  } catch (e) { STATE.notes[key] = {...old, version, error:e.message, loading:false, stale:false}; }
   renderView();
 }
-
+let librarySearchRequest = 0;
 async function loadSearch(q) {
-  STATE.searchQ = q;
+  const request = ++librarySearchRequest;
   if (!q || q.trim().length < 2) { STATE.search = null; renderView(); return; }
+  const root = STATE.libNote ? STATE.libSearchRoot || "" : STATE.libShelf || "";
+  STATE.search = {loading:true}; renderView();
   try {
-    STATE.search = await api("GET", `/api/search?q=${encodeURIComponent(q)}`);
-  } catch (e) {
-    STATE.search = { available: false, why: e.message };
-  }
+    const result = await api("GET", `/api/search?q=${encodeURIComponent(q)}${STATE.libSearchAll ? "" : "&library=1"}${root ? "&root=" + encodeURIComponent(root) : ""}`);
+    if (request !== librarySearchRequest || STATE.searchQ !== q) return;
+    STATE.search = result.available ? result : {error:result.why};
+  } catch (e) { if (request === librarySearchRequest && STATE.searchQ === q) STATE.search = {error:e.message}; }
   renderView();
 }
 
@@ -5099,186 +5125,150 @@ function renderAuditMetrics() {
 //
 // El tema Bodleian se afina encima de esto, con referencias. La estructura no lo espera.
 
-// Las raíces que son *conocimiento*, en el orden en que el router las presenta. El resto
-// del árbol (los proyectos, el sistema) se navega desde su propia sala.
-const LIB_SHELVES = ["00_INDEXES", "01_KERNEL", "02_Capture", "03_Storage",
-                     "04_Analysis&Modeling", "05_Visualization", "06_DeepLearning&RL",
-                     "07_BigData", "08_BIO", "96_COMPILED", "97_COURSEWORK"];
-
-const SHELF_LABEL = {
-  "00_INDEXES": "El router", "01_KERNEL": "Kernel", "02_Capture": "Captura",
-  "03_Storage": "Almacenamiento", "04_Analysis&Modeling": "Análisis y modelado",
-  "05_Visualization": "Visualización", "06_DeepLearning&RL": "Deep learning y RL",
-  "07_BigData": "Big data", "08_BIO": "Bio", "96_COMPILED": "Compilado",
-  "97_COURSEWORK": "Coursework"
-};
-
-function libFiles(root) {
-  return ((STATE.tree && STATE.tree.files) || []).filter(f => f.root === root);
+// Section taxonomy comes only from the adapter; folders come from the document catalog.
+function libraryLocation() {
+  return {root: STATE.libShelf || '', folder: STATE.libFolder || '', path: STATE.libNote?.path || '',
+    q: STATE.searchQ || '', anchor: STATE.libAnchor || '', all: Boolean(STATE.libSearchAll), searchRoot:STATE.libSearchRoot || ""};
 }
-
-window.openShelf = function (root) {
-  STATE.libShelf = root; STATE.libNote = null; STATE.currentView = "library"; renderView();
+function libFiles(root) { return (STATE.tree?.files || []).filter(f => f.root === root); }
+function libraryFiles() {
+  const roots = new Set((STATE.tree?.sections || []).map(s => s.root));
+  return (STATE.tree?.files || []).filter(f => roots.has(f.root));
+}
+function sectionLabel(root) { return STATE.tree?.sections?.find(s => s.root === root)?.label || root; }
+function folderLabel(name) { return name.replace(/^\d+(?:[._]\d+)*[-_]?/, '').replace(/[-_]/g, ' ').trim() || name; }
+window.openShelf = function(root, folder = '') { location.hash = Library.route({root, folder}); };
+window.openNote = function(root, path) { location.hash = Library.route({root, path, q: STATE.searchQ || '', all: STATE.libSearchAll, searchRoot:STATE.libSearchRoot}); };
+window.closeNote = window.backToHits = function() {
+  const loc = libraryLocation(); location.hash = Library.route({...loc, path: '', anchor: ''});
 };
-window.openNote = function (root, path) {
-  STATE.libShelf = root; STATE.libNote = { root, path };
-  STATE.currentView = "library"; renderView(); loadNote(root, path);
-  window.scrollTo({ top: 0, behavior: "smooth" });
+window.clearSearch = function() { location.hash = Library.route({root: STATE.libShelf || ''}); };
+window.librarySearch = function(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const q = form.elements.query.value.trim(), root = form.elements.scope.value;
+  location.hash = Library.route({root: root === '*' ? '' : root, q});
 };
-window.closeNote = function () { STATE.libNote = null; renderView(); };
-window.backToHits = function () { STATE.libNote = null; renderView(); };
-
+window.libraryLayout = function(layout) { STATE.libLayout = layout; renderView(); };
+window.libraryMore = function() { STATE.libLimit = (STATE.libLimit || 24) + 24; renderView(); };
+function libraryLink(text, loc, className = '') {
+  return `<a class="${className}" href="${esc(Library.route(loc))}">${esc(text)}</a>`;
+}
+function libraryBreadcrumb(root, folder, note) {
+  let html = libraryLink('Biblioteca', {});
+  if (root) html += ' <span>/</span> ' + libraryLink(sectionLabel(root), {root});
+  const parts = (folder || (note ? note.split('/').slice(0, -1).join('/') : '')).split('/').filter(Boolean);
+  parts.forEach((part, i) => { html += ' <span>/</span> ' + libraryLink(folderLabel(part), {root, folder: parts.slice(0, i + 1).join('/')}); });
+  return `<nav class="library-breadcrumb" aria-label="Ruta de lectura">${html}</nav>`;
+}
 function renderLibrary(container) {
   const t = STATE.tree;
-  if (t === undefined) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📚</div>
-      <h3>Abriendo la biblioteca…</h3></div>`;
-    return;
+  if (!t) { container.innerHTML = '<p class="library-status" role="status">Abriendo la biblioteca…</p>'; return; }
+  if (!t.available) { container.innerHTML = `<p class="library-status">${esc(t.why)} <button onclick="loadTree()">Reintentar</button></p>`; return; }
+  const loc = libraryLocation(), sections = t.sections || [], files = libraryFiles();
+  const note = loc.path ? (STATE.notes || {})[Library.key({root: loc.root, path: loc.path})] : null;
+  // Unrelated model loads must not replace a document or rerun its diagrams.
+  const signature = JSON.stringify([loc, STATE.libraryRevision, note?.version, note?.error, note?.body === undefined ? note?.loading : false, STATE.search, STATE.libLayout, STATE.libLimit]);
+  if (container.dataset.librarySignature === signature && container.querySelector('.library-browser')) return;
+  container.dataset.librarySignature = signature;
+  const header = `<header class="library-header"><div><h1>Biblioteca</h1><p>${files.length} documentos · ${sections.length} secciones</p></div>
+    <form class="library-search" onsubmit="librarySearch(event)" role="search" aria-label="Buscar documentos">
+      <label class="sr-only" for="library-query">Título, alias o texto</label><input id="library-query" name="query" type="search" placeholder="Buscar un tema, título o frase…" value="${esc(loc.q)}" minlength="2" required>
+      <label class="sr-only" for="library-scope">Dónde buscar</label><select id="library-scope" name="scope"><option value="*">Toda la biblioteca</option>${sections.map(s => `<option value="${esc(s.root)}" ${loc.root === s.root ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}</select><button type="submit">Buscar</button>
+    </form></header>`;
+  let body;
+  if (loc.path) body = renderNote();
+  else if (loc.q) body = renderSearchHits();
+  else if (loc.root) body = renderShelf(loc.root);
+  else body = `<div class="library-intro"><h2>¿Qué quieres consultar?</h2><p>Elige una sección y después un tema, o busca directamente un documento.</p></div>
+    <div class="library-sections">${sections.map(s => {
+      const fs = libFiles(s.root), group = Library.groups(fs, s.root);
+      const preview = group.folders.map(f => folderLabel(f.name)).slice(0, 3).join(' · ');
+      return `<a class="library-section" href="${esc(Library.route({root:s.root}))}"><span class="library-section-count">${fs.length} ${fs.length === 1 ? "documento" : "documentos"}</span><h2>${esc(s.label)}</h2><p>${esc(preview || fs.slice(0, 2).map(Library.title).join(' · '))}</p><span class="library-section-open">Explorar →</span></a>`;
+    }).join('')}</div>${sections.length ? '' : '<p>No hay secciones de biblioteca declaradas en el adaptador.</p>'}`;
+  container.innerHTML = `<div class="library-browser">${header}${body}</div>`;
+  if (loc.path && note?.body !== undefined) {
+    container.querySelectorAll('[data-reference]').forEach(link => link.addEventListener('click', event => {
+      event.preventDefault();
+      const panel = document.getElementById('library-references');
+      if (panel) panel.open = true;
+      document.getElementById('library-reference-' + link.dataset.reference)?.scrollIntoView({block:'center'});
+    }));
+    enhanceLibraryDiagrams(container);
   }
-  if (!t.available) {
-    // ⛔ Dos averías distintas con dos arreglos distintos, y el mensaje las contaba igual.
-    // Un 404 no es «no hay fondo declarado»: es **este servidor no conoce la ruta**, o sea
-    // que está corriendo una versión anterior. Decirlo ahorra buscar en el sitio equivocado.
-    const viejo = /404/.test(String(t.why || ""));
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📚</div>
-      <h3>${viejo ? "El servidor no conoce la biblioteca todavía"
-                  : "La biblioteca no tiene fondo declarado"}</h3>
-      <p>${viejo
-        ? "<strong>La ruta <code>/api/tree</code> ha devuelto 404</strong>, así que el servidor "
-          + "que está sirviendo esta página es anterior a ella. <strong>Reinícialo</strong> y la "
-          + "sala aparece — no hay nada que declarar ni que arreglar."
-        : inline(t.why || "")}</p>
-      ${!viejo && t.how ? `<p><code>${esc(t.how)}</code></p>` : ""}</div>`;
-    return;
-  }
-
-  const shelves = LIB_SHELVES.filter(r => (t.roots || []).includes(r));
-  const total = shelves.reduce((n, r) => n + libFiles(r).length, 0);
-  const shelf = STATE.libShelf && shelves.includes(STATE.libShelf) ? STATE.libShelf : null;
-
-  container.innerHTML = `
-    <div class="view-header">
-      <div class="view-title-group">
-        <h1><span>📚</span> Biblioteca</h1>
-        <p class="view-subtitle"><strong>Qué sabe esta empresa.</strong> Por materia y nunca por
-          ruta: ${total} notas en ${shelves.length} estanterías, leídas del disco.</p>
-      </div>
-    </div>
-
-    <div class="lib-room">
-      <aside class="lib-shelves">
-        <div class="lib-shelves-head">Estanterías</div>
-        ${shelves.map(r => {
-          const n = libFiles(r).length;
-          return `
-            <button class="lib-shelf ${r === shelf ? "is-open" : ""}" onclick="openShelf(${jsq(r)})">
-              <span class="lib-shelf-name">${esc(SHELF_LABEL[r] || r)}</span>
-              <span class="lib-shelf-n">${n}</span>
-            </button>`;
-        }).join("")}
-      </aside>
-      <div class="lib-main">${
-        STATE.libNote ? renderNote()
-        : STATE.search ? renderSearchHits()
-        : shelf ? renderShelf(shelf)
-        : renderLibFront(shelves)
-      }</div>
-    </div>`;
 }
-
-// La portada de la sala es el router del propio operador — ya es el índice por materia, así
-// que se renderiza en vez de inventar uno que se quedaría desincronizado (`MLabs:AX-20`).
-function renderLibFront(shelves) {
-  const router = libFiles("00_INDEXES").find(f => /ROUTER/i.test(f.path));
-  if (router) {
-    const key = `00_INDEXES/${router.path}`;
-    if (!(STATE.notes || {})[key]) loadNote("00_INDEXES", router.path);
-    const n = (STATE.notes || {})[key];
-    return `
-      <div class="lib-front-head">
-        <h2>${esc(router.title || router.path)}</h2>
-        <p>La portada de esta sala es tu propio router: dice qué existe, dónde está y cuándo
-           leerlo. <strong>No lo resumo — lo abro.</strong></p>
-      </div>
-      <section class="doc-reader lib-reader">${
-        n && n.body ? renderMarkdownBody(splitFrontmatter(n.body).body)
-        : n && n.error ? `<p class="lib-err">${inline(n.error)}</p>`
-        : "<p>Abriendo…</p>"}</section>`;
-  }
-  return `<div class="lib-front-head"><h2>Elige una estantería</h2>
-    <p>No hay router en <code>00_INDEXES</code>, así que la sala abre por sus estanterías.</p></div>`;
-}
-
-window.clearSearch = function () { STATE.search = null; STATE.searchQ = ""; 
-  const el = document.getElementById("globalSearch"); if (el) el.value = ""; renderView(); };
-
-function renderSearchHits() {
-  const s = STATE.search;
-  if (!s.available) {
-    return `<div class="lib-front-head"><h2>La búsqueda no ha podido correr</h2>
-      <p>${inline(s.why || "")}</p></div>`;
-  }
-  // Agrupados por fichero: veinte líneas del mismo sitio son un resultado, no veinte.
-  const porFichero = new Map();
-  for (const h of s.hits) {
-    const k = `${h.root}|${h.path}`;
-    if (!porFichero.has(k)) porFichero.set(k, []);
-    porFichero.get(k).push(h);
-  }
-  return `
-    <div class="lib-front-head">
-      <h2>«${esc(s.q)}» — ${s.hits.length} línea${s.hits.length === 1 ? "" : "s"}
-        en ${porFichero.size} fichero${porFichero.size === 1 ? "" : "s"}</h2>
-      <p>Leído del disco, no del modelo.${s.capped ? " ⚠️ <strong>Cortado</strong> en el tope: hay más." : ""}
-        <button class="crumb-link" onclick="clearSearch()">✕ limpiar</button></p>
-    </div>
-    ${porFichero.size === 0 ? `<p class="lib-err">Nada. Y eso también es un resultado.</p>` : ""}
-    ${[...porFichero.entries()].map(([k, hs]) => {
-      const [root, path] = k.split("|");
-      const f = libFiles(root).find(x => x.path === path);
-      return `
-        <section class="lib-group">
-          <h3 class="lib-group-head">
-            <button class="lib-hit-file" onclick="openNote(${jsq(root)}, ${jsq(path)})">
-              ${esc((f && f.title) || path)}</button>
-            <span>${hs.length}</span>
-          </h3>
-          <ul class="lib-hits">
-            ${hs.slice(0, 6).map(h => `
-              <li><button class="lib-hit" onclick="openNote(${jsq(root)}, ${jsq(path)})">
-                <span class="lib-hit-line">L${h.line}</span>
-                <span class="lib-hit-text">${esc(h.text)}</span></button></li>`).join("")}
-            ${hs.length > 6 ? `<li class="lib-hit-more">…y ${hs.length - 6} más en este fichero</li>` : ""}
-          </ul>
-        </section>`;
-    }).join("")}`;
-}
-
 function renderShelf(root) {
-  const files = libFiles(root);
-  // Agrupadas por su primera carpeta: es la materia dentro del dominio, y viene del árbol
-  // real en vez de una taxonomía inventada aquí.
-  const grupos = new Map();
-  for (const f of files) {
-    const parte = f.path.includes("/") ? f.path.split("/")[0] : "—";
-    if (!grupos.has(parte)) grupos.set(parte, []);
-    grupos.get(parte).push(f);
+  const folder = STATE.libFolder || '', {docs, folders} = Library.groups(STATE.tree.files, root, folder);
+  const limit = STATE.libLimit || 24, layout = STATE.libLayout || 'list';
+  return `${libraryBreadcrumb(root, folder)}<div class="library-intro"><h2>${esc(folder ? folderLabel(folder.split('/').pop()) : sectionLabel(root))}</h2><p>${folders.length ? 'Elige un tema para ver sus documentos.' : `${docs.length} documentos en este tema.`}</p></div>
+    ${folders.length ? `<div class="library-subjects">${folders.map(f => `<a href="${esc(Library.route({root, folder:f.path}))}"><strong>${esc(folderLabel(f.name))}</strong><span>${f.count} ${f.count === 1 ? "documento" : "documentos"} →</span></a>`).join('')}</div>` : ''}
+    ${docs.length ? `<div class="library-list-heading"><h3>${folders.length ? 'Documentos generales de la sección' : 'Documentos'}</h3><div role="group" aria-label="Presentación de documentos"><button aria-pressed="${layout === 'list'}" onclick="libraryLayout('list')">Lista</button><button aria-pressed="${layout === 'books'}" onclick="libraryLayout('books')">Lomos</button></div></div>
+    ${layout === 'books' ? `<div class="shelf"><div class="shelf-books">${docs.slice(0, limit).map(f => book(root, f)).join('')}</div><div class="shelf-plank"></div></div>` : `<div class="library-documents">${docs.slice(0, limit).map(f => `<a class="library-document" href="${esc(Library.route({root, path:f.path}))}"><span class="library-document-spine" aria-hidden="true" style="width:${Math.min(18, 5 + Math.sqrt(f.bytes / 1024))}px"></span><span><strong>${esc(Library.title(f))}</strong><small>${esc(f.path.split('/').pop())} · ${Math.max(1, Math.round(f.bytes / 1024))} KB</small></span><span aria-hidden="true">↗</span></a>`).join('')}</div>`}
+    ${docs.length > limit ? `<button class="library-more" onclick="libraryMore()">Mostrar más (${docs.length - limit} restantes)</button>` : ''}` : !folders.length ? '<p>No hay documentos en esta ubicación.</p>' : ''}`;
+}
+function renderSearchHits() {
+  const q = STATE.searchQ || '', root = STATE.libShelf || '', all = STATE.libSearchAll;
+  const catalog = (all ? STATE.tree.files : libraryFiles()).filter(f => !root || f.root === root);
+  const titleMatches = catalog.filter(f => Library.normalize([Library.title(f), f.path, ...(f.aliases || [])].join(' ')).includes(Library.normalize(q)));
+  const result = STATE.search, matches = new Map(titleMatches.map(f => [Library.key(f), {file:f, title:true}]));
+  for (const hit of result?.hits || []) {
+    const file = catalog.find(f => f.root === hit.root && f.path === hit.path);
+    if (file && !matches.has(Library.key(file))) matches.set(Library.key(file), {file, hit});
   }
-  return `
-    <div class="lib-front-head">
-      <h2>${esc(SHELF_LABEL[root] || root)}</h2>
-      <p>${files.length} nota${files.length === 1 ? "" : "s"} · <code>${esc(root)}</code>
-         · <em>pasa el ratón por un lomo para leer su título</em></p>
-    </div>
-    ${[...grupos.entries()].map(([g, fs]) => `
-      <section class="lib-group">
-        ${g !== "—" ? `<h3 class="lib-group-head">${esc(g.replace(/^\d+[-_]?/, "") || g)}
-          <span>${fs.length}</span></h3>` : ""}
-        <div class="shelf">
-          <div class="shelf-books">${fs.map(f => book(root, f)).join("")}</div>
-          <div class="shelf-plank"></div>
-        </div>
-      </section>`).join("")}`;
+  return `${libraryBreadcrumb(root)}<div class="library-intro"><h2>Resultados para «${esc(q)}»</h2><p>${matches.size} documentos${all ? ' · todas las carpetas navegables' : root ? ' · ' + esc(sectionLabel(root)) : ' · toda la biblioteca'}${result?.loading ? ' · buscando en el texto…' : ''}</p>${libraryLink('Limpiar búsqueda', {root})}</div>
+    ${result?.error ? `<p role="alert">La búsqueda en el texto ha fallado: ${esc(result.error)}. Se muestran coincidencias por título. <button onclick="loadSearch(STATE.searchQ)">Reintentar</button></p>` : ''}
+    ${result?.capped ? '<p>Hay más resultados de texto. Afina la búsqueda para acotarlos.</p>' : ''}
+    <div class="library-results">${[...matches.values()].map(({file, hit}) => `<a href="${esc(Library.route({root:file.root, path:file.path, q, all, searchRoot:root}))}"><strong>${esc(Library.title(file))}</strong><small>${esc(sectionLabel(file.root))} · ${esc(file.path)}</small>${hit ? `<p>${esc(hit.text)}</p>` : ''}</a>`).join('')}</div>
+    ${!matches.size && !result?.loading ? '<p>No se han encontrado documentos. Prueba otra palabra o amplía la sección.</p>' : ''}`;
+}
+function renderNote() {
+  const {root, path} = STATE.libNote, key = Library.key({root, path});
+  const file = STATE.tree.files.find(f => f.root === root && f.path === path);
+  const n = (STATE.notes || {})[key];
+  if (!n || n.stale) setTimeout(() => loadNote(root, path), 0);
+  const top = libraryBreadcrumb(root, '', path) + (STATE.searchQ ? libraryLink('← Volver a los resultados', {root:STATE.libSearchRoot || '', q:STATE.searchQ, all:STATE.libSearchAll}, 'library-return') : '');
+  if (n?.body === undefined) return `${top}<p class="library-status" role="status">${n?.error ? esc(n.error) : 'Abriendo documento…'}</p>${n?.error ? `<button onclick="loadNote(${jsq(root)},${jsq(path)},true)">Reintentar</button>` : ''}`;
+  const source = splitFrontmatter(n.body);
+  const rendered = n.rendered || (n.rendered = Library.render(source.body, {root,path}, STATE.tree.files));
+  const missingAnchor = STATE.libAnchor && !rendered.outline.some(h => h.id === "note-heading-" + Library.slug(STATE.libAnchor));
+  return `${top}<div class="library-reading-layout"><aside class="library-outline"><details id="library-outline"><summary>En este documento <span>${rendered.outline.length}</span></summary><nav aria-label="Índice del documento">${rendered.outline.map(h => libraryLink(h.text, {...libraryLocation(), anchor:h.anchor}, `outline-level-${h.level}`)).join('')}</nav></details></aside>
+    <div class="library-paper">${missingAnchor ? `<p id="library-missing-anchor" class="library-format-note" role="alert">No se encuentra el apartado «${esc(STATE.libAnchor)}» en este documento. Usa su índice para elegir un apartado actual.</p>` : ''}${n.error ? `<p role="alert">No se ha podido actualizar: ${esc(n.error)}. Se conserva la última lectura.</p>` : ''}
+    <div class="library-source-name">${esc(file?.path || path)}</div>${renderMeta(source.meta)}
+    <article class="note-prose" aria-label="Contenido del documento">${rendered.html || '<p>Este documento está vacío.</p>'}</article>
+    ${rendered.html.includes('class="katex-error"') ? '<p class="library-format-note">Alguna fórmula contiene sintaxis que no se puede representar. Se muestra su texto original.</p>' : ''}
+    ${rendered.problems.length ? `<details id="library-references" class="library-references"><summary>${rendered.problems.length} referencias sin destino único</summary><p>Estos enlaces necesitan un destino existente o una ruta más precisa en el documento original.</p>${rendered.problems.map((p,i) => `<div id="library-reference-${i}"><strong>${esc(p.target)}</strong><p>${p.kind === 'ambiguous' ? 'Hay varios documentos con ese nombre:' : 'No se encuentra en las carpetas navegables.'}</p>${(p.matches || []).map(f => libraryLink(`${sectionLabel(f.root)} / ${f.path}`, {root:f.root,path:f.path,anchor:p.anchor})).join('')}</div>`).join('')}</details>` : ''}
+    <details id="library-source" class="library-original"><summary>Ver Markdown original</summary><pre><code>${esc(n.body)}</code></pre></details></div></div>`;
+}
+let mermaidLoader;
+const libraryDiagramCache = new Map();
+let diagramSequence = 0;
+async function enhanceLibraryDiagrams(container) {
+  const figures = [...container.querySelectorAll('.note-diagram')];
+  if (!figures.length) return;
+  mermaidLoader ||= new Promise((resolve, reject) => {
+    const script = document.createElement('script'); script.src = 'vendor/mermaid/mermaid.min.js';
+    script.onload = () => { window.mermaid.initialize({startOnLoad:false, securityLevel:'strict', theme:'neutral', suppressErrorRendering:true, maxTextSize:100000}); resolve(window.mermaid); };
+    script.onerror = () => { mermaidLoader = null; reject(new Error('No se ha podido cargar el lector de diagramas.')); };
+    document.head.appendChild(script);
+  });
+  for (const [index, figure] of figures.entries()) {
+    const output = figure.querySelector('.diagram-output'), source = figure.querySelector('code').textContent;
+    try {
+      const cacheKey = JSON.stringify([STATE.libNote, index, source]);
+      let svg = libraryDiagramCache.get(cacheKey);
+      if (!svg) {
+        const mermaid = await mermaidLoader;
+        if (!figure.isConnected) return;
+        // Rendering is serialized by Mermaid; keep source directives from changing security settings.
+        const result = await mermaid.render('library-diagram-' + (++diagramSequence), source);
+        svg = result.svg; libraryDiagramCache.set(cacheKey, svg);
+        if (libraryDiagramCache.size > 80) libraryDiagramCache.delete(libraryDiagramCache.keys().next().value);
+      }
+      if (figure.isConnected) { output.innerHTML = svg; output.setAttribute('aria-busy','false'); }
+    } catch {
+      if (figure.isConnected) { output.textContent = 'No se ha podido representar este diagrama. Su código está disponible debajo.'; output.setAttribute('aria-busy','false'); figure.querySelector('details').open = true; }
+    }
+  }
 }
 
 // Un lomo. ⛔ **Alto y ancho salen del tamaño real de la nota**, no de un aleatorio: un
@@ -5316,14 +5306,10 @@ function book(root, f) {
 // qué va una nota; lo que no puede es competir con la primera línea de prosa.
 function splitFrontmatter(md) {
   const t = String(md || "");
-  if (!t.startsWith("---")) return { meta: null, body: t };
-  const fin = t.indexOf("\n---", 3);
-  if (fin === -1) return { meta: null, body: t };
-  const crudo = t.slice(3, fin);
-  const resto = t.slice(t.indexOf("\n", fin + 1) + 1);
-  // Un YAML de verdad necesitaría una librería, y `AX-7` no admite dependencias. Esto lee
-  // lo que estas notas escriben — `clave: valor` y listas con `-` — y **lo que no entiende
-  // lo deja pasar como una fila más**, nunca lo tira.
+  const front = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(t);
+  if (!front) return {meta:null, body:t};
+  const crudo = front[1], resto = t.slice(front[0].length);
+  // The metadata panel accepts simple fields and lists; unrecognized YAML stays visible.
   const campos = [];
   let clave = null;
   for (const ln of crudo.split("\n")) {
@@ -5348,26 +5334,6 @@ function renderMeta(meta) {
       <dl>${meta.map(c => `
         <dt>${esc(c.k || "—")}</dt><dd>${c.v.map(v => esc(v)).join(" · ")}</dd>`).join("")}</dl>
     </details>`;
-}
-
-function renderNote() {
-  const { root, path } = STATE.libNote;
-  const n = (STATE.notes || {})[`${root}/${path}`] || {};
-  const f = libFiles(root).find(x => x.path === path) || {};
-  return `
-    <div class="lib-crumb">
-      ${STATE.search ? `<button class="crumb-link" onclick="backToHits()">◂ resultados de «${esc(STATE.search.q || "")}»</button>`
-                     : `<button class="crumb-link" onclick="openShelf(${jsq(root)})">◂ ${esc(SHELF_LABEL[root] || root)}</button>`}
-      <span class="crumb-here">${esc(path)}</span>
-    </div>
-    <div class="lib-front-head">
-      <h2>${esc(f.title || path.split("/").pop())}</h2>
-    </div>
-    ${n.body ? renderMeta(splitFrontmatter(n.body).meta) : ""}
-    <section class="doc-reader lib-reader">${
-      n.body ? renderMarkdownBody(splitFrontmatter(n.body).body)
-      : n.error ? `<p class="lib-err">${inline(n.error)}</p>`
-      : "<p>Abriendo…</p>"}</section>`;
 }
 
 function renderDashboard(container) {
