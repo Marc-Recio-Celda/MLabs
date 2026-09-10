@@ -99,6 +99,7 @@ def load_adapter(path):
         "metrics": data.get("metrics"),
         # ⛔ Qué se puede navegar lo declara la instancia. El motor no nombra ninguna raíz.
         "browse": data.get("browse") or [],
+        "library": data.get("library") or {},
         "path": str(p)
     }
 
@@ -123,7 +124,7 @@ def _browse_roots(adapter):
     return out
 
 
-def _contained(adapter, rel):
+def _contained(adapter, rel, root=None):
     """La ruta pedida, resuelta y **dentro** de una raíz navegable, o `None`.
 
     ⛔ Se comprueba sobre la ruta YA RESUELTA, que es lo que neutraliza `../`, las rutas
@@ -137,15 +138,19 @@ def _contained(adapter, rel):
     rel = urllib.parse.unquote(rel)           # `..%2f` es `../` una vez decodificado
     if "\x00" in rel or not rel.endswith(".md"):
         return None
-    for raiz in _browse_roots(adapter):
-        f = (raiz / rel.lstrip("/")).resolve()
+    matches = []
+    for name, raiz in _browse_scopes(adapter):
+        if root is not None and name != root:
+            continue
+        f = (raiz / rel).resolve()
         try:
             f.relative_to(raiz)               # lanza si cae fuera; no compara cadenas
         except ValueError:
             continue
         if f.is_file():
-            return f
-    return None
+            matches.append(f)
+    # An unscoped legacy link must never choose the first duplicate.
+    return matches[0] if len(matches) == 1 else None
 
 
 def _walk(raiz):
@@ -168,39 +173,69 @@ def _walk(raiz):
             yield f, real
 
 
+def _browse_scopes(adapter):
+    return [(rel, (adapter["root"] / rel).resolve())
+            for rel in adapter.get("browse", [])
+            if (adapter["root"] / rel).resolve().is_dir()]
+
+
+def _library_sections(adapter):
+    declared = {name for name, _ in _browse_scopes(adapter)}
+    sections, seen = [], set()
+    for section in adapter.get("library", {}).get("sections", []):
+        root = section.get("root")
+        if root in declared and root not in seen:
+            sections.append({"root": root, "label": section.get("label") or root})
+            seen.add(root)
+    return sections
+
+
+def _note_metadata(body):
+    """Read simple title/alias metadata; preserve the full YAML in the document response."""
+    aliases = []
+    front = re.match(r"\A---\s*\n(.*?)\n---(?:\n|$)", body, re.S)
+    if front:
+        alias = re.search(r"^aliases?:[ \t]*(.*)(?:\n((?:[ \t]*-[^\n]*\n?)*))", front[1] + "\n", re.M)
+        if alias:
+            value = alias[1].strip()
+            if value.startswith("[") and value.endswith("]"):
+                import csv
+                aliases = next(csv.reader([value[1:-1]], skipinitialspace=True))
+            elif value:
+                aliases = [value]
+            else:
+                aliases = re.findall(r"^[ \t]*-[ \t]+(.+)", alias[2], re.M)
+            aliases = [v.strip().strip("\"'") for v in aliases if v.strip()]
+        body = body[front.end():]
+    title = re.search(r"^# +(.+)$", body, re.M)
+    return {"title": title[1].strip() if title else "", "aliases": aliases}
+
+
 def tree(adapter):
-    """Metadatos de cada `.md` navegable. **Sin cuerpos**: el árbol es barato, el texto no."""
-    roots = _browse_roots(adapter)
-    if not roots:
-        return {"available": False,
-                "why": "el adaptador no declara `browse`",
-                "how": 'añade {"browse": ["93_Notebook", "01_KERNEL", …]} al adaptador'}
+    """Catalog metadata only. Root identity and section labels belong to the adapter."""
+    scopes = _browse_scopes(adapter)
+    if not scopes:
+        return {"available": False, "why": "El adaptador no declara carpetas navegables (browse)."}
     files = []
-    for raiz in roots:
-        for f, real in _walk(raiz):
-            title = ""
+    for name, directory in scopes:
+        for file, real in _walk(directory):
             try:
-                with real.open(encoding="utf-8", errors="replace") as fh:
-                    for _ in range(40):       # el `# ` suele estar arriba; no se lee entero
-                        line = fh.readline()
-                        if not line:
-                            break
-                        if line.startswith("# "):
-                            title = line[2:].strip()
-                            break
+                metadata = _note_metadata(real.read_text(encoding="utf-8", errors="replace"))
+                st = real.stat()
+                files.append({"root": name, "path": file.relative_to(directory).as_posix(),
+                              **metadata, "bytes": st.st_size, "mtime": int(st.st_mtime),
+                              "version": f"{st.st_mtime_ns}:{st.st_size}"})
             except OSError:
-                pass
-            st = real.stat()
-            files.append({"root": raiz.name, "path": str(f.relative_to(raiz)),
-                          "title": title, "bytes": st.st_size, "mtime": int(st.st_mtime)})
-    return {"available": True, "roots": [r.name for r in roots], "files": files}
+                continue
+    return {"available": True, "roots": [name for name, _ in scopes],
+            "sections": _library_sections(adapter), "files": files}
 
 
-def read_file(adapter, rel):
-    f = _contained(adapter, rel)
+def read_file(adapter, rel, root=None):
+    f = _contained(adapter, rel, root)
     if not f:
-        return {"available": False, "why": "fuera de lo navegable, o no es un .md que exista"}
-    return {"available": True, "path": rel,
+        return {"available": False, "why": "Documento ausente, ambiguo o fuera de las carpetas navegables."}
+    return {"available": True, "root": root, "path": rel,
             "body": f.read_text(encoding="utf-8", errors="replace")}
 
 
@@ -340,19 +375,22 @@ def task_sheet(adapter, task_id):
             "order_why": meta.get("order_why", "")}
 
 
-def search(adapter, q, limit=200):
+def search(adapter, q, limit=200, library=False, root=None):
     """El `grep` que el operador corre fuera. Sobre las mismas raíces y nada más."""
     q = (q or "").strip()
     if len(q) < 2:
         return {"available": False, "why": "hacen falta al menos dos caracteres"}
     needle, hits = q.lower(), []
-    for raiz in _browse_roots(adapter):
+    allowed = {s["root"] for s in _library_sections(adapter)} if library else None
+    for name, raiz in _browse_scopes(adapter):
+        if (allowed is not None and name not in allowed) or (root and name != root):
+            continue
         for f, real in _walk(raiz):
             try:
                 for n, line in enumerate(real.read_text(encoding="utf-8", errors="replace")
                                          .splitlines(), 1):
                     if needle in line.lower():
-                        hits.append({"root": raiz.name, "path": str(f.relative_to(raiz)),
+                        hits.append({"root": name, "path": str(f.relative_to(raiz)),
                                      "line": n, "text": line.strip()[:240]})
                         if len(hits) >= limit:
                             return {"available": True, "q": q, "hits": hits, "capped": True}
@@ -541,7 +579,7 @@ def make_handler(adapter):
         def _send(self, code, body, ctype="application/json"):
             if isinstance(body, (dict, list)):
                 body = json.dumps(body, ensure_ascii=False)
-            payload = body.encode("utf-8")
+            payload = body if isinstance(body, bytes) else body.encode("utf-8")
             encoding = None
             if (len(payload) >= self.GZIP_MIN
                     and "gzip" in self.headers.get("Accept-Encoding", "")):
@@ -626,14 +664,13 @@ def make_handler(adapter):
                 result = task_sheet(adapter, task_id)
                 self._send(200 if result.get("available") else 404, result)
             elif path == "/api/file":
-                rel = urllib.parse.parse_qs(
-                    self.path.split("?", 1)[1] if "?" in self.path else "").get("path", [""])[0]
-                r = read_file(adapter, rel)
+                params = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
+                r = read_file(adapter, params.get("path", [""])[0], params.get("root", [None])[0])
                 self._send(200 if r.get("available") else 404, r)
             elif path == "/api/search":
-                q = urllib.parse.parse_qs(
-                    self.path.split("?", 1)[1] if "?" in self.path else "").get("q", [""])[0]
-                self._send(200, search(adapter, q))
+                params = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
+                self._send(200, search(adapter, params.get("q", [""])[0],
+                                     library=params.get("library") == ["1"], root=params.get("root", [None])[0]))
             elif path == "/api/metrics":
                 # `interface:I3.1` — las firings de los roles son la única medida de la salud
                 # del sistema, y eran lo único que esta interfaz no podía pintar. El script ya
@@ -652,7 +689,7 @@ def make_handler(adapter):
                     ctype = mimetypes.guess_type(f.name)[0] or "application/octet-stream"
                     if ctype.startswith("text/") or ctype in ("application/javascript", "application/json"):
                         ctype += "; charset=utf-8"
-                    self._send(200, f.read_text(encoding="utf-8", errors="replace"), ctype)
+                    self._send(200, f.read_bytes(), ctype)
                 else:
                     self._send(404, f"Not found: {path}", "text/plain")
 
