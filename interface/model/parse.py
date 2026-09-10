@@ -483,6 +483,27 @@ def parse_wall(path, text):
                 cur["drains"] = v
             if cur.get("sheet"):
                 cur["described_in"] = cur["sheet"]
+    # Keep the task's activity and multiline fields. The first-line reader above retains
+    # legacy inline metadata; paragraph continuation belongs to the same declared field.
+    field_keys = {"Serves": "serves", "Sheet": "sheet", "Why it is committed": "why",
+                  "What it affects": "affects", "Drains": "drains", "Returns when": "returns_when"}
+    for e in ents:
+        start = e["line"]
+        end = next((j for j in range(start, len(lines)) if re.match(r"^#{1,3} ", lines[j])), len(lines))
+        description, active_key = [], None
+        for line in lines[start:end]:
+            field = WALL_FIELD.match(line.strip())
+            if field:
+                active_key = field_keys.get(field["k"])
+                # Inline metadata is complete on this line, not a paragraph continuation.
+                if re.search(r"·\s*\*\*(?:" + "|".join(field_keys) + r"|Opened|Closed|Deferred)\*\*", field["v"]):
+                    active_key = None
+                continue
+            if active_key and line.strip():
+                e[active_key] = (e.get(active_key) or "") + " " + clean(line)
+            elif not active_key:
+                description.append(line)
+        e["description"] = "\n".join(description).strip()
     # ⛔ Every task carries the four fields (`MLabs:AX-46`) and a missing one is NAMED, never
     # counted. "Four are short" does not say which four, and the whole point of the contract is
     # that a reader can act on the answer.
@@ -761,6 +782,174 @@ def parse_plan(path, text):
     return ents, probs
 
 
+def parse_project_blocks(path, text):
+    lines, probs = text.splitlines(), []
+    # 3. Extract Ramified Blocks & Subblocks Hierarchy
+    board_blocks = []
+    current_block = None
+    in_board_section = False
+
+    for i, line in enumerate(lines):
+        # Detect start of board or progress sections
+        if re.search(r"^##\s+\d*\.?\s*(The board|Progress by Block|Roadmap|Blocks)\b", line, re.I):
+            in_board_section = True
+            current_block = None
+            continue
+        # Stop board extraction if we hit a different level-2 section like "Active risks", "Iteration history", etc.
+        elif in_board_section and re.match(r"^##\s+\d*\.?\s*(Active risks|Cross-project|Iteration history|Do not re-investigate|Sources|Topology|Evidence|Where it stands|Notes|Appendix)", line, re.I):
+            in_board_section = False
+            current_block = None
+            break
+
+        if not in_board_section:
+            continue
+
+        # Format A: ### `Xn` · Block Title
+        m_head = re.match(r"^###\s+[`\*]*([A-Z0-9\._-]+)[`\*]*\s*[·–-]\s*(.+)", line)
+        if m_head:
+            b_id = m_head.group(1).strip()
+            # Only valid block ids like A1, B3, S1, TR1, P2, etc.
+            if BLOCK_ID.match(b_id):
+                b_title = m_head.group(2).strip()
+                current_block = {
+                    "id": b_id,
+                    "title": b_title.replace("**", "").replace("`", ""),
+                    "status": "active" if any(sym in b_title for sym in ["🔨", "▶", "⛔"]) else ("completed" if "✅" in b_title else "pending"),
+                    "summary": b_title.replace("**", "").replace("`", ""),
+                    "subblocks": []
+                }
+                board_blocks.append(current_block)
+                continue
+            elif ID_LIKE.match(b_id):
+                probs.append(Problem(path, i + 1, f"a board block id the grammar cannot place: {b_id!r}", line))
+                current_block = None   # and DETACH: never let this heading's rows join the block above
+                continue
+
+        # ⚠️ A `###` heading the pattern above could not read AT ALL still ends the previous
+        # block. Without this, its rows kept appending to the block above it — which is worse
+        # than dropping them: a row that belongs nowhere was being shown under a real id, and
+        # nothing said so. Reported only when the heading is TRYING to be an id.
+        if line.startswith("### "):
+            tried = HEADING_SHAPE.match(line)
+            if tried and ID_LIKE.match(tried.group(1)):
+                probs.append(Problem(path, i + 1, f"a board heading the grammar cannot read: {tried.group(1)!r}", line))
+            current_block = None
+            continue
+
+        if current_block and line.startswith("|") and not line.startswith("|---") and not line.startswith("| #") and not line.startswith("| |") and not line.startswith("| Kind"):
+            parts = [p.strip() for p in line.split("|")[1:-1]]
+            if len(parts) >= 3 and not parts[0].startswith("---"):
+                sub_id_m = HEAD_TOKEN.match(parts[0])
+                if sub_id_m:
+                    sub_id = sub_id_m.group(1)
+                    # Validate subblock pattern e.g. A1.1, B8.2, S1.3, TR1.2
+                    if SUBBLOCK_ID.match(sub_id):
+                        # BY NAME, which is the rule `GRAMMAR.md` calls non-negotiable and which
+                        # `parse_compass` already obeys. ⚠️ THIS READER WAS POSITIONAL — `parts[1]`,
+                        # `parts[2]`, `parts[-1]`, never `parts[3]` — so the five-column board tables
+                        # lost their `Waits on` cell entirely: 125 of 198 sub-block rows are in one,
+                        # and 78 carry a real dependency. **That is the dependency graph an order of
+                        # work needs, and it was discarded without a word.**
+                        head = header_of(lines, i) or []
+                        # Supporting tables can also have ids. Their findings or evidence
+                        # stay in the source document; they are not empty plan steps.
+                        if head and "What" not in head:
+                            continue
+                        g = dict(zip(head, parts)) if len(head) == len(parts) else None
+                        if g is None:
+                            probs.append(Problem(path, i + 1,
+                                "a board row whose cell count does not match its header — read by "
+                                f"position as a fallback ({len(parts)} cells, header {len(head)})",
+                                line))
+                            g = {}
+                            kind = parts[1] if len(parts) > 1 else ""
+                            what = parts[2] if len(parts) > 2 else ""
+                            status_str = parts[-1] if len(parts) >= 4 else ""
+                        else:
+                            kind = g.get("Kind", "")
+                            what = g.get("What", "")
+                            status_str = g.get("Status", "")
+                        # ⚠️ EMITTED WHETHER OR NOT THE TABLE HAS THE COLUMN (`AX-24`): a field that
+                        # may legitimately be empty is written empty, so a consumer can tell "no
+                        # dependency" from "this reader never looked".
+                        waits = clean(g.get("Waits on") or g.get("Waits On") or g.get("Depends On") or "")
+                        current_block["subblocks"].append({
+                            "id": sub_id,
+                            "kind": kind,
+                            "title": what.replace("**", "").replace("`", ""),
+                            "desc": what.replace("**", "").replace("`", ""),
+                            "waits_on": "" if waits in ("—", "-", "–") else waits,
+                            "status_text": status_str,
+                            # ⚠️ `"open"` WAS IN THIS LIST AND IS A SUBSTRING, NOT A MARKER. It
+                            # matched any status cell whose prose contained the letters — 22 rows
+                            # painted `active` while their marker said ⬜. The markers are the
+                            # vocabulary; a word in a sentence is not one.
+                            "status": "completed" if "✅" in status_str else ("active" if any(s in status_str for s in ["🔨", "▶", "🔴"]) else "pending")
+                        })
+                    elif ID_LIKE.match(sub_id):
+                        probs.append(Problem(path, i + 1, f"a sub-block id the grammar cannot place: {sub_id!r}", line))
+
+    # Format B: "Progress by Block" Table
+    if not board_blocks:
+        in_prog = False
+        for i, line in enumerate(lines):
+            if "Progress by Block" in line:
+                in_prog = True
+                continue
+            elif in_prog and (line.startswith("## ") or line.startswith("---")):
+                in_prog = False
+            elif in_prog and line.startswith("|") and not line.startswith("|---") and not line.startswith("| Block"):
+                parts = [p.strip() for p in line.split("|")[1:-1]]
+                if len(parts) >= 3 and not parts[0].startswith("---"):
+                    b_id_m = HEAD_TOKEN.match(parts[0])
+                    if b_id_m and BLOCK_ID.match(b_id_m.group(1)):
+                        b_id = b_id_m.group(1)
+                        b_name = parts[0].replace(b_id, "").replace("**", "").replace("`", "").strip()
+                        status_raw = parts[1]
+                        what = parts[2].replace("**", "").replace("`", "")
+                        board_blocks.append({
+                            "id": b_id,
+                            "title": b_name or what,
+                            "status": "completed" if "✅" in status_raw else ("active" if any(s in status_raw for s in ["🔨", "▶"]) else "pending"),
+                            "summary": what,
+                            "subblocks": []
+                        })
+                    elif ID_LIKE.match(b_id_m.group(1)):
+                        probs.append(Problem(path, i + 1, f"a board block id the grammar cannot place: {b_id_m.group(1)!r}", line))
+
+        # Match subblocks sections like "## 6. B8 — Sub-Blocks"
+        for b in board_blocks:
+            b_id_str = b["id"]
+            sub_sec_name = b_id_str + " — Sub-Blocks"
+            in_sub = False
+            for i, line in enumerate(lines):
+                if sub_sec_name in line or (b_id_str in line and "Sub-Blocks" in line):
+                    in_sub = True
+                    continue
+                elif in_sub and (line.startswith("## ") or line.startswith("---")):
+                    in_sub = False
+                elif in_sub and line.startswith("|") and not line.startswith("|---") and not line.startswith("| #") and not line.startswith("| Sub-block"):
+                    parts = [p.strip() for p in line.split("|")[1:-1]]
+                    if len(parts) >= 3 and not parts[0].startswith("---"):
+                        sub_id_m = HEAD_TOKEN.match(parts[0])
+                        if sub_id_m:
+                            sub_id = sub_id_m.group(1)
+                            if SUBBLOCK_ID.match(sub_id):
+                                sub_title = parts[1] if len(parts) > 1 else ""
+                                sub_closes = parts[2] if len(parts) > 2 else ""
+                                sub_status = parts[3] if len(parts) > 3 else (parts[-1] if len(parts) >= 3 else "")
+                                b["subblocks"].append({
+                                    "id": sub_id,
+                                    "title": sub_title.replace("**", "").replace("`", ""),
+                                    "desc": sub_closes.replace("**", "").replace("`", ""),
+                                    "status": "completed" if "✅" in sub_status else ("active" if any(s in sub_status for s in ["🔨", "▶"]) else "pending")
+                                })
+                            elif ID_LIKE.match(sub_id):
+                                probs.append(Problem(path, i + 1, f"a sub-block id the grammar cannot place: {sub_id!r}", line))
+
+    return board_blocks, probs
+
+
 def parse_standing(path, text, project_pattern=None):
     """A project's state. Reads its header fields, definition, phase, and ramified blocks."""
     lines = text.splitlines()
@@ -836,163 +1025,8 @@ def parse_standing(path, text, project_pattern=None):
     if what_lines:
         definition = " ".join(what_lines).replace("**", "").replace("`", "")
 
-    # 3. Extract Ramified Blocks & Subblocks Hierarchy
-    board_blocks = []
-    current_block = None
-    in_board_section = False
-
-    for i, line in enumerate(lines):
-        # Detect start of board or progress sections
-        if re.search(r"^##\s+\d*\.?\s*(The board|Progress by Block|Roadmap|Blocks)\b", line, re.I):
-            in_board_section = True
-            current_block = None
-            continue
-        # Stop board extraction if we hit a different level-2 section like "Active risks", "Iteration history", etc.
-        elif in_board_section and re.match(r"^##\s+\d*\.?\s*(Active risks|Cross-project|Iteration history|Do not re-investigate|Sources|Topology|Evidence|Where it stands|Notes|Appendix)", line, re.I):
-            in_board_section = False
-            current_block = None
-            break
-
-        if not in_board_section:
-            continue
-
-        # Format A: ### `Xn` · Block Title
-        m_head = re.match(r"^###\s+[`\*]*([A-Z0-9\._-]+)[`\*]*\s*[·–-]\s*(.+)", line)
-        if m_head:
-            b_id = m_head.group(1).strip()
-            # Only valid block ids like A1, B3, S1, TR1, P2, etc.
-            if BLOCK_ID.match(b_id):
-                b_title = m_head.group(2).strip()
-                current_block = {
-                    "id": b_id,
-                    "title": b_title.replace("**", "").replace("`", ""),
-                    "status": "active" if any(sym in b_title for sym in ["🔨", "▶", "⛔"]) else ("completed" if "✅" in b_title else "pending"),
-                    "summary": b_title.replace("**", "").replace("`", ""),
-                    "subblocks": []
-                }
-                board_blocks.append(current_block)
-                continue
-            elif ID_LIKE.match(b_id):
-                probs.append(Problem(path, i + 1, f"a board block id the grammar cannot place: {b_id!r}", line))
-                current_block = None   # and DETACH: never let this heading's rows join the block above
-                continue
-
-        # ⚠️ A `###` heading the pattern above could not read AT ALL still ends the previous
-        # block. Without this, its rows kept appending to the block above it — which is worse
-        # than dropping them: a row that belongs nowhere was being shown under a real id, and
-        # nothing said so. Reported only when the heading is TRYING to be an id.
-        if line.startswith("### "):
-            tried = HEADING_SHAPE.match(line)
-            if tried and ID_LIKE.match(tried.group(1)):
-                probs.append(Problem(path, i + 1, f"a board heading the grammar cannot read: {tried.group(1)!r}", line))
-            current_block = None
-            continue
-
-        if current_block and line.startswith("|") and not line.startswith("|---") and not line.startswith("| #") and not line.startswith("| |") and not line.startswith("| Kind"):
-            parts = [p.strip() for p in line.split("|")[1:-1]]
-            if len(parts) >= 3 and not parts[0].startswith("---"):
-                sub_id_m = HEAD_TOKEN.match(parts[0])
-                if sub_id_m:
-                    sub_id = sub_id_m.group(1)
-                    # Validate subblock pattern e.g. A1.1, B8.2, S1.3, TR1.2
-                    if SUBBLOCK_ID.match(sub_id):
-                        # BY NAME, which is the rule `GRAMMAR.md` calls non-negotiable and which
-                        # `parse_compass` already obeys. ⚠️ THIS READER WAS POSITIONAL — `parts[1]`,
-                        # `parts[2]`, `parts[-1]`, never `parts[3]` — so the five-column board tables
-                        # lost their `Waits on` cell entirely: 125 of 198 sub-block rows are in one,
-                        # and 78 carry a real dependency. **That is the dependency graph an order of
-                        # work needs, and it was discarded without a word.**
-                        head = header_of(lines, i) or []
-                        g = dict(zip(head, parts)) if len(head) == len(parts) else None
-                        if g is None:
-                            probs.append(Problem(path, i + 1,
-                                "a board row whose cell count does not match its header — read by "
-                                f"position as a fallback ({len(parts)} cells, header {len(head)})",
-                                line))
-                            g = {}
-                            kind = parts[1] if len(parts) > 1 else ""
-                            what = parts[2] if len(parts) > 2 else ""
-                            status_str = parts[-1] if len(parts) >= 4 else ""
-                        else:
-                            kind = g.get("Kind", "")
-                            what = g.get("What", "")
-                            status_str = g.get("Status", "")
-                        # ⚠️ EMITTED WHETHER OR NOT THE TABLE HAS THE COLUMN (`AX-24`): a field that
-                        # may legitimately be empty is written empty, so a consumer can tell "no
-                        # dependency" from "this reader never looked".
-                        waits = clean(g.get("Waits on") or g.get("Waits On") or g.get("Depends On") or "")
-                        current_block["subblocks"].append({
-                            "id": sub_id,
-                            "kind": kind,
-                            "title": what.replace("**", "").replace("`", ""),
-                            "desc": what.replace("**", "").replace("`", ""),
-                            "waits_on": "" if waits in ("—", "-", "–") else waits,
-                            # ⚠️ `"open"` WAS IN THIS LIST AND IS A SUBSTRING, NOT A MARKER. It
-                            # matched any status cell whose prose contained the letters — 22 rows
-                            # painted `active` while their marker said ⬜. The markers are the
-                            # vocabulary; a word in a sentence is not one.
-                            "status": "completed" if "✅" in status_str else ("active" if any(s in status_str for s in ["🔨", "▶", "🔴"]) else "pending")
-                        })
-                    elif ID_LIKE.match(sub_id):
-                        probs.append(Problem(path, i + 1, f"a sub-block id the grammar cannot place: {sub_id!r}", line))
-
-    # Format B: "Progress by Block" Table
-    if not board_blocks:
-        in_prog = False
-        for i, line in enumerate(lines):
-            if "Progress by Block" in line:
-                in_prog = True
-                continue
-            elif in_prog and (line.startswith("## ") or line.startswith("---")):
-                in_prog = False
-            elif in_prog and line.startswith("|") and not line.startswith("|---") and not line.startswith("| Block"):
-                parts = [p.strip() for p in line.split("|")[1:-1]]
-                if len(parts) >= 3 and not parts[0].startswith("---"):
-                    b_id_m = HEAD_TOKEN.match(parts[0])
-                    if b_id_m and BLOCK_ID.match(b_id_m.group(1)):
-                        b_id = b_id_m.group(1)
-                        b_name = parts[0].replace(b_id, "").replace("**", "").replace("`", "").strip()
-                        status_raw = parts[1]
-                        what = parts[2].replace("**", "").replace("`", "")
-                        board_blocks.append({
-                            "id": b_id,
-                            "title": b_name or what,
-                            "status": "completed" if "✅" in status_raw else ("active" if any(s in status_raw for s in ["🔨", "▶"]) else "pending"),
-                            "summary": what,
-                            "subblocks": []
-                        })
-                    elif ID_LIKE.match(b_id_m.group(1)):
-                        probs.append(Problem(path, i + 1, f"a board block id the grammar cannot place: {b_id_m.group(1)!r}", line))
-
-        # Match subblocks sections like "## 6. B8 — Sub-Blocks"
-        for b in board_blocks:
-            b_id_str = b["id"]
-            sub_sec_name = b_id_str + " — Sub-Blocks"
-            in_sub = False
-            for i, line in enumerate(lines):
-                if sub_sec_name in line or (b_id_str in line and "Sub-Blocks" in line):
-                    in_sub = True
-                    continue
-                elif in_sub and (line.startswith("## ") or line.startswith("---")):
-                    in_sub = False
-                elif in_sub and line.startswith("|") and not line.startswith("|---") and not line.startswith("| #") and not line.startswith("| Sub-block"):
-                    parts = [p.strip() for p in line.split("|")[1:-1]]
-                    if len(parts) >= 3 and not parts[0].startswith("---"):
-                        sub_id_m = HEAD_TOKEN.match(parts[0])
-                        if sub_id_m:
-                            sub_id = sub_id_m.group(1)
-                            if SUBBLOCK_ID.match(sub_id):
-                                sub_title = parts[1] if len(parts) > 1 else ""
-                                sub_closes = parts[2] if len(parts) > 2 else ""
-                                sub_status = parts[3] if len(parts) > 3 else (parts[-1] if len(parts) >= 3 else "")
-                                b["subblocks"].append({
-                                    "id": sub_id,
-                                    "title": sub_title.replace("**", "").replace("`", ""),
-                                    "desc": sub_closes.replace("**", "").replace("`", ""),
-                                    "status": "completed" if "✅" in sub_status else ("active" if any(s in sub_status for s in ["🔨", "▶"]) else "pending")
-                                })
-                            elif ID_LIKE.match(sub_id):
-                                probs.append(Problem(path, i + 1, f"a sub-block id the grammar cannot place: {sub_id!r}", line))
+    board_blocks, board_problems = parse_project_blocks(path, text)
+    probs += board_problems
 
     # 4. Extract Code Repo and Remote URL from metadata tables
     code_repo = ""
@@ -1040,11 +1074,11 @@ def parse_standing(path, text, project_pattern=None):
             if (repo_dir / ".git").exists() or repo_dir.is_dir():
                 branch = subprocess.check_output(
                     ["git", "-C", str(repo_dir), "branch", "--show-current"],
-                    text=True, stderr=subprocess.DEVNULL, timeout=0.5
+                    text=True, stderr=subprocess.DEVNULL, timeout=5
                 ).strip()
                 commit_out = subprocess.check_output(
                     ["git", "-C", str(repo_dir), "log", "-1", "--format=%h	%s	%cd", "--date=short"],
-                    text=True, stderr=subprocess.DEVNULL, timeout=0.5
+                    text=True, stderr=subprocess.DEVNULL, timeout=5
                 ).strip().split("	")
                 if len(commit_out) >= 3:
                     git_info = {
@@ -1058,20 +1092,28 @@ def parse_standing(path, text, project_pattern=None):
                         "git_branch": branch or "main",
                         "git_commit": commit_out[0]
                     }
-        except Exception:
-            pass
+        # ⛔ Era `except Exception: pass`, así que un fallo de programación se disfrazaba de
+        # repositorio lento y las dos cosas se pintaban igual: sin metadata. **Un proyecto sin
+        # git y un proyecto cuyo git no se pudo leer son dos estados distintos**, y desde
+        # 2026-09-06 el segundo lo dice en vez de desaparecer.
+        except (OSError, subprocess.SubprocessError) as e:
+            git_info = {"git_error": f"{type(e).__name__}: {e}".strip()[:200]}
 
     # Look for README.md, guide.md, HOW-TO-USE.md, or definition.md for Visual Usage Guide
     readme_content = ""
     readme_path = ""
     readme_type = "readme"
 
+    # ⛔ Aquí había dos candidatos más — `path.parent.parent / "README.md"` y su
+    # `HOW-TO-USE.md` — que se salen del proyecto y alcanzan la carpeta de grupo. Medido
+    # 2026-09-06 contra un centro real: **seis de catorce proyectos resolvían al README de
+    # la raíz del centro**, o sea a la portada de la empresa, servida como la guía de uso de
+    # seis proyectos distintos. No era «la guía de otro proyecto»: era la de todos.
+    # **`Todavía no hay guía` es mejor respuesta que la guía de otro.**
     possible_readmes = [
         (path.parent / "guide.md", "guide"),
         (path.parent / "usage.md", "guide"),
         (path.parent / "README.md", "readme"),
-        (path.parent.parent / "README.md", "readme"),
-        (path.parent.parent / "HOW-TO-USE.md", "how-to-use"),
     ]
     if code_repo:
         try:
@@ -1405,6 +1447,69 @@ PARSERS = {"philosophy": parse_philosophy, "axioms": parse_axioms, "doc": parse_
            "plan": parse_plan, "standing": parse_standing, "record": lambda p, t: ([], [])}
 
 
+def project_document(path, text, source, root):
+    """Typed, lightweight project sources. The adapter owns role and project identity."""
+    match = re.search(source.get("project_from", r"(?!)"), path.as_posix())
+    project = source.get("project") or (match.groupdict().get("project") if match else None)
+    if not project:
+        return [], [Problem(path, 1, "project source has no matching owner")]
+    role = source.get("role") or {"state": "plan", "Decision_Log": "decisions"}.get(path.stem, path.stem)
+    lines = text.splitlines()
+    header_end = next((i for i, line in enumerate(lines) if line.startswith("## ")), len(lines))
+    fields = {k: clean(v) for k, v in kv_block([l for l in lines[:header_end] if not l.startswith("#")], 0).items()}
+    title = next((clean(line[2:]) for line in lines if line.startswith("# ")), path.stem)
+    definition = ""
+    if role == "definition":
+        section = re.search(r"^##\s+(?:[0-9]+\.\s*)?What it is\s*\n+([^#].*?)(?=\n\s*\n|\Z)", text, re.M | re.S | re.I)
+        if section:
+            definition = clean(" ".join(section[1].splitlines()))
+    blocks, problems = parse_project_blocks(path, text) if role == "plan" else ([], [])
+    stat = path.stat()
+    return [{"kind": "project-document", "project": project,
+             "lab": match.groupdict().get("lab") if match else source.get("lab"),
+             "role": role, "title": title, "definition": definition, "blocks": blocks,
+             "fields": fields, "path": os.path.relpath(path, root),
+             "cartridge": os.path.relpath(path.parent, root),
+             "project_root": os.path.relpath(path.parent.parent, root),
+             "mtime_ns": stat.st_mtime_ns, "bytes": stat.st_size, "line": 1}], problems
+
+
+def compose_projects(documents):
+    """One cartridge per project; a duplicate name stays an explicit ownership problem."""
+    groups, entities, problems = {}, [], []
+    for doc in documents:
+        groups.setdefault(doc["project"], []).append(doc)
+    for name, docs in groups.items():
+        cartridges = {d["cartridge"] for d in docs}
+        if len(cartridges) != 1:
+            problems.append(Problem(name, 1, "project name belongs to multiple cartridges", kind="contract"))
+            entities.append({"kind": "project-state", "project": name, "title": name,
+                             "ambiguous": True, "documents": [], "blocks": []})
+            continue
+        by_role = {}
+        for doc in docs:
+            by_role.setdefault(doc["role"], []).append(doc)
+        # Prefer the explicitly current plan to a legacy state when both are declared.
+        plans = by_role.get("plan", [])
+        current = [d for d in plans if Path(d["path"]).stem != "state"]
+        plans = current or plans
+        plan = plans[0] if len(plans) == 1 else None
+        definition = by_role.get("definition", [])
+        definition = definition[0] if len(definition) == 1 else None
+        fields = plan["fields"] if plan else {}
+        entities.append({"kind": "project-state", "project": name, "title": name,
+                         "lab": docs[0].get("lab"), "project_root": docs[0]["project_root"],
+                         "cartridge": docs[0]["cartridge"], "file": plan["path"] if plan else None,
+                         "definition": definition["definition"] if definition else "",
+                         "blocks": plan["blocks"] if plan else [],
+                         "last_updated": fields.get("last_updated"),
+                         "integrated_through": fields.get("integrated_through"),
+                         "next_action": fields.get("next_action"), "status": fields.get("status"),
+                         "documents": [{**{k: d[k] for k in ("role", "title", "path", "mtime_ns", "bytes")},
+                                        "primary": d is plan if d["role"] == "plan" else len(by_role[d["role"]]) == 1} for d in docs]})
+    return entities, problems
+
+
 # ----------------------------------------------------------------------- entry
 
 def parse_adapter(adapter_path):
@@ -1419,6 +1524,15 @@ def parse_adapter(adapter_path):
         sroot = (root / src["root"]).resolve() if src.get("root") else root
         paths = ([sroot / src["path"]] if src.get("path")
                  else sorted(sroot.glob(src.get("glob", ""))))
+        # Una fuente puede excluir lo que su patrón alcanza de más. ⛔ Existe porque un mismo
+        # fichero leído por dos fuentes se parsea dos veces con dos gramáticas, y la que no le
+        # corresponde reporta problemas que no lo son: `93_Notebook/*.md` alcanzaba `ideas.md`,
+        # que tiene su propia fuente `park`, y lo leía además como documento — dos entidades y
+        # dos problemas por un fichero que sólo tiene una clase.
+        # ⚠️ Los patrones son relativos a la raíz de la fuente, igual que `glob`.
+        for pattern in src.get("exclude", []):
+            fuera = {f.resolve() for f in sroot.glob(pattern)}
+            paths = [f for f in paths if f.resolve() not in fuera]
         if not paths and not src.get("optional"):
             problems.append(Problem(src.get("path") or src.get("glob"), 0,
                                     f"source {src['label']!r} resolved to no file"))
@@ -1427,16 +1541,22 @@ def parse_adapter(adapter_path):
         # was a list of projects that have a state file, presented as the list of
         # projects: two were missing and nothing said so.
         for container in sorted(sroot.glob(src["expect"])) if src.get("expect") else []:
+            if any(container in f.parents for pattern in src.get("exclude", []) for f in sroot.glob(pattern)):
+                continue
             if container.is_dir() and not any(str(f).startswith(str(container)) for f in paths):
                 problems.append(Problem(container, 0,
                                         f"{container.name} matches {src['expect']!r} but has no "
                                         f"file for {src['label']!r}"))
         for f in paths:
             if not f.is_file():
+                if src.get("optional"):
+                    continue
                 problems.append(Problem(f, 0, f"source {src['label']!r} names a missing file"))
                 continue
             body = f.read_text(encoding="utf-8", errors="replace")
-            if kind == "standing":
+            if kind == "standing" and (src.get("project_from") or src.get("project")):
+                ents, probs = project_document(f, body, src, root)
+            elif kind == "standing":
                 ents, probs = PARSERS[kind](f, body, src.get("project_from"))
             else:
                 ents, probs = PARSERS[kind](f, body)
@@ -1444,12 +1564,23 @@ def parse_adapter(adapter_path):
                 if kind == "records":
                     e["kind"] = src.get("entity") or "record"
                 e["source"] = src["label"]
+                # ⛔ El adapter puede declarar una fuente caducada — una vista generada cuyo
+                # generador no existe, por ejemplo — y hasta 2026-09-06 ese flag no salía del
+                # JSON: ninguna capa lo leía, y tres paneles se pintaban como si estuvieran
+                # vivos. **Un panel caducado que no dice que lo está es cómo se deja de
+                # confiar en la pantalla entera**, que es lo que la fila `I3.8` predijo.
+                if src.get("stale"):
+                    e["stale"] = True
                 try:
                     e["file"] = str(f.relative_to(sroot))
                 except ValueError:
                     e["file"] = f.name
             entities += ents
             problems += probs
+    project_docs = [e for e in entities if e["kind"] == "project-document"]
+    projects, project_problems = compose_projects(project_docs)
+    entities = [e for e in entities if e["kind"] != "project-document"] + projects
+    problems += project_problems
     # The lab is a property of the PROJECT, so it is resolved once here and inherited, never
     # written on an entry. A queue that carries `project:` can then be filtered by owner —
     # several repositories under one lab are one front worked as many — without ~97 entries

@@ -4,8 +4,7 @@
 
 const STORAGE_KEYS = {
   TASKS: "mlabs_nexus_tasks_v3",
-  IDEAS: "mlabs_nexus_ideas_v3",
-  SCRATCHPAD: "mlabs_nexus_scratchpad_v3"
+  IDEAS: "mlabs_nexus_ideas_v3"
 };
 
 let STATE = {
@@ -23,7 +22,7 @@ let STATE = {
   problems: [],
   loaded: false,
   error: null,
-  currentView: "overview",
+  currentView: "cockpit",
   selectedProject: "",
   selectedSubtab: "overview",
   selectedTaskFilter: "ALL",
@@ -31,10 +30,6 @@ let STATE = {
   taskFilterStatus: "",
   taskDateSort: "newest",
   taskSearch: "",
-  decFilterProj: "",
-  decFilterStatus: "",
-  decSearch: "",
-  showFrozen: false,
   activeCsTab: "session",
   globalSearchQuery: ""
 };
@@ -225,10 +220,25 @@ function generateProjectRamifiedWorkflow(pName, decCount, pState, projectTasks =
   return [];
 }
 
+function projectViewModel(entities, fronts = []) {
+  return entities.filter(e => e.kind === "project-state" && e.project).map(p => ({
+    name: p.project, lab: p.lab || "Otros proyectos", definition: p.definition || "",
+    ambiguous: Boolean(p.ambiguous), documents: p.documents || [], projectRoot: p.project_root,
+    file: p.file || "", workflow: p.blocks || [],
+    nextAction: p.next_action || null, lastUpdated: p.last_updated || null,
+    integratedThrough: p.integrated_through || null, status: p.status || null,
+    totalBlocks: (p.blocks || []).length,
+    completedBlocks: (p.blocks || []).filter(b => b.status === "completed").length,
+    progress: null, decisionsCount: null,
+    activeTasks: fronts.filter(f => f.project === p.project && f.active && !f.in_bin)
+  })).sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+}
+
 // Ingest typed model from server
 function ingestModel(model) {
   const entities = model.entities || [];
   STATE.problems = model.problems || [];
+  STATE.taskSheets = Object.fromEntries(Object.entries(STATE.taskSheets || {}).map(([id, sheet]) => [id, { ...sheet, stale: true }]));
   
   // Fronts & Active Front
   STATE.fronts = entities.filter(e => e.kind === "front");
@@ -334,6 +344,7 @@ function ingestModel(model) {
     what: e.what || null,
     asks: e.asks || null,
     affects: e.affects || null,
+    stale: Boolean(e.stale),
     prose: e.prose || "",
     body: e.body || "",
     line: e.line,
@@ -354,7 +365,10 @@ function ingestModel(model) {
     section: e.section || "General",
     origin: e.origin || "Operator",
     date_inferred: Boolean(e.date_inferred),
-    origin_inferred: Boolean(e.origin_inferred)
+    origin_inferred: Boolean(e.origin_inferred),
+    // La fuente lo declaró caducado y el aviso se pinta con esto.
+    stale: Boolean(e.stale),
+    source: e.source || ""
   }));
 
   // Skills
@@ -395,6 +409,8 @@ function ingestModel(model) {
     date_inferred: Boolean(e.date_inferred),
     origin_inferred: Boolean(e.origin_inferred),
     file: e.file || "",
+    stale: Boolean(e.stale),
+    source: e.source || "",
     comments: [],
     discardReason: null
   }));
@@ -413,91 +429,12 @@ function ingestModel(model) {
   }
   STATE.tasks = Array.from(combinedTasksMap.values());
 
-  // Projects Hub Discovery: extract from project-states, decisions, tasks and fronts
-  const projectStates = entities.filter(e => e.kind === "project-state");
-  const discoveredNames = new Set([
-    ...projectStates.map(ps => ps.project).filter(p => p && !p.startsWith("_") && !p.toLowerCase().includes("template")),
-    ...STATE.decisions.map(d => d.project),
-    ...STATE.tasks.map(t => t.project.split(" ")[0]),
-    ...STATE.fronts.map(f => f.project)
-  ].filter(Boolean).filter(name => !["nexus", "cross", "system"].includes(name.toLowerCase())));
+  STATE.projects = projectViewModel(entities, STATE.fronts);
+  // Keep the current document visible while its refreshed source is fetched.
+  STATE.projectCatalogs = Object.fromEntries(Object.entries(STATE.projectCatalogs || {}).map(([key, value]) => [key, { ...value, stale: true }]));
+  STATE.projectDocuments = Object.fromEntries(Object.entries(STATE.projectDocuments || {}).map(([key, value]) => [key, { ...value, stale: true }]));
 
-  const projectNamesList = Array.from(discoveredNames).sort((a, b) => {
-    const countA = STATE.decisions.filter(d => d.project === a).length;
-    const countB = STATE.decisions.filter(d => d.project === b).length;
-    return countB - countA;
-  });
-
-  STATE.projects = projectNamesList.map((name, idx) => {
-    const pState = projectStates.find(ps => ps.project === name) ||
-                   projectStates.find(ps => ps.project && ps.project.toLowerCase() === name.toLowerCase()) ||
-                   projectStates.find(ps => ps.title && ps.title.toLowerCase().includes(name.toLowerCase()));
-    const decCount = STATE.decisions.filter(d => d.project === name).length;
-    const projectTasks = STATE.tasks.filter(t => t.project === name || t.project.startsWith(name));
-    const projectDecs = STATE.decisions.filter(d => d.project === name);
-    
-    const workflow = generateProjectRamifiedWorkflow(name, decCount, pState, projectTasks, projectDecs);
-    const completedBlocks = workflow.filter(b => b.status === "completed").length;
-    const totalBlocks = workflow.length;
-    // ⚠️ Era `: 75`. Un proyecto sin bloques declarados enseñaba un 75 % de avance que no
-    // salía de ningún sitio. `null` es «no medido», y la vista lo pinta como tal.
-    const progress = totalBlocks ? Math.round((completedBlocks / totalBlocks) * 100) : null;
-
-    let rawLastUpdated = pState?.last_updated || "";
-    let integratedThrough = pState?.integrated_through || "";
-    if (rawLastUpdated.includes("integrated through")) {
-      const parts = rawLastUpdated.split(/·\s*\*\*integrated through\*\*\s*/i);
-      rawLastUpdated = parts[0].trim();
-      if (!integratedThrough && parts[1]) integratedThrough = parts[1].replace(/[`*]/g, "").trim();
-    }
-
-    const nextAction = pState?.next_action || pState?.resume_point || pState?.phase || "Progreso de las tareas prioritarias del roadmap";
-    const definition = pState?.definition || "Plataforma soberana bajo metodología MLabs con ciclo de vida desacoplado y gobernanza inmutable.";
-    const currentPhase = pState?.phase_summary || pState?.current_phase || pState?.phase || pState?.resume_point || "Fase de ejecución";
-    const codeRepo = pState?.code_repo || "";
-    const remoteUrl = pState?.remote_url || "";
-    const gitBranch = pState?.git_branch || "";
-    const gitCommit = pState?.git_commit || "";
-    const gitCommitMsg = pState?.git_commit_msg || "";
-    const gitCommitDate = pState?.git_commit_date || "";
-    const readmeContent = pState?.readme_content || "";
-    const readmePath = pState?.readme_path || "";
-
-    return {
-      name,
-      rank: `#${idx + 1}`,
-      status: "ACTIVE",
-      readmeContent,
-      readmePath,
-      gitBranch,
-      gitCommit,
-      gitCommitMsg,
-      gitCommitDate,
-      progress,
-      completedBlocks,
-      totalBlocks,
-      decisionsCount: decCount,
-      nextAction,
-      lastUpdated: rawLastUpdated || new Date().toISOString().slice(0, 10),
-      integratedThrough: integratedThrough || `D${decCount || 1}`,
-      currentPhase,
-      definition,
-      codeRepo,
-      remoteUrl,
-      file: pState ? pState.file : "",
-      // ⛔ The fallback is the generic one `getProjectLab` already uses, and must stay
-      // generic. A literal folder name from one operations centre hard-coded into the
-      // public engine is the `interface:AX-1` breach this project exists to avoid — and
-      // ⚠️ the release gate CANNOT see it unless that word is on the instance's denylist,
-      // which is why the list is derived from disk (`tools/denylist-coverage.sh`) rather
-      // than remembered.
-      icon: pState?.icon || null,
-      lab: pState?.lab || (pState ? getProjectLab(pState) : "Workspaces"),
-      workflow
-    };
-  });
-
-  if (!STATE.selectedProject && STATE.projects.length) {
+  if (!STATE.selectedProject && STATE.projects.length && STATE.currentView !== "project-detail") {
     STATE.selectedProject = STATE.projects[0].name;
   }
 
@@ -508,17 +445,9 @@ function ingestModel(model) {
 function updateHUD() {
   const frontEl = document.getElementById("hudActiveFront");
   if (frontEl) {
-    if (STATE.activeFront) {
-      frontEl.innerHTML = `
-        <span class="front-marker">▶ ACTIVE FRONT</span>
-        <span class="front-title">${esc(STATE.activeFront.name)}</span>
-      `;
-    } else {
-      frontEl.innerHTML = `
-        <span class="front-marker">⏸ COMPASS</span>
-        <span class="front-title">Sin frente activo en COMPASS</span>
-      `;
-    }
+    const count = STATE.fronts.filter(f => f.active && !f.in_bin).length;
+    frontEl.innerHTML = `<span class="front-marker">OFICINA</span>
+      <span class="front-title">${count} tareas activas</span>`;
   }
 
   // Update Sidebar Badges
@@ -531,18 +460,20 @@ function updateHUD() {
     badgeMailbox.textContent = open;
     badgeMailbox.classList.toggle("warn-badge", open > 0);
   }
-  const badgeInbox = document.getElementById("badgeInbox");
-  if (badgeInbox) {
-    const activeTasks = STATE.tasks.filter(t => ["⬜", "🔨", "⛔", "🔴"].includes(t.status)).length;
-    badgeInbox.textContent = activeTasks;
-  }
-
   const badgeIdeas = document.getElementById("badgeIdeas");
   if (badgeIdeas) badgeIdeas.textContent = STATE.ideas.length;
 
   const badgeDecisions = document.getElementById("badgeDecisions");
   if (badgeDecisions) badgeDecisions.textContent = liveDecisions().length;
 
+  const badgeLibrary = document.getElementById("badgeLibrary");
+  // ⚠️ La cuenta es la del vault, no la del árbol entero: la sala responde «qué sabe esta
+  // empresa», y los cartuchos de proyecto y el sistema no son conocimiento, son estado.
+  if (badgeLibrary) {
+    const t = STATE.tree;
+    badgeLibrary.textContent = t && t.available
+      ? libraryFiles().length : "…";
+  }
   const badgeSkills = document.getElementById("badgeSkills");
   if (badgeSkills) badgeSkills.textContent = STATE.skills.length;
 
@@ -578,13 +509,9 @@ function syncUrlHash() {
   const view = STATE.currentView || "overview";
 
   if (view === "project-detail") {
-    const proj = encodeURIComponent(STATE.selectedProject || "");
-    const tab = encodeURIComponent(STATE.projectSubtab || "workflow");
-    hash = `#/project/${proj}/${tab}`;
-    const activeDoc = STATE.guideActiveDoc && STATE.selectedProject ? STATE.guideActiveDoc[STATE.selectedProject] : null;
-    if (tab === "guide" && activeDoc) {
-      hash += `?doc=${encodeURIComponent(activeDoc)}`;
-    }
+    hash = projectRoute(STATE.selectedProject || "", STATE.projectSubtab || "objectives", STATE.projectFile || "", STATE.projectAnchor || "");
+  } else if (view === "library") {
+    hash = Library.route(libraryLocation());
   } else if (view === "skill") {
     hash = `#/skill/${encodeURIComponent(STATE.skillOpen?.name || "")}`;
   } else if (view === "clause") {
@@ -602,7 +529,7 @@ function syncUrlHash() {
     if (STATE.officeFilterProj && STATE.officeFilterProj !== "ALL") {
       params.push(`proyecto=${encodeURIComponent(STATE.officeFilterProj)}`);
     }
-    if (STATE.officeFilterState && STATE.officeFilterState !== "ALL") {
+    if (STATE.officeFilterState && STATE.officeFilterState !== "active") {
       params.push(`estado=${encodeURIComponent(STATE.officeFilterState)}`);
     }
     if (params.length) hash += `?${params.join("&")}`;
@@ -615,11 +542,6 @@ function syncUrlHash() {
     hash = `#/skills`;
     if (STATE.skillFilterType && STATE.skillFilterType !== "ALL") {
       hash += `?filter=${encodeURIComponent(STATE.skillFilterType)}`;
-    }
-  } else if (view === "decisions") {
-    hash = `#/decisions`;
-    if (STATE.decFilterProj) {
-      hash += `?project=${encodeURIComponent(STATE.decFilterProj)}`;
     }
   } else if (view === "inbox") {
     hash = `#/inbox`;
@@ -639,18 +561,8 @@ function syncUrlHash() {
 }
 
 function restoreRouteFromUrl() {
-  let hash = window.location.hash;
-  if (!hash || hash === "#" || hash === "#/") {
-    try {
-      const saved = localStorage.getItem("nexus_last_route");
-      if (saved && saved.startsWith("#/")) {
-        hash = saved;
-      }
-    } catch (e) {}
-  }
-  if (!hash || hash === "#" || hash === "#/") {
-    hash = "#/overview";
-  }
+  const hash = window.location.hash && !["#", "#/"].includes(window.location.hash)
+    ? window.location.hash : "#/cockpit";
 
   const [pathPart, queryPart] = hash.replace(/^#\/?/, "").split("?");
   const segments = pathPart.split("/").filter(Boolean);
@@ -660,16 +572,26 @@ function restoreRouteFromUrl() {
 
   if (mainView === "project" || mainView === "project-detail") {
     STATE.currentView = "project-detail";
-    if (segments[1]) {
-      STATE.selectedProject = decodeURIComponent(segments[1]);
-    }
-    if (segments[2]) {
-      STATE.projectSubtab = decodeURIComponent(segments[2]);
-    }
-    if (params.has("doc") && STATE.selectedProject) {
-      STATE.guideActiveDoc = STATE.guideActiveDoc || {};
-      STATE.guideActiveDoc[STATE.selectedProject] = decodeURIComponent(params.get("doc"));
-    }
+    STATE.selectedProject = decodeURIComponent(segments[1] || "");
+    const legacy = { workflow: "plan", state: "plan", architecture: "definition", guide: "files", skills: "files", repos: "files" };
+    STATE.projectSubtab = legacy[segments[2]] || segments[2] || "objectives";
+    STATE.projectFile = params.get("file") || "";
+    STATE.projectAnchor = params.get("section") || "";
+  } else if (mainView === "library") {
+    STATE.currentView = "library";
+    STATE.libShelf = params.get("root") || "";
+    STATE.libFolder = params.get("folder") || "";
+    STATE.libNote = params.get("note") ? {root:STATE.libShelf, path:params.get("note")} : null;
+    STATE.libAnchor = params.get("anchor") || "";
+    STATE.libSearchAll = params.get("all") === "1";
+    STATE.libSearchRoot = params.get("note") ? params.get("searchRoot") || "" : STATE.libShelf;
+    const q = params.get("q") || "";
+    const searchKey = JSON.stringify([q, STATE.libSearchAll, STATE.libNote ? STATE.libSearchRoot || "" : STATE.libShelf]);
+    if (!STATE.libNote) STATE.libSearchRoot = STATE.libShelf;
+    STATE.searchQ = q;
+    if (q && (STATE.searchKey !== searchKey || !STATE.search)) { STATE.searchKey = searchKey; setTimeout(() => loadSearch(q), 0); }
+    if (!q) STATE.search = null;
+    STATE.libLimit = 24;
   } else if (mainView === "skill" && segments[1]) {
     // ⚠️ Restaurar esta ruta no es sólo fijar la vista: su contenido se pide al servidor,
     // así que hay que relanzar la petición o la página queda en blanco tras una recarga.
@@ -690,8 +612,8 @@ function restoreRouteFromUrl() {
     if (segments[1]) STATE.deskCardId = decodeURIComponent(segments[1]);
   } else if (mainView === "cockpit") {
     STATE.currentView = "cockpit";
-    if (params.has("proyecto")) STATE.officeFilterProj = decodeURIComponent(params.get("proyecto"));
-    if (params.has("estado")) STATE.officeFilterState = decodeURIComponent(params.get("estado"));
+    STATE.officeFilterProj = params.get("proyecto") || "ALL";
+    STATE.officeFilterState = params.get("estado") || "active";
   } else if (mainView === "cheatsheet") {
     STATE.currentView = "cheatsheet";
     if (params.has("tab")) {
@@ -703,16 +625,19 @@ function restoreRouteFromUrl() {
       STATE.skillFilterType = decodeURIComponent(params.get("filter"));
     }
   } else if (mainView === "decisions") {
-    STATE.currentView = "decisions";
+    // La vista se retiró (`interface:I14.2`) y la ruta sobrevive redirigida: un marcador
+    // viejo aterriza en el hub, que es donde las decisiones viven ahora, y con el proyecto
+    // ya seleccionado si el enlace lo traía.
+    STATE.currentView = "projects";
     if (params.has("project")) {
-      STATE.decFilterProj = decodeURIComponent(params.get("project"));
+      STATE.selectedProject = decodeURIComponent(params.get("project"));
     }
   } else if (mainView === "inbox") {
     STATE.currentView = "inbox";
     if (params.has("filter")) {
       STATE.selectedTaskFilter = decodeURIComponent(params.get("filter"));
     }
-  } else if (["overview", "projects", "ideas"].includes(mainView)) {
+  } else if (["overview", "projects", "ideas", "library", "dashboard"].includes(mainView)) {
     STATE.currentView = mainView;
   }
 
@@ -736,6 +661,7 @@ window.addEventListener("popstate", () => {
 });
 
 window.navigateTo = function(viewName) {
+  if (STATE.currentView !== viewName) history.pushState(null, "", `#/${viewName}`);
   STATE.currentView = viewName;
   document.querySelectorAll(".nav-item").forEach(btn => {
     btn.classList.toggle("active", btn.getAttribute("data-view") === viewName);
@@ -790,6 +716,19 @@ function liveDecisions() {
   return (STATE.decisions || []).filter(d => !d.frozen);
 }
 
+const PROJECT_READING = (() => {
+  try { return JSON.parse(sessionStorage.getItem("project-reading") || "{}"); } catch { return {}; }
+})();
+
+function rememberProjectReading(main) {
+  const route = main.dataset.route || "";
+  if (!(route.startsWith("#/project/") || route.startsWith("#/library")) || main.dataset.readerReady !== "true") return;
+  const saved = PROJECT_READING[route] || (PROJECT_READING[route] = { details: {} });
+  saved.scroll = main.scrollTop;
+  main.querySelectorAll("details[id]").forEach(detail => { saved.details[detail.id] = detail.open; });
+  try { sessionStorage.setItem("project-reading", JSON.stringify(PROJECT_READING)); } catch {}
+}
+
 function renderView() {
   const main = document.getElementById("mainContent");
   if (!main) return;
@@ -824,6 +763,15 @@ function renderView() {
     return;
   }
 
+  const route = STATE.currentView === "desk" ? `desk/${STATE.deskCardId}` : STATE.currentView === "project-detail"
+    ? projectRoute(STATE.selectedProject, STATE.projectSubtab, STATE.projectFile) : STATE.currentView === "library" ? Library.route({...libraryLocation(), anchor:""}) : STATE.currentView;
+  rememberProjectReading(main);
+  STATE.readingPositions = STATE.readingPositions || {};
+  if (main.dataset.route) STATE.readingPositions[main.dataset.route] = main.scrollTop;
+  const sameRoute = main.dataset.route === route;
+  const openDetails = sameRoute ? [...main.querySelectorAll("details[id][open]")].map(d => d.id) : [];
+  const savedReading = PROJECT_READING[route];
+  const scrollTop = savedReading?.scroll ?? STATE.readingPositions[route] ?? 0;
   switch (STATE.currentView) {
     case "overview": renderOverview(main); break;
     case "projects": renderProjectsHub(main); break;
@@ -837,11 +785,37 @@ function renderView() {
     case "cheatsheet": renderCheatSheet(main); break;
     case "inbox": renderInbox(main); break;
     case "ideas": renderIdeas(main); break;
-    case "decisions": renderDecisions(main); break;
     case "skills": renderSkills(main); break;
+    case "library": renderLibrary(main); break;
     default: renderOverview(main); break;
   }
 
+  main.dataset.route = route;
+  openDetails.forEach(id => { const node = document.getElementById(id); if (node) node.open = true; });
+  main.dataset.readerReady = String(Boolean(main.querySelector(".project-page, .project-file-index, .library-browser")));
+  Object.entries(savedReading?.details || {}).forEach(([id, open]) => {
+    const detail = document.getElementById(id); if (detail) detail.open = open;
+  });
+  main.scrollTop = scrollTop;
+  if (STATE.currentView === "project-detail" && STATE.projectAnchor !== "" && STATE.projectAnchor != null) {
+    const heading = document.getElementById(`project-heading-${STATE.projectAnchor}`);
+    if (heading && (PROJECT_READING[route]?.anchor !== STATE.projectAnchor || main.dataset.anchor !== `${route}/${STATE.projectAnchor}` && !savedReading)) {
+      if (heading.tagName === "DETAILS") heading.open = true;
+      heading.scrollIntoView({ block: "start" });
+      main.dataset.anchor = `${route}/${STATE.projectAnchor}`;
+      PROJECT_READING[route] = { ...(PROJECT_READING[route] || { details: {} }), anchor: STATE.projectAnchor };
+    }
+  } else if (STATE.currentView === "library" && STATE.libAnchor) {
+    const anchor = "note-heading-" + Library.slug(STATE.libAnchor);
+    const heading = document.getElementById(anchor) || document.getElementById("library-missing-anchor");
+    if (heading && main.dataset.anchor !== `${route}/${STATE.libAnchor}`) {
+      heading.scrollIntoView({block:"start"}); main.dataset.anchor = `${route}/${STATE.libAnchor}`;
+    }
+  } else { main.dataset.anchor = ""; }
+  document.querySelectorAll(".nav-item").forEach(button => {
+    button.classList.toggle("active", button.dataset.view === (STATE.currentView === "desk" ? "cockpit" : STATE.currentView === "project-detail" ? "projects" : STATE.currentView));
+  });
+  rememberProjectReading(main);
   syncUrlHash();
 }
 
@@ -959,8 +933,7 @@ function renderOverview(container) {
               ["inbox", "📬", "Buzón & Tareas", "Las dos colas, corriendo en direcciones opuestas. Ninguna vacía la suya.", `${(STATE.mailbox||[]).length} cartas · ${STATE.tasks.length} tareas`],
               ["dashboard", "📐", "Dashboard", "Lo que se mide y lo que todavía no. Cada medida con su denominador y su fuente.", "PH-6"],
               ["skills", "🏺", "Ágora", "Las skills, agrupadas por cómo las alcanza el modelo.", `${STATE.skills.length} skills`],
-              ["projects", "🚀", "Projects Hub", "Cada proyecto, un cartucho soberano con su propio ciclo de vida.", `${STATE.projects.length} proyectos`],
-              ["decisions", "📜", "Decision Log", "El registro que sólo crece: quién, cuándo, por qué, y qué se descartó.", `${liveDecisions().length} vivas`],
+              ["projects", "🚀", "Projects Hub", "Cada proyecto, un cartucho soberano con su propio ciclo de vida — su definición, sus objetivos, su plan, sus axiomas y <strong>su registro de decisiones</strong>.", `${STATE.projects.length} proyectos · ${liveDecisions().length} decisiones vivas`],
               ["ideas", "💡", "Idea Park", "Lo interesante sin compromiso. Una línea mientras está fresca.", `${STATE.ideas.length} ideas`],
               ["cheatsheet", "📖", "CheatSheet", "Los comandos, listos para copiar.", "⭐"]
             ].map(([view, icon, title, desc, tag]) => `
@@ -998,7 +971,7 @@ function renderEntablature() {
       what: "Concretas, con autor, fecha y razonamiento — <strong>y con lo que se descartó</strong>, que es la parte que no deja rastro en ningún otro sitio si nadie la escribe.",
       who: "Se toman trabajando. Se escriben en el momento: una decisión sin escribir vuelve como debate abierto.",
       count: `${liveDecisions().length} vivas`,
-      go: `navigateTo('decisions')`, goLabel: "abrir el registro →" }
+      go: `navigateTo('projects')`, goLabel: "abrir el hub, que es donde viven →" }
   ];
   return `
     <p class="section-lead">
@@ -1414,52 +1387,28 @@ function getProjectLab(p) {
   return "Workspaces";
 }
 
+function projectRoute(name, section = "objectives", file = "", anchor = "") {
+  const params = new URLSearchParams();
+  if (file) params.set("file", file);
+  if (anchor) params.set("section", anchor);
+  return `#/project/${encodeURIComponent(name)}/${section}${params.size ? "?" + params : ""}`;
+}
+
 function renderProjectsHub(container) {
-  const selectedLab = STATE.selectedLabFilter || "ALL";
-
-  const enrichedProjects = STATE.projects.map(p => ({
-    ...p,
-    lab: getProjectLab(p)
-  }));
-
-  const discoveredLabs = Array.from(new Set(enrichedProjects.map(p => p.lab).filter(Boolean))).sort();
-
-  const filteredProjects = selectedLab === "ALL" 
-    ? enrichedProjects 
-    : enrichedProjects.filter(p => p.lab === selectedLab);
-
-  container.innerHTML = `
-    <div class="view-header">
-      <div class="view-title-group">
-        <h1><span>🚀</span> Projects Hub</h1>
-        <p class="view-subtitle">Matriz de proyectos organizada por Laboratorios y Centros de Trabajo soberanos</p>
-      </div>
-    </div>
-
-    <!-- LAB FILTER CHIPS -->
-    <div class="skills-stats-hud" style="margin-bottom: 24px;">
-      <div class="skill-stat-chip ${selectedLab === 'ALL' ? 'active' : ''}" onclick="updateLabFilter('ALL')">
-        <span class="stat-count">${enrichedProjects.length}</span>
-        <span class="stat-name">🏢 Todos los Laboratorios</span>
-      </div>
-      ${discoveredLabs.map(lab => {
-        const labProjectsCount = enrichedProjects.filter(p => p.lab === lab).length;
-        const icon = lab.toLowerCase().includes("proj") ? "💼" : "🔬";
-        return `
-          <div class="skill-stat-chip ${selectedLab === lab ? 'active' : ''}" onclick="updateLabFilter(${jsq(lab)})">
-            <span class="stat-count">${labProjectsCount}</span>
-            <span class="stat-name">${icon} ${esc(lab)}</span>
-          </div>
-        `;
-      }).join("")}
-    </div>
-
-    <!-- LAB SECTIONS -->
-    ${selectedLab === "ALL" ? discoveredLabs.map(lab => {
-      const labProjects = enrichedProjects.filter(p => p.lab === lab);
-      return renderLabSection(lab, labProjects);
-    }).join("") : renderLabSection(selectedLab, filteredProjects)}
-  `;
+  const projects = STATE.projects.filter(p => !STATE.taskFilterProj || p.name === STATE.taskFilterProj);
+  const groups = [...new Set(projects.map(p => p.lab))];
+  container.innerHTML = `<section class="project-room">
+    <header class="quiet-heading"><p class="quiet-eyebrow">PROYECTOS</p>
+      <h1>Un lugar para cada proyecto</h1><p>Sus objetivos, su plan y los documentos que explican el trabajo.</p></header>
+    ${groups.map(group => `<section class="project-group"><h2>${esc(group)}</h2><div class="project-shelves">
+      ${projects.filter(p => p.lab === group).map(p => `<article class="project-bookmark">
+        <a class="project-title-link" href="${esc(projectRoute(p.name))}"><h3>${esc(p.name)}</h3></a>
+        ${p.definition ? `<p class="project-intent">${inline(p.definition)}</p>` : ""}
+        <div class="project-door-links"><a href="${esc(projectRoute(p.name))}">Objetivos</a>
+          <a href="${esc(projectRoute(p.name, "plan"))}">Plan</a><a href="${esc(projectRoute(p.name, "files"))}">Archivos</a></div>
+        <p class="project-source-facts">${p.ambiguous ? "El nombre corresponde a varios proyectos" : `${p.totalBlocks} bloques de plan · ${p.activeTasks.length} tareas activas`}</p>
+      </article>`).join("")}</div></section>`).join("") || '<p>No hay proyectos declarados con este filtro.</p>'}
+  </section>`;
 }
 
 function renderLabSection(labName, projects) {
@@ -1583,102 +1532,150 @@ document.addEventListener("click", (e) => {
   }
 });
 
-function renderProjectDetailPage(container) {
-  const projName = STATE.selectedProject || (STATE.projects[0] ? STATE.projects[0].name : "");
-  const proj = STATE.projects.find(p => p.name === projName) || STATE.projects[0];
+const PROJECT_ROLES = { objectives: "Objetivos", plan: "Plan", definition: "Definición", axioms: "Reglas", decisions: "Decisiones", log: "Registro de trabajo", contract: "Instrucciones" };
 
-  if (!proj) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <h3>Proyecto no encontrado</h3>
-        <p>Selecciona un proyecto desde el Projects Hub.</p>
-        <button class="btn-hud-action" onclick="navigateTo('projects')">Volver a Projects Hub</button>
-      </div>
-    `;
+async function loadProjectResource(project, path = null) {
+  const catalogs = STATE.projectCatalogs || (STATE.projectCatalogs = {});
+  const documents = STATE.projectDocuments || (STATE.projectDocuments = {});
+  const cache = path === null ? catalogs : documents;
+  const key = path === null ? project : JSON.stringify([project, path]);
+  cache[key] = { ...cache[key], loading: true, stale: false };
+  const params = new URLSearchParams({ project });
+  if (path !== null) params.set("path", path);
+  try {
+    const response = await fetch(`/api/project-${path === null ? "files" : "file"}?${params}`);
+    const result = await response.json();
+    if (!response.ok && !result.why) throw new Error(`HTTP ${response.status}`);
+    cache[key] = result;
+  } catch (error) {
+    cache[key] = { available: false, why: "No se pudo leer el documento. " + error.message };
+  }
+  if (cache === (path === null ? STATE.projectCatalogs : STATE.projectDocuments)
+      && STATE.currentView === "project-detail" && STATE.selectedProject === project) renderView();
+}
+
+function selectedProjectFile(project, catalog) {
+  if (STATE.projectFile) return STATE.projectFile;
+  const role = STATE.projectSubtab || "objectives";
+  const file = (catalog?.files || []).find(f => f.role === role && f.primary);
+  const definition = role === "objectives" && !(catalog?.files || []).some(f => f.role === "objectives")
+    ? (catalog?.files || []).find(f => f.role === "definition" && f.primary) : null;
+  return (file || definition)?.path || null;
+}
+
+function projectFileRows(project, files, query = "") {
+  const needle = query.trim().toLocaleLowerCase();
+  const matches = files.filter(f => !needle || `${f.title} ${f.path} ${PROJECT_ROLES[f.role] || ""}`.toLocaleLowerCase().includes(needle));
+  return matches.map(f => `<a class="project-file-row" href="${esc(projectRoute(project.name, "files", f.path))}">
+    <span>${f.primary ? `<strong>${esc(PROJECT_ROLES[f.role] || f.title)}</strong>` : `<strong>${esc(f.title)}</strong>`}
+      <small>${esc(f.path)}</small></span><span aria-hidden="true">→</span></a>`).join("") || '<p class="quiet-empty">No hay documentos con ese texto.</p>';
+}
+
+window.filterProjectFiles = function(value) {
+  STATE.projectFileQuery = value;
+  const project = STATE.projects.find(p => p.name === STATE.selectedProject);
+  const list = document.getElementById("projectFileList");
+  if (project && list) list.innerHTML = projectFileRows(project, STATE.projectCatalogs?.[project.name]?.files || [], value);
+};
+
+function projectDocumentContent(doc) {
+  const source = `<details class="project-original" id="project-original"><summary>Leer documento completo</summary><div class="project-markdown readme-markdown-body">${renderMarkdownBody(splitFrontmatter(doc.body).body)}</div></details>`;
+  if (doc.objectives?.length) {
+    const labels = { "Why": "Por qué", "Why it is an objective and not a task": "Por qué", "Met when": "Se cumple cuando" };
+    return `<div class="project-objectives">${doc.objectives.map(objective => {
+      const [first, ...rest] = objective.fields;
+      return `<section class="project-objective" id="project-heading-${esc(objective.id)}"><span class="objective-id">${esc(objective.id)}</span>
+        <div><h3>${inline(first?.[1] || "")}</h3><details id="objective-${esc(objective.id)}"><summary>Qué significa y cómo se cumple</summary>
+          ${rest.map(([label, value]) => `<h4>${esc(labels[label] || label)}</h4><p>${inline(value)}</p>`).join("")}</details></div></section>`;
+    }).join("")}</div>${source}`;
+  }
+  if (doc.blocks?.length) {
+    return `<div class="project-plan-blocks">${doc.blocks.map(block => `<details id="project-heading-${esc(block.id)}" class="project-plan-block">
+      <summary><span class="objective-id">${esc(block.id)}</span><span>${inline(block.title)}</span></summary>
+      <div class="project-subblocks">${block.subblocks?.length ? block.subblocks.map(sub => `<section class="project-subblock"><h4>${esc(sub.id)}</h4><p>${inline(sub.title)}</p>
+        ${sub.status_text ? `<p class="project-status-source"><strong>Estado:</strong> ${inline(sub.status_text)}</p>` : ""}
+        ${sub.waits_on ? `<p class="project-status-source"><strong>Depende de:</strong> ${inline(sub.waits_on)}</p>` : ""}</section>`).join("") : '<p>Este bloque no tiene pasos desglosados en el plan.</p>'}</div>
+    </details>`).join("")}</div>${source}`;
+  }
+  return `<div class="project-markdown readme-markdown-body">${renderMarkdownBody(splitFrontmatter(doc.body).body)}</div>`;
+}
+
+function projectNextLinks(project, doc) {
+  const ids = new Set((project.nextAction || "").match(/\b[A-Z]+\d+(?:\.\d+[a-z]?)?\b/g) || []);
+  return (doc.blocks || []).filter(b => ids.has(b.id) || (b.subblocks || []).some(s => ids.has(s.id)))
+    .map(b => `<a href="${esc(projectRoute(project.name, STATE.projectSubtab, STATE.projectFile || "", b.id))}">Ir a ${esc(b.id)} →</a>`).join(" ");
+}
+
+function renderProjectDetailPage(container) {
+  const project = STATE.projects.find(p => p.name === STATE.selectedProject);
+  if (!project || project.ambiguous) {
+    container.innerHTML = `<section class="project-room"><a class="quiet-back" href="#/projects">← Proyectos</a>
+      <h1>${project ? "Este nombre corresponde a varios proyectos" : "Proyecto no encontrado"}</h1>
+      <p>Vuelve a la lista para elegir un proyecto con sus propios documentos.</p></section>`;
     return;
   }
-
-  const labName = getProjectLab(proj);
-  const isPersonal = labName.toLowerCase().includes("proj");
-  const icon = isPersonal ? "💼" : "🔬";
-  const activeTab = STATE.projectSubtab || "workflow";
-
-  const projectTasks = STATE.tasks.filter(t => t.project === proj.name || t.project.startsWith(proj.name));
-  const activeTasks = projectTasks.filter(t => ["⬜", "🔨", "⛔", "🔴"].includes(t.status));
-  const projectDecs = STATE.decisions.filter(d => d.project === proj.name);
-  const liveDecs = projectDecs.filter(d => !d.isSuperseded);
-
-  container.innerHTML = `
-    <!-- BREADCRUMB & TOP NAV -->
-    <div class="proj-page-breadcrumb-bar">
-      <button class="btn-back-hub" onclick="navigateTo('projects')">
-        <span>←</span> <span>Volver a Projects Hub</span>
-      </button>
-      <div class="proj-breadcrumb-path">
-        <span>Projects Hub</span> / <span>${esc(labName)}</span> / <strong>${esc(proj.name)}</strong>
-      </div>
-      <div class="proj-quick-switch">
-        <label for="quickProjSelect">Cambiar Proyecto:</label>
-        <select id="quickProjSelect" class="search-input" style="padding: 4px 8px; font-size: 12px; width: auto;" onchange="openProjectDetail(this.value)">
-          ${STATE.projects.map(p => `
-            <option value="${esc(p.name)}" ${p.name === proj.name ? 'selected' : ''}>${esc(p.name)} (${getProjectLab(p)})</option>
-          `).join("")}
-        </select>
-      </div>
+  const catalog = STATE.projectCatalogs?.[project.name];
+  if (!catalog || catalog.stale) loadProjectResource(project.name);
+  const section = STATE.projectSubtab || "objectives";
+  const path = selectedProjectFile(project, catalog);
+  const doc = path ? STATE.projectDocuments?.[JSON.stringify([project.name, path])] : null;
+  if (path && (!doc || doc.stale)) loadProjectResource(project.name, path);
+  const file = catalog?.files?.find(f => f.path === path);
+  const role = file?.role || section;
+  const title = PROJECT_ROLES[role] || file?.title || "Documento";
+  let content;
+  if ((!catalog || catalog.loading) && !catalog?.files && !path) {
+    content = '<p class="quiet-loading" role="status">Leyendo los archivos del proyecto…</p>';
+  } else if (catalog && !catalog.available && !catalog.loading) {
+    content = `<p class="quiet-empty">${esc(catalog.why)}</p>`;
+  } else if (section === "files" && !path) {
+    content = `<section class="project-file-index"><h2>Archivos del proyecto</h2>
+      <label class="project-file-search">Buscar documento<input type="search" value="${esc(STATE.projectFileQuery || "")}" oninput="filterProjectFiles(this.value)" placeholder="Título o nombre del archivo"></label>
+      <p class="project-source-facts">${catalog?.files?.length || 0} documentos de lectura</p>
+      <div id="projectFileList">${projectFileRows(project, catalog?.files || [], STATE.projectFileQuery || "")}</div></section>`;
+  } else if (!path) {
+    content = `<section class="project-missing"><h2>${esc(title)}</h2><p>No hay un documento único de ${esc(title.toLowerCase())} enlazado a este proyecto.</p>
+      <a href="${esc(projectRoute(project.name, "files"))}">Ver los archivos disponibles →</a></section>`;
+  } else if (!doc || (doc.loading && !doc.body)) {
+    content = '<p class="quiet-loading" role="status">Abriendo el documento…</p>';
+  } else if (!doc.available && !doc.loading) {
+    content = `<p class="quiet-empty">${esc(doc.why)}</p>`;
+  } else {
+    const structured = Boolean(doc.objectives?.length || doc.blocks?.length);
+    const outline = doc.objectives?.length ? doc.objectives.map(o => ({ key: o.id, title: o.id, level: 2 }))
+      : doc.blocks?.length ? doc.blocks.map(b => ({ key: b.id, title: `${b.id} · ${b.title}`, level: 2 }))
+      : (doc.outline || []).filter(h => h.level > 1 && h.level <= 3).map((h, i) => ({ ...h, key: String(i) }));
+    content = `<div class="project-reading-layout">
+      <aside class="project-outline" aria-label="Índice del documento"><details id="project-outline"><summary>En este documento</summary>
+        ${outline.map((h, i) => `<a class="outline-level-${h.level}" href="${esc(projectRoute(project.name, section, STATE.projectFile || "", h.key))}">${esc(h.title)}</a>`).join("")}</details></aside>
+      <article class="project-page" data-project-document="${esc(path)}">
+        <header class="project-document-heading"><h2>${esc(title)}</h2>
+          <span class="project-source-path">${esc(path)}</span>
+          ${doc.loading ? '<span class="quiet-loading">Actualizando…</span>' : ""}</header>
+        ${section === "objectives" && role === "definition" ? '<p class="project-next">Este proyecto aún no tiene un documento separado de objetivos. Puedes consultar su definición completa aquí.</p>' : ""}
+        ${role === "plan" && project.nextAction ? `<div class="project-next"><strong>Siguiente acción declarada</strong><p>${inline(project.nextAction)}</p>${projectNextLinks(project, doc)}</div>` : ""}
+        ${projectDocumentContent(doc)}
+      </article></div>`;
+  }
+  container.innerHTML = `<section class="project-room project-detail-room">
+    <div class="project-sticky-nav">
+      <div class="project-reading-header"><a class="quiet-back" href="#/projects">← Proyectos</a>
+        <label>Cambiar proyecto<select aria-label="Cambiar proyecto" onchange="openProjectDetail(this.value)">
+          ${STATE.projects.map(p => `<option value="${esc(p.name)}" ${p.name === project.name ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label></div>
+      <div class="project-reading-title"><h1>${esc(project.name)}</h1><span>${esc(project.lab)}</span></div>
+      <nav class="project-primary-nav" aria-label="Documentos del proyecto">
+        ${[["objectives", "Objetivos"], ["plan", "Plan"], ["files", "Archivos"]].map(([key, label]) => `<a ${section === key ? 'aria-current="page"' : ""} href="${esc(projectRoute(project.name, key))}">${label}</a>`).join("")}
+        <details id="project-more"><summary>Más</summary><div>${[["definition", "Definición"], ["axioms", "Reglas"], ["decisions", "Decisiones"], ["log", "Registro de trabajo"]].map(([key, label]) => `<a href="${esc(projectRoute(project.name, key))}">${label}</a>`).join("")}</div></details>
+      </nav>
     </div>
-
-    <!-- SOVEREIGN PROJECT HERO HEADER WITH FULL DEFINITION & PHASE -->
-    <header class="chuleta-header proj-sovereign-header">
-      <div class="brand">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
-          <div>
-            <div class="kicker">${esc(labName)} · CARTRIDGE SOBERANO</div>
-            <div style="display: flex; align-items: center; gap: 14px; margin-top: 4px; flex-wrap: wrap;">
-              <span style="font-size: 32px;">${icon}</span>
-              <h1 style="margin: 0; font-size: 28px;">${esc(proj.name)}</h1>
-              <span class="card-badge badge-vine" style="font-size: 12px;">${esc(proj.status)}</span>
-              <span class="card-badge badge-gold" style="font-size: 12px;">Sincronizado: ${esc(proj.integratedThrough)}</span>
-            </div>
-          </div>
-          <div class="proj-phase-badge-box">
-            <span class="proj-phase-tag">FASE TÉCNICA ACTUAL</span>
-            <div class="proj-phase-text">${inline(proj.currentPhase)}</div>
-          </div>
-        </div>
-
-        <!-- DEFINICIÓN INTEGRADA DEL PROYECTO (WHAT IT IS) -->
-        <div class="proj-definition-hero-card">
-          <div class="proj-def-label">DEFINICIÓN &amp; PROPÓSITO DEL PROYECTO</div>
-          <p class="proj-def-text">${inline(proj.definition)}</p>
-        </div>
-
-        <!-- SPECS HUD (BLOQUES, DECISIONES, TAREAS, NEXT ACTION) -->
-        <div class="specs" style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.12);">
-          <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>🗺️ Bloques:</strong> ${
-            proj.progress === null ? "sin declarar" : `${proj.completedBlocks}/${proj.totalBlocks} (${proj.progress}%)`}</span>
-          <span class="spec-pill" onclick="setProjectSubtab('decisions')"><strong>📜 Decisiones:</strong> ${liveDecs.length} Vivas (${projectDecs.length} Totales)</span>
-          <span class="spec-pill" onclick="setProjectSubtab('workflow')"><strong>📋 Tareas:</strong> ${projectTasks.length} (${activeTasks.length} Activas)</span>
-          <span class="spec-pill active-pill" onclick="setProjectSubtab('state')"><strong>🎯 Next Action:</strong> ${inline(proj.nextAction.slice(0, 52))}...</span>
-        </div>
-      </div>
-    </header>
-
-    <!-- PROJECT INTERNAL TABS (TOC) -->
-    <nav class="toc-bar" style="margin: 20px 0 24px;">
-      <button class="toc-pill ${activeTab === 'workflow' ? 'active' : ''}" onclick="setProjectSubtab('workflow')"><span>🗺️</span> 1. Workflow Ramificado</button>
-      <button class="toc-pill ${activeTab === 'state' ? 'active' : ''}" onclick="setProjectSubtab('state')"><span>🎯</span> 2. Estado Vivo &amp; Next Action</button>
-      <button class="toc-pill ${activeTab === 'architecture' ? 'active' : ''}" onclick="setProjectSubtab('architecture')"><span>🏛️</span> 3. Arquitectura &amp; Definición</button>
-      <button class="toc-pill ${activeTab === 'decisions' ? 'active' : ''}" onclick="setProjectSubtab('decisions')"><span>📜</span> 4. Decisiones (${projectDecs.length})</button>
-      <button class="toc-pill ${activeTab === 'skills' ? 'active' : ''}" onclick="setProjectSubtab('skills')"><span>⚡</span> 5. Skills &amp; Operaciones</button>
-      <button class="toc-pill ${activeTab === 'repos' ? 'active' : ''}" onclick="setProjectSubtab('repos')"><span>🐙</span> 6. Repos &amp; Git</button>
-      <button class="toc-pill ${activeTab === 'guide' ? 'active' : ''}" onclick="setProjectSubtab('guide')"><span>📖</span> 7. Guía de Uso</button>
-    </nav>
-
-    <!-- TAB CONTENT RENDERER -->
-    <div class="proj-tab-content-area">
-      ${renderProjectSubtabContent(proj, activeTab, projectTasks, projectDecs)}
-    </div>
-  `;
+    ${content}
+  </section>`;
+  // The outline is tied to visible headings, not a guessed source summary.
+  if (!doc?.objectives?.length && !doc?.blocks?.length) {
+    container.querySelectorAll(".project-markdown h3, .project-markdown h4").forEach((heading, index) => {
+      heading.id = `project-heading-${index}`;
+    });
+  }
 }
 
 function renderProjectSubtabContent(proj, tab, projectTasks, projectDecs) {
@@ -1721,9 +1718,6 @@ function renderProjectWorkflowTab(proj, projectTasks, projectDecs) {
     <div class="doc-section">
       <div class="section-head" style="cursor: default;">
         <h2><span class="num">01</span> Mapa Ramificado de Fases, Bloques y Subbloques</h2>
-        <button class="btn-hud-action" onclick="openTaskModalForProject(${jsq(proj.name)})">
-          <span>➕</span> <span>Nueva Tarea para ${esc(proj.name)}</span>
-        </button>
       </div>
       <p class="lead">
         Secuencia estructurada de ejecución. Cada bloque maestro engloba sus subbloques ramificados, verificaciones y tareas vivas.
@@ -2101,25 +2095,11 @@ window.updateLabFilter = function(lab) {
 };
 
 window.openProjectDetail = function(name) {
-  STATE.selectedProject = name;
-  STATE.currentView = "project-detail";
-  STATE.projectSubtab = "workflow";
-  renderView();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.location.hash = projectRoute(name).slice(1);
 };
 
-window.setProjectSubtab = function(tabKey) {
-  STATE.projectSubtab = tabKey;
-  renderView();
-};
-
-window.openTaskModalForProject = function(projectName) {
-  openTaskModal();
-  const projSelect = document.getElementById("taskProject");
-  if (projSelect) {
-    projSelect.value = projectName;
-    updateTaskPreview();
-  }
+window.setProjectSubtab = function(section) {
+  window.location.hash = projectRoute(STATE.selectedProject, section).slice(1);
 };
 
 window.selectProject = function(name) {
@@ -2511,7 +2491,10 @@ function renderProjectGuideTab(proj) {
     let label = "📖 README.md";
     if (proj.readmeType === "guide") label = "📖 Guía de Uso";
     else if (proj.readmeType === "how-to-use") label = "📖 HOW-TO-USE.md";
-    else if (proj.readmeType === "definition") label = "📋 Definición (definition.md)";
+    // ⚠️ No es una guía: es lo que se enseña a falta de una. Una definición dice QUÉ ES
+    // esto; una guía dice CÓMO SE USA. Servir la primera con la etiqueta de la segunda es
+    // el mismo defecto que enseñar el README de otro, una capa más abajo.
+    else if (proj.readmeType === "definition") label = "📋 Sin guía — se muestra la definición";
 
     docsList.push({
       id: "primary",
@@ -2561,10 +2544,16 @@ function renderProjectGuideTab(proj) {
   if (docsList.length === 0) {
     docsList.push({
       id: "primary",
-      label: "📄 Definición",
-      path: "state.md",
-      content: proj.definition || "Sin guía de uso disponible para este proyecto.",
-      type: "definition"
+      label: "📄 Todavía no hay guía",
+      // ⚠️ Decía `state.md`, que `M-135` retiró en favor de `plan.md`. Ahora no nombra
+      // ningún fichero, porque en este caso no se está leyendo ninguno.
+      path: "—",
+      content: proj.definition
+        || "**Todavía no hay guía de uso para este proyecto.**\n\nEl Hub busca, por este "
+         + "orden, `guide.md`, `usage.md` y `README.md` **dentro del proyecto**, y no sale de "
+         + "él: hasta 2026-09-06 subía a la carpeta de grupo y acababa sirviendo el README "
+         + "del centro como guía de seis proyectos distintos.",
+      type: "empty"
     });
   }
 
@@ -2789,7 +2778,11 @@ function renderMarkdownBody(text) {
     }
 
     // Markdown Tables
-    if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+    // ⛔ Aquí también exigía `endsWith("|")`, y era peor que en el renderizador: una fila sin
+    // pipe de cierre no se perdía sola — **caía al `else if (inTable)` y cerraba la tabla**,
+    // así que se llevaba consigo todas las filas siguientes. Medido: de una tabla de cuatro
+    // filas con una sin cerrar en la segunda, se pintaban dos.
+    if (trimmed.startsWith("|")) {
       if (!inTable) {
         if (inList) { html += `</${listType}>`; inList = false; }
         inTable = true;
@@ -2879,15 +2872,28 @@ function renderMarkdownTable(lines) {
   let html = '<div style="overflow-x: auto; margin: 16px 0 20px;"><table class="doc-table">';
   let hasHeader = false;
 
+  // ⛔ Antes exigía que la fila empezara Y acabara con `|`, y descartaba en silencio la que
+  // no. Una tabla a la que se le olvida el pipe de cierre — que es la que se escribe a mano
+  // y la que más se edita — perdía filas sin decirlo, y una tabla con una fila menos se lee
+  // como una tabla completa. **Basta con que empiece**; el cierre es opcional.
+  let width = 0;
   for (let i = 0; i < lines.length; i++) {
     const row = lines[i].trim();
-    if (!row.startsWith("|") || !row.endsWith("|")) continue;
+    if (!row.startsWith("|")) continue;
     if (row.includes("---") && row.replace(/[|\s-:]/g, "").length === 0) {
       hasHeader = true;
       continue;
     }
 
-    const cells = row.split("|").slice(1, -1).map(c => c.trim());
+    // `slice(1)` quita el hueco vacío de antes del primer `|`; el de después del último
+    // sólo existe si la fila cierra, y por eso se quita mirando en vez de contando.
+    const parts = row.split("|").slice(1);
+    if (row.endsWith("|")) parts.pop();
+    const cells = parts.map(c => c.trim());
+    // ⚠️ Una fila corta se rellena en vez de descuadrar la tabla, y una larga no se recorta:
+    // perder un campo es el mismo defecto que perder una fila, un nivel más abajo.
+    if (!width) width = cells.length;
+    while (cells.length < width) cells.push("");
     if (i === 0 || !hasHeader) {
       html += "<thead><tr>";
       cells.forEach(c => { html += `<th>${inline(c)}</th>`; });
@@ -2905,8 +2911,14 @@ function renderMarkdownTable(lines) {
 }
 
 function initAppListeners() {
+  // This reader restores a scroll container after lazy document loading.
+  // Browser history restoration races that render and overwrites its position.
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  const reader = document.getElementById("mainContent");
+  reader?.addEventListener("scroll", () => rememberProjectReading(reader), { passive: true });
+  reader?.addEventListener("toggle", () => rememberProjectReading(reader), true);
+
   ["taskTitle", "taskProject", "taskStatus", "taskWhy"].forEach(id => {
-    document.getElementById(id)?.addEventListener("input", updateTaskPreview);
   });
 
   document.querySelectorAll(".nav-item").forEach(btn => {
@@ -2920,10 +2932,8 @@ function initAppListeners() {
     const val = e.target.value;
     if (val === "ALL") {
       STATE.taskFilterProj = "";
-      STATE.decFilterProj = "";
     } else {
       STATE.taskFilterProj = val;
-      STATE.decFilterProj = val;
       STATE.selectedProject = val;
     }
     renderView();
@@ -2932,8 +2942,19 @@ function initAppListeners() {
   document.getElementById("globalSearch")?.addEventListener("input", e => {
     const q = e.target.value.trim().toLowerCase();
     STATE.taskSearch = q;
-    STATE.decSearch = q;
     renderView();
+  });
+
+  // ⛔ Al teclear se filtra lo que ya está en memoria; **al pulsar Enter se busca en el
+  // disco**. Son dos cosas distintas y se separan a propósito: buscar en 326 ficheros en
+  // cada pulsación sería una petición por tecla, y filtrar la vista actual es lo que se
+  // quiere el 90 % de las veces. ⚠️ Es la función concreta por la que se abre Obsidian, así
+  // que va donde ya estaba la mano del operador en vez de en un sitio nuevo.
+  document.getElementById("globalSearch")?.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    const q = e.target.value.trim();
+    if (q.length < 2) return;
+    location.hash = Library.route({q, all:true});
   });
 }
 
@@ -2974,10 +2995,11 @@ async function loadModel() {
     renderView();
     return;
   }
-  if (STATE.trace === undefined) loadTrace();
   // ⚠️ La doctrina se carga una vez: son ficheros del propio motor, no estado vivo, y
   // volver a pedirlos en cada latido gastaría una petición por segundo para nada.
   if (STATE.doctrine === undefined) loadDoctrine();
+  if (STATE.metrics === undefined) loadMetrics();
+  if (STATE.tree === undefined) loadTree();
   loadRecent();
 }
 
@@ -3093,154 +3115,36 @@ function findPlanForFront(front) {
 // la capacidad de enseñar la hoja de una tarea en pausa.
 
 
-function renderDecisions(container) {
-  const allProjects = [...new Set(STATE.decisions.map(d => d.project).filter(Boolean))].sort();
-  const frozenCount = STATE.decisions.filter(d => d.frozen).length;
-  const showFrozen = STATE.showFrozen === true;
-  const projFilter = STATE.decFilterProj || "";
-  const statusFilter = STATE.decFilterStatus || "";
-  const searchTxt = (STATE.decSearch || "").toLowerCase().trim();
-
-  // Filter decisions
-  let filtered = STATE.decisions.filter(d => {
-    if (!showFrozen && d.frozen) return false;
-    if (projFilter && d.project !== projFilter) return false;
-    if (statusFilter === "ALIVE" && d.isSuperseded) return false;
-    if (statusFilter === "SUPERSEDED" && !d.isSuperseded) return false;
-
-    if (searchTxt) {
-      const matchTitle = (d.title || "").toLowerCase().includes(searchTxt);
-      const matchWhy = (d.why || "").toLowerCase().includes(searchTxt);
-      const matchId = (d.id || "").toLowerCase().includes(searchTxt);
-      const matchProj = (d.project || "").toLowerCase().includes(searchTxt);
-      const matchDiscarded = (d.discarded || "").toLowerCase().includes(searchTxt);
-      if (!matchTitle && !matchWhy && !matchId && !matchProj && !matchDiscarded) return false;
-    }
-    return true;
-  });
-
-  // Sort decisions: newest or highest numeric ID first
-  filtered.sort((a, b) => {
-    const idA = parseInt(String(a.id).replace(/\D/g, "")) || 0;
-    const idB = parseInt(String(b.id).replace(/\D/g, "")) || 0;
-    if (idA && idB && a.project === b.project) return idB - idA;
-    return (b.date || "").localeCompare(a.date || "");
-  });
-
-  container.innerHTML = `
-    <div class="view-header">
-      <div class="view-title-group">
-        <h1><span>📜</span> Decision Log (Registro de Decisiones)</h1>
-        <p class="view-subtitle">${liveDecisions().length} decisiones inmutables con autor, fecha, liveness y trazabilidad de supersedes</p>
+// El aviso de fuente caducada. ⛔ Va EN el panel, nunca en un tooltip: un aviso que hay que
+// buscar no avisa. El adapter marca una fuente `stale` — una vista generada cuyo generador
+// no existe, por ejemplo — y hasta 2026-09-06 ese flag no salía del JSON, así que estos
+// paneles se pintaban como si estuvieran vivos. **Un panel caducado que no dice que lo está
+// es cómo se deja de confiar en la pantalla entera** (`interface:I3.8`).
+// ⚠️ Cuenta las entidades marcadas, no las fuentes: si sólo una parte de lo que se ve viene
+// de la fuente caducada, el aviso lo dice en vez de teñirlo todo.
+function staleBanner(entities, queSon) {
+  const n = (entities || []).filter(e => e && e.stale).length;
+  if (!n) return "";
+  const total = (entities || []).length;
+  const fuentes = [...new Set((entities || []).filter(e => e.stale).map(e => e.source))];
+  return `
+    <div class="stale-banner" role="status">
+      <span class="stale-mark">⛔</span>
+      <div class="stale-body">
+        <strong>${n} de ${total} ${esc(queSon)} vienen de una fuente que el adaptador
+          declara caducada.</strong>
+        <span>Lo que ves aquí puede no ser lo que hay en disco. El adaptador lo dice así:</span>
+        <ul>${fuentes.map(f => `<li><code>${esc(f)}</code></li>`).join("")}</ul>
       </div>
-    </div>
-
-    <!-- DECISION FILTERS (Priority #2) -->
-    <div class="view-toolbar">
-      <div class="toolbar-group">
-        <label for="decFilterProj">Proyecto:</label>
-        <select id="decFilterProj" class="custom-select" onchange="updateDecFilter('decFilterProj', this.value)">
-          <option value="">Todos los Proyectos (${liveDecisions().length})</option>
-          ${allProjects.map(p => `
-            <option value="${esc(p)}" ${p === projFilter ? "selected" : ""}>
-              ${esc(p)} (${STATE.decisions.filter(d => d.project === p).length})
-            </option>
-          `).join("")}
-        </select>
-      </div>
-
-      <div class="toolbar-group">
-        <label for="decFilterStatus">Vivacidad:</label>
-        <select id="decFilterStatus" class="custom-select" onchange="updateDecFilter('decFilterStatus', this.value)">
-          <option value="">Todas las Decisiones</option>
-          <option value="ALIVE" ${statusFilter === "ALIVE" ? "selected" : ""}>🟢 Vivas (Activas)</option>
-          <option value="SUPERSEDED" ${statusFilter === "SUPERSEDED" ? "selected" : ""}>🔄 Reemplazadas (Superseded)</option>
-        </select>
-      </div>
-
-      <div class="toolbar-group checkbox-group">
-        <label class="toggle-label" title="Las copias congeladas son fotografías selladas declaradas (AX-20)">
-          <input type="checkbox" id="decToggleFrozen" ${showFrozen ? "checked" : ""} onchange="updateDecFilter('showFrozen', this.checked)">
-          <span>Mostrar Copias Congeladas (${frozenCount})</span>
-        </label>
-      </div>
-
-      <div class="toolbar-group search-group">
-        <input type="text" id="decSearchInput" class="custom-input" placeholder="Buscar por D_n, texto, por qué, descartado..." value="${esc(STATE.decSearch)}" oninput="updateDecFilter('decSearch', this.value)">
-      </div>
-    </div>
-
-    <!-- DECISIONS LIST -->
-    <div class="tickets-list">
-      ${filtered.length ? filtered.map(d => `
-        <div class="ticket-card decision-card ${d.isSuperseded ? 'discarded' : ''}">
-          <div class="ticket-top">
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(d.id)}</span>
-              <span class="tag-pill tag-project">${esc(d.project)}</span>
-              ${d.isSuperseded ? `
-                <span class="tag-pill tag-superseded" title="Reemplazada por ${esc(d.supersededBy.join(', '))}">
-                  🔄 Reemplazada por ${esc(d.supersededBy.join(', '))}
-                </span>
-              ` : `
-                <span class="tag-pill tag-alive" title="Decisión VIVA">🟢 VIVA</span>
-              `}
-              ${d.supersedes ? `
-                <span class="tag-pill tag-supersedes" title="Reemplaza a ${esc(d.supersedes)}">⚡ Reemplaza a ${esc(d.supersedes)}</span>
-              ` : ''}
-              ${d.frozen ? `
-                <span class="tag-pill tag-frozen" title="Copia sellada de ${esc(d.mirror_of || 'snapshot')}">🧊 Frozen Mirror</span>
-              ` : ''}
-            </div>
-            ${renderDate(d.date, d.date_inferred)}
-          </div>
-
-          <h3 class="ticket-title" style="margin-top: 4px; font-size: 15px;">${inline(d.title)}</h3>
-          
-          ${(d.why || d.discarded) ? `
-            <details class="decision-details">
-              <summary>
-                <span class="toggle-icon">▶</span>
-                <span>Ver razonamiento (Why)${d.discarded ? ' y descartados' : ''}</span>
-              </summary>
-              <div class="decision-body-content">
-                ${d.why ? `
-                  <div class="decision-why-text">
-                    <strong>Por qué (Why):</strong> ${inline(d.why)}
-                  </div>
-                ` : ''}
-
-                ${d.discarded ? `
-                  <div class="discarded-box" style="margin-top: 4px;">
-                    <strong>Alternativa descartada:</strong> ${inline(d.discarded)}
-                  </div>
-                ` : ''}
-
-                <div class="ticket-meta" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line);">
-                  ${renderOrigin(d.origin, d.origin_inferred)}
-                  ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
-                  ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
-                </div>
-              </div>
-            </details>
-          ` : `
-            <div class="ticket-meta" style="margin-top: 4px;">
-              ${renderOrigin(d.origin, d.origin_inferred)}
-              ${d.frozen ? `<span class="tag-pill" style="opacity: 0.75;">mirror de <code>${esc(d.mirror_of || '')}</code></span>` : ''}
-              ${d.file ? `<span class="tag-pill" style="opacity: 0.65;"><code>${esc(d.file)}</code></span>` : ''}
-            </div>
-          `}
-        </div>
-      `).join("") : `
-        <div class="empty-state">
-          <div class="empty-icon">📜</div>
-          <h3>No hay decisiones que coincidan</h3>
-          <p>Prueba a ajustar los filtros de proyecto, vivacidad o búsqueda.</p>
-        </div>
-      `}
-    </div>
-  `;
+    </div>`;
 }
+
+// ⛔ `renderDecisions` vivía aquí y se retira 2026-09-06 (`interface:I14.2`). Una decisión
+// pertenece a su proyecto y se lee dentro de él: la pantalla de proyecto ya tiene su pestaña
+// de decisiones, filtrada y con vivas contra totales, así que la vista suelta era una segunda
+// respuesta a la misma pregunta sin ganador declarado (`MLabs:AX-20`).
+// ⚠️ La ruta `#/decisions` NO se borra: redirige al hub. Un marcador que el operador tiene en
+// la cabeza no deja de existir porque la vista sí.
 
 function renderIdeas(container) {
   container.innerHTML = `
@@ -3250,6 +3154,7 @@ function renderIdeas(container) {
         <p class="view-subtitle">Aparcamiento ordenado de ideas y mejoras futuras para preservar el foco (PH-3)</p>
       </div>
     </div>
+    ${staleBanner(STATE.ideas, "ideas")}
 
     <div class="tickets-list">
       ${STATE.ideas.length ? STATE.ideas.map(idea => `
@@ -3324,10 +3229,8 @@ function renderInbox(container) {
         <p class="view-subtitle">Corren en direcciones opuestas y <strong>ninguna vacía la suya</strong>
           (<code>AX-15</code>): el <strong>buzón</strong> va de agente a operador, la
           <strong>lista de tareas</strong> de operador a agente.</p>
+        ${staleBanner([...(STATE.tasks || []), ...(STATE.mailbox || [])], "entradas")}
       </div>
-      <button class="btn-hud-action btn-add-task" onclick="openTaskModal()">
-        <span>➕</span> <span>Nueva Tarea</span>
-      </button>
     </div>
 
     ${renderMailboxPanel()}
@@ -3859,18 +3762,6 @@ function showToast(msg) {
   }
 }
 
-function updateTaskPreview() {
-  const title = document.getElementById("taskTitle")?.value || "...";
-  const proj = document.getElementById("taskProject")?.value || (STATE.projects[0]?.name || "project");
-  const status = document.getElementById("taskStatus")?.value || "⬜";
-  const why = document.getElementById("taskWhy")?.value || "...";
-  const nextId = `T${STATE.tasks.length + 60}`;
-
-  const preview = document.getElementById("taskMarkdownPreview");
-  if (preview) {
-    preview.textContent = `### ${nextId} · ${title} ${status}\n**project:** \`${proj}\`\n**Why** *(operator, ${new Date().toISOString().slice(0, 10)})*. ${why}`;
-  }
-}
 
 function autoScrollPlanContainer(smooth = true) {
   requestAnimationFrame(() => {
@@ -3949,22 +3840,9 @@ function fillProjectSelect(id) {
   }
 }
 
-window.openTaskModal = function() {
-  const modal = document.getElementById("taskModal");
-  fillProjectSelect("taskProject");
-  if (modal) {
-    updateTaskPreview();
-    modal.classList.add("active");
-  }
-};
 
 window.selectCsTab = function(cat) {
   STATE.activeCsTab = cat;
-  renderView();
-};
-
-window.updateDecFilter = function(key, val) {
-  STATE[key] = val;
   renderView();
 };
 
@@ -4013,6 +3891,7 @@ async function watchStamp() {
     const data = await res.json();
     const newStamp = data.stamp;
     if (STAMP !== null && newStamp !== STAMP) {
+      await loadTree();
       await loadModel();
     }
     STAMP = newStamp;
@@ -4034,12 +3913,7 @@ setInterval(watchStamp, 2000);
 // ═════════════════════════════════════════════════════════════════════════════
 // OFICINA (el mural) y DESPACHO (la mesa de una tarea)
 //
-// ⛔ Everything below WRITES. The rest of this file reads a model and paints it; these
-// functions change files on disk through `/api`, and every one of them confirms from the
-// server's answer rather than from having sent the request. A view that says *saved*
-// because it called `fetch` is the failure this section replaces: the previous write layer
-// answered `ok` and touched nothing, so the interface built to uphold `PH-3` was the thing
-// breaking it.
+// Read-only wall and task desk. The source files own every state and plan.
 // ═════════════════════════════════════════════════════════════════════════════
 
 // `FLOW.md`'s four, in one place. ⚠️ The view paints by outcome and the writer spells the
@@ -4069,33 +3943,8 @@ async function api(method, path, body) {
   return data;
 }
 
-// One place that reports a write, so a confirmation always says WHERE it landed. ⚠️ "Idea
-// guardada" is not traceability; "IDEAS.md línea 14" is, because it can be checked.
-function confirmWrite(data, what) {
-  const where = data.file ? ` · <code>${esc(data.file)}</code>${data.line ? ` línea ${data.line}` : ""}` : "";
-  showToast(`${what}${where.replace(/<[^>]+>/g, "")}`);
-  STATE.lastWrite = { what, ...data, at: new Date().toISOString() };
-  loadModel();
-  loadTrace();
-}
 
-function reportWriteError(e) {
-  if (e.stale) {
-    showToast("El plan cambió en disco. Recargando para que veas el estado real.");
-    loadModel();
-  } else {
-    showToast(`No se pudo escribir: ${e.message}`);
-  }
-}
 
-async function loadTrace() {
-  try {
-    const d = await api("GET", "/api/trace");
-    STATE.trace = (d.events || []).slice().reverse();
-    const rail = document.getElementById("traceRail");
-    if (rail) rail.innerHTML = renderTraceList();
-  } catch (_) { STATE.trace = STATE.trace || []; }
-}
 
 // ───────────────────────────────────────────────── the unified card
 //
@@ -4123,91 +3972,17 @@ function similarTitles(a, b) {
 }
 
 function officeCards() {
-  const cards = new Map();
-  const key = t => normaliseTitle(t);
-
-  // The summary table is the ranked queue and is the spine of the board. Board rows are
-  // detail about the same fronts (`row: "board"`), so they enrich and never add.
-  for (const f of STATE.fronts.filter(f => f.row !== "board")) {
-    cards.set(key(f.name), {
-      id: f.id || f.name, title: f.name, project: f.project || "cross",
-      marker: f.marker, active: Boolean(f.active),
-      moves_when: f.moves_when || "", described_in: f.described_in || "",
-      // Los cuatro de `AX-46` sobre la tarea, que es lo que hace que la tarjeta se lea sin
-      // la conversación que la produjo: a qué sirve, qué pasa, y qué se mueve.
-      declared: f.state || null, serves: f.serves || null, affects: f.affects || null,
-      drains: f.drains || null, planId: f.sheet || null,
-      why: f.why || "", taskId: null, status: null, sources: ["compass"], line: f.line
-    });
-  }
-  for (const f of STATE.fronts.filter(f => f.row === "board")) {
-    const c = cards.get(key(f.name)) || [...cards.values()].find(
-      c => key(c.title).includes(key(f.name)) || key(f.name).includes(key(c.title)));
-    if (c) {
-      c.waits_on = f.waits_on || c.waits_on || "";
-      c.note = f.note || c.note || "";
-      c.serves = c.serves || f.serves || null;
-      c.affects = c.affects || f.affects || null;
-      c.drains = c.drains || f.drains || null;
-      c.why = c.why || f.why || "";
-      if (!c.sources.includes("board")) c.sources.push("board");
-    } else {
-      cards.set(key(f.name), {
-        id: f.id || f.name, title: f.name, project: f.project || "cross",
-        marker: null, active: false, moves_when: f.moves_when || "",
-        waits_on: f.waits_on || "", note: f.note || "", described_in: f.described_in || "",
-        why: "", taskId: null, status: null, sources: ["board"], line: f.line
-      });
-    }
-  }
-  for (const t of STATE.tasks) {
-    // ⚠️ Aquí se descartaba por EMOJI (`✅`/`⚫`) antes de que el estado declarado pudiera
-    // opinar, así que una tarea `done` no llegaba nunca a la papelera — se evaporaba. Y el
-    // emoji `⚫` ni siquiera está en el juego que el parser reconoce, con lo que una
-    // cancelada entraba como pendiente. Dos sitios decidiendo lo mismo y discrepando.
-    // Ahora la terminalidad la decide `cardState` y sólo `cardState`, y el reparto entre
-    // muro y papelera lo hace quien pinta.
-    const k = key(t.title);
-    const hit = cards.get(k) || [...cards.values()].find(
-      c => key(c.title).includes(k) || k.includes(key(c.title)));
-    if (hit) {
-      hit.taskId = t.id; hit.why = t.why || hit.why; hit.status = t.status;
-      hit.declared = t.state || hit.declared; hit.planId = t.plan || hit.planId;
-      hit.block = t.block || hit.block; hit.subBlock = t.sub_block || hit.subBlock;
-      if (!hit.sources.includes("tasks")) hit.sources.push("tasks");
-    } else {
-      cards.set(k, {
-        id: t.id, title: t.title, project: t.project || "cross", marker: null,
-        active: false, moves_when: "", described_in: t.file || "", why: t.why || "",
-        taskId: t.id, status: t.status, declared: t.state || null, planId: t.plan || null,
-        block: t.block || null, subBlock: t.sub_block || null,
-        sources: ["tasks"], line: t.line
-      });
-    }
-  }
-
-  // ⚠️ `FLOW.md`: las terminales «dejan el muro **para la papelera**, marcadas como cuál».
-  // Marcadas, no borradas: `done` y `cancelled` son resultados distintos y un tablero que
-  // los funde en «ya no está» pierde el único dato que tienen.
-
-  // ⚠️ Dos nombres para el mismo trabajo dan dos tarjetas, y la fusión por título sólo
-  // acierta cuando uno contiene al otro: «Migración del parser a records» y «Migrar el
-  // parser a records» no se tocan. Lo que NO se hace es fusionarlas por parecido — una
-  // fusión equivocada **esconde una tarea**, y un tablero al que le falta trabajo es peor
-  // que uno que enseña dos veces el mismo. Se marcan, y el operador decide.
-  // ⚠️ La primera versión cortaba en cuanto una tarjeta ya tenía gemela, así que con tres
-  // nombres del mismo trabajo la tercera se quedaba fuera — y una bandera que no aparece
-  // sobre el caso peor es la que menos sirve. Una tarjeta puede parecerse a varias.
-  const list = [...cards.values()];
-  for (const a of list) {
-    a.twins = list.filter(b => b !== a && similarTitles(a.title, b.title)).map(b => b.title);
-  }
-
-  const rank = c => c.active ? 0 : c.marker === "⏸" ? 3 : /^\d+$/.test(c.marker || "") ? 1 : 2;
-  return [...cards.values()].sort((a, b) =>
-    rank(a) - rank(b) ||
-    (parseInt(a.marker) || 99) - (parseInt(b.marker) || 99) ||
-    a.title.localeCompare(b.title));
+  // The wall owns commitments. Historical queue entries are readable in their room,
+  // but cannot create or merge wall tasks by a similar title.
+  return STATE.fronts.filter(f => f.row !== "board").map(f => ({
+    id: f.id, title: f.name, project: f.project || "cross", marker: f.marker,
+    active: Boolean(f.active), declared: f.state || null, inBin: Boolean(f.in_bin),
+    serves: f.serves || "", description: f.description || "", why: f.why || "",
+    affects: f.affects || "", planId: f.sheet || f.described_in || null,
+    described_in: f.described_in || "", moves_when: f.moves_when || "",
+    waits_on: f.waits_on || "", returns_when: f.returns_when || "",
+    drains: f.drains || "", file: f.file, line: f.line
+  }));
 }
 
 // The five states of `FLOW.md`, derived rather than stored — ⚠️ a second place holding
@@ -4219,6 +3994,13 @@ function cardState(c) {
   if (c.declared) return c.declared;
   if (c.active) return "active";
   if (c.marker === "⏸") return "paused";
+  // ⛔ Los marcadores del muro que sí son inequívocos, leídos del MARCADOR y no del status.
+  // Medido 2026-09-06: una fila con `✖` y sin estado declarado caía a `pending` — se veía
+  // en cola una tarea cancelada. ⚠️ `✖` es U+2716, el que escriben el muro y `parse.py`;
+  // `STATE_META` pinta `✕` U+2715, que es otro carácter y sólo sirve para dibujar. **Un
+  // desajuste que no se ve leyendo es el argumento del check, no el de releer.**
+  if (c.marker === "✖") return "cancelled";
+  if (c.marker === "⤴") return "deferred";
   // El respaldo para una instancia que aún no declara estados: el emoji del vocabulario
   // anterior. ⚠️ Sólo se traducen los dos terminales, que son los únicos donde el emoji
   // dice inequívocamente cuál es — un ⬜ puede ser `pending` o `paused` y no se adivina.
@@ -4227,40 +4009,25 @@ function cardState(c) {
   return "pending";
 }
 
-// ⛔ Toda tarea lleva su hoja desde que existe. La activa la tiene en el `PLAN.md` en vivo;
-// las demás, en su registro de plan — y una `paused` la tiene **llena y con items
-// tachados**, que es lo que `FLOW.md` llama «lo que hace barato cambiar de tarea: la hoja
-// se conserva y se ve, así que reanudar cuesta leer y no reconstruir».
-//
-// ⚠️ El Despacho dejó de buscarla cuando sustituyó al cockpit, así que toda tarea que no
-// fuera la del `▶` salía vacía aunque su plan estuviera en disco — cobrando exactamente la
-// reconstrucción que esa regla existe para evitar.
-function planForCard(c) {
-  if (!c) return null;
-  if (c.active) {
-    return { live: true, items: STATE.livePlan || [], sections: STATE.planSections || [],
-             meta: STATE.livePlanMeta || null, id: STATE.livePlanMeta?.plan_id || null };
+// A task's sheet is loaded by its identity, never by activity or title similarity.
+function planForCard(card) {
+  return card ? (STATE.taskSheets || {})[card.id] || null : null;
+}
+
+async function loadTaskSheet(card) {
+  const cache = STATE.taskSheets || (STATE.taskSheets = {});
+  cache[card.id] = { ...cache[card.id], loading: true, stale: false };
+  try {
+    const response = await fetch(`/api/task-sheet?id=${encodeURIComponent(card.id)}`);
+    const sheet = await response.json();
+    if (!response.ok && !sheet.why) throw new Error(`HTTP ${response.status}`);
+    cache[card.id] = sheet;
+  } catch (error) {
+    cache[card.id] = { available: false, why: "No se pudo leer la hoja. " + error.message };
   }
-  const byId = c.planId && (STATE.plans || []).find(p =>
-    String(p.id).toLowerCase() === String(c.planId).toLowerCase());
-  const rec = byId || findPlanForFront({
-    name: c.title, described_in: c.described_in, moves_when: c.moves_when, waits_on: c.waits_on
-  });
-  if (!rec) return null;
-  return {
-    live: false, id: rec.id, meta: rec, sections: [],
-    // El registro de plan trae otra forma; se normaliza a la del plan en vivo para que la
-    // misma función pinte las dos. Dos renderizadores para dos formas del mismo item es
-    // como uno de los dos se queda atrás.
-    items: (rec.items || []).map(it => ({
-      index: it.index, line: null, text: it.text || "",
-      struck: it.status === "done" || Boolean(it.destination),
-      destination: it.destination || "",
-      outcome: outcomeOfDestination(it.destination),
-      section: null, subsection: null, ordered: true,
-      author: null, date: it.completed_at || null
-    }))
-  };
+  if (STATE.taskSheets === cache && STATE.currentView === "desk" && STATE.deskCardId === card.id) {
+    renderView();
+  }
 }
 
 // La misma clasificación que hace el parser, para los destinos que llegan de un registro.
@@ -4277,7 +4044,7 @@ function outcomeOfDestination(d) {
 // como «en cola» sería decir que sigue abierta.
 const STATE_META = {
   active:    { label: "activa",     icon: "▶", cls: "st-active",
-               hint: "es la del ▶. Su hoja es el PLAN.md en vivo" },
+               hint: "trabajo en marcha, con su propia hoja" },
   paused:    { label: "en pausa",   icon: "⏸", cls: "st-paused",
                hint: "ha estado activa: su hoja está llena y se conserva, por eso reanudarla cuesta leer" },
   pending:   { label: "en cola",    icon: "○", cls: "st-pending",
@@ -4332,466 +4099,108 @@ function renderPlanItem(item, editable) {
           ${item.line ? `<span class="pi-line" title="Línea en PLAN.md">L${item.line}</span>` : ""}
         </div>
       </div>
-      ${!routed && editable && item.line ? `
-        <div class="pi-route" title="Dale su destino — los cuatro de FLOW.md">
-          ${Object.entries(OUTCOMES).map(([k, o]) => `
-            <button class="pi-route-btn ${o.cls}" title="${o.label} — ${o.hint}"
-                    onclick="routePlanItem(${item.line}, ${JSON.stringify(item.text.slice(0, 40)).replace(/"/g, "&quot;")}, '${k}')">
-              ${o.icon}
-            </button>`).join("")}
-        </div>` : ""}
+      ${!routed && item.line ? `
+        <span class="pi-unrouted" title="Un item tachado sin destino es un cierre fallido: el parser lo reporta">sin destino</span>` : ""}
     </div>`;
 }
 
-function renderTraceList() {
-  const ev = STATE.trace || [];
-  if (!ev.length) {
-    return `<div class="trace-empty">Nada escrito todavía en esta sesión.<br>
-            <span>Cada nota, idea o entrada al buzón aparecerá aquí con su fichero y su línea.</span></div>`;
-  }
-  const KIND = {
-    "mailbox":    { icon: "📬", label: "al buzón" },
-    "idea":       { icon: "💡", label: "a ideas" },
-    "task":       { icon: "➕", label: "tarea creada" },
-    "plan-item":  { icon: "📝", label: "item al plan" },
-    "plan-route": { icon: "🎯", label: "item enrutado" }
-  };
-  return ev.map(e => {
-    const k = KIND[e.kind] || { icon: "•", label: e.kind };
-    return `
-      <div class="trace-row">
-        <span class="trace-icon">${k.icon}</span>
-        <div class="trace-body">
-          <div class="trace-head"><strong>${k.label}</strong>
-            <span class="trace-where"><code>${esc(e.file || "")}</code>${e.line ? ` L${e.line}` : ""}</span>
-          </div>
-          <div class="trace-text">${esc(String(e.wrote || "").slice(0, 160))}</div>
-          <div class="trace-at">${esc(String(e.at || "").replace("T", " "))}</div>
-        </div>
-      </div>`;
-  }).join("");
-}
 
 // ───────────────────────────────────────────────── OFICINA — the board
-const TERMINAL = ["done", "cancelled"];
+const TERMINAL = ["done", "cancelled", "deferred"];
 
 function renderOffice(container) {
   const all = officeCards();
-  // El muro y la papelera son dos conjuntos. `FLOW.md`: las terminales «dejan el muro para
-  // la papelera, MARCADAS como cuál» — así que se apartan, no se borran, y `done` y
-  // `cancelled` siguen siendo distinguibles allí.
-  const cards = all.filter(c => !TERMINAL.includes(cardState(c)));
-  const bin = all.filter(c => TERMINAL.includes(cardState(c)));
-  const projects = [...new Set(all.map(c => c.project).filter(Boolean))].sort();
+  const live = all.filter(c => !c.inBin && !TERMINAL.includes(cardState(c)));
+  const history = all.filter(c => c.inBin || TERMINAL.includes(cardState(c)));
+  const fs = STATE.officeFilterState || "active";
   const fp = STATE.officeFilterProj || "ALL";
-  const fs = STATE.officeFilterState || "ALL";
-  const pool = fs === "bin" ? bin : cards;
-  const shown = pool.filter(c =>
-    (fp === "ALL" || (c.project || "").toLowerCase() === fp.toLowerCase()) &&
-    (["ALL", "bin"].includes(fs) || cardState(c) === fs));
-  const count = st => cards.filter(c => cardState(c) === st).length;
-  const mailboxOpen = (STATE.mailbox || []).filter(e => ["open", "pending"].includes(e.state)).length;
-
+  const states = [["active", "Activas"], ["paused", "En pausa"], ["pending", "Pendientes"], ["bin", "Historial"]];
+  const pool = fs === "bin" ? history : live.filter(c => fs === "ALL" || cardState(c) === fs);
+  const shown = pool.filter(c => fp === "ALL" || c.project === fp);
+  const projects = [...new Set(all.map(c => c.project))].sort();
+  const activeCount = live.filter(c => cardState(c) === "active").length;
   container.innerHTML = `
-    <div class="view-header">
-      <div class="view-title-group">
-        <h1><span>🗂️</span> Oficina</h1>
-        <p class="view-subtitle">El muro: una tarjeta por <strong>tarea</strong>, y una tarea es
-          <strong>un compromiso</strong>. Un sub-bloque es una pieza de un plan y <em>no</em> es
-          una tarea hasta que alguien decide que es su momento y lo promueve — confundir los dos
-          es lo que dio dos respuestas correctas a una pregunta: preguntado qué había pendiente,
-          un agente contestó 4 y otro ~50.</p>
+    <section class="office-quiet">
+      <header class="quiet-heading">
+        <p class="quiet-eyebrow">OFICINA</p>
+        <h1>Tu trabajo en marcha</h1>
+        <p>${activeCount} tarea${activeCount === 1 ? " activa" : "s activas"}. Elige una para continuar.</p>
+      </header>
+      <div class="quiet-controls">
+        <nav class="quiet-tabs" aria-label="Estado de las tareas">
+          ${states.map(([state, label]) => `<button class="quiet-tab ${fs === state ? "selected" : ""}"
+            aria-pressed="${fs === state}" onclick="setOfficeFilter('state','${state}')">${label}
+            <span>${state === "bin" ? history.length : live.filter(c => cardState(c) === state).length}</span></button>`).join("")}
+        </nav>
+        <label class="quiet-project-filter">Proyecto
+          <select onchange="setOfficeFilter('proj',this.value)">
+            <option value="ALL">Todos</option>
+            ${projects.map(project => `<option value="${esc(project)}" ${fp === project ? "selected" : ""}>${esc(project)}</option>`).join("")}
+          </select>
+        </label>
       </div>
-      <!-- La cuenta de activas es la cabecera y no una pildora mas. FLOW.md no pone techo
-           al numero de tareas activas a proposito, y dice en su lugar que lo acota: lo que
-           acota el trabajo en curso es la VISIBILIDAD, el muro declara su cuenta de activas
-           y se lee en cada apertura. Es un trabajo que la regla le da a esta vista. -->
-      <div class="wip-declaration ${count("active") === 0 ? "wip-floor" : ""}">
-        <span class="wip-n">${count("active")}</span>
-        <div class="wip-txt">
-          <strong>${count("active") === 1 ? "tarea activa" : "tareas activas"} ahora mismo</strong>
-          <span>Sin techo, a propósito: cada tarea tiene su propia hoja, así que nada se disputa.
-            Lo que acota el trabajo en curso es <em>este número, leído en cada apertura</em>.
-            Si empieza a subir, eso es evidencia para una regla — no motivo para adivinarla.</span>
-        </div>
-        <div class="wip-side">
-          <span class="wip-chip st-paused">⏸ ${count("paused")} en pausa</span>
-          <span class="wip-chip st-pending">○ ${count("pending")} en cola</span>
-          ${bin.length ? `<button class="wip-chip wip-bin" onclick="setOfficeFilter('state','bin')">🗑 ${bin.length} en la papelera</button>` : ""}
-        </div>
+      <div class="quiet-wall">
+        ${shown.length ? shown.map(c => `<a class="quiet-task" href="#/desk/${encodeURIComponent(c.id)}">
+          <div class="quiet-task-meta"><span>${esc(c.project)}</span><span>${STATE_META[cardState(c)]?.label || esc(cardState(c))}</span></div>
+          <h2>${inline(c.title)}</h2>
+          ${c.serves ? `<p>${inline(c.serves)}</p>` : ""}
+          <span class="quiet-task-open">Abrir tarea <span aria-hidden="true">→</span></span>
+        </a>`).join("") : `<p class="quiet-empty">${fs === "active" ? "No hay tareas activas con este filtro." : "No hay tareas en este apartado."}</p>`}
       </div>
-    </div>
-
-    <!-- El unico aviso es el SUELO. El techo no existe: avisar de hay mas de una activa era
-         la regla anterior, y mantenerlo habria contradicho al fichero que gobierna. -->
-    ${count("active") === 0 ? `
-      <div class="office-warning">
-        <strong>⚠️ Ninguna tarea está <code>active</code>.</strong>
-        <span>
-          <code>FLOW.md</code> pone un suelo: <strong>si hay trabajo en marcha, al menos una tarea
-          está activa</strong> — y si ninguna lo está, el agente lo dice y se asigna una, con su
-          proyecto, su plan y sus objetivos. Es lo que acota la promoción: un sub-bloque listo que
-          nadie promueve <strong>es invisible desde el muro</strong>.
-        </span>
-      </div>` : ""}
-    ${mailboxOpen ? `
-      <div class="office-note">
-        <strong>📬 ${mailboxOpen} entrada${mailboxOpen === 1 ? "" : "s"} sin cerrar en el buzón.</strong>
-        <span>Una tarea de drenaje está <code>active</code> mientras su cola no está vacía, y
-          <code>paused</code> sólo cuando lo está — <strong>el estado de un drenaje se deriva de la
-          cuenta, no se elige</strong>. «En pausa con cosas dentro» no es un estado: es una
-          contradicción, y es justo así como una cola deja de verse.
-          <button class="inline-link" onclick="navigateTo('inbox')">ir al buzón →</button></span>
-      </div>` : ""}
-
-    <div class="office-filters">
-      <div class="filter-row">
-        <span class="filter-label">Estado</span>
-        <button class="chip-filter ${fs === "ALL" ? "active" : ""}" onclick="setOfficeFilter('state','ALL')">Todas (${cards.length})</button>
-        ${["active", "paused", "pending"].map(k => {
-          const m = STATE_META[k];
-          return `
-          <button class="chip-filter ${fs === k ? "active" : ""} ${m.cls}" onclick="setOfficeFilter('state','${k}')"
-                  title="${m.hint}">
-            ${m.icon} ${m.label} (${count(k)})
-          </button>`;
-        }).join("")}
-        <button class="chip-filter ${fs === "bin" ? "active" : ""}" onclick="setOfficeFilter('state','bin')"
-                title="FLOW.md: las terminales dejan el muro para la papelera, marcadas como cuál.">
-          🗑 papelera (${bin.length})
-        </button>
-      </div>
-      <div class="filter-row">
-        <span class="filter-label">Proyecto</span>
-        <button class="chip-filter ${fp === "ALL" ? "active" : ""}" onclick="setOfficeFilter('proj','ALL')">Todos</button>
-        ${projects.map(p => `
-          <button class="chip-filter ${fp.toLowerCase() === p.toLowerCase() ? "active" : ""}" onclick="setOfficeFilter('proj',${jsq(p)})">
-            ${esc(p)} (${cards.filter(c => c.project === p).length})
-          </button>`).join("")}
-      </div>
-    </div>
-
-    <div class="office-mural">
-      ${shown.length ? shown.map(c => {
-        const st = cardState(c);
-        const m = STATE_META[st];
-        // ⛔ Antes era `c.active ? STATE.livePlan : []`, así que toda tarjeta que no fuera
-        // la del ▶ decía «sin plan abierto todavía» aunque su hoja estuviera en disco.
-        const sheet = planForCard(c);
-        // The plan belongs to the task. Only the active one has the live sheet; the rest
-        // show what their sheet holds when the instance keeps one per task.
-        const items = sheet ? sheet.items : [];
-        const routed = items.filter(i => i.struck || i.outcome).length;
-        const pct = items.length ? Math.round(routed / items.length * 100) : null;
-        return `
-          <article class="mural-card ${m.cls} ${c.active ? "mural-active" : ""}"
-                   onclick="openDesk(${jsq(c.id)})" title="Abrir el despacho de esta tarea">
-            <header class="mural-top">
-              <span class="mural-marker ${m.cls}">${c.active ? "▶" : (c.marker || m.icon)}</span>
-              <span class="mural-state ${m.cls}">${m.label}</span>
-              ${st === "pending" ? `
-                <span class="plan-flag ${sheet && sheet.items.length ? "planned" : "unplanned"}"
-                      title="${sheet && sheet.items.length
-                        ? "FLOW.md: pending es «planificada» cuando su hoja existe."
-                        : "FLOW.md: pending es «sin planificar» cuando su hoja no existe. Se planifica con current-plan."}">
-                  ${sheet && sheet.items.length ? "planificada" : "sin planificar"}
-                </span>` : ""}
-              ${c.project ? `<span class="tag-pill tag-project">${esc(c.project)}</span>` : ""}
-            </header>
-            <h3 class="mural-title">${inline(c.title)}</h3>
-
-            <!-- El objetivo NO se esconde. AX-46 pide que el artefacto se lea sin la
-                 conversacion que lo produjo, y una tarjeta que hay que sobrevolar para saber a
-                 que sirve no cumple eso: cuesta un gesto mas, que es la version pequena de
-                 costar una re-explicacion. -->
-            ${c.serves ? `
-              <div class="mural-serves" title="AX-46 · el objetivo al que sirve esta tarea">
-                <span class="serves-k">sirve a</span>
-                <span class="serves-v">${cut(c.serves, 130)}</span>
-              </div>`
-            : `<div class="mural-serves serves-missing" title="AX-46 pide los cuatro campos, y este falta. Se escribe en el muro como **Serves**.">
-                <span class="serves-k">sirve a</span>
-                <span class="serves-v">— sin declarar —</span>
-              </div>`}
-
-            <!-- La descripcion y el alcance sí se abren al pasar por encima: son el detalle,
-                 y el detalle de nueve tarjetas a la vez es la saturacion que hay que evitar. -->
-            ${(c.why || c.affects || c.moves_when || c.waits_on) ? `
-              <div class="mural-extra">
-                ${c.why ? `<p class="mural-why">${cut(c.why, 300)}</p>` : ""}
-                ${c.affects ? `
-                  <div class="mural-cond">
-                    <span class="cond-k">toca</span>
-                    <span class="cond-v">${cut(c.affects, 190)}</span>
-                  </div>` : ""}
-                ${(c.moves_when || c.waits_on) ? `
-                  <div class="mural-cond">
-                    <span class="cond-k">${c.waits_on ? "espera" : "avanza cuando"}</span>
-                    <span class="cond-v">${cut(c.moves_when || c.waits_on, 190)}</span>
-                  </div>` : ""}
-              </div>
-              <div class="mural-peek">pasa el ratón para el detalle</div>` : ""}
-            ${pct !== null ? `
-              <div class="mural-progress" title="${sheet.live ? "PLAN.md en vivo" : `plan ${esc(sheet.id || "")}`}">
-                <div class="mural-bar"><div class="mural-fill" style="width:${pct}%"></div></div>
-                <span class="mural-pct">${routed}/${items.length}${sheet.live ? " · en vivo" : ""}</span>
-              </div>` : `
-              <div class="mural-noplan" title="Toda tarea lleva su hoja desde que existe; ésta está vacía o no se ha encontrado su registro.">
-                hoja vacía
-              </div>`}
-            <footer class="mural-foot">
-              ${c.taskId ? `<span class="tag-pill tag-purple">${esc(c.taskId)}</span>` : ""}
-              ${c.twins && c.twins.length ? `
-                <span class="twin-flag" title="Se parece${c.twins.length > 1 ? "n" : ""} mucho a ésta: ${c.twins.map(t => `«${esc(t)}»`).join(" · ")}. Si son el mismo trabajo, unifica el título o declara **plan:** con el mismo id. La interfaz no las fusiona sola porque una fusión equivocada esconde una tarea, y a un tablero al que le falta trabajo no se le nota.">
-                  ⧉ ${c.twins.length === 1 ? "posible duplicada" : `${c.twins.length} posibles duplicadas`}
-                </span>` : ""}
-              ${c.sources.map(s => `<span class="src-chip src-${s}">${s}</span>`).join("")}
-              <span class="mural-go">abrir despacho →</span>
-            </footer>
-          </article>`;
-      }).join("") : `
-        <div class="empty-state">
-          <div class="empty-icon">🗂️</div><h3>Nada que mostrar con este filtro</h3>
-          <p>Cambia el estado o el proyecto para ver el resto del mural.</p>
-        </div>`}
-    </div>`;
+    </section>`;
 }
 
-// ───────────────────────────────────────────────── DESPACHO — one task's desk
 function renderDesk(container) {
-  const cards = officeCards();
-  const card = cards.find(c => c.id === STATE.deskCardId)
-            || cards.find(c => normaliseTitle(c.title) === normaliseTitle(STATE.deskCardId))
-            || cards.find(c => c.active) || cards[0];
-  if (!card) { STATE.currentView = "cockpit"; return renderOffice(container); }
-
-  const st = cardState(card);
-  const m = STATE_META[st];
-  // ⛔ Aquí estaba la regresión. Era `isLive ? STATE.livePlan : []`, y `findPlanForFront`
-  // —que ya existía y el cockpit anterior sí llamaba— dejó de usarse: toda tarea que no
-  // fuera la del ▶ enseñaba un cartel de «en pausa» y ninguna hoja, aunque su plan
-  // estuviera en disco. Reanudarla costaba reconstruirla, que es justo lo que el estado
-  // `paused` existe para evitar.
+  const card = officeCards().find(c => c.id === STATE.deskCardId);
+  if (!card) {
+    container.innerHTML = `<section class="office-quiet"><a class="quiet-back" href="#/cockpit">← Volver al muro</a>
+      <h1>No se encuentra esta tarea</h1><p>El enlace ya no corresponde a una tarea del muro.</p></section>`;
+    return;
+  }
   const sheet = planForCard(card);
-  const isLive = Boolean(sheet && sheet.live);
-  const items = sheet ? sheet.items : [];
-  const sections = sheet ? (sheet.sections || []) : [];
-  const groups = planTree(items, sections);
-  const routed = items.filter(i => i.struck || i.outcome).length;
-  const pct = items.length ? Math.round(routed / items.length * 100) : 0;
-  const byOutcome = k => items.filter(i => i.outcome === k).length;
-  const secNames = [...new Set(groups.map(g => g.section).filter(Boolean))];
-
+  if (!sheet || sheet.stale) loadTaskSheet(card);
+  const items = sheet?.items || [];
+  const remaining = items.filter(i => !i.struck && !i.outcome);
+  const done = items.filter(i => i.struck || i.outcome);
+  const paragraphs = (card.description || "").split(/\n\s*\n/).filter(Boolean);
+  const now = sheet?.current || paragraphs[0] || "Esta tarea no tiene una actividad actual descrita.";
+  const list = entries => `<ol class="quiet-steps">${entries.map(i => `<li value="${Number(i.index) || 1}">
+    ${inline(i.text)}${i.destination ? `<span class="quiet-outcome">${inline(i.destination)}</span>` : ""}</li>`).join("")}</ol>`;
   container.innerHTML = `
-    <div class="desk-surface">
-    <div class="desk-plate">
-      <button class="crumb-link" onclick="navigateTo('cockpit')">🗂️ Oficina</button>
-      <span class="crumb-sep">›</span>
-      <span class="crumb-here">${inline(card.title)}</span>
-      <span class="mural-state ${m.cls}">${m.icon} ${m.label}</span>
-    </div>
-    <svg class="desk-lamp" width="118" height="92" viewBox="0 0 118 92" aria-hidden="true">
-      <!-- El flexo. Adorno: la luz que echa vive en el gradiente de la mesa, no aquí —
-           ⚠️ si el dibujo desaparece, el despacho sigue leyéndose igual de bien. -->
-      <defs>
-        <linearGradient id="lampMetal" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#55514a"/><stop offset="1" stop-color="#2a2825"/>
-        </linearGradient>
-        <linearGradient id="lampShade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#5d584f"/><stop offset="1" stop-color="#332f2a"/>
-        </linearGradient>
-        <radialGradient id="lampGlow" cx=".5" cy=".2" r=".9">
-          <stop offset="0" stop-color="#fff6d8" stop-opacity=".95"/>
-          <stop offset="1" stop-color="#f4cf78" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
-      <!-- el cono de luz, hacia la mesa -->
-      <path d="M60 40 L104 88 L30 88 Z" fill="url(#lampGlow)" opacity=".55"/>
-      <!-- peana -->
-      <ellipse cx="24" cy="85" rx="19" ry="5" fill="rgba(30,16,6,.45)"/>
-      <path d="M8 84 h32 a3 3 0 0 1 0 5 h-32 a3 3 0 0 1 0-5z" fill="url(#lampMetal)"/>
-      <!-- columna y brazo articulado -->
-      <path d="M24 84 L24 52" stroke="url(#lampMetal)" stroke-width="4.5" stroke-linecap="round"/>
-      <path d="M24 52 L58 30" stroke="url(#lampMetal)" stroke-width="4.5" stroke-linecap="round"/>
-      <circle cx="24" cy="52" r="4" fill="#4a463f"/>
-      <circle cx="58" cy="30" r="3.6" fill="#4a463f"/>
-      <!-- pantalla, mirando abajo -->
-      <path d="M50 18 L78 12 L70 38 L47 30 Z" fill="url(#lampShade)"/>
-      <ellipse cx="58.5" cy="34" rx="12" ry="4.6" transform="rotate(-14 58.5 34)" fill="#ffeeb8"/>
-    </svg>
-    <div class="desk-hero ${m.cls}">
-      <div class="desk-hero-main">
-        <h1 class="desk-title">${inline(card.title)}</h1>
-        <div class="desk-hero-tags">
-          ${card.project ? `<span class="tag-pill tag-project-hero">${esc(card.project)}</span>` : ""}
-          ${card.taskId ? `<span class="tag-pill tag-purple">${esc(card.taskId)}</span>` : ""}
-          ${card.described_in ? `<span class="tag-pill"><code>${esc(card.described_in)}</code></span>` : ""}
-        </div>
-
-        <!-- Los cuatro campos de AX-46, en la cabecera y en este orden: a que sirve, que pasa,
-             que toca. Es lo primero que se lee al entrar, porque es lo que responde a "que
-             estoy haciendo aqui" sin abrir nada mas. Un campo que falta se nombra en su sitio
-             en vez de desaparecer: un hueco declarado se rellena, uno callado no. -->
-        <dl class="ax46">
-          <div class="ax46-row ${card.serves ? "" : "ax46-missing"}">
-            <dt>Sirve a</dt>
-            <dd>${card.serves ? inline(card.serves)
-              : `<span class="ax46-gap">sin declarar — se escribe en el muro como <code>**Serves**</code></span>`}</dd>
-          </div>
-          <div class="ax46-row ${card.why ? "" : "ax46-missing"}">
-            <dt>Qué pasa</dt>
-            <dd>${card.why ? expandable(card.why)
-              : `<span class="ax46-gap">sin declarar — <code>**Why it is committed**</code></span>`}</dd>
-          </div>
-          <div class="ax46-row ${card.affects ? "" : "ax46-missing"}">
-            <dt>Qué toca</dt>
-            <dd>${card.affects ? inline(card.affects)
-              : `<span class="ax46-gap">sin declarar — <code>**What it affects**</code></span>`}</dd>
-          </div>
-          ${(card.moves_when || card.waits_on) ? `
-            <div class="ax46-row">
-              <dt>${card.waits_on ? "Espera a" : "Avanza cuando"}</dt>
-              <dd>${inline(card.moves_when || card.waits_on)}</dd>
-            </div>` : ""}
-        </dl>
-      </div>
-      ${isLive ? `
+    <article class="quiet-desk">
+      <a class="quiet-back" href="#/cockpit">← Volver al muro</a>
+      <header class="quiet-desk-heading">
+        <p class="quiet-eyebrow">${esc(card.project)} <span>· ${STATE_META[cardState(card)]?.label || esc(cardState(card))}</span></p>
+        <h1>${inline(card.title)}</h1>
+        ${card.serves ? `<p class="quiet-purpose">${inline(card.serves)}</p>` : ""}
+      </header>
+      <section class="quiet-now" aria-label="Actividad actual">
+        <h2>${cardState(card) === "active" ? "Ahora" : "Situación"}</h2>
+        <div>${inline(now)}</div>
+        ${card.waits_on ? `<p class="quiet-blocker">Espera a: ${inline(card.waits_on)}</p>` : ""}
+      </section>
+      ${!sheet || sheet.loading ? `<p class="quiet-loading" role="status">Leyendo la hoja de esta tarea…</p>` : ""}
+      ${sheet && !sheet.loading && !sheet.available ? `<p class="quiet-source-note">${esc(sheet.why)}</p>` : ""}
+      <div class="quiet-folds">
         ${items.length ? `
-          <div class="tally">
-            <!-- ⚠️ Etiquetado. En una tarea de triaje esta cuenta convive con la de la mesa, y
-                 miden cosas distintas: aquí items del plan, allí entradas del buzón. Dos
-                 números grandes sin decir de qué son es la manera de leer el equivocado. -->
-            <span class="tally-what">items de esta hoja</span>
-            <div class="tally-pair">
-              <span class="tally-done">
-                <span class="tally-n">${routed}</span>
-                <span class="tally-l">hechos</span>
-              </span>
-              <span class="tally-sep"></span>
-              <span class="tally-open">
-                <span class="tally-n">${items.length - routed}</span>
-                <span class="tally-l">${items.length - routed === 1 ? "abierto" : "abiertos"}</span>
-              </span>
-            </div>
-            <div class="tally-bar"><div class="tally-fill" style="width:${pct}%"></div></div>
-            <div class="tally-out">
-              ${Object.entries(OUTCOMES).filter(([k]) => byOutcome(k)).map(([k, o]) =>
-                `<span class="oc ${o.cls}" title="${o.hint}">${o.icon} ${byOutcome(k)}</span>`).join("")}
-            </div>
-          </div>` : ""}` : ""}
-    </div>
-
-    <div class="desk-grid">
-      <section class="desk-work">
-      ${renderTriageBench(card)}
-      <div class="sheet">
-        ${sheet ? `
-          ${!isLive ? `
-            <div class="sheet-banner ${m.cls}">
-              <span class="sheet-banner-icon">${m.icon}</span>
-              <div>
-                <strong>Hoja conservada${sheet.id ? ` · <code>${esc(sheet.id)}</code>` : ""}</strong>
-                <span>${st === "paused"
-                  ? "Esta tarea ha estado activa y su hoja se guarda tal cual la dejaste — con sus items tachados y sus destinos. Reanudarla cuesta leer, no reconstruir."
-                  : "Se lee de su registro de plan. Sólo la tarea del <code>▶</code> escribe en el <code>PLAN.md</code> en vivo, así que aquí no hay botones de enrutado."}</span>
-              </div>
-              ${STATE.activeFront ? `<button class="btn-quick out-done" onclick="navigateTo('cockpit')">ver la activa →</button>` : ""}
-            </div>` : ""}
-          ${sheet.meta?.order_why ? `
-            <div class="order-why-card">
-              <div class="order-why-header"><span class="order-why-icon">🧠</span>
-                <strong>El orden, y por qué este orden</strong>
-                ${!isLive && sheet.id ? `<span class="order-why-badge">${esc(sheet.id)}</span>` : ""}</div>
-              <div class="order-why-body">${inline(sheet.meta.order_why)}</div>
-            </div>` : ""}
-
-          ${groups.length ? groups.map(g => {
-            const gr = g.items.filter(i => i.struck || i.outcome).length;
-            return `
-            <div class="plan-section">
-              <div class="plan-section-head">
-                <h3>${g.subsection ? `<span class="sec-parent">${esc(g.section || "")} ›</span> ` : ""}${esc(g.subsection || g.section || "Plan")}</h3>
-                <span class="sec-kind" title="${g.ordered ? "los items van uno detrás de otro" : "sin orden: se pueden hacer en cualquier secuencia"}">
-                  ${g.ordered ? "↓ en orden" : "⇄ sin orden"}
-                </span>
-                <span class="sec-count ${gr === g.items.length ? "sec-all" : ""}"
-                      title="${gr} de ${g.items.length} con destino">${gr}/${g.items.length}</span>
-              </div>
-              <div class="plan-section-items">
-                ${g.items.map(i => renderPlanItem(i, isLive)).join("")}
-              </div>
-            </div>`;
-          }).join("") : `
-            <div class="empty-state"><div class="empty-icon">📋</div>
-              <h3>El plan está vacío</h3>
-              <p>Esta tarea tiene su hoja desde que existe (<code>FLOW.md</code>), pero nadie la ha
-                 planificado todavía. ${isLive
-                   ? "Escribe abajo el primer item, o invoca <code>current-plan</code>."
-                   : "Se planifica con <code>current-plan</code>."}</p>
-            </div>`}
-
-          ${isLive ? `
-          <!-- CAPTURA EN VIVO -->
-          <div class="capture-box">
-            <div class="capture-head">
-              <strong>📝 Anota sin salir de aquí</strong>
-              <span>Entra al plan <em>sin destino</em>. Lo leo del disco y decidimos juntos a dónde va.</span>
-            </div>
-            <div class="capture-row">
-              <textarea id="captureInput" rows="2" placeholder="Una idea, una observación, algo que acaba de surgir… (Ctrl+Enter para añadir)"
-                        onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')addPlanNote()"></textarea>
-            </div>
-            <div class="capture-actions">
-              ${secNames.length > 1 ? `
-                <select id="captureSection" class="custom-select capture-sel">
-                  ${secNames.map(s => `<option value="${esc(s)}">en «${esc(s)}»</option>`).join("")}
-                </select>` : `<input type="hidden" id="captureSection" value="${esc(secNames[0] || "")}">`}
-              <label class="capture-ord">
-                <input type="checkbox" id="captureOrdered" checked> lleva número
-              </label>
-              <button class="btn-submit" onclick="addPlanNote()">＋ Añadir al plan</button>
-            </div>
-          </div>` : ""}
-        ` : `
-          <div class="front-state-card ${st === "paused" ? "paused-state-card" : "queued-state-card"}">
-            <div class="state-card-icon">${m.icon}</div>
-            <h3>Sin hoja que enseñar</h3>
-            <p class="state-card-desc">
-              Toda tarea lleva una desde que existe (<code>FLOW.md</code>), así que esto significa
-              una de dos: <strong>está vacía porque nadie la ha planificado</strong>, o
-              <strong>su registro de plan no se ha encontrado</strong> — y la interfaz no puede
-              distinguirlo desde fuera.
-            </p>
-            <div class="state-detail-box">
-              <strong>${card.waits_on ? "Espera a" : "Condición de avance"}:</strong>
-              <p>${inline(card.moves_when || card.waits_on || "Secuenciada en el orden de trabajo.")}</p>
-            </div>
-            <div class="state-guidance-box">
-              <span>💡 Se planifica con <code>current-plan</code>. Si crees que su plan existe,
-                    comprueba que la tarea declare <code>**plan:**</code> con su id — es lo que
-                    la ata a su registro sin depender de que los títulos se parezcan.</span>
-            </div>
-          </div>`}
-      </div></section>
-
-      <aside class="desk-rail">
-        <div class="rail-panel">
-          <div class="rail-head"><strong>🧾 Traza de la sesión</strong>
-            <button class="rail-refresh" onclick="loadTrace()" title="Releer el diario">⟳</button></div>
-          <div id="traceRail" class="trace-list">${renderTraceList()}</div>
-        </div>
-        <div class="rail-panel rail-legend">
-          <div class="rail-head"><strong>Los cuatro destinos</strong></div>
-          ${Object.entries(OUTCOMES).map(([k, o]) => `
-            <div class="legend-row ${o.cls}"><span>${o.icon}</span>
-              <div><strong>${o.label}</strong><em>${o.hint}</em></div></div>`).join("")}
-          <p class="rail-note">Un item tachado sin destino es un <strong>cierre fallido</strong>
-             — el parser lo reporta y aquí no puede ocurrir: los cuatro botones son los únicos
-             caminos de salida.</p>
-        </div>
-      </aside>
-    </div>
-    </div>`;
+          <details id="desk-remaining"><summary>Lo que queda <span>${remaining.length}</span></summary>
+            ${remaining.length ? list(remaining) : "<p>Todos los pasos de esta hoja tienen salida.</p>"}
+          </details>
+          <details id="desk-done"><summary>Lo que ya hemos hecho <span>${done.length}</span></summary>
+            ${done.length ? list(done) : "<p>Todavía no hay pasos cerrados en esta hoja.</p>"}
+          </details>` : ""}
+        <details id="desk-context"><summary>Contexto y plan</summary>
+          ${paragraphs.slice(sheet?.current ? 0 : 1).map(p => `<p>${inline(p)}</p>`).join("")}
+          ${card.why ? `<h3>Por qué lo hacemos</h3><p>${inline(card.why)}</p>` : ""}
+          ${card.affects ? `<h3>Qué afecta</h3><p>${inline(card.affects)}</p>` : ""}
+          ${card.returns_when ? `<h3>Cuándo vuelve</h3><p>${inline(card.returns_when)}</p>` : ""}
+          ${sheet?.order_why ? `<h3>Por qué este orden</h3><p>${inline(sheet.order_why)}</p>` : ""}
+          ${sheet?.available ? `<details id="desk-source" class="quiet-source"><summary>Leer la hoja original</summary>
+            <p class="quiet-source-path">${esc(sheet.reference)}</p>
+            <div class="md-body">${renderMarkdownBody(sheet.body)}</div></details>` : ""}
+        </details>
+      </div>
+    </article>`;
 }
 
 // ───────────────────────────────────────────────── acciones de la oficina
@@ -4801,86 +4210,22 @@ window.setOfficeFilter = function (which, val) {
 };
 
 window.openDesk = function (cardId) {
+  history.pushState(null, "", `#/desk/${encodeURIComponent(cardId)}`);
   STATE.deskCardId = cardId;
   STATE.currentView = "desk";
   renderView();
-  loadTrace();
   window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
-window.addPlanNote = async function () {
-  const ta = document.getElementById("captureInput");
-  const text = (ta?.value || "").trim();
-  if (!text) return;
-  const section = document.getElementById("captureSection")?.value || "";
-  const ordered = document.getElementById("captureOrdered")?.checked !== false;
-  try {
-    const d = await api("POST", "/api/plan/item", { text, section, ordered });
-    ta.value = "";
-    confirmWrite(d, "Anotado en el plan, sin destino");
-  } catch (e) { reportWriteError(e); }
-};
 
-window.routePlanItem = async function (line, expect, outcome) {
-  try {
-    const d = await api("PATCH", "/api/plan/item", { line, expect, outcome });
-    confirmWrite(d, `Item enrutado: ${OUTCOMES[outcome].label}`);
-  } catch (e) { reportWriteError(e); }
-};
 
 // ───────────────────────────────────────────────── los handlers que faltaban
 //
 // ⛔ `index.html` called all of these and none of them existed. The modals opened and
 // could not close; submitting a form threw and reloaded the page, so the entry was lost
-// *and* the view was reset. Every one of them now writes through the API and reports what
-// the server actually did.
-function closeModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.remove("active");
-}
-window.closeTaskModal    = () => closeModal("taskModal");
 
-window.toggleScratchpad = function () {
-  const d = document.getElementById("scratchpadDrawer");
-  if (!d) return;
-  d.classList.toggle("open");
-  if (d.classList.contains("open")) {
-    const ta = document.getElementById("scratchpadInput");
-    if (ta) {
-      // ⚠️ Restored from storage, never blanked. A scratchpad that empties on close is a
-      // scratchpad that eats what was written in it, which is `PH-3` broken by a widget.
-      ta.value = localStorage.getItem(STORAGE_KEYS.SCRATCHPAD) || "";
-      ta.oninput = () => localStorage.setItem(STORAGE_KEYS.SCRATCHPAD, ta.value);
-      ta.focus();
-    }
-  }
-};
 
-window.handleCreateTask = async function (ev) {
-  ev.preventDefault();
-  const title = document.getElementById("taskTitle")?.value.trim();
-  const project = document.getElementById("taskProject")?.value;
-  const status = document.getElementById("taskStatus")?.value || "⬜";
-  const why = document.getElementById("taskWhy")?.value.trim();
-  try {
-    const d = await api("POST", "/api/task", { title, project, status, why });
-    closeModal("taskModal");
-    document.getElementById("taskForm")?.reset();
-    confirmWrite(d, `Tarea ${d.id || ""} creada`);
-  } catch (e) { reportWriteError(e); }
-  return false;
-};
 
-window.convertScratchpadToTask = function () {
-  const t = (document.getElementById("scratchpadInput")?.value || "").trim();
-  if (!t) { showToast("El bloc está vacío."); return; }
-  openTaskModal();
-  const title = document.getElementById("taskTitle");
-  const why = document.getElementById("taskWhy");
-  if (title) title.value = t.split("\n")[0].slice(0, 120);
-  if (why) why.value = t;
-  updateTaskPreview();
-};
 
 // ───────────────────────────────────────────────── EL BUZÓN — agente → operador
 //
@@ -5034,6 +4379,69 @@ async function loadRecent() {
     const d = await api("GET", "/api/recent");
     STATE.recentLines = d.lines || {};
   } catch (_) { STATE.recentLines = {}; }
+}
+
+// ⛔ `interface:I3.1` — las firings de los roles eran la única medida de la salud del
+// sistema que esta interfaz no podía pintar, y el script que las calcula llevaba escrito
+// desde antes. **El trabajo es una vista, no un parser**: esto pide el JSON y no recalcula
+// nada, porque dos cosas que cuentan lo mismo acaban discrepando (`MLabs:AX-20`).
+// ⚠️ Se carga una vez, como la doctrina: el script barre el árbol y no es estado vivo.
+// ⛔ El árbol se pide UNA vez y son metadatos: 326 filas sin un solo cuerpo. Los cuerpos
+// se piden al abrir, y sólo el que se abre — meter el vault en `/api/model`, que ya pesa
+// 1,8 MB, convertiría un problema conocido (`I1.5`) en uno inmanejable.
+async function loadTree() {
+  try {
+    const tree = await api("GET", "/api/tree");
+    if (JSON.stringify(tree) !== JSON.stringify(STATE.tree)) {
+      STATE.tree = tree; STATE.libraryRevision = (STATE.libraryRevision || 0) + 1;
+      for (const [key, note] of Object.entries(STATE.notes || {})) {
+        const file = tree.files?.find(f => Library.key(f) === key);
+        if (!file || file.version !== note.version) note.stale = true;
+        delete note.rendered; // Link destinations may have changed even when this body did not.
+      }
+      if (STATE.libNote) {
+        const note = STATE.notes?.[Library.key(STATE.libNote)];
+        if (note?.stale) loadNote(STATE.libNote.root, STATE.libNote.path);
+      }
+      if (STATE.searchQ) loadSearch(STATE.searchQ);
+    }
+  } catch (e) { if (!STATE.tree) STATE.tree = {available:false, why:e.message}; }
+  updateHUD(); renderView();
+}
+async function loadNote(root, path, retry = false) {
+  const key = Library.key({root,path}); STATE.notes ||= {};
+  const old = STATE.notes[key];
+  if (old?.loading || (old && !old.stale && !retry)) return;
+  const version = STATE.tree?.files?.find(f => Library.key(f) === key)?.version;
+  STATE.notes[key] = {...old, loading:true, stale:false}; renderView();
+  try {
+    const d = await api("GET", `/api/file?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}`);
+    STATE.notes[key] = d.available ? {body:d.body, version} : {...old, version, error:d.why || "No se pudo leer", loading:false, stale:false};
+  } catch (e) { STATE.notes[key] = {...old, version, error:e.message, loading:false, stale:false}; }
+  renderView();
+}
+let librarySearchRequest = 0;
+async function loadSearch(q) {
+  const request = ++librarySearchRequest;
+  if (!q || q.trim().length < 2) { STATE.search = null; renderView(); return; }
+  const root = STATE.libNote ? STATE.libSearchRoot || "" : STATE.libShelf || "";
+  STATE.search = {loading:true}; renderView();
+  try {
+    const result = await api("GET", `/api/search?q=${encodeURIComponent(q)}${STATE.libSearchAll ? "" : "&library=1"}${root ? "&root=" + encodeURIComponent(root) : ""}`);
+    if (request !== librarySearchRequest || STATE.searchQ !== q) return;
+    STATE.search = result.available ? result : {error:result.why};
+  } catch (e) { if (request === librarySearchRequest && STATE.searchQ === q) STATE.search = {error:e.message}; }
+  renderView();
+}
+
+async function loadMetrics() {
+  try {
+    STATE.metrics = await api("GET", "/api/metrics");
+  } catch (e) {
+    // No hay fuente y se dice, que no es lo mismo que cero (`interface:AX-5`).
+    STATE.metrics = { available: false, why: e.message };
+  }
+  renderView();
 }
 
 async function loadDoctrine() {
@@ -5632,6 +5040,302 @@ function metric({ id, purpose, title, n, of, unit, source, bad, note, tone }) {
     </article>`;
 }
 
+// Las auditorías, que es lo único de este tablero que el modelo no puede calcular: sale de
+// `metrics.py` a través de `/api/metrics`, **verbatim** (`interface:I3.1`).
+// ⛔ Sin fuente NO se pinta un cero. Un cero aquí se leería como «ninguna auditoría ha
+// encontrado nada», que es lo contrario de «no lo hemos medido» (`MLabs:AX-36`).
+function renderAuditMetrics() {
+  const m = STATE.metrics;
+  if (m === undefined) {
+    return `<section class="dash-block"><div class="dash-block-head">
+      <h2>Los roles y lo que encuentran</h2><p>Midiendo…</p></div></section>`;
+  }
+  if (!m.available) {
+    return `<section class="dash-block"><div class="dash-block-head">
+      <h2>Los roles y lo que encuentran</h2>
+      <p>⛔ <strong>Sin fuente, y por eso no hay cifras aquí</strong> — un cero se leería como
+         <em>ninguna auditoría encontró nada</em>, que es lo contrario de <em>no medido</em>.</p>
+      </div>
+      <div class="callout callout-warning"><span class="callout-icon">⚠️</span>
+        <div class="callout-content">${inline(m.why || "sin razón declarada")}
+        ${m.how ? `<br><code>${esc(m.how)}</code>` : ""}</div></div>
+    </section>`;
+  }
+  const audits = (m.data && m.data.audits) || {};
+  const roles = Object.keys(audits).sort();
+  if (!roles.length) {
+    return `<section class="dash-block"><div class="dash-block-head">
+      <h2>Los roles y lo que encuentran</h2>
+      <p>El script corre y no devuelve auditorías. <strong>Se dice, no se rellena.</strong></p>
+      </div></section>`;
+  }
+  return `
+    <section class="dash-block">
+      <div class="dash-block-head">
+        <h2>Los roles y lo que encuentran</h2>
+        <p>Leído de <code>${esc(m.source || "el script declarado")}</code>, sin recalcular nada.
+           <strong>Un rol se juzga por las ocasiones que lo justificaban contra las veces que se
+           invocó</strong>, y un log vacío dice que las ocasiones no han llegado.</p>
+      </div>
+      <div class="dash-grid">
+        ${roles.map(r => {
+          const a = audits[r] || {};
+          const st = a.by_status || {};
+          const abiertos = Number(st.open || 0);
+          const hallazgos = Number(a.findings || 0);
+          const rep = a.repeat_rate_pct;
+          return `
+            ${metric({ purpose: "steer", title: `${r} — hallazgos sin cerrar`,
+                       n: abiertos, of: hallazgos || null, unit: hallazgos ? "" : "hallazgos",
+                       bad: "sube: se encuentra y no se arregla",
+                       source: "metrics.py --json",
+                       note: `**${a.firings || 0} firings.** ${Object.entries(st).map(([k, v]) =>
+                         `\`${k}\` ${v}`).join(" · ") || "sin desglose"}` })}
+            ${rep === undefined ? "" : metric({ purpose: "prove", title: `${r} — repetición`,
+                       n: Number(a.repeats || 0), of: hallazgos || null,
+                       bad: "sube: el mismo hallazgo vuelve, así que no se arregló la causa",
+                       source: "metrics.py --json",
+                       note: `**${rep} %** de los hallazgos son repeticiones. ⚠️ Una tasa de
+                              repetición alta mide la corrección, no la auditoría.` })}`;
+        }).join("")}
+      </div>
+    </section>`;
+}
+
+// ═══ La Biblioteca ═════════════════════════════════════════════════════════════════════
+//
+// La sala responde UNA pregunta (`interface:AX-10`): **qué sabe esta empresa**. Y su prueba
+// es la de `I9`: *un día entero con esta pestaña abierta sin abrir el explorador; si se abre,
+// falta una puerta.*
+//
+// ⛔ **Las decisiones de diseño, escritas para que se puedan cambiar** (`O2` · `AX-13`):
+//
+//   · **Dos columnas, con las estanterías siempre visibles.** No es decoración: si al abrir
+//     una nota desaparece el mapa, cada nota es un callejón sin salida y se vuelve al
+//     explorador — que es exactamente lo que esta sala existe para evitar.
+//   · **La columna de lectura mide ~68 caracteres** (`--read-measure`). Es la decisión
+//     tipográfica de mayor efecto y la más fácil de tocar: por encima de ~75 el ojo pierde
+//     el principio de la línea al saltar, y esto es prosa que se lee, no una tabla que se
+//     escanea.
+//   · **Las estanterías van en el orden del router, no alfabético.** Los dominios están
+//     numerados `01_`–`08_` porque ese orden lo decidió el operador; ordenarlos por nombre
+//     tira esa información.
+//   · **Cada estantería lleva su cuenta, incluidas las de uno.** Una estantería vacía es
+//     información — `07_BigData` tiene una nota —, y esconderla es adular al vault.
+//
+// El tema Bodleian se afina encima de esto, con referencias. La estructura no lo espera.
+
+// Section taxonomy comes only from the adapter; folders come from the document catalog.
+function libraryLocation() {
+  return {root: STATE.libShelf || '', folder: STATE.libFolder || '', path: STATE.libNote?.path || '',
+    q: STATE.searchQ || '', anchor: STATE.libAnchor || '', all: Boolean(STATE.libSearchAll), searchRoot:STATE.libSearchRoot || ""};
+}
+function libFiles(root) { return (STATE.tree?.files || []).filter(f => f.root === root); }
+function libraryFiles() {
+  const roots = new Set((STATE.tree?.sections || []).map(s => s.root));
+  return (STATE.tree?.files || []).filter(f => roots.has(f.root));
+}
+function sectionLabel(root) { return STATE.tree?.sections?.find(s => s.root === root)?.label || root; }
+function folderLabel(name) { return name.replace(/^\d+(?:[._]\d+)*[-_]?/, '').replace(/[-_]/g, ' ').trim() || name; }
+window.openShelf = function(root, folder = '') { location.hash = Library.route({root, folder}); };
+window.openNote = function(root, path) { location.hash = Library.route({root, path, q: STATE.searchQ || '', all: STATE.libSearchAll, searchRoot:STATE.libSearchRoot}); };
+window.closeNote = window.backToHits = function() {
+  const loc = libraryLocation(); location.hash = Library.route({...loc, path: '', anchor: ''});
+};
+window.clearSearch = function() { location.hash = Library.route({root: STATE.libShelf || ''}); };
+window.librarySearch = function(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const q = form.elements.query.value.trim(), root = form.elements.scope.value;
+  location.hash = Library.route({root: root === '*' ? '' : root, q});
+};
+window.libraryLayout = function(layout) { STATE.libLayout = layout; renderView(); };
+window.libraryMore = function() { STATE.libLimit = (STATE.libLimit || 24) + 24; renderView(); };
+function libraryLink(text, loc, className = '') {
+  return `<a class="${className}" href="${esc(Library.route(loc))}">${esc(text)}</a>`;
+}
+function libraryBreadcrumb(root, folder, note) {
+  let html = libraryLink('Biblioteca', {});
+  if (root) html += ' <span>/</span> ' + libraryLink(sectionLabel(root), {root});
+  const parts = (folder || (note ? note.split('/').slice(0, -1).join('/') : '')).split('/').filter(Boolean);
+  parts.forEach((part, i) => { html += ' <span>/</span> ' + libraryLink(folderLabel(part), {root, folder: parts.slice(0, i + 1).join('/')}); });
+  return `<nav class="library-breadcrumb" aria-label="Ruta de lectura">${html}</nav>`;
+}
+function renderLibrary(container) {
+  const t = STATE.tree;
+  if (!t) { container.innerHTML = '<p class="library-status" role="status">Abriendo la biblioteca…</p>'; return; }
+  if (!t.available) { container.innerHTML = `<p class="library-status">${esc(t.why)} <button onclick="loadTree()">Reintentar</button></p>`; return; }
+  const loc = libraryLocation(), sections = t.sections || [], files = libraryFiles();
+  const note = loc.path ? (STATE.notes || {})[Library.key({root: loc.root, path: loc.path})] : null;
+  // Unrelated model loads must not replace a document or rerun its diagrams.
+  const signature = JSON.stringify([loc, STATE.libraryRevision, note?.version, note?.error, note?.body === undefined ? note?.loading : false, STATE.search, STATE.libLayout, STATE.libLimit]);
+  if (container.dataset.librarySignature === signature && container.querySelector('.library-browser')) return;
+  container.dataset.librarySignature = signature;
+  const header = `<header class="library-header"><div><h1>Biblioteca</h1><p>${files.length} documentos · ${sections.length} secciones</p></div>
+    <form class="library-search" onsubmit="librarySearch(event)" role="search" aria-label="Buscar documentos">
+      <label class="sr-only" for="library-query">Título, alias o texto</label><input id="library-query" name="query" type="search" placeholder="Buscar un tema, título o frase…" value="${esc(loc.q)}" minlength="2" required>
+      <label class="sr-only" for="library-scope">Dónde buscar</label><select id="library-scope" name="scope"><option value="*">Toda la biblioteca</option>${sections.map(s => `<option value="${esc(s.root)}" ${loc.root === s.root ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}</select><button type="submit">Buscar</button>
+    </form></header>`;
+  let body;
+  if (loc.path) body = renderNote();
+  else if (loc.q) body = renderSearchHits();
+  else if (loc.root) body = renderShelf(loc.root);
+  else body = `<div class="library-intro"><h2>¿Qué quieres consultar?</h2><p>Elige una sección y después un tema, o busca directamente un documento.</p></div>
+    <div class="library-sections">${sections.map(s => {
+      const fs = libFiles(s.root), group = Library.groups(fs, s.root);
+      const preview = group.folders.map(f => folderLabel(f.name)).slice(0, 3).join(' · ');
+      return `<a class="library-section" href="${esc(Library.route({root:s.root}))}"><span class="library-section-count">${fs.length} ${fs.length === 1 ? "documento" : "documentos"}</span><h2>${esc(s.label)}</h2><p>${esc(preview || fs.slice(0, 2).map(Library.title).join(' · '))}</p><span class="library-section-open">Explorar →</span></a>`;
+    }).join('')}</div>${sections.length ? '' : '<p>No hay secciones de biblioteca declaradas en el adaptador.</p>'}`;
+  container.innerHTML = `<div class="library-browser">${header}${body}</div>`;
+  if (loc.path && note?.body !== undefined) {
+    container.querySelectorAll('[data-reference]').forEach(link => link.addEventListener('click', event => {
+      event.preventDefault();
+      const panel = document.getElementById('library-references');
+      if (panel) panel.open = true;
+      document.getElementById('library-reference-' + link.dataset.reference)?.scrollIntoView({block:'center'});
+    }));
+    enhanceLibraryDiagrams(container);
+  }
+}
+function renderShelf(root) {
+  const folder = STATE.libFolder || '', {docs, folders} = Library.groups(STATE.tree.files, root, folder);
+  const limit = STATE.libLimit || 24, layout = STATE.libLayout || 'list';
+  return `${libraryBreadcrumb(root, folder)}<div class="library-intro"><h2>${esc(folder ? folderLabel(folder.split('/').pop()) : sectionLabel(root))}</h2><p>${folders.length ? 'Elige un tema para ver sus documentos.' : `${docs.length} documentos en este tema.`}</p></div>
+    ${folders.length ? `<div class="library-subjects">${folders.map(f => `<a href="${esc(Library.route({root, folder:f.path}))}"><strong>${esc(folderLabel(f.name))}</strong><span>${f.count} ${f.count === 1 ? "documento" : "documentos"} →</span></a>`).join('')}</div>` : ''}
+    ${docs.length ? `<div class="library-list-heading"><h3>${folders.length ? 'Documentos generales de la sección' : 'Documentos'}</h3><div role="group" aria-label="Presentación de documentos"><button aria-pressed="${layout === 'list'}" onclick="libraryLayout('list')">Lista</button><button aria-pressed="${layout === 'books'}" onclick="libraryLayout('books')">Lomos</button></div></div>
+    ${layout === 'books' ? `<div class="shelf"><div class="shelf-books">${docs.slice(0, limit).map(f => book(root, f)).join('')}</div><div class="shelf-plank"></div></div>` : `<div class="library-documents">${docs.slice(0, limit).map(f => `<a class="library-document" href="${esc(Library.route({root, path:f.path}))}"><span class="library-document-spine" aria-hidden="true" style="width:${Math.min(18, 5 + Math.sqrt(f.bytes / 1024))}px"></span><span><strong>${esc(Library.title(f))}</strong><small>${esc(f.path.split('/').pop())} · ${Math.max(1, Math.round(f.bytes / 1024))} KB</small></span><span aria-hidden="true">↗</span></a>`).join('')}</div>`}
+    ${docs.length > limit ? `<button class="library-more" onclick="libraryMore()">Mostrar más (${docs.length - limit} restantes)</button>` : ''}` : !folders.length ? '<p>No hay documentos en esta ubicación.</p>' : ''}`;
+}
+function renderSearchHits() {
+  const q = STATE.searchQ || '', root = STATE.libShelf || '', all = STATE.libSearchAll;
+  const catalog = (all ? STATE.tree.files : libraryFiles()).filter(f => !root || f.root === root);
+  const titleMatches = catalog.filter(f => Library.normalize([Library.title(f), f.path, ...(f.aliases || [])].join(' ')).includes(Library.normalize(q)));
+  const result = STATE.search, matches = new Map(titleMatches.map(f => [Library.key(f), {file:f, title:true}]));
+  for (const hit of result?.hits || []) {
+    const file = catalog.find(f => f.root === hit.root && f.path === hit.path);
+    if (file && !matches.has(Library.key(file))) matches.set(Library.key(file), {file, hit});
+  }
+  return `${libraryBreadcrumb(root)}<div class="library-intro"><h2>Resultados para «${esc(q)}»</h2><p>${matches.size} documentos${all ? ' · todas las carpetas navegables' : root ? ' · ' + esc(sectionLabel(root)) : ' · toda la biblioteca'}${result?.loading ? ' · buscando en el texto…' : ''}</p>${libraryLink('Limpiar búsqueda', {root})}</div>
+    ${result?.error ? `<p role="alert">La búsqueda en el texto ha fallado: ${esc(result.error)}. Se muestran coincidencias por título. <button onclick="loadSearch(STATE.searchQ)">Reintentar</button></p>` : ''}
+    ${result?.capped ? '<p>Hay más resultados de texto. Afina la búsqueda para acotarlos.</p>' : ''}
+    <div class="library-results">${[...matches.values()].map(({file, hit}) => `<a href="${esc(Library.route({root:file.root, path:file.path, q, all, searchRoot:root}))}"><strong>${esc(Library.title(file))}</strong><small>${esc(sectionLabel(file.root))} · ${esc(file.path)}</small>${hit ? `<p>${esc(hit.text)}</p>` : ''}</a>`).join('')}</div>
+    ${!matches.size && !result?.loading ? '<p>No se han encontrado documentos. Prueba otra palabra o amplía la sección.</p>' : ''}`;
+}
+function renderNote() {
+  const {root, path} = STATE.libNote, key = Library.key({root, path});
+  const file = STATE.tree.files.find(f => f.root === root && f.path === path);
+  const n = (STATE.notes || {})[key];
+  if (!n || n.stale) setTimeout(() => loadNote(root, path), 0);
+  const top = libraryBreadcrumb(root, '', path) + (STATE.searchQ ? libraryLink('← Volver a los resultados', {root:STATE.libSearchRoot || '', q:STATE.searchQ, all:STATE.libSearchAll}, 'library-return') : '');
+  if (n?.body === undefined) return `${top}<p class="library-status" role="status">${n?.error ? esc(n.error) : 'Abriendo documento…'}</p>${n?.error ? `<button onclick="loadNote(${jsq(root)},${jsq(path)},true)">Reintentar</button>` : ''}`;
+  const source = splitFrontmatter(n.body);
+  const rendered = n.rendered || (n.rendered = Library.render(source.body, {root,path}, STATE.tree.files));
+  const missingAnchor = STATE.libAnchor && !rendered.outline.some(h => h.id === "note-heading-" + Library.slug(STATE.libAnchor));
+  return `${top}<div class="library-reading-layout"><aside class="library-outline"><details id="library-outline"><summary>En este documento <span>${rendered.outline.length}</span></summary><nav aria-label="Índice del documento">${rendered.outline.map(h => libraryLink(h.text, {...libraryLocation(), anchor:h.anchor}, `outline-level-${h.level}`)).join('')}</nav></details></aside>
+    <div class="library-paper">${missingAnchor ? `<p id="library-missing-anchor" class="library-format-note" role="alert">No se encuentra el apartado «${esc(STATE.libAnchor)}» en este documento. Usa su índice para elegir un apartado actual.</p>` : ''}${n.error ? `<p role="alert">No se ha podido actualizar: ${esc(n.error)}. Se conserva la última lectura.</p>` : ''}
+    <div class="library-source-name">${esc(file?.path || path)}</div>${renderMeta(source.meta)}
+    <article class="note-prose" aria-label="Contenido del documento">${rendered.html || '<p>Este documento está vacío.</p>'}</article>
+    ${rendered.html.includes('class="katex-error"') ? '<p class="library-format-note">Alguna fórmula contiene sintaxis que no se puede representar. Se muestra su texto original.</p>' : ''}
+    ${rendered.problems.length ? `<details id="library-references" class="library-references"><summary>${rendered.problems.length} referencias sin destino único</summary><p>Estos enlaces necesitan un destino existente o una ruta más precisa en el documento original.</p>${rendered.problems.map((p,i) => `<div id="library-reference-${i}"><strong>${esc(p.target)}</strong><p>${p.kind === 'ambiguous' ? 'Hay varios documentos con ese nombre:' : 'No se encuentra en las carpetas navegables.'}</p>${(p.matches || []).map(f => libraryLink(`${sectionLabel(f.root)} / ${f.path}`, {root:f.root,path:f.path,anchor:p.anchor})).join('')}</div>`).join('')}</details>` : ''}
+    <details id="library-source" class="library-original"><summary>Ver Markdown original</summary><pre><code>${esc(n.body)}</code></pre></details></div></div>`;
+}
+let mermaidLoader;
+const libraryDiagramCache = new Map();
+let diagramSequence = 0;
+async function enhanceLibraryDiagrams(container) {
+  const figures = [...container.querySelectorAll('.note-diagram')];
+  if (!figures.length) return;
+  mermaidLoader ||= new Promise((resolve, reject) => {
+    const script = document.createElement('script'); script.src = 'vendor/mermaid/mermaid.min.js';
+    script.onload = () => { window.mermaid.initialize({startOnLoad:false, securityLevel:'strict', theme:'neutral', suppressErrorRendering:true, maxTextSize:100000}); resolve(window.mermaid); };
+    script.onerror = () => { mermaidLoader = null; reject(new Error('No se ha podido cargar el lector de diagramas.')); };
+    document.head.appendChild(script);
+  });
+  for (const [index, figure] of figures.entries()) {
+    const output = figure.querySelector('.diagram-output'), source = figure.querySelector('code').textContent;
+    try {
+      const cacheKey = JSON.stringify([STATE.libNote, index, source]);
+      let svg = libraryDiagramCache.get(cacheKey);
+      if (!svg) {
+        const mermaid = await mermaidLoader;
+        if (!figure.isConnected) return;
+        // Rendering is serialized by Mermaid; keep source directives from changing security settings.
+        const result = await mermaid.render('library-diagram-' + (++diagramSequence), source);
+        svg = result.svg; libraryDiagramCache.set(cacheKey, svg);
+        if (libraryDiagramCache.size > 80) libraryDiagramCache.delete(libraryDiagramCache.keys().next().value);
+      }
+      if (figure.isConnected) { output.innerHTML = svg; output.setAttribute('aria-busy','false'); }
+    } catch {
+      if (figure.isConnected) { output.textContent = 'No se ha podido representar este diagrama. Su código está disponible debajo.'; output.setAttribute('aria-busy','false'); figure.querySelector('details').open = true; }
+    }
+  }
+}
+
+// Un lomo. ⛔ **Alto y ancho salen del tamaño real de la nota**, no de un aleatorio: un
+// estante en el que los libros gordos se ven gordos dice algo verdadero de un vistazo, y uno
+// con medidas inventadas es decoración que además miente.
+//   · ancho  22–52 px sobre el tamaño en KB — el ancho es el que se percibe como «grosor»
+//   · alto   76–100 % del estante, por el título — variar el alto es lo que hace que un
+//            estante parezca un estante y no una barra de progreso
+//   · color  el tono de la materia, en pasos del mismo token; **una sola familia**, porque
+//            ocho paletas es lo que `AX-11` prohíbe
+function book(root, f) {
+  const kb = Math.max(1, Math.round(f.bytes / 1024));
+  const ancho = Math.min(52, 22 + Math.round(Math.sqrt(kb) * 4));
+  const largo = (f.title || f.path).length;
+  // ⛔ Esto era `76 + (largo % 25)`, y el módulo destruía exactamente la relación que el
+  // comentario de arriba afirmaba: un título de 26 caracteres salía más bajo que uno de 24.
+  // **Ahora es monótono** — más título, más alto —, acotado para que el estante siga siendo
+  // un estante. Un título que aun así no cabe se corta con puntos suspensivos, que es honesto.
+  const alto = Math.min(100, Math.max(66, 52 + largo * 1.5));
+  const tono = ((root.charCodeAt(0) * 7 + root.length * 3 + largo) % 5) + 1;
+  const titulo = f.title || f.path.split("/").pop().replace(/\.md$/, "");
+  return `
+    <button class="book tone-${tono}" style="--w:${ancho}px;--h:${alto}%"
+            title="${esc(titulo)} · ${kb} KB"
+            onclick="openNote(${jsq(root)}, ${jsq(f.path)})">
+      <span class="book-spine">${esc(titulo)}</span>
+      <span class="book-foot">${kb}</span>
+    </button>`;
+}
+
+// ⛔ El frontmatter YAML se pintaba como si fuera texto, así que **cada nota del vault abría
+// con un bloque de `tags:`, `aliases:` y `status:`** antes de su primera frase. Obsidian lo
+// esconde, y ésa era una de las razones concretas para seguir abriéndolo.
+// ⚠️ No se esconde: se **saca del flujo de lectura**. Las etiquetas son útiles para saber de
+// qué va una nota; lo que no puede es competir con la primera línea de prosa.
+function splitFrontmatter(md) {
+  const t = String(md || "");
+  const front = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(t);
+  if (!front) return {meta:null, body:t};
+  const crudo = front[1], resto = t.slice(front[0].length);
+  // The metadata panel accepts simple fields and lists; unrecognized YAML stays visible.
+  const campos = [];
+  let clave = null;
+  for (const ln of crudo.split("\n")) {
+    const m = ln.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
+    if (m) { clave = { k: m[1], v: m[2].trim() ? [m[2].trim()] : [] }; campos.push(clave); }
+    else if (clave && /^\s*-\s+/.test(ln)) clave.v.push(ln.replace(/^\s*-\s+/, "").trim());
+    else if (ln.trim()) campos.push({ k: "", v: [ln.trim()] });
+  }
+  return { meta: campos.filter(c => c.v.length), body: resto };
+}
+
+function renderMeta(meta) {
+  if (!meta || !meta.length) return "";
+  return `
+    <details class="note-meta">
+      <summary>
+        ${meta.filter(c => /tag/i.test(c.k)).flatMap(c => c.v).slice(0, 6)
+             .map(v => `<span class="meta-tag">${esc(v)}</span>`).join("")
+          || `<span class="meta-tag meta-tag-none">sin etiquetas</span>`}
+        <span class="meta-more">${meta.length} campos</span>
+      </summary>
+      <dl>${meta.map(c => `
+        <dt>${esc(c.k || "—")}</dt><dd>${c.v.map(v => esc(v)).join(" · ")}</dd>`).join("")}</dl>
+    </details>`;
+}
+
 function renderDashboard(container) {
   const ax = D().axioms;
   const clauses = D().clauses.filter(c => !c.objective);
@@ -5738,6 +5442,8 @@ function renderDashboard(container) {
         </figcaption>
       </figure>
     </section>
+
+    ${renderAuditMetrics()}
 
     <section class="dash-block">
       <div class="dash-block-head">
