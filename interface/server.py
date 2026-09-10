@@ -135,7 +135,8 @@ def _contained(adapter, rel, root=None):
     """
     if not rel or not isinstance(rel, str):
         return None
-    rel = urllib.parse.unquote(rel)           # `..%2f` es `../` una vez decodificado
+    # Query parameters have already been decoded once by parse_qs. Decoding again would
+    # silently change a legitimate filename containing percent escapes into another path.
     if "\x00" in rel or not rel.endswith(".md"):
         return None
     matches = []

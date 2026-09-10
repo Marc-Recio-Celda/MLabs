@@ -5245,30 +5245,67 @@ let diagramSequence = 0;
 async function enhanceLibraryDiagrams(container) {
   const figures = [...container.querySelectorAll('.note-diagram')];
   if (!figures.length) return;
+  const location = libraryLocation(), readingRoute = Library.route({...location, anchor:''});
+  const intendedScroll = PROJECT_READING[readingRoute]?.scroll;
+  const needsAnchor = location.anchor && container.dataset.anchor !== `${readingRoute}/${location.anchor}`;
+  let interacted = false;
+  const interaction = () => { interacted = true; };
+  const events = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
+  events.forEach(name => container.addEventListener(name, interaction, {passive:true}));
   mermaidLoader ||= new Promise((resolve, reject) => {
     const script = document.createElement('script'); script.src = 'vendor/mermaid/mermaid.min.js';
     script.onload = () => { window.mermaid.initialize({startOnLoad:false, securityLevel:'strict', theme:'neutral', suppressErrorRendering:true, maxTextSize:100000}); resolve(window.mermaid); };
     script.onerror = () => { mermaidLoader = null; reject(new Error('No se ha podido cargar el lector de diagramas.')); };
     document.head.appendChild(script);
   });
-  for (const [index, figure] of figures.entries()) {
+  try { for (const [index, figure] of figures.entries()) {
     const output = figure.querySelector('.diagram-output'), source = figure.querySelector('code').textContent;
     try {
       const cacheKey = JSON.stringify([STATE.libNote, index, source]);
       let svg = libraryDiagramCache.get(cacheKey);
       if (!svg) {
         const mermaid = await mermaidLoader;
-        if (!figure.isConnected) return;
+        if (!figure.isConnected) break;
         // Rendering is serialized by Mermaid; keep source directives from changing security settings.
         const result = await mermaid.render('library-diagram-' + (++diagramSequence), source);
         svg = result.svg; libraryDiagramCache.set(cacheKey, svg);
         if (libraryDiagramCache.size > 80) libraryDiagramCache.delete(libraryDiagramCache.keys().next().value);
       }
-      if (figure.isConnected) { output.innerHTML = svg; output.setAttribute('aria-busy','false'); }
+      if (figure.isConnected) {
+        output.innerHTML = svg; output.setAttribute('aria-busy','false');
+        const enlarge = document.createElement('button');
+        enlarge.className = 'diagram-enlarge'; enlarge.textContent = 'Ampliar diagrama';
+        enlarge.onclick = () => openLibraryDiagram(output.querySelector('svg'));
+        figure.appendChild(enlarge);
+      }
     } catch {
       if (figure.isConnected) { output.textContent = 'No se ha podido representar este diagrama. Su código está disponible debajo.'; output.setAttribute('aria-busy','false'); figure.querySelector('details').open = true; }
     }
+  } } finally {
+    events.forEach(name => container.removeEventListener(name, interaction));
+    // Diagram layout is asynchronous. Restore only if the reader has not started interacting.
+    queueMicrotask(() => {
+      if (interacted || Library.route(libraryLocation()) !== Library.route(location) || !figures[0].isConnected) return;
+      const heading = needsAnchor && (document.getElementById('note-heading-' + Library.slug(location.anchor)) || document.getElementById('library-missing-anchor'));
+      if (heading) heading.scrollIntoView({block:'start'});
+      else if (intendedScroll != null) container.scrollTop = intendedScroll;
+      rememberProjectReading(container);
+    });
   }
+}
+
+function openLibraryDiagram(svg) {
+  if (!svg) return;
+  const dialog = document.createElement('dialog'); dialog.className = 'library-diagram-dialog';
+  dialog.setAttribute('aria-label', 'Diagrama ampliado');
+  const close = document.createElement('button'); close.textContent = 'Cerrar diagrama';
+  close.onclick = () => dialog.close();
+  const canvas = document.createElement('div'); canvas.className = 'library-diagram-canvas';
+  const enlarged = svg.cloneNode(true);
+  enlarged.style.width = Math.max(1000, svg.viewBox.baseVal.width) + 'px';
+  enlarged.style.maxWidth = 'none';
+  canvas.appendChild(enlarged); dialog.append(close, canvas); document.body.appendChild(dialog);
+  dialog.addEventListener('close', () => dialog.remove(), {once:true}); dialog.showModal();
 }
 
 // Un lomo. ⛔ **Alto y ancho salen del tamaño real de la nota**, no de un aleatorio: un

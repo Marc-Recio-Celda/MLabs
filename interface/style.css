@@ -6682,3 +6682,8 @@ input[type="text"]:focus, textarea:focus {
 .note-prose a { color:var(--gold-deep); }
 .note-prose .katex-error { color:var(--rust) !important; overflow-wrap:anywhere; white-space:pre-wrap; }
 .library-format-note { color:var(--rust); font-size:13px; margin-top:22px; }
+.note-diagram .diagram-enlarge { display:block; margin:12px 0 0; padding:6px 10px; font-size:12px; }
+.library-diagram-dialog { width:94vw; height:90vh; max-width:none; max-height:none; background:var(--paper-card); color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:16px; }
+.library-diagram-dialog > button { width:auto; font:inherit; padding:9px 15px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink); cursor:pointer; }
+.library-diagram-canvas { overflow:auto; height:calc(100% - 58px); margin-top:12px; }
+.library-diagram-canvas svg { height:auto; }

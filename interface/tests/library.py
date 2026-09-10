@@ -27,6 +27,11 @@ class Library(unittest.TestCase):
         self.assertIn('Unique arts body.', server.read_file(self.adapter, 'topic/Index.md', 'arts')['body'])
         self.assertFalse(server.read_file(self.adapter, 'topic/Index.md')['available'])
 
+    def test_literal_percent_filename_is_not_another_document(self):
+        (self.root / 'science/with%20space.md').write_text('PERCENT')
+        (self.root / 'science/with space.md').write_text('SPACE')
+        self.assertEqual(server.read_file(self.adapter, 'with%20space.md', 'science')['body'], 'PERCENT')
+
     def test_root_is_an_allowlist_and_paths_stay_inside(self):
         for root, path in [('private', 'topic/Index.md'), ('science', '../private/topic/Index.md'),
                            ('science', '%2e%2e/private/topic/Index.md'), ('science', 'leak.md'),

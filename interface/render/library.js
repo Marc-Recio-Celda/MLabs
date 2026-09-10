@@ -1,6 +1,6 @@
 /* Catalog identity and note rendering. This module has no instance taxonomy or DOM state. */
 (function (host) {
-  const escape = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const escape = typeof module !== 'undefined' && module.exports ? require('./escape.js').esc : esc;
   const normalize = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const stem = p => p.replace(/\.md$/i, '');
   const title = f => f.title || stem(f.path.split('/').pop());
