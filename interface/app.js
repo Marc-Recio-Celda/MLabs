@@ -456,7 +456,7 @@ function updateHUD() {
 
   const badgeMailbox = document.getElementById("badgeMailbox");
   if (badgeMailbox) {
-    const open = (STATE.mailbox || []).filter(e => ["open", "pending"].includes(e.state)).length;
+    const open = (STATE.mailbox || []).filter(e => Mailbox.isPending(e)).length;
     badgeMailbox.textContent = open;
     badgeMailbox.classList.toggle("warn-badge", open > 0);
   }
@@ -544,10 +544,7 @@ function syncUrlHash() {
       hash += `?filter=${encodeURIComponent(STATE.skillFilterType)}`;
     }
   } else if (view === "inbox") {
-    hash = `#/inbox`;
-    if (STATE.selectedTaskFilter && STATE.selectedTaskFilter !== "ALL") {
-      hash += `?filter=${encodeURIComponent(STATE.selectedTaskFilter)}`;
-    }
+    hash = Mailbox.route(mailboxLocation());
   } else {
     hash = `#/${view}`;
   }
@@ -634,9 +631,7 @@ function restoreRouteFromUrl() {
     }
   } else if (mainView === "inbox") {
     STATE.currentView = "inbox";
-    if (params.has("filter")) {
-      STATE.selectedTaskFilter = decodeURIComponent(params.get("filter"));
-    }
+    STATE.mailLocation = Mailbox.location(params);
   } else if (["overview", "projects", "ideas", "library", "dashboard"].includes(mainView)) {
     STATE.currentView = mainView;
   }
@@ -663,6 +658,7 @@ window.addEventListener("popstate", () => {
 window.navigateTo = function(viewName) {
   if (STATE.currentView !== viewName) history.pushState(null, "", `#/${viewName}`);
   STATE.currentView = viewName;
+  if (viewName === "inbox") STATE.mailLocation = Mailbox.location(new URLSearchParams());
   document.querySelectorAll(".nav-item").forEach(btn => {
     btn.classList.toggle("active", btn.getAttribute("data-view") === viewName);
   });
@@ -722,7 +718,7 @@ const PROJECT_READING = (() => {
 
 function rememberProjectReading(main) {
   const route = main.dataset.route || "";
-  if (!(route.startsWith("#/project/") || route.startsWith("#/library")) || main.dataset.readerReady !== "true") return;
+  if (!(route.startsWith("#/project/") || route.startsWith("#/library") || route.startsWith("#/inbox")) || main.dataset.readerReady !== "true") return;
   const saved = PROJECT_READING[route] || (PROJECT_READING[route] = { details: {} });
   saved.scroll = main.scrollTop;
   main.querySelectorAll("details[id]").forEach(detail => { saved.details[detail.id] = detail.open; });
@@ -764,7 +760,7 @@ function renderView() {
   }
 
   const route = STATE.currentView === "desk" ? `desk/${STATE.deskCardId}` : STATE.currentView === "project-detail"
-    ? projectRoute(STATE.selectedProject, STATE.projectSubtab, STATE.projectFile) : STATE.currentView === "library" ? Library.route({...libraryLocation(), anchor:""}) : STATE.currentView;
+    ? projectRoute(STATE.selectedProject, STATE.projectSubtab, STATE.projectFile) : STATE.currentView === "library" ? Library.route({...libraryLocation(), anchor:""}) : STATE.currentView === "inbox" ? Mailbox.route(mailboxLocation()) : STATE.currentView;
   rememberProjectReading(main);
   STATE.readingPositions = STATE.readingPositions || {};
   if (main.dataset.route) STATE.readingPositions[main.dataset.route] = main.scrollTop;
@@ -791,8 +787,12 @@ function renderView() {
   }
 
   main.dataset.route = route;
+  if (STATE.currentView === 'inbox') {
+    const projectFilter = document.getElementById('projectFilter');
+    if (projectFilter) projectFilter.value = mailboxLocation().project || 'ALL';
+  }
   openDetails.forEach(id => { const node = document.getElementById(id); if (node) node.open = true; });
-  main.dataset.readerReady = String(Boolean(main.querySelector(".project-page, .project-file-index, .library-browser")));
+  main.dataset.readerReady = String(Boolean(main.querySelector(".project-page, .project-file-index, .library-browser, .mailbox-room")));
   Object.entries(savedReading?.details || {}).forEach(([id, open]) => {
     const detail = document.getElementById(id); if (detail) detail.open = open;
   });
@@ -845,7 +845,7 @@ function renderOverview(container) {
             <span class="spec-pill" onclick="navigateTo('dashboard')"><strong>⚖️ Axiomas:</strong> ${ax.length || "—"}</span>
             <span class="spec-pill" onclick="navigateTo('skills')"><strong>🏺 Skills:</strong> ${STATE.skills.length}</span>
             <span class="spec-pill" onclick="navigateTo('projects')"><strong>🚀 Proyectos:</strong> ${STATE.projects.length}</span>
-            <span class="spec-pill" onclick="navigateTo('inbox')"><strong>📬 Buzón:</strong> ${(STATE.mailbox || []).filter(e => ["open","pending"].includes(e.state)).length} sin cerrar</span>
+            <span class="spec-pill" onclick="navigateTo('inbox')"><strong>📬 Buzón:</strong> ${(STATE.mailbox || []).filter(e => Mailbox.isPending(e)).length} sin cerrar</span>
             <span class="spec-pill active-pill" onclick="navigateTo('cockpit')"><strong>▶ Frente activo:</strong> ${STATE.activeFront ? esc(cutText(STATE.activeFront.name, 34)) : "ninguno"}</span>
           </div>
         </div>
@@ -930,7 +930,7 @@ function renderOverview(container) {
           <div class="eco-grid">
             ${[
               ["cockpit", "🗂️", "Oficina", "El mural de todo lo que hay abierto. Una tarjeta por tarea; se clica y se entra en su despacho.", `${officeCards().length} tarjetas`],
-              ["inbox", "📬", "Buzón & Tareas", "Las dos colas, corriendo en direcciones opuestas. Ninguna vacía la suya.", `${(STATE.mailbox||[]).length} cartas · ${STATE.tasks.length} tareas`],
+              ["inbox", "📬", "Buzón", "Los asuntos que necesitan tu criterio, con su contexto y su proyecto.", `${(STATE.mailbox||[]).filter(Mailbox.isPending).length} pendientes`],
               ["dashboard", "📐", "Dashboard", "Lo que se mide y lo que todavía no. Cada medida con su denominador y su fuente.", "PH-6"],
               ["skills", "🏺", "Ágora", "Las skills, agrupadas por cómo las alcanza el modelo.", `${STATE.skills.length} skills`],
               ["projects", "🚀", "Projects Hub", "Cada proyecto, un cartucho soberano con su propio ciclo de vida — su definición, sus objetivos, su plan, sus axiomas y <strong>su registro de decisiones</strong>.", `${STATE.projects.length} proyectos · ${liveDecisions().length} decisiones vivas`],
@@ -2930,6 +2930,10 @@ function initAppListeners() {
 
   document.getElementById("projectFilter")?.addEventListener("change", e => {
     const val = e.target.value;
+    if (STATE.currentView === "inbox") {
+      location.hash = Mailbox.route({...mailboxLocation(), id:'', project:val === 'ALL' ? '' : val});
+      return;
+    }
     if (val === "ALL") {
       STATE.taskFilterProj = "";
     } else {
@@ -3183,160 +3187,68 @@ function renderIdeas(container) {
   `;
 }
 
+function mailboxLocation() { return STATE.mailLocation || {view:'pending',project:'',q:'',id:''}; }
+function mailboxLink(label, loc, className = '') {
+  return `<a class="${className}" href="${esc(Mailbox.route(loc))}">${esc(label)}</a>`;
+}
+window.mailboxSearch = function(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  location.hash = Mailbox.route({...mailboxLocation(), id:'', project:form.elements.project.value, q:form.elements.query.value.trim()});
+};
 function renderInbox(container) {
-  const allProjects = [...new Set(STATE.tasks.map(t => t.project).filter(Boolean))].sort();
-  const projFilter = STATE.taskFilterProj || "";
-  const statusFilter = STATE.taskFilterStatus || "";
-  const dateSort = STATE.taskDateSort || "newest";
-  const searchTxt = (STATE.taskSearch || "").toLowerCase().trim();
-
-  // Filter tasks
-  let filtered = STATE.tasks.filter(t => {
-    if (projFilter && t.project !== projFilter) return false;
-    if (statusFilter) {
-      if (statusFilter === "ACTIVE") {
-        if (!["⬜", "🔨", "⛔", "🔴"].includes(t.status)) return false;
-      } else if (t.status !== statusFilter) {
-        return false;
-      }
+  const loc = mailboxLocation(), all = STATE.mailbox || [];
+  const signature = JSON.stringify([loc,all,STATE.projects.map(p=>p.name),STATE.libraryRevision]);
+  if (container.dataset.mailboxSignature === signature && container.querySelector('.mailbox-room')) return;
+  container.dataset.mailboxSignature = signature;
+  const pending = all.filter(Mailbox.isPending).length, archive = all.length-pending;
+  const shown = Mailbox.filter(all,loc), archiveView = loc.view === 'archive';
+  const base = {...loc,id:''};
+  let content;
+  if (loc.id) {
+    const selected = Mailbox.select(all,loc.id);
+    content = `${mailboxLink(archiveView ? '← Volver al archivo' : '← Volver a pendientes',base,'quiet-back')}`;
+    if (selected.kind !== 'entry') {
+      content += `<h1>${selected.kind === 'ambiguous' ? 'Este enlace corresponde a varios asuntos' : 'No se encuentra este asunto'}</h1><p>Vuelve a la lista para consultar las entradas disponibles.</p>`;
+    } else {
+      const e = selected.entry, index = shown.findIndex(item=>item.id===e.id), state = Mailbox.state(e);
+      const request = Mailbox.isPending(e) ? Mailbox.request(e.body) : null;
+      const source = request ? `## Qué necesitas decidir\n\n${request.text}\n\n## Contexto y alcance\n\n${request.remainder}` : e.body;
+      const files = STATE.tree?.files || [];
+      const sourceFiles = files.filter(f=>`${f.root}/${f.path}` === e.file);
+      const rendered = Library.render(source, sourceFiles.length === 1 ? sourceFiles[0] : null, files);
+      const project = STATE.projects.find(p=>p.name === e.project);
+      content += `<article class="mailbox-matter" aria-label="Asunto del buzón">
+        <div class="mailbox-meta"><span class="mailbox-state ${Mailbox.isPending(e)?'is-pending':''}">${esc(state.label)}</span><span>${esc(e.project)}</span><span>${esc(e.date || 'Sin fecha')}</span></div>
+        <h1>${esc(e.title)}</h1>
+        <p class="mailbox-author">De ${esc(e.author)}${e.origin_inferred ? ' (autor inferido)' : ''}</p>
+        ${project ? `<nav class="mailbox-project" aria-label="Proyecto del asunto"><span>Consultar ${esc(e.project)}</span><a href="${esc(projectRoute(e.project,'objectives'))}">Objetivos</a><a href="${esc(projectRoute(e.project,'plan'))}">Plan</a><a href="${esc(projectRoute(e.project,'files'))}">Archivos</a></nav>` : ''}
+        <div class="mailbox-proposal"><span>Destino propuesto</span><strong>${esc(e.destination || 'Sin especificar')}</strong></div>
+        ${!Mailbox.isPending(e) ? '<p class="mailbox-archive-note">Este asunto está cerrado. Su argumento y resolución se conservan debajo.</p>' : ''}
+        <div class="note-prose mailbox-prose" aria-label="Contenido del asunto">${rendered.html || '<p>Esta entrada sólo contiene el título.</p>'}</div>
+        ${rendered.problems.length ? `<details id="mailbox-references" class="library-references"><summary>Referencias por localizar (${rendered.problems.length})</summary>${rendered.problems.map((p,i)=>`<div id="library-reference-${i}"><strong>${esc(p.target)}</strong><p>${p.kind === 'ambiguous' ? 'Hay varios documentos con este nombre:' : 'No se encuentra en las carpetas navegables.'}</p>${(p.matches || []).map(f=>libraryLink(f.path,{root:f.root,path:f.path,anchor:p.anchor})).join('')}</div>`).join('')}</details>` : ''}
+        <details id="mailbox-source" class="library-original"><summary>Fuente y texto original</summary><p><code>${esc(e.file)}${e.line?':'+e.line:''}</code></p><pre><code>${esc(e.body)}</code></pre></details>
+      </article>
+      <nav class="mailbox-sequence" aria-label="Otros asuntos">${index > 0 ? mailboxLink('← Anterior',{...loc,id:shown[index-1].id}) : '<span></span>'}<span>${index >= 0 ? `${index+1} de ${shown.length}` : 'Fuera del filtro actual'}</span>${index >= 0 && index < shown.length-1 ? mailboxLink('Siguiente →',{...loc,id:shown[index+1].id}) : '<span></span>'}</nav>`;
     }
-    if (searchTxt) {
-      const matchTitle = (t.title || "").toLowerCase().includes(searchTxt);
-      const matchWhy = (t.why || "").toLowerCase().includes(searchTxt);
-      const matchId = (t.id || "").toLowerCase().includes(searchTxt);
-      const matchProj = (t.project || "").toLowerCase().includes(searchTxt);
-      if (!matchTitle && !matchWhy && !matchId && !matchProj) return false;
-    }
-    return true;
-  });
-
-  // Sort tasks
-  filtered.sort((a, b) => {
-    if (dateSort === "id") {
-      const idA = parseInt(String(a.id).replace(/\D/g, "")) || 0;
-      const idB = parseInt(String(b.id).replace(/\D/g, "")) || 0;
-      return idB - idA;
-    }
-    const dateA = a.date || "1970-01-01";
-    const dateB = b.date || "1970-01-01";
-    return dateSort === "newest" ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
-  });
-
-  container.innerHTML = `
-    <div class="view-header">
-      <div class="view-title-group">
-        <h1><span>📬</span> Las dos colas</h1>
-        <p class="view-subtitle">Corren en direcciones opuestas y <strong>ninguna vacía la suya</strong>
-          (<code>AX-15</code>): el <strong>buzón</strong> va de agente a operador, la
-          <strong>lista de tareas</strong> de operador a agente.</p>
-        ${staleBanner([...(STATE.tasks || []), ...(STATE.mailbox || [])], "entradas")}
-      </div>
-    </div>
-
-    ${renderMailboxPanel()}
-
-    <div class="queue-divider">
-      <span class="qd-line"></span>
-      <span class="qd-label">↓ operador → agente · la lista de tareas</span>
-      <span class="qd-line"></span>
-    </div>
-
-    <!-- FILTER TOOLBAR (Priority #1) -->
-    <div class="view-toolbar">
-      <div class="toolbar-group">
-        <label for="taskFilterProj">Proyecto:</label>
-        <select id="taskFilterProj" class="custom-select" onchange="updateTaskFilter('taskFilterProj', this.value)">
-          <option value="">Todos los Proyectos (${STATE.tasks.length})</option>
-          ${allProjects.map(p => `
-            <option value="${esc(p)}" ${p === projFilter ? "selected" : ""}>
-              ${esc(p)} (${STATE.tasks.filter(t => t.project === p).length})
-            </option>
-          `).join("")}
-        </select>
-      </div>
-
-      <div class="toolbar-group">
-        <label for="taskFilterStatus">Estado:</label>
-        <select id="taskFilterStatus" class="custom-select" onchange="updateTaskFilter('taskFilterStatus', this.value)">
-          <option value="">Todos los estados</option>
-          <option value="ACTIVE" ${statusFilter === "ACTIVE" ? "selected" : ""}>Activas (⬜ 🔨 ⛔ 🔴)</option>
-          <option value="⬜" ${statusFilter === "⬜" ? "selected" : ""}>⬜ Pendientes</option>
-          <option value="🔨" ${statusFilter === "🔨" ? "selected" : ""}>🔨 En curso</option>
-          <option value="⛔" ${statusFilter === "⛔" ? "selected" : ""}>⛔ Bloqueadas</option>
-          <option value="🔴" ${statusFilter === "🔴" ? "selected" : ""}>🔴 Críticas</option>
-          <option value="✅" ${statusFilter === "✅" ? "selected" : ""}>✅ Completadas</option>
-          <option value="⚫" ${statusFilter === "⚫" ? "selected" : ""}>⚫ Descartadas</option>
-        </select>
-      </div>
-
-      <div class="toolbar-group">
-        <label for="taskFilterDateSort">Orden Fecha:</label>
-        <select id="taskFilterDateSort" class="custom-select" onchange="updateTaskFilter('taskDateSort', this.value)">
-          <option value="newest" ${dateSort === "newest" ? "selected" : ""}>Más recientes primero</option>
-          <option value="oldest" ${dateSort === "oldest" ? "selected" : ""}>Más antiguas primero</option>
-          <option value="id" ${dateSort === "id" ? "selected" : ""}>Ordenar por ID</option>
-        </select>
-      </div>
-
-      <div class="toolbar-group search-group">
-        <input type="text" id="taskSearchInput" class="custom-input" placeholder="Buscar por título, why, ID..." value="${esc(STATE.taskSearch)}" oninput="updateTaskFilter('taskSearch', this.value)">
-      </div>
-    </div>
-
-    <!-- TASKS LIST -->
-    <div class="tickets-list">
-      ${filtered.length ? filtered.map(t => {
-        const isDone = t.status === "✅";
-        const isDiscarded = t.status === "⚫";
-
-        return `
-          <div class="ticket-card ${isDone ? 'completed' : (isDiscarded ? 'discarded' : '')}">
-            <div class="ticket-top">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span class="tag-pill tag-purple" style="font-weight: 700;">${esc(t.id)}</span>
-                <span class="tag-pill">${esc(t.status)}</span>
-                <h3 class="ticket-title" style="${isDone ? 'opacity: 0.88;' : ''}">${inline(t.title)}</h3>
-              </div>
-              <span class="tag-pill tag-project">${esc(t.project)}</span>
-            </div>
-
-            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
-              <strong>Why:</strong> ${inline(t.why)}
-            </p>
-
-            ${t.discardReason ? `
-              <div class="task-discard-callout">
-                <strong>⚫ Descartada (Motivo PH-3):</strong> ${inline(t.discardReason)}
-              </div>
-            ` : ''}
-
-            <!-- COMMENTS THREAD -->
-            ${t.comments && t.comments.length ? `
-              <div class="task-comments-list">
-                ${t.comments.map(c => `
-                  <div class="comment-bubble">
-                    <span class="comment-meta">${esc(c.author)} · ${esc(c.date)}</span>
-                    <span class="comment-text">${inline(c.text)}</span>
-                  </div>
-                `).join("")}
-              </div>
-            ` : ''}
-
-            <div class="ticket-meta">
-              ${renderOrigin(t.author, t.origin_inferred)}
-              ${renderDate(t.date, t.date_inferred)}
-              ${t.file ? `<span class="tag-pill" style="opacity: 0.7;"><code>${esc(t.file)}</code></span>` : ''}
-            </div>          </div>
-        `;
-      }).join("") : `
-        <div class="empty-state">
-          <div class="empty-icon">📋</div>
-          <h3>No hay tareas que coincidan</h3>
-          <p>Prueba a ajustar los filtros de proyecto, estado o búsqueda.</p>
-        </div>
-      `}
-    </div>
-  `;
+  } else {
+    const projects = [...new Set(all.map(e=>e.project).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    if (loc.project && !projects.includes(loc.project)) projects.push(loc.project);
+    content = `<header class="mailbox-heading"><div><h1>Buzón</h1><p>Asuntos que necesitan tu criterio.</p></div><a class="quiet-back" href="#/cockpit">Ir a las tareas →</a></header>
+      <nav class="mailbox-tabs" aria-label="Buzón y archivo">${mailboxLink(`Pendientes · ${pending}`,{...base,view:'pending'},!archiveView?'selected':'')}${mailboxLink(`Archivo · ${archive}`,{...base,view:'archive'},archiveView?'selected':'')}</nav>
+      <form class="mailbox-search" role="search" aria-label="Buscar asuntos" onsubmit="mailboxSearch(event)"><label for="mailbox-project">Proyecto<select id="mailbox-project" name="project" onchange="this.form.requestSubmit()"><option value="">Todos los proyectos</option>${projects.map(p=>`<option value="${esc(p)}" ${p===loc.project?'selected':''}>${esc(p)}</option>`).join('')}</select></label><label for="mailbox-query">Buscar en ${archiveView?'el archivo':'pendientes'}<input id="mailbox-query" type="search" name="query" placeholder="Título, texto o autor…" value="${esc(loc.q)}"></label><button type="submit">Buscar</button>${loc.q || loc.project ? mailboxLink('Quitar filtros',{view:loc.view}) : ''}</form>
+      <div class="mailbox-list-heading"><h2>${archiveView?'Asuntos cerrados':'Por revisar'} <span>${shown.length}</span></h2><span>En el orden de la fuente</span></div>
+      ${staleBanner(all, 'entradas')}
+      <div class="mailbox-list">${shown.length ? shown.map(e=>`<a class="mailbox-row" href="${esc(Mailbox.route({...base,id:e.id}))}"><div class="mailbox-meta"><span>${esc(e.project)}</span><span>${esc(e.date || 'Sin fecha')}</span>${e.state !== 'open' ? `<span>${esc(Mailbox.state(e).label)}</span>` : ''}</div><h3>${esc(e.title)}</h3><span class="mailbox-open">Leer asunto <span aria-hidden="true">→</span></span></a>`).join('') : `<div class="mailbox-empty"><h3>${loc.q || loc.project ? 'No hay asuntos con estos filtros' : archiveView ? 'El archivo está vacío' : 'No hay asuntos pendientes'}</h3><p>${loc.q || loc.project ? 'Prueba otro texto o consulta todos los proyectos.' : archiveView ? 'Aquí podrás consultar los asuntos resueltos y archivados.' : 'Puedes volver a la Oficina para continuar con tus tareas.'}</p></div>`}</div>`;
+  }
+  container.innerHTML = `<section class="mailbox-room">${content}</section>`;
+  container.querySelectorAll('.note-unresolved').forEach(link=>link.addEventListener('click',event=>{
+    event.preventDefault();
+    const details = container.querySelector('#mailbox-references');
+    if (details) { details.open = true; container.querySelector(`#library-reference-${link.dataset.reference}`)?.scrollIntoView({block:'center'}); }
+  }));
+  // Rare diagram entries share the same local reader as documents.
+  enhanceLibraryDiagrams(container);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -3856,11 +3768,6 @@ window.updateSkillSearch = function(q) {
   renderView();
 };
 
-window.updateTaskFilter = function(key, val) {
-  STATE[key] = val;
-  renderView();
-};
-
 window.copyCommand = function(text, elementId) {
   navigator.clipboard.writeText(text).then(() => {
     const el = document.getElementById(elementId);
@@ -4225,139 +4132,6 @@ window.openDesk = function (cardId) {
 // could not close; submitting a form threw and reloaded the page, so the entry was lost
 
 
-
-
-// ───────────────────────────────────────────────── EL BUZÓN — agente → operador
-//
-// ⛔ It was parsed into `STATE.mailbox` and read by no view. The queue that carries what an
-// agent found, proposed or crossed simply did not appear in the interface, and `METHOD.md`
-// §4 is two queues running in opposite directions — with one of them invisible, the loop
-// the operator is supposed to close had no surface at all.
-const MAILBOX_STATE = {
-  open:     { icon: "🟢", label: "abierta",  cls: "mb-open" },
-  pending:  { icon: "🟡", label: "pendiente", cls: "mb-pending" },
-  resolved: { icon: "✅", label: "resuelta",  cls: "mb-resolved" },
-  archived: { icon: "📦", label: "archivada", cls: "mb-archived" }
-};
-
-function renderMailboxPanel() {
-  const all = STATE.mailbox || [];
-  const fState = STATE.mailboxFilter || "abiertas";
-  const fDest = STATE.mailboxDest || "TODOS";
-
-  // Los casilleros son los destinos que la propia centralita ha escrito. ⚠️ No una lista
-  // fija: un destino nuevo en el vocabulario aparece aquí solo, y uno que deja de usarse
-  // desaparece — que es lo que separa un casillero de una etiqueta inventada por la vista.
-  const dests = [...new Set(all.map(e => e.destination).filter(Boolean))].sort();
-  const inState = e => fState === "todas" || ["open", "pending"].includes(e.state);
-  const shown = all.filter(e => inState(e) && (fDest === "TODOS" || e.destination === fDest));
-  const nOpen = all.filter(e => ["open", "pending"].includes(e.state)).length;
-
-  return `
-    <div class="post-office">
-      <!-- LA VENTANILLA -->
-      <div class="po-counter">
-        <div class="po-counter-sign">
-          <span class="po-sign-icon">✉</span>
-          <div>
-            <h2>Buzón</h2>
-            <span class="po-sign-sub">agente → operador</span>
-          </div>
-        </div>
-        <p class="po-blurb">
-          Lo que un agente encontró, propuso o cruzó y todavía no está integrado.
-          <strong>Nadie vacía la cola que llena</strong> (<code>AX-15</code>): estas entradas
-          las enrutas tú, y por eso llegan con un destino <em>propuesto</em>, no decidido.
-        </p>
-        <div class="po-tally">
-          <span class="po-tally-n">${nOpen}</span>
-          <span class="po-tally-l">sin cerrar<br>de ${all.length}</span>
-        </div>
-      </div>
-
-      <!-- LOS CASILLEROS -->
-      <div class="pigeonholes">
-        <button class="hole ${fDest === "TODOS" ? "hole-on" : ""}" onclick="setMailboxDest('TODOS')">
-          <span class="hole-slot"><span class="hole-stack" style="--n:${Math.min(all.filter(inState).length, 5)}"></span></span>
-          <span class="hole-label">todo</span>
-          <span class="hole-n">${all.filter(inState).length}</span>
-        </button>
-        ${dests.map(d => {
-          const n = all.filter(e => inState(e) && e.destination === d).length;
-          return `
-            <button class="hole ${fDest === d ? "hole-on" : ""} ${n ? "" : "hole-empty"}"
-                    onclick="setMailboxDest(${jsq(d)})" title="Destino propuesto: ${esc(d)}">
-              <span class="hole-slot"><span class="hole-stack" style="--n:${Math.min(n, 5)}"></span></span>
-              <span class="hole-label">${esc(d)}</span>
-              <span class="hole-n">${n}</span>
-            </button>`;
-        }).join("")}
-        <div class="hole-sep"></div>
-        <button class="chip-filter ${fState === "abiertas" ? "active" : ""}" onclick="setMailboxFilter('abiertas')">
-          sin cerrar
-        </button>
-        <button class="chip-filter ${fState === "todas" ? "active" : ""}" onclick="setMailboxFilter('todas')">
-          incluir cerradas (${all.length})
-        </button>
-      </div>
-
-      <!-- EL CORREO -->
-      <div class="po-mail">
-        ${shown.length ? shown.map(e => {
-          const s = MAILBOX_STATE[e.state] || MAILBOX_STATE.open;
-          const [y, mo, d] = String(e.date || "").split("-");
-          return `
-            <article class="letter ${s.cls} ${["open","pending"].includes(e.state) ? "letter-airmail" : ""}">
-              <div class="letter-franking">
-                <!-- EL SELLO. Su dibujo es el destino propuesto. -->
-                <div class="stamp" title="Destino propuesto: ${esc(e.destination)}">
-                  <span class="stamp-dest">${esc(e.destination)}</span>
-                  <span class="stamp-value">${esc(e.project)}</span>
-                </div>
-                <!-- EL MATASELLOS. Lleva la fecha, que es lo que un matasellos lleva. -->
-                <div class="postmark" aria-hidden="true">
-                  <span class="pm-ring"></span>
-                  <span class="pm-day">${esc(d || "··")}</span>
-                  <span class="pm-mon">${esc(mo || "··")}</span>
-                  <span class="pm-year">${esc(y || "····")}</span>
-                </div>
-              </div>
-
-              <div class="letter-body">
-                <div class="letter-from">
-                  <span class="lf-k">De</span>
-                  <span class="lf-v">${esc(e.author)}</span>
-                  ${e.origin_inferred ? `<span class="lf-inf" title="Inferido, no escrito en el fichero">inferido</span>` : ""}
-                  <span class="lf-sep">·</span>
-                  <span class="lf-k">Para</span>
-                  <span class="lf-v">operador</span>
-                </div>
-
-                <h3 class="letter-subject">${inline(e.title)}</h3>
-
-                ${e.body ? `<div class="letter-text">${renderMarkdownBody(e.body)}</div>`
-                         : `<p class="letter-empty">— la carta llegó sin cuerpo: sólo la cabecera —</p>`}
-
-                <div class="letter-foot">
-                  <span class="letter-ref" title="Dónde está exactamente"><code>${esc(e.file || "")}${e.line ? `:${e.line}` : ""}</code></span>
-                  <span class="cuno cuno-${e.state}">${s.label}</span>
-                </div>
-              </div>
-            </article>`;
-        }).join("") : `
-          <div class="po-empty">
-            <div class="po-empty-mark">✉</div>
-            <h3>${fDest === "TODOS" ? "No hay correo sin cerrar" : `El casillero «${esc(fDest)}» está vacío`}</h3>
-            <p>Un buzón que entra lleno y sale lleno significa que la sesión no cerró nada
-               (<code>METHOD.md</code> §4).</p>
-          </div>`}
-      </div>
-    </div>`;
-}
-
-window.setMailboxDest = function (d) { STATE.mailboxDest = d; renderView(); };
-
-window.setMailboxFilter = function (v) { STATE.mailboxFilter = v; renderView(); };
 
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -5245,9 +5019,10 @@ let diagramSequence = 0;
 async function enhanceLibraryDiagrams(container) {
   const figures = [...container.querySelectorAll('.note-diagram')];
   if (!figures.length) return;
-  const location = libraryLocation(), readingRoute = Library.route({...location, anchor:''});
+  const location = libraryLocation(), readingRoute = STATE.currentView === "inbox" ? Mailbox.route(mailboxLocation()) : Library.route({...location, anchor:""});
+  const isLibrary = STATE.currentView === 'library';
   const intendedScroll = PROJECT_READING[readingRoute]?.scroll;
-  const needsAnchor = location.anchor && container.dataset.anchor !== `${readingRoute}/${location.anchor}`;
+  const needsAnchor = isLibrary && location.anchor && container.dataset.anchor !== `${readingRoute}/${location.anchor}`;
   let interacted = false;
   const interaction = () => { interacted = true; };
   const events = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
@@ -5285,7 +5060,7 @@ async function enhanceLibraryDiagrams(container) {
     events.forEach(name => container.removeEventListener(name, interaction));
     // Diagram layout is asynchronous. Restore only if the reader has not started interacting.
     queueMicrotask(() => {
-      if (interacted || Library.route(libraryLocation()) !== Library.route(location) || !figures[0].isConnected) return;
+      if (interacted || container.dataset.route !== readingRoute || !figures[0].isConnected) return;
       const heading = needsAnchor && (document.getElementById('note-heading-' + Library.slug(location.anchor)) || document.getElementById('library-missing-anchor'));
       if (heading) heading.scrollIntoView({block:'start'});
       else if (intendedScroll != null) container.scrollTop = intendedScroll;
@@ -5395,7 +5170,7 @@ function renderDashboard(container) {
 
   // Lo que el registro vivo puede responder hoy, sin instrumentar nada más.
   const mbAll = STATE.mailbox || [];
-  const mbOpen = mbAll.filter(e => ["open", "pending"].includes(e.state)).length;
+  const mbOpen = mbAll.filter(e => Mailbox.isPending(e)).length;
   const plan = STATE.livePlan || [];
   const planRouted = plan.filter(i => i.struck || i.outcome).length;
   const planDiscarded = plan.filter(i => i.outcome === "discarded").length;
