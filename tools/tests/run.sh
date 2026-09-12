@@ -27,12 +27,12 @@ cd "$ROOT" || exit 2
 
 # A test may legitimately invoke this harness — ax-7.sh does, because proving the
 # harness fails when it should is the one plant nobody thinks to make. It names itself
-# in MLABS_TESTS_SKIP so the run cannot re-enter it. The guard is the mechanism, not
+# in AEVIFEX_TESTS_SKIP so the run cannot re-enter it. The guard is the mechanism, not
 # the discipline: the first version of ax-7.sh recursed until it was killed.
 shopt -s nullglob
 TESTS=()
 for f in tools/tests/ax-*.sh; do
-  case " ${MLABS_TESTS_SKIP:-} " in *" $(basename "$f") "*) continue ;; esac
+  case " ${AEVIFEX_TESTS_SKIP:-} " in *" $(basename "$f") "*) continue ;; esac
   TESTS+=("$f")
 done
 [ ${#TESTS[@]} -gt 0 ] || { echo "  tests: no test files — refusing to call that clean"; exit 2; }

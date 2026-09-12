@@ -15,7 +15,7 @@ list="$(cd "$TMP" && grep -rln 'AX-1' . )"
 grep -q 'cites.md' <<<"$list" || { echo "obvious: the citing file was not in the list"; exit 1; }
 # 2 · subtle: the second half. `AX-9` was retired, so the citation resolves to nothing
 #     — and the file still reads as current, which is the failure the axiom names.
-bash "$ROOT/tools/axiom-refs.sh" "$TMP/ax.md" MLabs "$TMP/cites.md" >/dev/null 2>&1
+bash "$ROOT/tools/axiom-refs.sh" "$TMP/ax.md" Aevifex "$TMP/cites.md" >/dev/null 2>&1
 [ $? -eq 1 ] || { echo "subtle: a citation of a retired row did not fire"; exit 1; }
 # 3 · negative control: a file citing nothing is not a dependency. A list that includes
 #     it makes the sweep unbounded and it stops being run.

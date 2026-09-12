@@ -368,7 +368,7 @@ them measures none. **Two words, and the difference is the log:**
 | `## Dismissal` | a **role** | yes — **created at hiring, empty, with its contract** | yes — the criterion is written before the first firing (`AX-11`), and the operator judges against it |
 | `## Retirement` | a **skill** | no | no — it is retired when the repository can do without it |
 
-**Checked by `MLabs:tools/roles-check.sh`**, which compares the two sets and reports each direction
+**Checked by `Aevifex:tools/roles-check.sh`**, which compares the two sets and reports each direction
 separately, because the fix differs by direction. **The log is created at hiring** (`AX-11`), so an absent file is a fault in the hiring. **A role's measure is occasions that warranted it against times it was invoked**, and an empty log
 says the occasions have not arisen. ⚠️ **It only works because the
 words were separated first** — attach a third meaning to either heading and it stops measuring
@@ -385,22 +385,22 @@ also needs to answer for its own record, it is a **role**.
 ## 6. How the repositories connect
 
 ```
-MLabs/                      the constitution — public, released, no state
+Aevifex/                      the constitution — public, released, no state
 ├── PHILOSOPHY · AXIOMS · METHOD · FLOW · AGENTS · skills/ · tools/
 │
 ├── NEXUS/                  the operations centre — private, and the hub
-│   ├── AGENTS.md           the binding: names the MLabs it runs; declares ledger and denylist
-│   ├── AXIOMS.md           the instance's own axioms — what MLabs cannot know
+│   ├── AGENTS.md           the binding: names the Aevifex it runs; declares ledger and denylist
+│   ├── AXIOMS.md           the instance's own axioms — what Aevifex cannot know
 │   ├── <live set>          wall · plans · mailbox · notebook · tasks — every project
 │   ├── <records>           method log · agent ledger · work log
 │   └── projects/<p>/       cartridge: definition · axioms · decisions · state · plan
 │
 └── <code repo>/            each its own repository
-    └── AGENTS.md           generated: MLabs' method half + this repo's local half
+    └── AGENTS.md           generated: Aevifex' method half + this repo's local half
 ```
 
 **The chain runs one way, and every link is a literal path — never a search.** A code repo names
-NEXUS. NEXUS names MLabs, once, in its binding. MLabs names nothing. An agent dropped into any
+NEXUS. NEXUS names Aevifex, once, in its binding. Aevifex names nothing. An agent dropped into any
 repository can walk *up* the chain to the rules and *across* to the work, and never has to guess.
 
 **Three departments of axioms.** They are nested scopes and `AXIOMS.md`'s header settles what
@@ -424,7 +424,7 @@ them changes**, since a rule can only contradict a rule it shares a reader with.
 
 | Department | Lives in | Passes if |
 |---|---|---|
-| **Company** | MLabs `AXIOMS.md` | it passes the second entry test in that file's header |
+| **Company** | Aevifex `AXIOMS.md` | it passes the second entry test in that file's header |
 | **Instance** | NEXUS `AXIOMS.md` | it binds **everything this operator does**, across every project — whether or not a stranger would also adopt it |
 | **Project** | the project's `axioms.md` | it binds this project only |
 
@@ -442,7 +442,7 @@ long nobody notices.
 
 **Every `AGENTS.md` in the chain holds only its own half** (AX-20): what is true of that repository
 is written there, and everything the method says is reached by reference — the contract names where
-MLabs lives, once, and cites it thereafter. **A method rule pasted into a contract is a copy nothing
+Aevifex lives, once, and cites it thereafter. **A method rule pasted into a contract is a copy nothing
 regenerates** (AX-20), and it is read as current for as long as nobody compares the two.
 
 ## 7. Routing table — "I have X, where does it go?"

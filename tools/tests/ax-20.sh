@@ -12,17 +12,17 @@ TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 run() { printf '%s\n' "$1" > "$TMP/rules.md"; grep -qE "$PAT" "$TMP/rules.md"; }
 
 # 1 · obvious: an absolute-ish path to the method, written out in a rule file.
-run 'The method lives at ~/Documents/MLabs and is read from there.' \
+run 'The method lives at ~/Documents/Aevifex and is read from there.' \
   || { echo "obvious plant (home-relative path) did not fire"; exit 1; }
 
 # 2 · subtle: a relative path inside a code span, which is how a second address is
 #     actually introduced — it reads like a citation and is a hard-coded location.
-run 'See `../MLabs/AXIOMS.md` for the company department.' \
+run 'See `../Aevifex/AXIOMS.md` for the company department.' \
   || { echo "subtle plant (relative path in a code span) did not fire"; exit 1; }
 
 # 3 · negative control: the legitimate way to reach the method. A scope prefix is a
 #     name, not an address, and a check that flags it makes every rule file look broken.
-run 'The narrower loses (`MLabs:AX-20`), and MLabs. MLabs is the referent.' \
+run 'The narrower loses (`Aevifex:AX-20`), and Aevifex. Aevifex is the referent.' \
   && { echo "negative control fired — a scope citation is being read as a path"; exit 1; }
 
 # ── the row's second command: the same prose in two structural files (`AX-20`'s general form)
@@ -47,8 +47,8 @@ grep -q '✗' "$TMP/dup.out" \
 # 6 · negative control: two files that share only vocabulary — the same ids, paths and commands,
 #     which is the COMPLIANT shape. A check that flags a cited id makes correct citation look
 #     like duplication and gets switched off within a week.
-dup 'Before merging, run `bash tools/axiom-refs.sh AXIOMS.md MLabs $(git ls-files "*.md" "*.sh")`.' \
-    'The gate is `bash tools/axiom-refs.sh AXIOMS.md MLabs $(git ls-files "*.md" "*.sh")`, nothing else.'
+dup 'Before merging, run `bash tools/axiom-refs.sh AXIOMS.md Aevifex $(git ls-files "*.md" "*.sh")`.' \
+    'The gate is `bash tools/axiom-refs.sh AXIOMS.md Aevifex $(git ls-files "*.md" "*.sh")`, nothing else.'
 grep -q '✗' "$TMP/dup.out" \
   && { echo "negative control fired — shared ids and commands read as copied prose"; cat "$TMP/dup.out"; exit 1; }
 

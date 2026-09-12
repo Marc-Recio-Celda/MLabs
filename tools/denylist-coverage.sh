@@ -33,9 +33,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-[ -n "$DENYLIST" ] || DENYLIST="${MLABS_DENYLIST:-}"
+[ -n "$DENYLIST" ] || DENYLIST="${AEVIFEX_DENYLIST:-}"
 if [ -z "$DENYLIST" ] || [ ! -f "$DENYLIST" ]; then
-  echo "  coverage: no denylist given. Pass --denylist PATH or set MLABS_DENYLIST."
+  echo "  coverage: no denylist given. Pass --denylist PATH or set AEVIFEX_DENYLIST."
   echo "            Refusing to report a pass on a check that did not run."
   exit 2
 fi
@@ -43,9 +43,9 @@ fi
 # The projects root is NOT defaulted and NOT guessed. Its conventional name is declared
 # in exactly one place in this repository and it is not here: a script that knows where
 # an instance keeps its work is a script that runs on one machine.
-[ -n "$PROJECTS" ] || PROJECTS="${MLABS_PROJECTS:-}"
+[ -n "$PROJECTS" ] || PROJECTS="${AEVIFEX_PROJECTS:-}"
 if [ -z "$PROJECTS" ] || [ ! -d "$PROJECTS" ]; then
-  echo "  coverage: no projects root given. Pass --projects PATH or set MLABS_PROJECTS."
+  echo "  coverage: no projects root given. Pass --projects PATH or set AEVIFEX_PROJECTS."
   echo "            The instance names its own roots; this does not know them."
   exit 2
 fi

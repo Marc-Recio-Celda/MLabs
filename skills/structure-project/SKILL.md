@@ -72,7 +72,7 @@ same state as a file this sweep could not parse.
 which goes into step 3. **An empty list is a result** — say so — but it is a rare one, and a project
 whose first axiom department cites nothing has usually not looked.
 
-**1. Copy the template.** The cartridge is copied, never typed (`MLabs:AX-26`). Copy it whole **into
+**1. Copy the template.** The cartridge is copied, never typed (`Aevifex:AX-26`). Copy it whole **into
 `<project>/nexus/`**, then
 substitute every placeholder — the project's name, its path, its own `AX-n` series — in one pass.
 **A placeholder that survives the copy is a defect, not a to-do.**
@@ -80,7 +80,7 @@ substitute every placeholder — the project's name, its path, its own `AX-n` se
 **Every file below goes in the project's `nexus/` folder**, which is the cartridge — the project's
 own directory holds its code and its data, and `nexus/` holds what governs them.
 
-**The cartridge's files and what each holds are `MLabs:METHOD.md` §2's.** What this procedure adds
+**The cartridge's files and what each holds are `Aevifex:METHOD.md` §2's.** What this procedure adds
 is **when two of them are created at all**: `axioms.md` and `skills/` **open with their first
 entry and never as an empty container.**
 
@@ -89,21 +89,21 @@ what it refuses, is written before any procedure** — purpose is what breaks a 
 apply, so it goes where it is read first. Measurable objective · context · deliverables and their format ·
 success criteria · constraints · data available. **Then, in its own section, what this project is
 not.** The negative half is written now, while the boundary is still visible to the author: **it
-keeps scope from arriving unannounced, and no later pass can reconstruct it** (`MLabs:AX-4`).
+keeps scope from arriving unannounced, and no later pass can reconstruct it** (`Aevifex:AX-4`).
 
 **3. Open `axioms.md` — the project's own axiom department.** It opens with at least one rule
 or it is not opened at all; **an empty axiom file reads as *this project has no constraints*.** Each
 entry is numbered in the project's own series, bare inside this file and anchored the moment it is
-cited anywhere else (`MLabs:AX-31`), and each names the clause it serves. Which rules belong here is
+cited anywhere else (`Aevifex:AX-31`), and each names the clause it serves. Which rules belong here is
 settled by the placement test below.
 
 **4. Open `Decision_Log.md`.** Parseable from the first entry, with the field contract in the file's
-own header (`MLabs:AX-2`); every entry carries author, date, reasoning and **what was discarded**
-(`MLabs:AX-24`). **The first entry is the one that created the project:** why it exists, and what
+own header (`Aevifex:AX-2`); every entry carries author, date, reasoning and **what was discarded**
+(`Aevifex:AX-24`). **The first entry is the one that created the project:** why it exists, and what
 shape was rejected for it.
 
 **5. Open `objectives.md` and `plan.md`.** ⛔ **They are two files because they change at two
-rates** (`MLabs:AX-39`), and this step is where the split is honoured or lost.
+rates** (`Aevifex:AX-39`), and this step is where the split is honoured or lost.
 
 - `objectives.md` — **what the project is trying to achieve now.** One entry each, with **why it is
   an objective and not a task** and **what met looks like**. ⛔ **It is not derivable from the
@@ -118,13 +118,13 @@ rates** (`MLabs:AX-39`), and this step is where the split is honoured or lost.
   is a position cannot.** A cartridge opened today has no `state.md`.
 
 **6. Place the agent contract — only in a repository the operator owns.** It holds what is true of
-**this** repository and reaches the method by reference: it is the one file naming where MLabs
-lives, and every rule it needs from there is cited, never copied (`MLabs:AX-20`).
+**this** repository and reaches the method by reference: it is the one file naming where Aevifex
+lives, and every rule it needs from there is cited, never copied (`Aevifex:AX-20`).
 
 - **Owned** → at the root of the code repository, local half filled: build and test commands, the
   working branch, the invariants that hold only here and the check for each.
 - **Not owned** → **it is not dropped in.** Adding a file to someone else's repository is exactly
-  the unrequested change the ownership class exists to stop (`MLabs:AX-19`). The contract stays in
+  the unrequested change the ownership class exists to stop (`Aevifex:AX-19`). The contract stays in
   the cartridge; observations about that repository go to its owners, not into this instance's
   queues.
 
@@ -158,7 +158,7 @@ by more.
 
 **7. Do NOT put the project on the wall.** ⛔ **A cartridge arriving is not a commitment**, and the
 wall holds commitments. A sub-block reaches the wall when somebody **promotes** it — that is the
-operator's act, and it is the whole distinction `MLabs:FLOW.md` exists to keep
+operator's act, and it is the whole distinction `Aevifex:FLOW.md` exists to keep
 (*asked what was pending, one agent answered 4 and another ~50, and both were right*).
 
 ⚠️ **This step said *register the project in the compass* until 2026-09-05 and both halves were
@@ -168,13 +168,13 @@ A skill that still registered a row would have put an unstarted project onto the
 being done.
 
 Anything this structuring turns up that is not this task leaves with a destination from the closed
-vocabulary, one line, **with `project:` filled in** (`MLabs:AX-25`).
+vocabulary, one line, **with `project:` filled in** (`Aevifex:AX-25`).
 
 ## ⚠️ The live set stays central
 
 **Which live artefacts are central and which Records stay with their project is `METHOD.md` §5's.**
 ⛔ **Creating a per-project copy of one is the single most likely failure of this procedure**, and it
-fails twice over: the copy is a duplicate with no declared winner (`MLabs:AX-20`), and **its entries
+fails twice over: the copy is a duplicate with no declared winner (`Aevifex:AX-20`), and **its entries
 are invisible to the `project:` filter that is the whole point of centralising.** Prediction 2
 checks it mechanically, and is worth running even when one agent wrote the cartridge in a single
 pass.
@@ -187,8 +187,8 @@ departments whole** — so run it with all three open.
 ## Verification — stated as a prediction, then run
 
 Write the predictions **before** running anything; the executor returns the real output and **the
-gap is the finding** (`MLabs:AX-14`). **Plant one fault and confirm each check catches it before
-trusting a clean run** (`MLabs:AX-7`).
+gap is the finding** (`Aevifex:AX-14`). **Plant one fault and confirm each check catches it before
+trusting a clean run** (`Aevifex:AX-7`).
 
 | # | Prediction |
 |---|---|
@@ -203,14 +203,14 @@ trusting a clean run** (`MLabs:AX-7`).
 | **10** | **The harvest ran and its per-project counts are non-zero in exactly one format each.** ⛔ **A project reporting zero in both is unread, not ruleless** — and if the new `axioms.md` cites no sibling at all, step 0b says so out loud rather than leaving the absence to be read as *nothing applied* |
 | **9** | **The denylist coverage check returns empty**, and the new name, planted into a tracked file, makes the release gate fire. **A name added and never tested is a name that may still be invisible** |
 
-**An unrunnable check is reported unrun** (`MLabs:AX-22`).
+**An unrunnable check is reported unrun** (`Aevifex:AX-22`).
 
 ## What it does not do
 
 - **Create anything central.** It writes into the existing central set; it never creates a second one.
-- **Hire the project's auditor** — its own act, under `MLabs:AX-11`, with the dismissal criterion
+- **Hire the project's auditor** — its own act, under `Aevifex:AX-11`, with the dismissal criterion
   fixed before the first firing.
-- **Touch a repository the operator does not own** (`MLabs:AX-19`).
+- **Touch a repository the operator does not own** (`Aevifex:AX-19`).
 - **Set the active front, or add any row at all to the wall.** Promotion is the operator's act.
 - **Amend the company or instance axiom files.** A rule that fails the project test is **proposed
   upward, never written upward.**

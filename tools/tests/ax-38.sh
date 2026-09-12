@@ -10,7 +10,7 @@ printf '| ID | Status |\n|---|---|\n| **AX-1** | 🟢 | rule | PH-1 | `—` |\n'
 printf '# P\n\n## PH-1 · Scalability\n\nText.\n' > "$TMP/ph.md"
 both() {                                   # → 1 if either tool reports
   printf '%s\n' "$1" > "$TMP/f.md"
-  bash "$ROOT/tools/axiom-refs.sh"  "$TMP/ax.md" MLabs "$TMP/f.md" >/dev/null 2>&1; a=$?
+  bash "$ROOT/tools/axiom-refs.sh"  "$TMP/ax.md" Aevifex "$TMP/f.md" >/dev/null 2>&1; a=$?
   bash "$ROOT/tools/clause-refs.sh" "$TMP/ph.md"       "$TMP/f.md" >/dev/null 2>&1; c=$?
   [ $a -eq 1 ] || [ $c -eq 1 ]
 }

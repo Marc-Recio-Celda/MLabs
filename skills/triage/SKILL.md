@@ -126,7 +126,7 @@ because the information is not there, that is the finding: the entry goes back t
 
 ## 7 · The link — an entry and its destination name each other
 
-**This is what stops the queue leaking history** (`MLabs:AX-45`, the same rule that binds a source to
+**This is what stops the queue leaking history** (`Aevifex:AX-45`, the same rule that binds a source to
 its view — an artefact that only points one way is invisible from the other side).
 
 | Where | Mark |

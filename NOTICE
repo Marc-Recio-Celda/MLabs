@@ -1,11 +1,11 @@
-MLabs — a methodology for running a one-person company with AI agents.
+Aevifex — a methodology for running a one-person company with AI agents.
 
 Copyright 2026 Marc Recio Celda
 
 This product includes methodology, skills, governance documents and software
 authored by Marc Recio Celda — https://github.com/Marc-Recio-Celda
 
-Origin identifier:  mlabs-origin:gh-191778369
+Origin identifier:  aevifex-origin:gh-191778369
 
   A stable, verifiable pointer to the author, resolvable without this file at
   https://api.github.com/user/191778369 . It is written in this form so that the
@@ -26,7 +26,7 @@ specific language governing permissions and limitations under the License.
 --------------------------------------------------------------------------------
 ATTRIBUTION — what the License asks of anyone who redistributes this.
 
-The permission is deliberately wide. Use MLabs, change it, run a business on it,
+The permission is deliberately wide. Use Aevifex, change it, run a business on it,
 keep your changes private, ship it inside something closed. None of that needs
 anyone's approval and none of it is discouraged.
 
@@ -41,5 +41,5 @@ Two conditions carry the attribution, and they are the whole of what is asked:
 Both apply to a part as they do to the whole — one skill, the release gate, the
 axiom set, or the interface engine.
 
-TRADEMARKS. Section 6 grants no rights in the names "MLabs" or "NEXUS", which
+TRADEMARKS. Section 6 grants no rights in the names "Aevifex" or "NEXUS", which
 identify the origin of this work rather than describing it.

@@ -11,7 +11,7 @@
 
 ## 1. What this repo is to an agent
 
-MLabs is the **structure**, and it is the workspace root: this repo tracks only the structural
+Aevifex is the **structure**, and it is the workspace root: this repo tracks only the structural
 allowlist in `.gitignore`, while every child folder — **the operations centre** and each project —
 is **its own repository, untracked here, forever**. Rules travel with this repo; state never does.
 If the operations centre is not present, you are editing methodology and nothing else is in scope.
@@ -40,19 +40,19 @@ auditor, its own axioms and its own log.
 
 ## 2. The operations centre
 
-**Every MLabs instance has exactly one, and it is where the company actually lives** — the
+**Every Aevifex instance has exactly one, and it is where the company actually lives** — the
 knowledge, the projects, the decisions, the work in flight, the ledger, the task list, the inbox,
 the plan. It is **private**, a sibling folder in this workspace, and **never tracked here**.
 
-> **MLabs is the constitution. The operations centre is the country.**
+> **Aevifex is the constitution. The operations centre is the country.**
 
 **Almost nothing real happens without entering it.** This repo tells you *how* to work; the centre
-is *where* the work and its entire record are. An agent that has read only MLabs knows every rule
+is *where* the work and its entire record are. An agent that has read only Aevifex knows every rule
 and nothing that has ever happened. So the reading order is **learn the rules once, then go where
 the work is** — and only *how much* of it loads is variable: its binding always, its contents by the
 routing index and never wholesale (`AX-21`).
 
-**Its name is company vocabulary, not a private name.** MLabs names the role and its conventional
+**Its name is company vocabulary, not a private name.** Aevifex names the role and its conventional
 root and names nothing inside it: no project, no person, no path below that root. A stranger
 instantiating their own company creates their own, the same way they create their own `main` branch.
 

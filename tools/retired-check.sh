@@ -13,7 +13,7 @@
 #      discussed BY NAME, so a check that reads it fires on the file documenting it —
 #      the cries-wolf failure the wikilink rule already had to be narrowed for.
 #
-# Format traps, each proven by a plant: bare (no backticks) · scoped `MLabs:AX-97` ·
+# Format traps, each proven by a plant: bare (no backticks) · scoped `Aevifex:AX-97` ·
 # `AX-9` must not match inside `AX-97` (there is no \b between a letter and a digit) ·
 # ANOTHER scope is ANOTHER axiom, so `NEXUS:AX-97` stays silent.
 # Exit 0 clean · 1 hits · 2 could not run, which is NOT a pass.

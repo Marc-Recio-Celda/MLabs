@@ -9,8 +9,8 @@ description: Lateral thinking against the company's own design, on request. Use 
 called — which is almost always — and gets full context when it is, which is precisely when that
 context is worth spending.
 
-> **A role, on the definition that decides it: a log and a criterion** (`MLabs:METHOD.md` §5). Its
-> description names a **request** rather than an occasion, which is a separate axis — `MLabs:AGENTS.md`
+> **A role, on the definition that decides it: a log and a criterion** (`Aevifex:METHOD.md` §5). Its
+> description names a **request** rather than an occasion, which is a separate axis — `Aevifex:AGENTS.md`
 > §4 — and settles only how the model reaches it, never what it answers for.
 
 ## Occasion
@@ -69,7 +69,7 @@ nothing else**: not the ledger, and not any axiom department.
 ## Dismissal
 
 **Its criterion is the instance's hiring record**, written before its first firing and read against
-its log by the operator (`MLabs:METHOD.md` §5).
+its log by the operator (`Aevifex:METHOD.md` §5).
 
 ⚠️ **The number worth reading is `Changed a decision`, not adoption** — a role whose every proposal
 is adopted is either excellent or unchallenged, and an adoption rate cannot tell you which.

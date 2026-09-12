@@ -1,6 +1,8 @@
 // Run from the repository root: node interface/tests/library.mjs.
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import fs from 'node:fs';
+import vm from 'node:vm';
 const require = createRequire(import.meta.url);
 const L = require('../render/library.js');
 const markdownit = require('../vendor/markdown-it/markdown-it.umd.min.js');
@@ -45,4 +47,8 @@ const unsafeMath = L.render('$\\href{javascript:alert(1)}{click}$', current, fil
 assert.ok(!unsafeMath.html.includes('href="javascript:'));
 const callout = L.render('> [!TIP] Read this.\n', current, files, {markdownit, katex});
 assert.match(callout.html, /class="callout-label">TIP<\/strong> Read this/);
+// Exercise the classic-script entry point too: lexical globals differ from window properties.
+const browser = vm.createContext({markdownit, katex, URLSearchParams});
+for (const name of ['escape.js', 'library.js']) vm.runInContext(fs.readFileSync(new URL('../render/' + name, import.meta.url), 'utf8'), browser);
+assert.match(vm.runInContext("Library.render('[[Missing]]', null, []).html", browser), /note-unresolved/);
 console.log('Library: identity, ambiguity, navigation, safe rendering, math, nested lists, tables and diagram fallback pass.');

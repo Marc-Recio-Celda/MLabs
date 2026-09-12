@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MLabs & NEXUS Operations Interface Server.
+"""Aevifex & NEXUS Operations Interface Server.
 
 Serves the operations centre cockpit with live polling and write layer.
 Works standalone or connected to a NEXUS instance.
@@ -41,7 +41,7 @@ else:
 
 # ⛔ Defined ONCE, in the model. A second copy here diverges, and then the same adapter is
 # valid or invalid depending on whether an import succeeded — with nothing in the output
-# saying which (`MLabs:AX-20`).
+# saying which (`Aevifex:AX-20`).
 KINDS = set(model.KINDS) if model else set()
 
 
@@ -61,7 +61,7 @@ def find_default_adapter():
     An environment variable is fine — it is the operator naming their instance, not
     the engine assuming one.
     """
-    env = os.environ.get("MLABS_ADAPTER")
+    env = os.environ.get("AEVIFEX_ADAPTER")
     if env and Path(env).is_file():
         return Path(env)
     return None
@@ -74,7 +74,7 @@ def load_adapter(path):
             path = default_path
         else:
             return {
-                "title": "MLabs & NEXUS Operations Cockpit",
+                "title": "Aevifex & NEXUS Operations Cockpit",
                 "root": HERE.parent,
                 "sources": [],
                 "path": None
@@ -135,7 +135,8 @@ def _contained(adapter, rel, root=None):
     """
     if not rel or not isinstance(rel, str):
         return None
-    rel = urllib.parse.unquote(rel)           # `..%2f` es `../` una vez decodificado
+    # Query parameters have already been decoded once by parse_qs. Decoding again would
+    # silently change a legitimate filename containing percent escapes into another path.
     if "\x00" in rel or not rel.endswith(".md"):
         return None
     matches = []
@@ -407,7 +408,7 @@ def metrics(adapter):
     ⛔ El motor no recalcula ni una cifra. `interface:I3.1` lo dice en una línea — *el
     trabajo es una vista, no un parser* — y escribir un segundo parser es exactamente lo
     que hay que no hacer: dos cosas que cuentan lo mismo acaban discrepando y ninguna
-    declara cuál gana (`MLabs:AX-20`).
+    declara cuál gana (`Aevifex:AX-20`).
 
     ⚠️ Sin `metrics` declarado devuelve `available: False` **y dice qué falta**, en vez de
     un objeto vacío que se lee como *cero* (`interface:AX-5`). Un tablero que enseña cero
@@ -463,7 +464,7 @@ def stamp(adapter):
     return str(hash("|".join(bits)))
 
 
-DOCTRINE_ROOT = Path(os.environ.get("MLABS_DOCTRINE_ROOT", HERE.parent))
+DOCTRINE_ROOT = Path(os.environ.get("AEVIFEX_DOCTRINE_ROOT", HERE.parent))
 
 # Which file answers which question, and the kind that reads it. The three levels of
 # `AGENTS.md` §1 in the order a newcomer meets them.
@@ -642,7 +643,7 @@ def make_handler(adapter):
                 # información es un adorno, no un dato del que dependa nada.
                 self._send(200, {"lines": recent_lines(adapter)})
             elif path == "/api/doctrine":
-                # ⛔ MLabs' own structural files, parsed rather than transcribed. The
+                # ⛔ Aevifex' own structural files, parsed rather than transcribed. The
                 # engine ships INSIDE this repository, so `HERE.parent` is a structural
                 # fact and not the guess `find_default_adapter` refuses to make: it is
                 # the engine's own root, never an operations centre.
@@ -709,7 +710,7 @@ def make_handler(adapter):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="MLabs Operations Cockpit Server")
+    ap = argparse.ArgumentParser(description="Aevifex Operations Cockpit Server")
     ap.add_argument("--adapter", help="path to adapter JSON")
     ap.add_argument("--port", type=int, default=8770)
     # ⛔ Escuchaba en `0.0.0.0`, es decir en toda la red. Este programa sirve el contenido de
@@ -727,7 +728,7 @@ def main():
     adapter = load_adapter(args.adapter)
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer((args.host, args.port), make_handler(adapter)) as httpd:
-        print(f"\n⚡ MLabs & NEXUS Operations Cockpit")
+        print(f"\n⚡ Aevifex & NEXUS Operations Cockpit")
         print(f"  URL:     http://localhost:{args.port}")
         print(f"  Adapter: {adapter.get('path') or 'Standalone'}")
         if args.host not in ("127.0.0.1", "localhost", "::1"):

@@ -21,12 +21,12 @@ are 🔴: the write is authorised per change (`NEXUS:AX-3`) and the commit messa
 3. **The Router's bridge table for the pair**, when the note crosses domains.
 
 ⚠️ **No filename appears above, and that is the rule rather than the style.** A skill that spells
-the vault's own files runs on exactly one machine and publishes that machine's shape (`MLabs:AX-1`).
+the vault's own files runs on exactly one machine and publishes that machine's shape (`Aevifex:AX-1`).
 **The Router is reached through the binding; every index is reached through the Router.** This skill
 knows the two hops and neither path.
 
 Anything opened beyond that is declared, and the declaration is logged as a defect in the Router
-(`MLabs:AX-21`). A domain with no index takes no notes until it has one (`NEXUS:AX-8`) — say so
+(`Aevifex:AX-21`). A domain with no index takes no notes until it has one (`NEXUS:AX-8`) — say so
 and stop.
 
 ## Procedure
@@ -114,7 +114,7 @@ script that reconciles every reference in the same pass (`NEXUS:AX-5`).
     homes is the duplication Phase 1 exists to catch, arriving through the back door.
 13. **Sources.** Raw material stays in the external sources vault the binding names; the note is the
     condensation and cites the original by address (`NEXUS:AX-7`). An unnameable source is marked
-    unsourced, not quietly asserted (`MLabs:AX-6`). Content beyond the source is allowed where a
+    unsourced, not quietly asserted (`Aevifex:AX-6`). Content beyond the source is allowed where a
     working data scientist needs it, and is flagged — 🚀 on a protocol step, and in a note:
 ```markdown
 > [!abstract] 🚀 NEXUS UPDATE (external)
@@ -134,7 +134,7 @@ its scaffolding. The index counter and the Router's Global Progress row both mov
 
 ## Verification — stated before the write, run after
 
-State these as the prediction, run them, report every gap (`MLabs:AX-14`, `MLabs:AX-22`); a check
+State these as the prediction, run them, report every gap (`Aevifex:AX-14`, `Aevifex:AX-22`); a check
 that could not be run is reported as not run, never as passed.
 
 1. the instance coherence script clean on the new file: the four keys present, none dropped
@@ -150,7 +150,7 @@ that could not be run is reported as not run, never as passed.
 ## Not this skill
 
 - **Repairing an existing note** — the audit's; what this skill crosses goes one line to
-  the instance mailbox, uninvestigated and unfixed (`MLabs:AX-25`).
+  the instance mailbox, uninvestigated and unfixed (`Aevifex:AX-25`).
 - **Creating what already exists.** Phase 1's classification is the check; a duplicate is its
   failure.
 - **Writing before both gates close**, or writing more than the note in hand in one turn.

@@ -388,7 +388,7 @@ WALL_FIELD = re.compile(r"^\*\*(?P<k>Serves|Sheet|Why it is committed|What it af
 # un campo se exige y no se guarda — que es exactamente lo que pasaba.
 WALL_AX46 = {"serves": "Serves", "why": "Why it is committed", "affects": "What it affects"}
 MARKER_STATE = {"▶": "active", "⏸": "paused", "⬜": "pending", "✅": "done", "✖": "cancelled",
-                # ⤴ DEFERRED — `MLabs:FLOW.md`, 2026-09-05. It is the inverse of promotion and it
+                # ⤴ DEFERRED — `Aevifex:FLOW.md`, 2026-09-05. It is the inverse of promotion and it
                 # is a TRANSITION, not one of the five states: the task left the wall and went back
                 # to its plan as a sub-block. It lives in the bin because *left the wall* is one
                 # question with one answer, and it is NOT terminal — the work is still intended.
@@ -447,7 +447,7 @@ def parse_wall(path, text):
                 # **Returns when** z`. ⛔ La versión anterior partía SÓLO por `**Sheet**` y metía
                 # todo lo que viniera detrás en `sheet`, así que un campo nuevo en esa misma línea
                 # se tragaba en silencio — y su check saltaba sobre un fichero CORRECTO.
-                # Lo encontró una plantada, no una lectura (`MLabs:AX-7`): el caso bien formado
+                # Lo encontró una plantada, no una lectura (`Aevifex:AX-7`): el caso bien formado
                 # fue el que falló. Ahora parte por cualquiera de los nombres conocidos.
                 INLINE = ("Sheet", "Returns when", "Why it is committed", "What it affects",
                           "Drains", "Opened", "Closed", "Deferred")
@@ -469,7 +469,7 @@ def parse_wall(path, text):
             elif k == "What it affects":
                 cur["affects"] = v
             elif k in ("Opened", "Closed", "Deferred"):
-                # ⛔ Las fechas de una tarea, y no hay segundo almacén (`MLabs:FLOW.md`,
+                # ⛔ Las fechas de una tarea, y no hay segundo almacén (`Aevifex:FLOW.md`,
                 # 2026-09-05). Se escriben cuando cambia el marcador — un momento que ya ocurre —
                 # y de aquí las lee quien agregue. Un registro curado a mano es una segunda cola.
                 cur["dates"][k.lower()] = v
@@ -504,7 +504,7 @@ def parse_wall(path, text):
             elif not active_key:
                 description.append(line)
         e["description"] = "\n".join(description).strip()
-    # ⛔ Every task carries the four fields (`MLabs:AX-46`) and a missing one is NAMED, never
+    # ⛔ Every task carries the four fields (`Aevifex:AX-46`) and a missing one is NAMED, never
     # counted. "Four are short" does not say which four, and the whole point of the contract is
     # that a reader can act on the answer.
     # ⚠️ Se miraba SÓLO `serves`, así que una tarea sin `Why it is committed` ni `What it
@@ -1224,7 +1224,7 @@ def parse_standing(path, text, project_pattern=None):
         quick_run = "python -m pipeline.main --config config.yaml"
         quick_test = "pytest tests/"
     elif "how-to-use" in str(readme_path).lower() or "[project]" in all_text:
-        tech_stack = "MLabs Cartridge Specification / Markdown"
+        tech_stack = "Aevifex Cartridge Specification / Markdown"
         quick_install = "cp -r template/ <target_directory>"
         quick_run = "python3 -m skills.structure_project"
         quick_test = "tools/gate.sh"
@@ -1334,7 +1334,7 @@ def parse_records(path, text):
 
 # ------------------------------------------------------- the structural files
 #
-# ⛔ These read MLabs' OWN documents — the philosophy, the axioms, the method — and they
+# ⛔ These read Aevifex' OWN documents — the philosophy, the axioms, the method — and they
 # exist so no view ever transcribes them. A page that retypes a clause is a second copy of
 # a fact with no winner (`AX-20`), and it drifts silently: the first build of this
 # interface described `PH-0` as something it stopped being, invented a clause that was

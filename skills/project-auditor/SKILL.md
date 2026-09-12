@@ -31,7 +31,7 @@ live plan **while it is still full**.
 ## What it checks
 
 **`company-auditor`'s `V1`–`V3` and `A1`–`A6` apply unchanged**, cited rather than restated
-(`MLabs:AX-20`). On top of them, four that only exist here:
+(`Aevifex:AX-20`). On top of them, four that only exist here:
 
 | # | Check |
 |---|---|

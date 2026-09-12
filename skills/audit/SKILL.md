@@ -7,7 +7,7 @@ description: Routes a closed task to the auditor whose department the work touch
 
 This skill **routes** to an auditor; it does not perform the audit.
 
-> ⚠️ **It is also the declared winner for everything the three auditors share** (`MLabs:AX-20`) —
+> ⚠️ **It is also the declared winner for everything the three auditors share** (`Aevifex:AX-20`) —
 > the brief, the output shape, the ledger entry, the log row, the tally, the dismissal mechanics,
 > what an auditor does not do.
 > **A role file states its scope, its occasion and its own checks, and cites this one for the rest.**
@@ -15,7 +15,7 @@ This skill **routes** to an auditor; it does not perform the audit.
 > contract; the dispatcher is nobody's peer.
 >
 > **A role file defines the role; the instance holds its hiring record** — the criterion, the
-> standing, the history (`MLabs:AGENTS.md` §4). **On structure the role file wins.**
+> standing, the history (`Aevifex:AGENTS.md` §4). **On structure the role file wins.**
 
 ## Occasion
 **An active front closing** · a long stretch of work behind you · wanting a reading you did not ask
@@ -45,7 +45,7 @@ structural**, and that list is what keeps its occasion from being permanent.
 
 **Two auditors on one close is the expensive one doing work it was not hired for.** If a task
 genuinely spans two departments, dispatch the higher one and **say the lower was not run** — an
-unrun check is reported as unrun, never as passed (`MLabs:AX-22`).
+unrun check is reported as unrun, never as passed (`Aevifex:AX-22`).
 
 ## The brief — fresh context, every time
 
@@ -81,7 +81,7 @@ silently.
 ## How an auditor answers — the shape, for all three
 
 Findings, or the list of what was checked and found nothing — **silence is not available**
-(`MLabs:AX-6`). An auditor that may stay silent drifts toward silence, because silence is always
+(`Aevifex:AX-6`). An auditor that may stay silent drifts toward silence, because silence is always
 safe and never looks wrong.
 
 A finding **cites a file and line, or a command and its output.** Anything requiring execution the
@@ -166,7 +166,7 @@ That file is the instance's; this table is the structure it implements.
 | `instance-auditor` | `IA-` | `[instance-auditor]`, the instance ledger | **once**, for the operations centre |
 | `project-auditor` | `PA-<project>-`, **one file per project** | `[project-auditor]`, **that project's** agent log | **per project** — a project's blind spots are its own |
 
-**Every log sits under `99_SYSTEM/logs/`** by default, at the path the instance's binding declares (`MLabs:AX-1`). **The per-role
+**Every log sits under `99_SYSTEM/logs/`** by default, at the path the instance's binding declares (`Aevifex:AX-1`). **The per-role
 prefixes apply from round 8 forward** under the renaming rule above, and **which earlier rounds a
 role inherits is in that role's own log.**
 
@@ -188,13 +188,13 @@ jurisdictions before the split, its rows stay its own and the new roles start em
 that history retroactively would be inventing a measurement**, and an invented one is
 indistinguishable from a real one once it is in the table.
 
-⚠️ **Test the tally against a planted row before trusting it** (`MLabs:AX-7`, which says how to
+⚠️ **Test the tally against a planted row before trusting it** (`Aevifex:AX-7`, which says how to
 plant). **Five consecutive counting defects survived a rule written to catch them**, and every one
 of them was in a log nobody had planted against.
 
 ## How a role is dismissed — the mechanics, for all three
 
-**When the criterion is written and where it lives are `MLabs:METHOD.md` §5's**, and **the operator
+**When the criterion is written and where it lives are `Aevifex:METHOD.md` §5's**, and **the operator
 reads the role's log against it and decides.** ⛔ **The numbers are read, never arithmetic that acts
 on its own** — a threshold that fires by itself retires a role on the round that happened to be
 quiet.
