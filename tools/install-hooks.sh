@@ -7,7 +7,7 @@
 # Hooks are not tracked by git, which is why this is a script and not a file.
 set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
-DENYLIST="${1:-${MLABS_DENYLIST:-}}"
+DENYLIST="${1:-${AEVIFEX_DENYLIST:-}}"
 
 if [ -z "$DENYLIST" ] || [ ! -f "$DENYLIST" ]; then
   echo "  Give me the denylist: tools/install-hooks.sh /path/to/denylist.txt"

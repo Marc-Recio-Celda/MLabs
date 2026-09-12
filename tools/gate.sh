@@ -27,10 +27,10 @@ done
 
 # The denylist is a list of names, so it is personal data and lives instance-side.
 # This script never guesses where: it is told, or it says it was not.
-[ -n "$DENYLIST" ] || DENYLIST="${MLABS_DENYLIST:-}"
+[ -n "$DENYLIST" ] || DENYLIST="${AEVIFEX_DENYLIST:-}"
 if [ -z "$DENYLIST" ] || [ ! -f "$DENYLIST" ]; then
   echo "  gate: no denylist given."
-  echo "        Pass --denylist PATH or set MLABS_DENYLIST."
+  echo "        Pass --denylist PATH or set AEVIFEX_DENYLIST."
   echo "        Refusing to report a pass on a check that did not run."
   exit 2
 fi
@@ -65,7 +65,7 @@ PATTERN="$HARD"
 # bare  match, so a name on the list could still be invisible. Proven against a plant.
 HARD_RE="\\b(${PATTERN})[0-9]*\\b"
 
-# ── the signature carve-out (`MLabs:AX-1`) ──────────────────────
+# ── the signature carve-out (`Aevifex:AX-1`) ──────────────────────
 # A leak is personal data that travels because someone forgot. A signature travels
 # because someone decided. The axiom now permits the second, and this is where the
 # permission is *implemented* — which means implemented NARROWLY, because a widening

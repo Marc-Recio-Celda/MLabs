@@ -1,4 +1,4 @@
-// MLabs & NEXUS Operations Cockpit Dashboard
+// Aevifex & NEXUS Operations Cockpit Dashboard
 // Zero static hardcoding — builds all views reactively from /api/model.
 // Live polling via /api/stamp every 2s (AX-7).
 
@@ -100,7 +100,7 @@ const CHEATSHEET_DATA = [
     groups: [
       {
         title: "Session Lifecycle (Canonical Loop)",
-        desc: "The canonical MLabs method loop: Open -> Orient -> Execute -> Close -> Audit.",
+        desc: "The canonical Aevifex method loop: Open -> Orient -> Execute -> Close -> Audit.",
         cmds: [
           { label: "Open session", code: "claude -p 'open a session: read COMPASS.md, report the active front, and ask if we work it'", hint: "Prompt" },
           { label: "Close task cleanly", code: "claude -p 'close this task: strike each item in PLAN.md with its destination, update state, close the plan, and run company-auditor'", hint: "Prompt" },
@@ -113,7 +113,7 @@ const CHEATSHEET_DATA = [
         cmds: [
           { label: "Check git status", code: "git status -s && git branch -vv", hint: "Shell" },
           { label: "Run the gate", code: "bash tools/gate.sh --denylist <the instance's denylist>", hint: "Shell*" },
-          { label: "Axiom citations resolve", code: "bash tools/axiom-refs.sh AXIOMS.md MLabs $(git ls-files)", hint: "Shell" },
+          { label: "Axiom citations resolve", code: "bash tools/axiom-refs.sh AXIOMS.md Aevifex $(git ls-files)", hint: "Shell" },
           { label: "Clause citations resolve", code: "bash tools/clause-refs.sh PHILOSOPHY.md $(git ls-files)", hint: "Shell" },
           { label: "Roles have log and criterion", code: "bash tools/roles-check.sh --skills skills --logs <the instance's logs dir>", hint: "Shell*" },
           { label: "Same prose in two files", code: "bash tools/dup-prose.sh PHILOSOPHY.md AXIOMS.md AGENTS.md METHOD.md FLOW.md", hint: "Shell" },
@@ -833,12 +833,12 @@ function renderOverview(container) {
       <header class="propylaea">
         <div class="propylaea-fluting" aria-hidden="true"></div>
         <div class="propylaea-inner">
-          <div class="kicker">ΜΗΧΑΝΗ · MLabs & NEXUS</div>
-          <h1>MLabs <span class="accent">&amp; NEXUS</span></h1>
+          <div class="kicker">ΜΗΧΑΝΗ · Aevifex & NEXUS</div>
+          <h1>Aevifex <span class="accent">&amp; NEXUS</span></h1>
           <p class="header-lead">
-            <strong>MLabs es la constitución. La centralita de operaciones es el país.</strong><br>
+            <strong>Aevifex es la constitución. La centralita de operaciones es el país.</strong><br>
             Aquí están las reglas; el trabajo y su registro entero viven allí. Un agente que sólo
-            haya leído MLabs conoce todas las reglas y nada de lo que ha pasado nunca.
+            haya leído Aevifex conoce todas las reglas y nada de lo que ha pasado nunca.
           </p>
           <div class="specs">
             <span class="spec-pill" onclick="openClause('PH-0')"><strong>🏛️ Cláusulas:</strong> ${cl.length || "—"}</span>
@@ -2453,7 +2453,7 @@ function renderProjectReposTab(proj) {
 
               <div class="git-cmd-box" onclick="copyToClipboard('tools/gate.sh', 'Comando copiado', event)">
                 <div class="git-cmd-left">
-                  <span class="git-cmd-label">3. Ejecutar gate de integridad de MLabs</span>
+                  <span class="git-cmd-label">3. Ejecutar gate de integridad de Aevifex</span>
                   <code class="git-cmd-code">tools/gate.sh</code>
                 </div>
                 <span class="git-cmd-copy-hint">Copiar 📋</span>
@@ -2590,13 +2590,13 @@ function renderProjectGuideTab(proj) {
             </div>
           </div>
           <div class="guide-hero-badges">
-            <span class="card-badge badge-vine">${esc(proj.techStack || 'MLabs Pipeline')}</span>
+            <span class="card-badge badge-vine">${esc(proj.techStack || 'Aevifex Pipeline')}</span>
             <span class="tag-pill tag-purple">${esc(proj.currentPhase || 'Producción')}</span>
           </div>
         </div>
 
         <p class="guide-hero-desc">
-          ${inline(proj.definition || 'Módulo y solución soberana de software diseñada bajo los principios y arquitectura de MLabs.')}
+          ${inline(proj.definition || 'Módulo y solución soberana de software diseñada bajo los principios y arquitectura de Aevifex.')}
         </p>
       </div>
 
@@ -3146,7 +3146,7 @@ function staleBanner(entities, queSon) {
 // ⛔ `renderDecisions` vivía aquí y se retira 2026-09-06 (`interface:I14.2`). Una decisión
 // pertenece a su proyecto y se lee dentro de él: la pantalla de proyecto ya tiene su pestaña
 // de decisiones, filtrada y con vivas contra totales, así que la vista suelta era una segunda
-// respuesta a la misma pregunta sin ganador declarado (`MLabs:AX-20`).
+// respuesta a la misma pregunta sin ganador declarado (`Aevifex:AX-20`).
 // ⚠️ La ruta `#/decisions` NO se borra: redirige al hub. Un marcador que el operador tiene en
 // la cabeza no deja de existir porque la vista sí.
 
@@ -4137,7 +4137,7 @@ window.openDesk = function (cardId) {
 // ═════════════════════════════════════════════════════════════════════════════
 // DOCTRINA — la filosofía, los axiomas y los ficheros estructurales
 //
-// ⛔ Nothing here is transcribed. `/api/doctrine` parses MLabs' own files and this layer
+// ⛔ Nothing here is transcribed. `/api/doctrine` parses Aevifex' own files and this layer
 // paints what comes back, so the page cannot state a clause the file does not. The build
 // before this one hard-coded six clauses: it named `PH-0` as something it had stopped
 // being, described `PH-1` as a clause that was never written, omitted `PH-6` entirely, and
@@ -4158,7 +4158,7 @@ async function loadRecent() {
 // ⛔ `interface:I3.1` — las firings de los roles eran la única medida de la salud del
 // sistema que esta interfaz no podía pintar, y el script que las calcula llevaba escrito
 // desde antes. **El trabajo es una vista, no un parser**: esto pide el JSON y no recalcula
-// nada, porque dos cosas que cuentan lo mismo acaban discrepando (`MLabs:AX-20`).
+// nada, porque dos cosas que cuentan lo mismo acaban discrepando (`Aevifex:AX-20`).
 // ⚠️ Se carga una vez, como la doctrina: el script barre el árbol y no es estado vivo.
 // ⛔ El árbol se pide UNA vez y son metadatos: 326 filas sin un solo cuerpo. Los cuerpos
 // se piden al abrir, y sólo el que se abre — meter el vault en `/api/model`, que ya pesa
@@ -4817,7 +4817,7 @@ function metric({ id, purpose, title, n, of, unit, source, bad, note, tone }) {
 // Las auditorías, que es lo único de este tablero que el modelo no puede calcular: sale de
 // `metrics.py` a través de `/api/metrics`, **verbatim** (`interface:I3.1`).
 // ⛔ Sin fuente NO se pinta un cero. Un cero aquí se leería como «ninguna auditoría ha
-// encontrado nada», que es lo contrario de «no lo hemos medido» (`MLabs:AX-36`).
+// encontrado nada», que es lo contrario de «no lo hemos medido» (`Aevifex:AX-36`).
 function renderAuditMetrics() {
   const m = STATE.metrics;
   if (m === undefined) {

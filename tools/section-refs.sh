@@ -10,7 +10,7 @@
 # it cites.
 #
 # WHAT IT READS, and every form here is in use:
-#   a file        `METHOD.md` §2 · `MLabs:AGENTS.md` §4 · AGENTS.md §5
+#   a file        `METHOD.md` §2 · `Aevifex:AGENTS.md` §4 · AGENTS.md §5
 #   a skill       `skills/compact/` §1 · `open-session` §5 — both resolve to that skill's SKILL.md
 #   bare          §5 — the file it appears in, and ONLY when its sentence names no other target
 # **Every §n belongs to the nearest target earlier in its own sentence**, whatever sits between

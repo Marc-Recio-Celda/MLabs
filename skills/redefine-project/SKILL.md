@@ -68,7 +68,7 @@ above allows — **losses block; additions are reported.**
 nobody has to say.** A block that appears with no line in the round's report is how a board acquires
 structure nobody decided — the failure at the other end from the one this rule was written for.
 
-⚠️ **Test it against a planted removal before trusting a clean run** (`MLabs:AX-7`), and **plant
+⚠️ **Test it against a planted removal before trusting a clean run** (`Aevifex:AX-7`), and **plant
 against the format**: delete a heading whose id also appears in a sub-block row, so a naive pattern
 still finds the string and reports no change.
 
@@ -118,7 +118,7 @@ one. **A redefinition with no discarded alternatives is a rewrite pretending to 
 **6. Correct the compass row and the queue.** A redefined project usually has fronts that no longer
 exist and tasks whose premise is gone. **Each one leaves with a destination** — resolved, discarded
 with its reason, or carried — and **a task whose premise the redefinition just falsified is stopped
-and said so**, not silently deleted (`MLabs:AX-14`).
+and said so**, not silently deleted (`Aevifex:AX-14`).
 
 ## What it must not do
 

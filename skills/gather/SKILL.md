@@ -14,7 +14,7 @@ returns the conclusion and keeps the reading to itself.
 blocked on something nobody has looked up** — where looking it up means reading far more than the
 answer is worth carrying.
 
-**Its description names a request** (`MLabs:AGENTS.md` §4): nothing about a schedule says when a
+**Its description names a request** (`Aevifex:AGENTS.md` §4): nothing about a schedule says when a
 fact is missing.
 
 ## What it returns

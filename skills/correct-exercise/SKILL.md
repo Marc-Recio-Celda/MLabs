@@ -16,7 +16,7 @@ pedagogical support belongs to `learn`.
 - The operator asks what is wrong with it, for a stronger version of it, or for a code analysis.
 
 ⛔ **Work generated in this same conversation is reviewed in a new one**, with the artefact as its
-only input (`MLabs:AX-13`).
+only input (`Aevifex:AX-13`).
 
 ## Its three modes
 
@@ -26,7 +26,7 @@ fix it**, ordered by what it costs. ⚠️ **It points out and explains; the rew
 
 **`improve` — the stronger version.** Starts from work already correct and returns a better one:
 better method, cleaner, more idiomatic, better justified. **Every change is marked with what changed
-and why, because the delta is the part that teaches** (`MLabs:AX-40`). Solving from scratch is
+and why, because the delta is the part that teaches** (`Aevifex:AX-40`). Solving from scratch is
 `learn`.
 
 **`analyze` — the levelled sweep.** Independent levels, requested one at a time or in full:
@@ -37,7 +37,7 @@ and why, because the delta is the part that teaches** (`MLabs:AX-40`). Solving f
 
 Short code inline; a long or multi-level sweep as its own file.
 
-⛔ **A finding with no location is not written** (`MLabs:AX-6`).
+⛔ **A finding with no location is not written** (`Aevifex:AX-6`).
 
 ## Its prediction
 

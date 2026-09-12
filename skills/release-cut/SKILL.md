@@ -78,11 +78,11 @@ the repository is not keeping.
 ## 5 · Tag
 
 > ⚠️ **The cut records the commit it was cut against, and that is not optional.**
-> `AX-1`'s clause *"and pins the release it runs"* was **retired** — this instance co-develops MLabs
+> `AX-1`'s clause *"and pins the release it runs"* was **retired** — this instance co-develops Aevifex
 > rather than consuming it, so the two repositories move in the same round and a pin is what a
-> consumer holds. **Retiring the pin removed the field that answered *which MLabs is this?***, so the
+> consumer holds. **Retiring the pin removed the field that answered *which Aevifex is this?***, so the
 > cut answers it instead: the tag message carries the commit, and a cut that does not is a release
-> nothing can be reproduced from. ⏳ The clause returns the day MLabs has a consumer that is not its
+> nothing can be reproduced from. ⏳ The clause returns the day Aevifex has a consumer that is not its
 > co-developer, and it returns as the consumer half only.
 
 Only now. The tag names the release a **consuming** instance will adopt, so it must be the thing that passed

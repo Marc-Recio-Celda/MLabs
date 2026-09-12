@@ -20,7 +20,7 @@ alone**, on the same gate and the same citations, without the scaffolding.
 
 ⚠️ **The teaching stances — `lesson`, `socratic`, `exam` — are opt-in and never adopted unasked.**
 Transparency is the default: **the transcription is handed over and the judgement is kept**
-(`MLabs:AX-40`), so code is never withheld to make a point.
+(`Aevifex:AX-40`), so code is never withheld to make a point.
 
 ## What `guide` produces
 
@@ -49,4 +49,4 @@ line (`skills/coursework.md`).
 ## Its boundary
 
 Per `skills/coursework.md`. On top of it: **work already written goes to `correct-exercise`, in its
-own conversation** (`MLabs:AX-13`), and **code is handed over whole with no stance taken unasked.**
+own conversation** (`Aevifex:AX-13`), and **code is handed over whole with no stance taken unasked.**

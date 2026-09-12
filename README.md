@@ -1,8 +1,8 @@
-# MLabs
+# Aevifex
 
 **A working methodology for building knowledge systems with AI agents — packaged as a company.**
 
-MLabs is not a framework you install. It is the structure of a one-person company whose
+Aevifex is not a framework you install. It is the structure of a one-person company whose
 employees are AI agents: a hierarchy of design principles, a small set of roles each with the
 occasion that calls for it, procedures packaged as skills, and — the part that makes it different —
 **a built-in mechanism that audits its own health, and a criterion written before a role's first
@@ -13,13 +13,13 @@ firing that says when it has stopped earning its place.**
 
 ## The shape
 
-**MLabs is a workspace that is also a repository.** The root you are reading is git-tracked,
+**Aevifex is a workspace that is also a repository.** The root you are reading is git-tracked,
 and it tracks **only the structure** — this file, the philosophy, the axioms, the
 orchestration, the roles, and later the skills and templates. Everything else that lives in the workspace — your
 instance, your projects — sits in child folders, **each its own repository, never tracked
 here**. Modular work: one clone gives you the whole frame; each piece versions itself.
 
-| In the workspace                                    | What it is                                                                | Tracked by MLabs?      |
+| In the workspace                                    | What it is                                                                | Tracked by Aevifex?      |
 | --------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------- |
 | The structural files (see `.gitignore`'s allowlist) | The company: hierarchy, roles, skills, templates                          | ✅ public, by release   |
 | **NEXUS** — the operations centre                   | Where the company lives: knowledge, projects, logs, decisions, work in flight | ❌ its own private repo |
@@ -35,21 +35,21 @@ Two mechanics make the containment safe, and they are rules, not hopes:
   everything you own. This is the one prohibition that is a rule rather than a tool, because
   deletion is the act no cleanup pass can undo.
 
-MLabs contains **no personal information in what it tracks, by construction** — the invariant is a
+Aevifex contains **no personal information in what it tracks, by construction** — the invariant is a
 command over `git ls-files`, not a promise (`AGENTS.md` §5).
 
 **NEXUS is the operations centre, and it is not optional.** Every instance of this methodology
 has exactly one: a private sibling repository holding the knowledge, the projects, the decision
-log, the work in flight and the whole record. **MLabs is the constitution; NEXUS is the
+log, the work in flight and the whole record. **Aevifex is the constitution; NEXUS is the
 country.** Practically nothing real is done without entering it — this repo says *how* to work,
-NEXUS is *where* the work and its history are, and an agent that has read only MLabs knows every
+NEXUS is *where* the work and its history are, and an agent that has read only Aevifex knows every
 rule and nothing that has ever happened. Adopting this methodology means creating your own
 NEXUS, the way you create your own `main` branch.
 
 **A release is a tag, and an instance names in its binding the release it runs** — the way code
 pins a dependency. Upgrading is a deliberate act, so a released structure never shifts under a
-running instance. ⚠️ **An instance that co-develops MLabs is the exception**, and its cut answers
-*which MLabs is this?* another way (`skills/release-cut/` §5).
+running instance. ⚠️ **An instance that co-develops Aevifex is the exception**, and its cut answers
+*which Aevifex is this?* another way (`skills/release-cut/` §5).
 
 ## Three levels, and what is in each today
 

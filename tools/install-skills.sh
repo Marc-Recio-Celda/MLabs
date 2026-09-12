@@ -46,7 +46,7 @@ echo "Instance skills:"
 found=0
 for d in "$ROOT"/*/; do
   # This tool exists to FIND an instance, so it has to know the shape of one. The debt
-  # is real — MLabs knows one path below the root — and closing it means the instance
+  # is real — Aevifex knows one path below the root — and closing it means the instance
   # declaring its own skills path, which is a binding change, not a script change.
   s="${d}99_SYSTEM/skills"                        # gate:allow finding an instance requires knowing its shape
   [[ -d "$s" ]] || continue
